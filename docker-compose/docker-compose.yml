@@ -5,7 +5,7 @@ services:
     # 阿里云镜像源
     # image: registry.cn-beijing.aliyuncs.com/mereith/van-blog:latest
     # image: kevinchina/deeplearning:van-blog-modify1.0
-    image: docker.1ms.run/kevinchina/deeplearning:vanblog-latest
+    image: kevinchina/deeplearning:vanblog-latest
     restart: always
     environment:
       TZ: 'Asia/Shanghai'
@@ -31,7 +31,7 @@ services:
   mongo:
     # 某些机器不支持 avx 会报错，所以默认用 v4 版本。有的话用最新的。
     #image: mongo:4.4.16
-    image: docker.1ms.run/mongo:latest
+    image: mongo:latest
     restart: always
     environment:
       TZ: 'Asia/Shanghai'
