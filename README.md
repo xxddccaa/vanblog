@@ -43,6 +43,7 @@
 - ✅ 移除对外部api依赖，版本对我来说不重要，直接修改此文件：packages/server/src/utils/getVersion.ts
 - ✅ 这个分支本身是修复了Mermaid了的，现在Mermaid是可以正常使用的
 - ✅ amdin后台每页显示的文章数量默认改为200
+- ✅ 我习惯打开显示分类导航栏，但我的分类太多的时候，前端第二行不会换行显示。我更改了这一点。
 
 与每页显示多少文章有关的代码：
 packages/admin/src/pages/Article/index.jsx - 文章管理页面

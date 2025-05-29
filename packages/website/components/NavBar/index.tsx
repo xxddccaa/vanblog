@@ -169,17 +169,17 @@ export default function (props: {
           </div>
         </div>
         {Boolean(props.categories.length) && props.showSubMenu == "true" && (
-          <div className="h-10 items-center hidden md:flex border-b border-gray-200 dark:border-nav-dark overflow-hidden">
+          <div className="min-h-10 items-center hidden md:flex border-b border-gray-200 dark:border-nav-dark py-2">
             <div
               className="mx-5"
               style={{ width: 52 + props.subMenuOffset }}
             ></div>
-            <ul className="flex h-full items-center text-sm text-gray-600 dark:text-dark ">
+            <ul className="flex flex-wrap items-center text-sm text-gray-600 dark:text-dark">
               {props.categories.map((catelog) => {
                 return (
                   <li
                     key={catelog}
-                    className="flex items-center h-full md:px-2 hover:text-gray-900 dark:hover:text-dark-hover transform hover:scale-110 cursor-pointer transition-all"
+                    className="flex items-center md:px-2 hover:text-gray-900 dark:hover:text-dark-hover transform hover:scale-110 cursor-pointer transition-all py-1"
                   >
                     <Link href={`/category/${encodeQuerystring(catelog)}`}>
                       <div>{catelog}</div>
