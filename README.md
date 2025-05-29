@@ -126,7 +126,7 @@ docker compose down && docker compose up -d --build && docker compose logs -f
 推送一个此项目的构建，可以直接使用这个镜像： `docker.1ms.run/kevinchina/deeplearning:vanblog-latest`
 
 ```bash
-docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0'
+docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0' && docker push kevinchina/deeplearning:vanblog-latest
 ```
 
 ## 其他细节提示
