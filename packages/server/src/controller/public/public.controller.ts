@@ -11,6 +11,7 @@ import { VisitProvider } from 'src/provider/visit/visit.provider';
 import { version } from 'src/utils/loadConfig';
 import { CustomPageProvider } from 'src/provider/customPage/customPage.provider';
 import { encode } from 'js-base64';
+import { TokenProvider } from 'src/provider/token/token.provider';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -23,6 +24,7 @@ export class PublicController {
     private readonly visitProvider: VisitProvider,
     private readonly settingProvider: SettingProvider,
     private readonly customPageProvider: CustomPageProvider,
+    private readonly tokenProvider: TokenProvider,
   ) {}
   @Get('/customPage/all')
   async getAll() {
@@ -60,6 +62,38 @@ export class PublicController {
     return {
       statusCode: 200,
       data: data,
+    };
+  }
+
+  @Post('/article/:id/admin')
+  async getArticleByIdOrPathnameWithAdminToken(
+    @Param('id') id: number | string,
+    @Body() body: { token: string },
+  ) {
+    // 验证token是否有效
+    const isValidToken = await this.tokenProvider.checkToken(body?.token);
+    if (!isValidToken) {
+      return {
+        statusCode: 401,
+        data: null,
+        message: 'Invalid token',
+      };
+    }
+
+    // 如果token有效，直接获取文章内容（使用admin视图）
+    const data = await this.articleProvider.getByIdOrPathname(id, 'admin');
+    if (data) {
+      // 移除密码字段，使用类型断言处理mongoose文档
+      const articleData = (data as any)?._doc || data;
+      return {
+        statusCode: 200,
+        data: { ...articleData, password: undefined },
+      };
+    }
+    return {
+      statusCode: 404,
+      data: null,
+      message: 'Article not found',
     };
   }
 

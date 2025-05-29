@@ -134,3 +134,30 @@ export const getArticleByIdOrPathnameWithPassword = async (
     }
   }
 };
+export const getArticleByIdOrPathnameWithAdminToken = async (
+  id: number | string,
+  token: string
+) => {
+  try {
+    const url = `/api/public/article/${id}/admin`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    });
+    const { statusCode, data } = await res.json();
+    if (statusCode === 200) {
+      return data;
+    }
+    return null;
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("无法连接，采用默认值");
+      return null;
+    } else {
+      return null;
+    }
+  }
+};

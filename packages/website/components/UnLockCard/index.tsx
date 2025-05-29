@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { getArticleByIdOrPathnameWithPassword } from "../../api/getArticles";
+import { useState, useEffect } from "react";
+import { getArticleByIdOrPathnameWithPassword, getArticleByIdOrPathnameWithAdminToken } from "../../api/getArticles";
 import toast from "react-hot-toast";
 import Loading from "../Loading";
 
@@ -10,6 +10,36 @@ export default function (props: {
 }) {
   const [value, setValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
+
+  // 检查admin token并尝试自动解锁
+  useEffect(() => {
+    const checkAdminToken = async () => {
+      if (adminChecked) return;
+      
+      setAdminChecked(true);
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      
+      if (token) {
+        try {
+          setLoading(true);
+          const article = await getArticleByIdOrPathnameWithAdminToken(props.id, token);
+          if (article) {
+            onSuccess("Admin自动解锁成功！");
+            props.setContent(article.content);
+            props.setLock(false);
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          // Token无效或其他错误，继续正常流程
+        }
+        setLoading(false);
+      }
+    };
+
+    checkAdminToken();
+  }, [props.id, adminChecked]);
 
   const onSuccess = (message: string) => {
     toast.success(message, {
@@ -60,7 +90,7 @@ export default function (props: {
       <Loading loading={loading}>
         <div className="mb-2">
           <p className="mb-2 text-gray-600 dark:text-dark ">
-            文章已解锁，请输入密码后查看：
+            文章已加密，请输入密码后查看：
           </p>
           <div className="flex items-center">
             <div className=" bg-gray-100 rounded-md dark:bg-dark-2 overflow-hidden flex-grow">
