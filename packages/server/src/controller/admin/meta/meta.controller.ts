@@ -23,7 +23,7 @@ export class MetaController {
       updatedAt: serverData?.updatedAt || new Date(),
       user: req.user,
       baseUrl: meta.siteInfo.baseUrl,
-      enableComment: meta.siteInfo.enableComment || 'true',
+      enableComment: meta.siteInfo.enableComment || 'false',
       allowDomains: process.env.VAN_BLOG_ALLOW_DOMAINS || '',
     };
     return {

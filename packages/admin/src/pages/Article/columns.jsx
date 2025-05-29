@@ -11,15 +11,15 @@ export const columns = [
     dataIndex: 'id',
     valueType: 'number',
     title: 'ID',
-    width: 48,
+    width: 40,
     search: false,
   },
   {
     title: '标题',
     dataIndex: 'title',
-    width: 150,
+    width: 500,
     copyable: true,
-    ellipsis: true,
+    ellipsis: false,
     formItemProps: {
       rules: [
         {
@@ -48,7 +48,7 @@ export const columns = [
     dataIndex: 'tags',
     valueType: 'select',
     fieldProps: { showSearch: true, placeholder: '请搜索或选择' },
-    width: 120,
+    width: 160,
     search: true,
     renderFormItem: (_, { defaultRender }) => {
       return defaultRender(_);
@@ -80,15 +80,15 @@ export const columns = [
     valueType: 'dateTime',
     sorter: true,
     hideInSearch: true,
-    width: 150,
+    width: 120,
   },
   {
-    title: '顶置',
+    title: '置顶',
     key: 'top',
     dataIndex: 'top',
     valueType: 'number',
     sorter: true,
-    width: 80,
+    width: 40,
     hideInSearch: true,
   },
   {
@@ -97,7 +97,7 @@ export const columns = [
     dataIndex: 'viewer',
     valueType: 'number',
     sorter: true,
-    width: 80,
+    width: 60,
     hideInSearch: true,
   },
   {

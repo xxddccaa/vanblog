@@ -188,12 +188,12 @@ export default function (props: {
           <ProFormSelect
             name={'enableComment'}
             label="是否开启评论系统"
-            placeholder={'开启'}
+            placeholder={'关闭'}
             valueEnum={{
               true: '开启',
               false: '关闭',
             }}
-            tooltip={'默认开启'}
+            tooltip={'默认关闭'}
           />
           <ProFormDateTimePicker
             name="since"

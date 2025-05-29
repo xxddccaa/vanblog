@@ -8,21 +8,21 @@ USER root
 RUN apk add --update python3 make g++ && rm -rf /var/cache/apk/*
 COPY ./packages/admin/ ./
 RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
+RUN corepack prepare pnpm@9.15.3 --activate
 RUN pnpm config set network-timeout 600000 -g
-RUN pnpm config set registry https://registry.npmjs.org -g
+RUN pnpm config set registry https://registry.npmmirror.com -g
 RUN pnpm config set fetch-retries 20 -g
 RUN pnpm config set fetch-timeout 600000 -g
 RUN pnpm i
 # RUN sed -i 's/\/assets/\/admin\/assets/g' dist/admin/index.html
 RUN pnpm build
 
-FROM node:18 as SERVER_BUILDER
+FROM node:18-alpine as SERVER_BUILDER
 ENV NODE_OPTIONS=--max_old_space_size=4096
 WORKDIR /app
 COPY ./packages/server/ .
 RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
+RUN corepack prepare pnpm@9.15.3 --activate
 RUN pnpm config set network-timeout 600000 -g
 RUN pnpm config set registry https://registry.npmmirror.com -g
 RUN pnpm config set fetch-retries 20 -g
@@ -45,12 +45,12 @@ ENV VAN_BLOG_SERVER_URL ${VAN_BLOG_BUILD_SERVER}
 ARG VAN_BLOG_VERSIONS
 ENV VAN_BLOG_VERSION ${VAN_BLOG_VERSIONS}
 RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
+RUN corepack prepare pnpm@9.15.3 --activate
 RUN pnpm config set network-timeout 600000 -g
 RUN pnpm config set registry https://registry.npmmirror.com -g
 RUN pnpm config set fetch-retries 20 -g
 RUN pnpm config set fetch-timeout 600000 -g
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 RUN pnpm build:website
 
 
@@ -62,7 +62,7 @@ RUN  apk add --no-cache --update tzdata caddy nss-tools libwebp-tools \
   && echo "Asia/Shanghai" > /etc/timezone \
   && apk del tzdata
 RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
+RUN corepack prepare pnpm@9.15.3 --activate
 RUN pnpm config set network-timeout 600000 -g
 RUN pnpm config set registry https://registry.npmmirror.com -g
 RUN pnpm config set fetch-retries 20 -g
@@ -97,6 +97,7 @@ ENV VAN_BLOG_WALINE_DB "waline"
 WORKDIR /app/admin
 COPY --from=ADMIN_BUILDER /app/dist/ ./
 COPY caddyTemplate.json /app/caddyTemplate.json
+COPY CaddyfileTemplateLocal /app/CaddyfileTemplateLocal
 # 复制入口文件
 WORKDIR /app
 COPY ./scripts/start.js ./

@@ -11,16 +11,16 @@ export const columns = [
     dataIndex: 'id',
     valueType: 'number',
     title: 'ID',
-    width: 48,
+    width: 40,
     search: false,
   },
   {
     title: '标题',
     dataIndex: 'title',
     copyable: true,
-    ellipsis: true,
-    width: 150,
-    tip: '标题过长会自动收缩',
+    ellipsis: false,
+    width: 500,
+    tip: '标题完整显示',
     formItemProps: {
       rules: [
         {
@@ -33,7 +33,7 @@ export const columns = [
   {
     title: '分类',
     dataIndex: 'category',
-    width: 120,
+    width: 100,
     valueType: 'select',
     request: async () => {
       const { data: categories } = await getAllCategories();
@@ -51,7 +51,7 @@ export const columns = [
     search: true,
     fieldProps: { showSearch: true, placeholder: '请搜索或选择' },
     valueType: 'select',
-    width: 120,
+    width: 160,
     renderFormItem: (_, { defaultRender }) => {
       return defaultRender(_);
     },
@@ -82,7 +82,7 @@ export const columns = [
     valueType: 'dateTime',
     sorter: true,
     hideInSearch: true,
-    width: 150,
+    width: 120,
   },
   {
     title: '创建时间',
@@ -102,7 +102,7 @@ export const columns = [
     title: '操作',
     valueType: 'option',
     key: 'option',
-    width: 120,
+    width: 140,
     render: (text, record, _, action) => {
       return (
         <ColumnsToolBar

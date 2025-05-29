@@ -99,7 +99,9 @@
 		reverse_proxy 127.0.0.1:3000
 	}
 	handle_path /admin* {
-		reverse_proxy 127.0.0.1:3002
+		root * /app/admin
+		try_files {path} /index.html
+		file_server
 	}
 	reverse_proxy 127.0.0.1:3001
 }

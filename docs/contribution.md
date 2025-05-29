@@ -1,20 +1,7 @@
----
-title: 开发指南
-icon: signs-post
-order: 7
----
-
-::: info 提示
-
-本项目处于早期开发阶段 (Early WIP)，如有 bug 请多担待。
-
-:::
 
 本项目使用了 `JavaScript` 和 `TypeScript` 实现。
 
 如果你想参与 VanBlog 开发，可以进群哦：
-
-- [VanBlog 开发群](https://jq.qq.com/?_wv=1027&k=mf2CguM8)
 
 ## 准备知识
 
@@ -70,139 +57,15 @@ Vanblog 分为以下几个部分，构建后将整合到一个 `docker` 容器�
 - CI： [docker](https://www.docker.com/)、[nginx](https://www.nginx.com/)、[github-actions](https://docs.github.com/cn/actions)
 - 文档： [vuepress](https://vuejs.press/zh/)、[vuepress-theme-hope](https://theme-hope.vuejs.press/zh/)
 
-## 本地开发
 
-### 环境准备
+## 启动整个项目
 
-#### 准备数据库
-
-开发之前，要有一个 `mongodb` 数据库。推荐用 `docker` 起一个：
-
-```bash
-docker run --name mongodb-vanblog -d --restart unless-stopped \
-  -p 27017:27017 mongo
+直接这样启动即可：
+```
+docker compose down && docker compose up -d --build && docker compose logs -f
 ```
 
-#### node 要求
+后台前端代码是编译为静态文件后挂载的。
 
-- nodejs 18
-- pnpm v7+
+waline 评论系统可以在后台选择关闭。
 
-#### 克隆项目并安装依赖
-
-```bash
-git clone https://github.com/Mereithhh/vanblog.git
-cd vanblog
-pnpm i
-```
-
-### 添加 server 配置文件
-
-在 `packages/server` 下，创建 `config.yaml` 文件，内容如下：
-
-```yaml
-database:
-  # 数据库连接
-  url: mongodb://localhost:27017/vanBlog?authSource=admin
-static:
-  # 图床等静态文件保存的位置
-  path: /var/vanblog-dev/static
-# 是否开启演示站模式，会限制很多权限
-demo: 'false'
-# waline 用的表名，会自动创建
-waline:
-  db: waline
-# 日志位置
-log: /var/vanblog-dev/logs
-```
-
-### 开发相关命令
-
-#### 开发全部
-
-在根目录下：
-
-```bash
-# 开发全部（前台、后台、server）
-pnpm dev
-# 前台为 3001 端口
-# server 为 3000 端口
-# 后台为 3002 端口
-```
-
-::: info VanBlog开发后台如果用到复制到剪切板相关的功能，可能需要开启 `https`，请在 `packages/admin/config/config.js` 中的 `https` 改成 `true`，再重启开发进程。
-
-```js
- devServer: { https: true, port: 3002 },
-```
-
-:::
-
-#### 单独开发前后台（前端）
-
-必须要先启动 server：
-
-```bash
-# 端口 3000
-pnpm dev:server
-```
-
-然后在启动前台后者后台
-
-```bash
-# 启动前台 端口 3001
-pnpm dev:website
-# 启动后台 端口 3002
-pnpm dev:admin
-```
-
-### 文档开发
-
-根目录下：
-
-```bash
-pnpm docs:dev
-```
-
-端口号为: `8080`
-
-## 镜像构建
-
-直接在根目录用 `Dockerfile` 打包就行，具体看下面第二点。
-
-### act（作者自用）
-
-我一般会用 [act](https://github.com/nektos/act) 来做验证镜像，act 可以在本地运行 `Github Actions`。
-
-这个方法需要 `.env` 文件存放密钥，目前仅自用。
-
-```bash
-pnpm build:test
-```
-
-### 手动打包
-
-```bash
-# 这个build server 是第一次打包镜像拿数据的，不写也行，那就得等启动容器后增量渲染生效了。
-VAN_BLOG_BUILD_SERVER="https://some.vanblog-server.com"
-docker build --build-arg VAN_BLOG_BUILD_SERVER=$VAN_BLOG_BUILD_SERVER -t mereith/van-blog:test .
-```
-
-## 文档发版
-
-已经有了对应的 `github actions`，向远端推送 `doc*` 的 `tag` 会触发然后发布到项目官方。
-
-有一键脚本可以在发版之后自动拷贝 changelog 并发布：
-
-```bash
-pnpm release-doc
-```
-
-## Release
-
-本项目使用 [standard-version](https://github.com/conventional-changelog/standard-version) 管理版本，并有了对应的 `github actions`，执行下列命令会发布版本并触发流水线打包发版。
-
-```bash
-pnpm release
-pnpm release-doc
-```

@@ -110,6 +110,7 @@ export class WebsiteProvider {
         env: {
           ...process.env,
           ...loadEnvs,
+          HOSTNAME: '0.0.0.0',
         },
         cwd: path.join(path.resolve(process.cwd(), '..'), 'website'),
         detached: true,

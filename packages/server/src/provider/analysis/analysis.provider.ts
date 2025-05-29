@@ -30,7 +30,7 @@ export class AnalysisProvider {
       viewer,
       link: {
         baseUrl: siteInfo.baseUrl,
-        enableComment: siteInfo.enableComment || 'true',
+        enableComment: siteInfo.enableComment || 'false',
       },
     };
   }

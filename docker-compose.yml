@@ -1,0 +1,46 @@
+services:
+  vanblog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VAN_BLOG_BUILD_SERVER: 'http://127.0.0.1:3000'
+        VAN_BLOG_VERSIONS: 'v1.0.0'
+    restart: always
+    environment:
+      TZ: 'Asia/Shanghai'
+      # 邮箱地址，用于自动申请 https 证书
+      EMAIL: '742971636@qq.com'
+      # 设置为生产环境
+      NODE_ENV: 'production'
+      # 设置版本号
+      VAN_BLOG_VERSION: 'v1.0.0'
+    volumes:
+      # 图床文件的存放地址，按需修改。
+      - /root/van/data/static:/app/static
+      # 日志文件
+      - /root/van/log:/var/log
+      # caddy 配置存储
+      - /root/van/caddy/config:/root/.config/caddy
+      # caddy 证书存储
+      - /root/van/caddy/data:/root/.local/share/caddy
+    ports:
+      # 直接映射各个服务的端口到宿主机
+      # 后端 API 服务
+      - 3000:3000
+      # 前台网站
+      - 3001:3001  
+      # 后台管理
+      - 3002:3002
+      # 保留原有的 Caddy 端口映射（如果以后要用）
+      - 18000:80
+      - 18001:443
+      - 18005:2019
+  mongo:
+    # 某些机器不支持 avx 会报错，所以默认用 v4 版本。有的话用最新的。
+    image: mongo:4.4.16
+    restart: always
+    environment:
+      TZ: 'Asia/Shanghai'
+    volumes:
+      - /root/van/data/mongo:/data/db

@@ -139,7 +139,7 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     menus: data?.menus || defaultMenu,
     categories: data.meta.categories,
     showSubMenu: showSubMenu ? "true" : "false",
-    enableComment: siteInfo?.enableComment || "true",
+    enableComment: siteInfo?.enableComment || "false",
     defaultTheme: siteInfo?.defaultTheme || "auto",
     openArticleLinksInNewWindow,
     showCopyRight,

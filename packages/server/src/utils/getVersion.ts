@@ -1,16 +1,7 @@
-import axios from 'axios';
 export const getVersionFromServer = async () => {
-  try {
-    let { data } = await axios.get('https://api.mereith.com/vanblog/version');
-    data = data?.data || {};
-    if (!data?.version) {
-      return null;
-    }
-    return {
-      version: data.version,
-      updatedAt: data?.updatedAt || data?.upadtedAt,
-    };
-  } catch (err) {
-    return null;
-  }
+  // 返回固定版本号，不再调用外部API
+  return {
+    version: 'v1.0.0',
+    updatedAt: new Date().toISOString(),
+  };
 };
