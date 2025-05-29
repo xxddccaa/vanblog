@@ -113,3 +113,30 @@
   display: inline-block;
   width: 100%
 }
+
+/* 暗色主题下的代码折叠样式 */
+.dark pre .code-content-wrapper {
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+
+.dark pre .code-content-wrapper.code-collapsed {
+  max-height: 21em; /* 调整为更适合的高度，约15行 * 1.4em line-height */
+}
+
+.dark pre .code-content-wrapper.code-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3em;
+  background: linear-gradient(transparent, #26282c);
+  pointer-events: none;
+}
+
+/* 暗色主题 - 代码切换按钮图标 */
+/* .dark .markdown-body .code-toggle-btn::before {
+  content: url("data:image/svg+xml,%3Csvg%0Awidth%3D%2214%22%0Aheight%3D%2214%22%0AviewBox%3D%220%200%2024%2024%22%0Afill%3D%22none%22%0Axmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%0A%3E%0A%3Cpath%0Ad%3D%22M6%209l6%206%206-6%22%0Astroke%3D%22%23adbac7%22%0Astroke-width%3D%222%22%0Astroke-linecap%3D%22round%22%0Astroke-linejoin%3D%22round%22%0A%3E%3C%2Fpath%3E%0A%3C%2Fsvg%3E");
+} */

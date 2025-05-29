@@ -1093,3 +1093,79 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
   display: inline-block;
   padding: 4px 8px;
 }
+
+/* 代码展开/收起按钮样式 */
+.markdown-body .code-toggle-btn {
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #6f7177;
+  border: 1px solid #d0d7de;
+  background-color: var(--color-canvas-default);
+  user-select: none;
+}
+
+.markdown-body .code-toggle-btn:hover {
+  background-color: rgb(229 231 235);
+  border-color: #bbb;
+}
+
+.dark .markdown-body .code-toggle-btn {
+  border-color: #3e4145;
+  color: #8b949e;
+}
+
+.dark .markdown-body .code-toggle-btn:hover {
+  background-color: rgb(55 65 81);
+  border-color: #555;
+}
+
+/* 展开状态的图标 */
+/* .markdown-body .code-toggle-btn::before {
+  content: url("data:image/svg+xml,%3Csvg%0Awidth%3D%2214%22%0Aheight%3D%2214%22%0AviewBox%3D%220%200%2024%2024%22%0Afill%3D%22none%22%0Axmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%0A%3E%0A%3Cpath%0Ad%3D%22M6%209l6%206%206-6%22%0Astroke%3D%22%236f7177%22%0Astroke-width%3D%222%22%0Astroke-linecap%3D%22round%22%0Astroke-linejoin%3D%22round%22%0A%3E%3C%2Fpath%3E%0A%3C%2Fsvg%3E");
+  display: inline-block;
+  padding: 4px 8px;
+  transform: rotate(0deg);
+  transition: transform 0.2s ease-in-out;
+} */
+
+/* 收起状态的图标（旋转180度） */
+/* .markdown-body .code-toggle-btn.code-collapsed::before {
+  transform: rotate(180deg);
+} */
+
+/* 代码内容包装器样式 */
+.markdown-body .code-content-wrapper {
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 折叠状态：限制高度为大约15行 */
+.markdown-body .code-content-wrapper.code-collapsed {
+  max-height: 21em; /* 调整为更适合的高度，约15行 * 1.4em line-height */
+}
+
+/* 折叠状态时添加渐变遮罩 */
+.markdown-body .code-content-wrapper.code-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3em;
+  background: linear-gradient(transparent, var(--color-canvas-subtle));
+  pointer-events: none;
+}
+
+/* 暗色模式下的渐变遮罩 */
+.dark .markdown-body .code-content-wrapper.code-collapsed::after {
+  background: linear-gradient(transparent, #26282c);
+}
+
+/* 确保代码块在折叠状态下正确显示 */
+.markdown-body .code-content-wrapper.code-collapsed pre {
+  margin-bottom: 0;
+}
