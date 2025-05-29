@@ -14,7 +14,7 @@ export default () => {
   const [colKeys, setColKeys] = useState(draftKeysObj);
   const [simplePage, setSimplePage] = useState(false);
   const [simpleSearch, setSimpleSearch] = useState(false);
-  const [pageSize, setPageSize] = useNum(10, 'draft-page-size');
+  const [pageSize, setPageSize] = useNum(200, 'draft-page-size');
   const searchSpan = useMemo(() => {
     if (!simpleSearch) {
       return 8;
@@ -156,6 +156,8 @@ export default () => {
           }}
           pagination={{
             pageSize: pageSize,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100', '200', '500', '1000'],
             onChange: (p, ps) => {
               if (ps != pageSize) {
                 setPageSize(ps);

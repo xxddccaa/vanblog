@@ -41,6 +41,12 @@
 - packages/admin/src/pages/Draft/columes.jsx - 草稿管理
 
 - ✅ 移除对外部api依赖，版本对我来说不重要，直接修改此文件：packages/server/src/utils/getVersion.ts
+- ✅ 这个分支本身是修复了Mermaid了的，现在Mermaid是可以正常使用的
+- ✅ amdin后台每页显示的文章数量默认改为200
+
+与每页显示多少文章有关的代码：
+packages/admin/src/pages/Article/index.jsx - 文章管理页面
+packages/admin/src/pages/Draft/index.jsx - 草稿管理页面
 
 - ❌ 作为admin人员，在后台登录过，那么查看文章无需输入密码。（好难改）
 

@@ -151,7 +151,3 @@ log/**
 v8-compile-cache*
 
 */**/v8-compile-cache*
-
-# Custom sync script and VSCode settings
-sync_to_remote.sh
-.vscode/
