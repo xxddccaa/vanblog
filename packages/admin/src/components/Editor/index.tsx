@@ -26,6 +26,7 @@ import rawHTML from './rawHTML';
 import { Heading } from './plugins/heading';
 import { customCodeBlock } from './plugins/codeBlock';
 import { LinkTarget } from './plugins/linkTarget';
+import { smartCodeBlock } from './plugins/smartCodeBlock';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -70,6 +71,7 @@ export default function EditorComponent(props: {
       Heading(),
       customCodeBlock(),
       LinkTarget(),
+      smartCodeBlock(),
     ];
   }, []);
 
