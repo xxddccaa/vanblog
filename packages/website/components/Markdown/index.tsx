@@ -14,7 +14,12 @@ const plugins = [
   rawHTML(),
   gfm(),
   highlight(),
-  math(),
+  math({
+    katexOptions: {
+      strict: false,
+      throwOnError: false,
+    }
+  }),
   mermaid(),
   customContainer(),
   customCodeBlock(),

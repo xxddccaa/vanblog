@@ -35,7 +35,10 @@ export class MarkdownProvider {
       },
     })
       .use(taskLists)
-      .use(mk);
+      .use(mk, {
+        strict: false,
+        throwOnError: false,
+      });
   }
   renderMarkdown(content: string) {
     return this.md.render(content);

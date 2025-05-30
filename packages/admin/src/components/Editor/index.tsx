@@ -60,7 +60,13 @@ export default function EditorComponent(props: {
       gfm({ locale: cn }),
       highlight(),
       frontmatter(),
-      math({ locale: cn }),
+      math({ 
+        locale: cn,
+        katexOptions: {
+          strict: false,
+          throwOnError: false,
+        }
+      }),
       mediumZoom(),
       mermaid({ locale: cn }),
       imgUploadPlugin(setLoading),
