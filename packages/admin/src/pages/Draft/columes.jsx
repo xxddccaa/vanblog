@@ -82,7 +82,7 @@ export const columns = [
     valueType: 'dateTime',
     sorter: true,
     hideInSearch: true,
-    width: 120,
+    width: 180,
   },
   {
     title: '创建时间',

@@ -3,8 +3,8 @@
   "short_name": "VanBlog",
   "display": "standalone",
   "start_url": "/admin",
-  "theme_color": "#002140",
-  "background_color": "#001529",
+  "theme_color": "#ff6b9d",
+  "background_color": "#ffeef5",
   "icons": [
     {
       "src": "logo.svg",
