@@ -207,3 +207,37 @@ body .ua-link::before {
 #nav li a {
   word-break: keep-all;
 }
+
+/* 改善文章标题的文本选择体验 */
+.post-card-title a {
+  text-decoration: none;
+}
+
+.post-card-title a > div {
+  position: relative;
+}
+
+.post-card-title a > div > span {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  width: 100%;
+}
+
+/* 允许在链接内进行文本选择 */
+.post-card-title a > div > span {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* 改善文本选择时的视觉反馈 */
+.post-card-title a > div > span::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+.dark .post-card-title a > div > span::selection {
+  background-color: rgba(59, 130, 246, 0.4);
+}

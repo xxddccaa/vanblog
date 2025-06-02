@@ -20,26 +20,62 @@ export function Title(props: {
     }
     return false;
   }, [props]);
+
+  // 处理点击事件，允许文本选择
+  const handleTitleClick = (e: React.MouseEvent) => {
+    // 如果用户正在选择文本，阻止导航
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) {
+      e.preventDefault();
+      return;
+    }
+    
+    // 如果是正在进行文本选择操作，也阻止导航
+    if (e.detail > 1) { // 双击或多次点击
+      e.preventDefault();
+      return;
+    }
+  };
+
   return (
     <div className="flex justify-center post-card-title ">
-      {props.type != "about" ? (
-        <Link href={`/post/${props.id}`} target={getTarget(newTab)} style={{width:"90%"}} title={props.title}>
-          <div
-            className={`text-lg block font-medium whitespace-normal break-words cursor-text select-text px-5  text-center mb-2 mt-2 dark:text-dark text-gray-700 ${
-              showEditButton ? "ml-8" : ""
-            } md:text-${props.type == "overview" ? "xl" : "2xl"} ua ua-link`}
-          >
-            {props.title}
-          </div>
-        </Link>
-      ) : (
+      {props.type === "about" ? (
         <div
-          className={`text-lg block font-medium mb-2 mt-2 dark:text-dark text-gray-700 md:text-2xl ua ua-link  select-none ${
+          className={`text-lg block font-medium mb-2 mt-2 dark:text-dark text-gray-700 md:text-2xl ua ua-link select-text cursor-text ${
             showEditButton ? "ml-12 mr-4" : ""
           }`}
         >
           {props.title}
         </div>
+      ) : props.type === "article" ? (
+        // 文章详情页：标题不应该是链接，直接显示为可选择文本
+        <div style={{width:"90%"}} className="flex justify-center">
+          <div
+            className={`text-lg block font-medium whitespace-normal break-words select-text cursor-text px-5 text-center mb-2 mt-2 dark:text-dark text-gray-700 ${
+              showEditButton ? "ml-8" : ""
+            } md:text-2xl`}
+          >
+            {props.title}
+          </div>
+        </div>
+      ) : (
+        // 文章列表页：保持链接功能
+        <Link href={`/post/${props.id}`} target={getTarget(newTab)} style={{width:"90%"}} title={props.title}>
+          <div
+            className={`text-lg block font-medium whitespace-normal break-words cursor-pointer px-5 text-center mb-2 mt-2 dark:text-dark text-gray-700 ${
+              showEditButton ? "ml-8" : ""
+            } md:text-xl ua ua-link`}
+            onClick={handleTitleClick}
+          >
+            <span 
+              className="cursor-text select-text"
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseUp={(e) => e.stopPropagation()}
+            >
+              {props.title}
+            </span>
+          </div>
+        </Link>
       )}
       {showEditButton && (
         <a
@@ -166,7 +202,7 @@ export function SubTitle(props: {
               height={iconSize}
             >
               <path
-                d="M873.559 97.82h-723.12c-45.886 0-83.436 37.627-83.436 83.611v542.098c0 45.984 37.55 69.685 83.437 69.685h333.747c45.888 0 109.987 34.242 142.43 66.767l48.888 52.12c12.589 12.615 24.309 20.262 33.91 20.262 15.143 0 25.083-20.55 25.083-48.675 0-45.983 37.548-90.474 83.436-90.474h55.625c45.887 0 83.438-23.701 83.438-69.685V181.431c0-45.984-37.55-83.61-83.438-83.61z m27.813 625.71c0 15.105-12.738 15.307-27.813 15.307h-55.625c-61.382 0-113.612 46.353-132 101.74l-19.989-23.15c-42.914-43.016-121.055-78.59-181.758-78.59H150.44c-15.074 0-27.813-0.204-27.813-15.308V181.431c0-15.106 12.739-27.87 27.813-27.87h723.119c15.075 0 27.813 12.766 27.813 27.87v542.098zM261.689 348.652h278.124c15.358 0 27.812-12.48 27.812-27.87s-12.454-27.87-27.812-27.87H261.689c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.87 27.812 27.87z m472.81 83.613H261.69c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.87 27.812 27.87H734.5c15.357 0 27.812-12.48 27.812-27.87 0-15.392-12.455-27.87-27.812-27.87z m0 111.48H261.69c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.871 27.812 27.871H734.5c15.357 0 27.812-12.48 27.812-27.87s-12.455-27.87-27.812-27.87z"
+                d="M873.559 97.82h-723.12c-45.886 0-83.436 37.627-83.436 83.611v542.098c0 45.984 37.55 69.685 83.437 69.685h333.747c45.888 0 109.987 34.242 142.43 66.767l48.888 52.12c12.589 12.615 24.309 20.262 33.91 20.262 15.143 0 25.083-20.55 25.083-48.675 0-45.983 37.548-90.474 83.436-90.474h55.625c45.887 0 83.438-23.701 83.438-69.685V181.431c0-45.984-37.55-83.61-83.438-83.61z m27.813 625.71c0 15.105-12.738 15.307-27.813 15.307h-55.625c-61.382 0-113.612 46.353-132 101.74l-19.989-23.15c-42.914-43.016-121.055-78.59-181.758-78.59H150.44c-15.074 0-27.813-0.204-27.813-15.308V181.431c0-15.106 12.739-27.87 27.813-27.87h723.119c15.075 0 27.813 12.766 27.813 27.87v542.098zM261.689 348.652h278.124c15.358 0 27.812-12.48 27.812-27.87s-12.454-27.87-27.812-27.87H261.689c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.87 27.812 27.87z m472.81 83.613H261.69c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.871 27.812 27.871H734.5c15.357 0 27.812-12.48 27.812-27.87 0-15.392-12.455-27.87-27.812-27.87z m0 111.48H261.69c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.871 27.812 27.871H734.5c15.357 0 27.812-12.48 27.812-27.87s-12.455-27.87-27.812-27.87z"
                 p-id="13954"
               ></path>
             </svg>
