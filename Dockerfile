@@ -1,6 +1,6 @@
 # 具体每个服务的去看 packages 里面的 Dockerfile
 # 这个是 all in one 的。
-FROM  node:18-alpine as ADMIN_BUILDER
+FROM  node:18-alpine as admin_builder
 ENV NODE_OPTIONS='--max_old_space_size=4096 --openssl-legacy-provider'
 ENV EEE=production
 WORKDIR /app
@@ -17,7 +17,7 @@ RUN pnpm i
 # RUN sed -i 's/\/assets/\/admin\/assets/g' dist/admin/index.html
 RUN pnpm build
 
-FROM node:18-alpine as SERVER_BUILDER
+FROM node:18-alpine as server_builder
 ENV NODE_OPTIONS=--max_old_space_size=4096
 WORKDIR /app
 COPY ./packages/server/ .
@@ -30,7 +30,7 @@ RUN pnpm config set fetch-timeout 600000 -g
 RUN pnpm i
 RUN pnpm build
 
-FROM node:18-alpine AS WEBSITE_BUILDER
+FROM node:18-alpine as website_builder
 WORKDIR /app
 RUN apk add --update python3 make g++ && rm -rf /var/cache/apk/*
 COPY ./package.json ./
@@ -55,7 +55,7 @@ RUN pnpm build:website
 
 
 #运行容器
-FROM node:18-alpine AS RUNNER
+FROM node:18-alpine as runner
 WORKDIR /app
 RUN  apk add --no-cache --update tzdata caddy nss-tools libwebp-tools \
   && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
@@ -77,15 +77,15 @@ COPY ./packages/waline/ ./
 RUN pnpm i
 # 复制 server
 WORKDIR /app/server
-COPY --from=SERVER_BUILDER /app/node_modules ./node_modules
-COPY --from=SERVER_BUILDER /app/dist/src/ ./
+COPY --from=server_builder /app/node_modules ./node_modules
+COPY --from=server_builder /app/dist/src/ ./
 # 复制 website
 WORKDIR /app/website
-COPY --from=WEBSITE_BUILDER  /app/packages/website/.next/standalone/ ./
-COPY --from=WEBSITE_BUILDER /app/packages/website/next.config.js ./packages/website/next.config.js
-COPY --from=WEBSITE_BUILDER /app/packages/website/public ./packages/website/public
-COPY --from=WEBSITE_BUILDER /app/packages/website/package.json ./packages/website/package.json
-COPY --from=WEBSITE_BUILDER  /app/packages/website/.next/static ./packages/website/.next/static
+COPY --from=website_builder  /app/packages/website/.next/standalone/ ./
+COPY --from=website_builder /app/packages/website/next.config.js ./packages/website/next.config.js
+COPY --from=website_builder /app/packages/website/public ./packages/website/public
+COPY --from=website_builder /app/packages/website/package.json ./packages/website/package.json
+COPY --from=website_builder  /app/packages/website/.next/static ./packages/website/.next/static
 RUN  cd  /app/website  && cd ..
 ENV NODE_ENV production
 ENV VAN_BLOG_SERVER_URL "http://127.0.0.1:3000"
@@ -95,7 +95,7 @@ ENV EMAIL "vanblog@mereith.com"
 ENV VAN_BLOG_WALINE_DB "waline"
 # 复制静态文件
 WORKDIR /app/admin
-COPY --from=ADMIN_BUILDER /app/dist/ ./
+COPY --from=admin_builder /app/dist/ ./
 COPY caddyTemplate.json /app/caddyTemplate.json
 COPY CaddyfileTemplateLocal /app/CaddyfileTemplateLocal
 # 复制入口文件
