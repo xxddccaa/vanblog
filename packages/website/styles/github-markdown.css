@@ -1169,3 +1169,50 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 .markdown-body .code-content-wrapper.code-collapsed pre {
   margin-bottom: 0;
 }
+
+/* mermaid图表通用样式 - 不依赖主题 */
+.mermaid {
+  background-color: #f8f5ff !important; /* 淡紫色背景 */
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid #e0e0e0;
+  overflow: auto;
+}
+
+/* ByteMD mermaid容器样式 */
+.bytemd-mermaid {
+  background-color: #f8f5ff !important; /* 淡紫色背景 */
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid #e0e0e0;
+  overflow: auto;
+}
+
+/* 黑色主题下的mermaid样式 */
+.dark .mermaid {
+  background-color: #f8f5ff !important; /* 淡紫色背景 */
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid #30363d;
+  overflow: auto;
+}
+
+/* 黑色主题下的ByteMD mermaid容器样式 */
+.dark .bytemd-mermaid {
+  background-color: #f8f5ff !important; /* 淡紫色背景 */
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+  border: 1px solid #30363d;
+  overflow: auto;
+}
+
+/* 确保mermaid图表容器有足够的空间 */
+.mermaid svg,
+.bytemd-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}

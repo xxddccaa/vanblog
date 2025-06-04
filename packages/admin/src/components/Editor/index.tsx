@@ -1,10 +1,9 @@
 // import breaks from '@bytemd/plugin-breaks';
-import frontmatter from '@bytemd/plugin-frontmatter';
 import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
-import mediumZoom from '@bytemd/plugin-medium-zoom';
-import mermaid from '@bytemd/plugin-mermaid';
+// import mermaid from '@bytemd/plugin-mermaid';
+import { customMermaidPlugin } from './mermaidTheme';
 import { Editor } from '@bytemd/react';
 import { Spin } from 'antd';
 import 'bytemd/dist/index.css';
@@ -59,7 +58,6 @@ export default function EditorComponent(props: {
       customContainer(),
       gfm({ locale: cn }),
       highlight(),
-      frontmatter(),
       math({ 
         locale: cn,
         katexOptions: {
@@ -67,8 +65,7 @@ export default function EditorComponent(props: {
           throwOnError: false,
         }
       }),
-      mediumZoom(),
-      mermaid({ locale: cn }),
+      customMermaidPlugin(),
       imgUploadPlugin(setLoading),
       emoji(),
       insertMore(),
