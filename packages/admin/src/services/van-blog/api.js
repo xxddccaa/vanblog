@@ -546,3 +546,45 @@ export async function getAllApiTokens() {
     method: 'GET',
   });
 }
+
+// 动态相关的API函数
+export async function getMoments(option) {
+  let queryString = '';
+  for (const [k, v] of Object.entries(option)) {
+    if (v !== undefined) {
+      queryString += `${k}=${v}&`;
+    }
+  }
+  queryString = queryString.substring(0, queryString.length - 1);
+  queryString = encodeQuerystring(queryString);
+  
+  return request(`/api/admin/moment?${queryString}`, {
+    method: 'GET',
+  });
+}
+
+export async function createMoment(body) {
+  return request('/api/admin/moment', {
+    method: 'POST',
+    data: body,
+  });
+}
+
+export async function updateMoment(id, body) {
+  return request(`/api/admin/moment/${id}`, {
+    method: 'PUT',
+    data: body,
+  });
+}
+
+export async function deleteMoment(id) {
+  return request(`/api/admin/moment/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getMomentById(id) {
+  return request(`/api/admin/moment/${id}`, {
+    method: 'GET',
+  });
+}

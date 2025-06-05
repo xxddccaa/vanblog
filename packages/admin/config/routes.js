@@ -17,6 +17,7 @@ export default [
     access: 'isAdmin',
   },
   { name: '文章管理', icon: 'form', path: '/article', component: './Article' },
+  { name: '动态管理', icon: 'message', path: '/moment', component: './Moment' },
   {
     name: '图形编辑器',
     icon: 'form',

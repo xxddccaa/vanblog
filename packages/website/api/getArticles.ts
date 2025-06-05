@@ -31,7 +31,7 @@ export const getArticlesByOption = async (
     return data;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       return {
         articles: [],
         total: 0,
@@ -49,7 +49,7 @@ export const getArticlesByTimeLine = async () => {
     return data;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       return {};
     } else {
       throw err;
@@ -64,7 +64,7 @@ export const getArticlesByCategory = async () => {
     return data;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       return {};
     } else {
       throw err;
@@ -79,7 +79,7 @@ export const getArticlesByTag = async (tagName: string) => {
     return data;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       return {};
     } else {
       throw err;
@@ -102,7 +102,7 @@ export const getArticleByIdOrPathname = async (id: string) => {
     return r;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       return {};
     } else {
       // console.log(err);
@@ -127,7 +127,7 @@ export const getArticleByIdOrPathnameWithPassword = async (
     return data;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       return {};
     } else {
       throw err;
@@ -154,7 +154,7 @@ export const getArticleByIdOrPathnameWithAdminToken = async (
     return null;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       return null;
     } else {
       return null;

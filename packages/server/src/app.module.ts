@@ -82,6 +82,10 @@ import { PipelineProvider } from './provider/pipeline/pipeline.provider';
 import { PipelineController } from './controller/admin/pipeline/pipeline.controller';
 import { TokenController } from './controller/admin/token/token.controller';
 import { initJwt } from './utils/initJwt';
+import { Moment, MomentSchema } from './scheme/moment.schema';
+import { MomentProvider } from './provider/moment/moment.provider';
+import { MomentController } from './controller/admin/moment/moment.controller';
+import { PublicMomentController } from './controller/public/moment/moment.controller';
 
 @Module({
   imports: [
@@ -101,6 +105,7 @@ import { initJwt } from './utils/initJwt';
       { name: Token.name, schema: TokenSchema },
       { name: Category.name, schema: CategorySchema },
       { name: Pipeline.name, schema: PipelineSchema },
+      { name: Moment.name, schema: MomentSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: async () => {
@@ -143,6 +148,8 @@ import { initJwt } from './utils/initJwt';
     PublicOldCustomPageRedirectController,
     PipelineController,
     TokenController,
+    MomentController,
+    PublicMomentController,
   ],
   providers: [
     AppService,
@@ -180,6 +187,7 @@ import { initJwt } from './utils/initJwt';
     TokenGuard,
     WebsiteProvider,
     PipelineProvider,
+    MomentProvider,
   ],
 })
 export class AppModule implements NestModule {

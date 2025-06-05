@@ -40,6 +40,12 @@ export const defaultMenu: MenuItem[] = [
   },
   {
     id: 5,
+    name: "个人动态",
+    value: "/moment",
+    level: 0,
+  },
+  {
+    id: 6,
     name: "关于",
     value: "/about",
     level: 0,
@@ -208,7 +214,7 @@ export async function getPublicMeta(): Promise<PublicMetaProp> {
     return data;
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
+      console.log("Failed to connect, using default values");
       // 给一个默认的吧。
       return {
         version: version,
@@ -235,8 +241,8 @@ export async function getAllCustomPages(): Promise<CustomPageList[]> {
     }
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
-      // 给一个默认的吧。
+      console.log("鏃犳硶杩炴帴锛岄噰鐢ㄩ粯璁ゅ€�");
+      // 缁欎竴涓�榛樿�ょ殑鍚с€�
       return [];
     } else {
       throw err;
@@ -257,8 +263,8 @@ export async function getCustomPageByPath(
     }
   } catch (err) {
     if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
-      // 给一个默认的吧。
+      console.log("鏃犳硶杩炴帴锛岄噰鐢ㄩ粯璁ゅ€�");
+      // 缁欎竴涓�榛樿�ょ殑鍚с€�
       return null;
     } else {
       throw err;

@@ -5,11 +5,7 @@ export const getArticleViewer = async (id: number | string) => {
     const { data } = await res.json();
     return data;
   } catch (err) {
-    if (process.env.isBuild == "t") {
-      console.log("无法连接，采用默认值");
-      return {};
-    } else {
-      throw err;
-    }
+    console.log("Failed to connect, using default values");
+    return 0;
   }
 };

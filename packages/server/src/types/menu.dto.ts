@@ -38,6 +38,12 @@ export const defaultMenu: MenuItem[] = [
   },
   {
     id: 5,
+    name: '个人动态',
+    value: '/moment',
+    level: 0,
+  },
+  {
+    id: 6,
     name: '关于',
     value: '/about',
     level: 0,
