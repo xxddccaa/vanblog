@@ -21,6 +21,9 @@ export class Category extends Document {
   @Prop()
   password: string;
 
+  @Prop({ default: 0, index: true })
+  sort: number;
+
   @Prop({ type: SchemaTypes.Mixed })
   meta?: object;
 }

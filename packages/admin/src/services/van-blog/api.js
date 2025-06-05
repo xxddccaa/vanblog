@@ -588,3 +588,16 @@ export async function getMomentById(id) {
     method: 'GET',
   });
 }
+
+export async function updateCategoriesSort(categories) {
+  return request(`/api/admin/category/`, {
+    method: 'PUT',
+    data: { categories },
+  });
+}
+
+export async function initializeCategoriesSort() {
+  return request(`/api/admin/category/init-sort`, {
+    method: 'POST',
+  });
+}

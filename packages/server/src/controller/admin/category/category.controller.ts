@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { CreateCategoryDto, UpdateCategoryDto } from 'src/types/category.dto';
+import { CreateCategoryDto, UpdateCategoryDto, UpdateCategorySortDto } from 'src/types/category.dto';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { CategoryProvider } from 'src/provider/category/category.provider';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
@@ -18,10 +18,8 @@ export class CategoryController {
   ) {}
 
   @Get('/all')
-  async getAllTags(@Query('detail') withDetail?: string) {
-    let withAllData = false;
-    if (withDetail && withDetail == 'true') withAllData = true;
-    const data = await this.categoryProvider.getAllCategories(withAllData);
+  async getAllCategory(@Query('detail') detail: string) {
+    const data = await this.categoryProvider.getAllCategories(detail == 'true');
     return {
       statusCode: 200,
       data,
@@ -29,8 +27,8 @@ export class CategoryController {
   }
 
   @Get('/:name')
-  async getArticlesByName(@Param('name') name: string) {
-    const data = await this.categoryProvider.getArticlesByCategory(name, true);
+  async getCategoryByName(@Param('name') name: string) {
+    const data = await this.categoryProvider.getArticlesByCategory(name, false);
     return {
       statusCode: 200,
       data,
@@ -82,6 +80,38 @@ export class CategoryController {
     return {
       statusCode: 200,
       data,
+    };
+  }
+
+  @Put()
+  async updateCategoriesSort(@Body() updateDto: UpdateCategorySortDto) {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    const data = await this.categoryProvider.updateCategoriesSort(updateDto);
+    this.isrProvider.activeAll('更新分类排序触发增量渲染！');
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
+  @Post('/init-sort')
+  async initializeCategoriesSort() {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    const data = await this.categoryProvider.initializeCategoriesSort();
+    return {
+      statusCode: 200,
+      data,
+      message: '分类排序初始化成功！',
     };
   }
 }

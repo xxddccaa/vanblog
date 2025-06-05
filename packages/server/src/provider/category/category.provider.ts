@@ -4,7 +4,7 @@ import { Model } from 'mongoose';
 import { ArticleProvider } from '../article/article.provider';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { sleep } from 'src/utils/sleep';
-import { UpdateCategoryDto } from 'src/types/category.dto';
+import { UpdateCategoryDto, UpdateCategorySortDto } from 'src/types/category.dto';
 
 @Injectable()
 export class CategoryProvider {
@@ -42,7 +42,7 @@ export class CategoryProvider {
   }
 
   async getAllCategories(all?: boolean) {
-    const d = await this.categoryModal.find({});
+    const d = await this.categoryModal.find({}).sort({ sort: 1, id: 1 });
     if (!d || !d.length) {
       return [];
     }
@@ -62,11 +62,16 @@ export class CategoryProvider {
     if (existData) {
       throw new NotAcceptableException('分类名重复，无法创建！');
     } else {
+      // 获取当前最大排序值
+      const maxSortCategory = await this.categoryModal.findOne({}).sort({ sort: -1 });
+      const newSort = maxSortCategory ? maxSortCategory.sort + 1 : 0;
+      
       await this.categoryModal.create({
         id: await this.getNewId(),
         name,
         type: 'category',
         private: false,
+        sort: newSort,
       });
     }
   }
@@ -125,5 +130,31 @@ export class CategoryProvider {
         ...dto,
       },
     );
+  }
+
+  async updateCategoriesSort(dto: UpdateCategorySortDto) {
+    const { categories } = dto;
+    
+    for (const categoryUpdate of categories) {
+      await this.categoryModal.updateOne(
+        { name: categoryUpdate.name },
+        { sort: categoryUpdate.sort }
+      );
+    }
+  }
+
+  // 初始化现有分类的排序字段
+  async initializeCategoriesSort() {
+    const categories = await this.categoryModal.find({}).sort({ id: 1 });
+    
+    for (let i = 0; i < categories.length; i++) {
+      const category = categories[i];
+      if (category.sort === undefined || category.sort === null) {
+        await this.categoryModal.updateOne(
+          { _id: category._id },
+          { sort: i }
+        );
+      }
+    }
   }
 }
