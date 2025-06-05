@@ -160,7 +160,22 @@ export default function () {
             return true;
           }}
         >
-          <ProFormText width="md" name="name" label="分类名" placeholder="请输入新的分类名称" />
+          <ProFormText
+            width="md"
+            name="name"
+            label="分类名"
+            placeholder="请输入新的分类名称"
+            rules={[
+              { 
+                validator: (_, value) => {
+                  if (value !== undefined && value !== null && value.trim().length === 0) {
+                    return Promise.reject(new Error('分类名称不能为空或只包含空格'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
+          />
           <ProFormSelect
             width="md"
             name="private"
@@ -262,7 +277,17 @@ export default function () {
               label="分类名称"
               key="nameCCCC"
               placeholder="请输入分类名称"
-              rules={[{ required: true, message: '这是必填项' }]}
+              rules={[
+                { required: true, message: '这是必填项' },
+                { 
+                  validator: (_, value) => {
+                    if (!value || value.trim().length === 0) {
+                      return Promise.reject(new Error('分类名称不能为空或只包含空格'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}
             />
           </ModalForm>,
         ]}

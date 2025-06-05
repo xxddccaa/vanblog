@@ -256,18 +256,18 @@ export async function createCategory(body) {
   });
 }
 export async function updateCategory(name, value) {
-  return request(`/api/admin/category/${name}`, {
+  return request(`/api/admin/category/${encodeQuerystring(name)}`, {
     method: 'PUT',
     data: value,
   });
 }
 export async function updateTag(name, value) {
-  return request(`/api/admin/tag/${name}?value=${value}`, {
+  return request(`/api/admin/tag/${encodeQuerystring(name)}?value=${value}`, {
     method: 'PUT',
   });
 }
 export async function deleteTag(name) {
-  return request(`/api/admin/tag/${name}`, {
+  return request(`/api/admin/tag/${encodeQuerystring(name)}`, {
     method: 'DELETE',
   });
 }
@@ -322,7 +322,7 @@ export async function getMenu() {
   });
 }
 export async function deleteLink(name) {
-  return request(`/api/admin/meta/link/${name}`, {
+  return request(`/api/admin/meta/link/${encodeQuerystring(name)}`, {
     method: 'DELETE',
   });
 }
@@ -340,7 +340,7 @@ export async function updateDonate(body) {
   });
 }
 export async function deleteDonate(name) {
-  return request(`/api/admin/meta/reward/${name}`, {
+  return request(`/api/admin/meta/reward/${encodeQuerystring(name)}`, {
     method: 'DELETE',
   });
 }
@@ -388,7 +388,7 @@ export async function exportAll() {
   });
 }
 export async function deleteSocial(name) {
-  return request(`/api/admin/meta/social/${name}`, {
+  return request(`/api/admin/meta/social/${encodeQuerystring(name)}`, {
     method: 'DELETE',
   });
 }
@@ -450,7 +450,7 @@ export async function getImgs(page, pageSize = 10) {
   });
 }
 export async function deleteImgBySign(sign) {
-  return request(`/api/admin/img/${sign}`, {
+  return request(`/api/admin/img/${encodeQuerystring(sign)}`, {
     method: 'DELETE',
   });
 }

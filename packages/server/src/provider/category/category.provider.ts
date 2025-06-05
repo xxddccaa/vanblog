@@ -56,8 +56,16 @@ export class CategoryProvider {
   }
 
   async addOne(name: string) {
+    // 验证分类名称不能为空或只包含空格
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      throw new NotAcceptableException('分类名称不能为空或只包含空格！');
+    }
+    
+    // 使用trim后的名称
+    const trimmedName = name.trim();
+    
     const existData = await this.categoryModal.findOne({
-      name,
+      name: trimmedName,
     });
     if (existData) {
       throw new NotAcceptableException('分类名重复，无法创建！');
@@ -68,7 +76,7 @@ export class CategoryProvider {
       
       await this.categoryModal.create({
         id: await this.getNewId(),
-        name,
+        name: trimmedName,
         type: 'category',
         private: false,
         sort: newSort,
@@ -105,6 +113,16 @@ export class CategoryProvider {
     if (Object.keys(dto).length == 0) {
       throw new NotAcceptableException('无有效信息，无法修改！');
     }
+    
+    // 如果要修改名称，验证新名称不能为空或只包含空格
+    if (dto.name !== undefined) {
+      if (!dto.name || typeof dto.name !== 'string' || dto.name.trim().length === 0) {
+        throw new NotAcceptableException('分类名称不能为空或只包含空格！');
+      }
+      // 使用trim后的名称
+      dto.name = dto.name.trim();
+    }
+    
     if (dto.name && name != dto.name) {
       const existData = await this.categoryModal.findOne({
         name: dto.name,
@@ -135,7 +153,27 @@ export class CategoryProvider {
   async updateCategoriesSort(dto: UpdateCategorySortDto) {
     const { categories } = dto;
     
+    // 验证 categories 是否存在且为数组
+    if (!categories || !Array.isArray(categories)) {
+      throw new NotAcceptableException('categories must be a valid array');
+    }
+    
+    // 验证数组不为空
+    if (categories.length === 0) {
+      throw new NotAcceptableException('categories array cannot be empty');
+    }
+    
     for (const categoryUpdate of categories) {
+      // 验证每个分类项的格式
+      if (!categoryUpdate || typeof categoryUpdate.name !== 'string' || typeof categoryUpdate.sort !== 'number') {
+        throw new NotAcceptableException('Invalid category format: each category must have a valid name (string) and sort (number)');
+      }
+      
+      // 验证分类名称不能为空或只包含空格
+      if (categoryUpdate.name.trim().length === 0) {
+        throw new NotAcceptableException('分类名称不能为空或只包含空格！');
+      }
+      
       await this.categoryModal.updateOne(
         { name: categoryUpdate.name },
         { sort: categoryUpdate.sort }
