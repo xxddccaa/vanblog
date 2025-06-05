@@ -47,20 +47,13 @@ export class MomentProvider {
     const { page, pageSize, sortCreatedAt, startTime, endTime } = option;
     const view = isPublic ? this.publicView : this.adminView;
 
-    let filter: any = {};
-    
-    // 公开视图只显示未删除的动态
-    if (isPublic) {
-      filter = {
-        $or: [
-          { deleted: false },
-          { deleted: { $exists: false } },
-        ],
-      };
-    } else {
-      // 管理视图可以显示所有动态（包括已删除的）
-      filter = {};
-    }
+    // 两种视图都只显示未删除的动态
+    let filter: any = {
+      $or: [
+        { deleted: false },
+        { deleted: { $exists: false } },
+      ],
+    };
 
     // 时间过滤
     if (startTime || endTime) {
@@ -93,18 +86,14 @@ export class MomentProvider {
   async getById(id: number, view: MomentView): Promise<Moment> {
     const viewFields = view === 'admin' ? this.adminView : this.publicView;
     
-    let filter: any = { id };
-    
-    // 公开视图只能获取未删除的动态
-    if (view === 'public') {
-      filter = {
-        id,
-        $or: [
-          { deleted: false },
-          { deleted: { $exists: false } },
-        ],
-      };
-    }
+    // 两种视图都只能获取未删除的动态
+    let filter: any = {
+      id,
+      $or: [
+        { deleted: false },
+        { deleted: { $exists: false } },
+      ],
+    };
 
     const moment = await this.momentModel.findOne(filter, viewFields);
     
@@ -118,8 +107,15 @@ export class MomentProvider {
   async updateById(id: number, updateMomentDto: UpdateMomentDto): Promise<Moment> {
     updateMomentDto.updatedAt = new Date();
     
+    // 只能更新未删除的动态
     const updatedMoment = await this.momentModel.findOneAndUpdate(
-      { id },
+      { 
+        id,
+        $or: [
+          { deleted: false },
+          { deleted: { $exists: false } },
+        ],
+      },
       updateMomentDto,
       { new: true, fields: this.adminView }
     );
@@ -133,7 +129,13 @@ export class MomentProvider {
 
   async deleteById(id: number): Promise<void> {
     const result = await this.momentModel.updateOne(
-      { id },
+      { 
+        id,
+        $or: [
+          { deleted: false },
+          { deleted: { $exists: false } },
+        ],
+      },
       { deleted: true, updatedAt: new Date() }
     );
     
