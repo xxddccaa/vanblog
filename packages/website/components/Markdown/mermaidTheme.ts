@@ -3,14 +3,15 @@ import mermaid from '@bytemd/plugin-mermaid';
 // 使用固定的高对比度配色方案，确保在任何主题下都能清晰可见
 export function getMermaidConfig() {
   return {
-    startOnLoad: false,
+    // 设置为 false 表示不会在页面加载时自动渲染 mermaid 图表，而是等待手动触发渲染
+    startOnLoad: true,
     theme: 'base',
     themeVariables: {
       // 使用浅蓝色背景和深色文字的高对比度方案
       primaryColor: '#e1f5fe',           // 浅蓝色背景
       primaryTextColor: '#0d47a1',       // 深蓝色文字
       primaryBorderColor: '#1976d2',     // 蓝色边框
-      lineColor: '#1976d2',              // 蓝色连线
+      lineColor: '#0d47a1',              // 蓝色连线
       
       // 节点颜色
       tertiaryColor: '#f3e5f5',          // 浅紫色

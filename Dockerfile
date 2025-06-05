@@ -1,23 +1,4 @@
-# 具体每个服务的去看 packages 里面的 Dockerfile
-# 这个是 all in one 的。
-FROM  node:18-alpine as admin_builder
-ENV NODE_OPTIONS='--max_old_space_size=4096 --openssl-legacy-provider'
-ENV EEE=production
-WORKDIR /app
-USER root
-RUN apk add --update python3 make g++ && rm -rf /var/cache/apk/*
-COPY ./packages/admin/ ./
-RUN corepack enable
-RUN corepack prepare pnpm@9.15.3 --activate
-RUN pnpm config set network-timeout 600000 -g
-RUN pnpm config set registry https://registry.npmmirror.com -g
-RUN pnpm config set fetch-retries 20 -g
-RUN pnpm config set fetch-timeout 600000 -g
-RUN pnpm i
-# RUN sed -i 's/\/assets/\/admin\/assets/g' dist/admin/index.html
-RUN pnpm build
-
-FROM node:18-alpine as server_builder
+FROM node:18-alpine AS server_builder
 ENV NODE_OPTIONS=--max_old_space_size=4096
 WORKDIR /app
 COPY ./packages/server/ .
@@ -30,7 +11,7 @@ RUN pnpm config set fetch-timeout 600000 -g
 RUN pnpm i
 RUN pnpm build
 
-FROM node:18-alpine as website_builder
+FROM node:18-alpine AS website_builder
 WORKDIR /app
 RUN apk add --update python3 make g++ && rm -rf /var/cache/apk/*
 COPY ./package.json ./
@@ -54,8 +35,25 @@ RUN pnpm install
 RUN pnpm build:website
 
 
+FROM  node:18-alpine AS admin_builder
+ENV NODE_OPTIONS='--max_old_space_size=4096 --openssl-legacy-provider'
+ENV EEE=production
+WORKDIR /app
+USER root
+RUN apk add --update python3 make g++ && rm -rf /var/cache/apk/*
+COPY ./packages/admin/ ./
+RUN corepack enable
+RUN corepack prepare pnpm@9.15.3 --activate
+RUN pnpm config set network-timeout 600000 -g
+RUN pnpm config set registry https://registry.npmmirror.com -g
+RUN pnpm config set fetch-retries 20 -g
+RUN pnpm config set fetch-timeout 600000 -g
+RUN pnpm i
+# RUN sed -i 's/\/assets/\/admin\/assets/g' dist/admin/index.html
+RUN pnpm build
+
 #运行容器
-FROM node:18-alpine as runner
+FROM node:18-alpine AS runner
 WORKDIR /app
 RUN  apk add --no-cache --update tzdata caddy nss-tools libwebp-tools \
   && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \

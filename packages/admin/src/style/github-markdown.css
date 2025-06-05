@@ -1089,6 +1089,9 @@
   margin: 16px 0;
   border: 1px solid #e0e0e0;
   overflow: auto;
+  position: relative !important;
+  z-index: 5 !important;
+  opacity: 1 !important;
 }
 
 /* ByteMD mermaid容器样式 */
@@ -1099,6 +1102,9 @@
   margin: 16px 0;
   border: 1px solid #e0e0e0;
   overflow: auto;
+  position: relative !important;
+  z-index: 5 !important;
+  opacity: 1 !important;
 }
 
 /* 黑色主题下的mermaid样式 */
@@ -1109,6 +1115,10 @@
   margin: 16px 0;
   border: 1px solid #30363d;
   overflow: auto;
+  position: relative !important;
+  z-index: 8 !important;
+  opacity: 1 !important;
+  isolation: isolate !important;
 }
 
 /* 黑色主题下的ByteMD mermaid容器样式 */
@@ -1119,6 +1129,10 @@
   margin: 16px 0;
   border: 1px solid #30363d;
   overflow: auto;
+  position: relative !important;
+  z-index: 8 !important;
+  opacity: 1 !important;
+  isolation: isolate !important;
 }
 
 /* 确保mermaid图表容器有足够的空间 */
@@ -1126,6 +1140,96 @@
 .bytemd-mermaid svg {
   max-width: 100%;
   height: auto;
+}
+
+/* 确保mermaid内部SVG也有正确的背景色 */
+.mermaid svg,
+.bytemd-mermaid svg {
+  background-color: #f8f5ff !important;
+}
+
+/* 暗色主题下mermaid内部SVG背景色 */
+.dark .mermaid svg,
+.dark .bytemd-mermaid svg {
+  background-color: #f8f5ff !important;
+}
+
+/* 暗色主题下的额外mermaid样式确保优先级 */
+body .dark .mermaid,
+body .dark .bytemd-mermaid {
+  background-color: #f8f5ff !important;
+  color: #e1e1e1 !important;
+  position: relative !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+  isolation: isolate !important;
+  border: 2px solid #9c27b0 !important;
+}
+
+/* 最高优先级确保SVG背景色 */
+body .dark .mermaid svg,
+body .dark .bytemd-mermaid svg {
+  background-color: #f8f5ff !important;
+  opacity: 1 !important;
+}
+
+/* 强制覆盖DarkReader的内联样式 - 最高优先级 */
+html body .dark .mermaid,
+html body .dark .bytemd-mermaid,
+html body .light .mermaid,
+html body .light .bytemd-mermaid,
+html body .mermaid,
+html body .bytemd-mermaid {
+  background-color: #f8f5ff !important;
+  border: 2px solid #9c27b0 !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+  margin: 16px 0 !important;
+  position: relative !important;
+  z-index: 15 !important;
+  opacity: 1 !important;
+  isolation: isolate !important;
+}
+
+/* 强制SVG背景样式 - 最高优先级 */
+html body .dark .mermaid svg,
+html body .dark .bytemd-mermaid svg,
+html body .light .mermaid svg,
+html body .light .bytemd-mermaid svg,
+html body .mermaid svg,
+html body .bytemd-mermaid svg {
+  background-color: #f8f5ff !important;
+  opacity: 1 !important;
+}
+
+/* 强制mermaid内部元素样式 - 对抗DarkReader */
+html body .mermaid text,
+html body .bytemd-mermaid text,
+html body .mermaid tspan,
+html body .bytemd-mermaid tspan {
+  fill: #0d47a1 !important;
+  color: #0d47a1 !important;
+}
+
+html body .mermaid line,
+html body .bytemd-mermaid line,
+html body .mermaid path[class*="messageLine"],
+html body .bytemd-mermaid path[class*="messageLine"] {
+  stroke: #0d47a1 !important;
+}
+
+html body .mermaid rect.actor,
+html body .bytemd-mermaid rect.actor {
+  fill: #e1f5fe !important;
+  stroke: #1976d2 !important;
+}
+
+/* 确保暗色主题下mermaid代码块也有正确的背景 */
+.dark .language-mermaid {
+  background-color: #f8f5ff !important;
+  position: relative !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
 }
 
 body .markdown-body pre {
@@ -1169,4 +1273,84 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 }
 .markdown-body iframe {
   border: none;
+}
+
+/* 确保暗色主题下mermaid代码块也有正确的背景 */
+.dark .language-mermaid {
+  background-color: #f8f5ff !important;
+  position: relative !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+}
+
+/* 强制覆盖DarkReader的内联样式 - 最高优先级 */
+html body .dark .mermaid,
+html body .dark .bytemd-mermaid,
+html body .light .mermaid,
+html body .light .bytemd-mermaid,
+html body .mermaid,
+html body .bytemd-mermaid {
+  background-color: #f8f5ff !important;
+  border: 2px solid #9c27b0 !important;
+  border-radius: 8px !important;
+  padding: 16px !important;
+  margin: 16px 0 !important;
+  position: relative !important;
+  z-index: 15 !important;
+  opacity: 1 !important;
+  isolation: isolate !important;
+}
+
+/* 强制SVG背景样式 - 最高优先级 */
+html body .dark .mermaid svg,
+html body .dark .bytemd-mermaid svg,
+html body .light .mermaid svg,
+html body .light .bytemd-mermaid svg,
+html body .mermaid svg,
+html body .bytemd-mermaid svg {
+  background-color: #f8f5ff !important;
+  opacity: 1 !important;
+}
+
+/* 强制mermaid内部元素样式 - 对抗DarkReader */
+html body .mermaid text,
+html body .bytemd-mermaid text,
+html body .mermaid tspan,
+html body .bytemd-mermaid tspan {
+  fill: #0d47a1 !important;
+  color: #0d47a1 !important;
+}
+
+html body .mermaid line,
+html body .bytemd-mermaid line,
+html body .mermaid path[class*="messageLine"],
+html body .bytemd-mermaid path[class*="messageLine"] {
+  stroke: #0d47a1 !important;
+}
+
+html body .mermaid rect.actor,
+html body .bytemd-mermaid rect.actor {
+  fill: #e1f5fe !important;
+  stroke: #1976d2 !important;
+}
+
+/* 针对DarkReader添加的属性进行覆盖 */
+html body .mermaid [data-darkreader-inline-fill],
+html body .bytemd-mermaid [data-darkreader-inline-fill] {
+  fill: #0d47a1 !important;
+}
+
+html body .mermaid [data-darkreader-inline-stroke], 
+html body .bytemd-mermaid [data-darkreader-inline-stroke] {
+  stroke: #0d47a1 !important;
+}
+
+html body .mermaid rect[data-darkreader-inline-fill].actor,
+html body .bytemd-mermaid rect[data-darkreader-inline-fill].actor {
+  fill: #e1f5fe !important;
+}
+
+html body .mermaid rect[data-darkreader-inline-stroke].actor,
+html body .bytemd-mermaid rect[data-darkreader-inline-stroke].actor {
+  stroke: #1976d2 !important;
 }
