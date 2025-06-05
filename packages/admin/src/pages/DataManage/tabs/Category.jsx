@@ -14,6 +14,7 @@ import { useRef, useState } from 'react';
 
 export default function () {
   const [dataSource, setDataSource] = useState([]);
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
   const actionRef = useRef();
 
   const fetchData = async () => {
@@ -28,16 +29,22 @@ export default function () {
     return mappedData;
   };
 
-  const moveCategory = async (index, direction) => {
+  // 修复分页bug：计算全局索引
+  const getGlobalIndex = (tableIndex, currentPage, pageSize) => {
+    return (currentPage - 1) * pageSize + tableIndex;
+  };
+
+  const moveCategory = async (tableIndex, direction, currentPage = 1, pageSize = 20) => {
+    const globalIndex = getGlobalIndex(tableIndex, currentPage, pageSize);
     const newDataSource = [...dataSource];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    const targetIndex = direction === 'up' ? globalIndex - 1 : globalIndex + 1;
     
     if (targetIndex < 0 || targetIndex >= newDataSource.length) {
       return;
     }
 
     // 交换位置
-    [newDataSource[index], newDataSource[targetIndex]] = [newDataSource[targetIndex], newDataSource[index]];
+    [newDataSource[globalIndex], newDataSource[targetIndex]] = [newDataSource[targetIndex], newDataSource[globalIndex]];
     
     // 更新排序字段
     const updatedCategories = newDataSource.map((item, idx) => ({
@@ -69,27 +76,30 @@ export default function () {
       title: '排序',
       width: 120,
       search: false,
-      render: (_, record, index) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ minWidth: '20px' }}>{record.sort}</span>
-          <Button
-            type="text"
-            size="small"
-            icon={<ArrowUpOutlined />}
-            disabled={index === 0}
-            onClick={() => moveCategory(index, 'up')}
-            title="上移"
-          />
-          <Button
-            type="text"
-            size="small"
-            icon={<ArrowDownOutlined />}
-            disabled={index === dataSource.length - 1}
-            onClick={() => moveCategory(index, 'down')}
-            title="下移"
-          />
-        </div>
-      ),
+      render: (_, record, index) => {
+        const globalIndex = getGlobalIndex(index, pagination.current, pagination.pageSize);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ minWidth: '20px' }}>{record.sort}</span>
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowUpOutlined />}
+              disabled={globalIndex === 0}
+              onClick={() => moveCategory(index, 'up', pagination.current, pagination.pageSize)}
+              title="上移"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowDownOutlined />}
+              disabled={globalIndex === dataSource.length - 1}
+              onClick={() => moveCategory(index, 'down', pagination.current, pagination.pageSize)}
+              title="下移"
+            />
+          </div>
+        );
+      },
     },
     {
       dataIndex: 'name',
@@ -228,6 +238,17 @@ export default function () {
         actionRef={actionRef}
         options={false}
         dataSource={dataSource}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`,
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          onChange: (current, pageSize) => {
+            setPagination({ current, pageSize });
+          },
+        }}
         toolBarRender={() => [
           <Button
             key="initSort"
@@ -301,7 +322,7 @@ export default function () {
         }}
         headerTitle={
           <div style={{ color: '#666', fontSize: '14px' }}>
-            提示：使用上下箭头按钮可调整分类显示顺序
+            提示：使用上下箭头按钮可调整分类显示顺序，支持跨页面排序
           </div>
         }
       />
