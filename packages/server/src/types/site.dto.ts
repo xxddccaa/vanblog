@@ -39,6 +39,7 @@ export class SiteInfo {
   openArticleLinksInNewWindow: 'true' | 'false';
   showExpirationReminder?: 'true' | 'false';
   showEditButton?: 'true' | 'false';
+  homePageSize?: number;
 }
 export interface updateUserDto {
   username: string;

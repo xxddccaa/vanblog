@@ -22,9 +22,10 @@ export async function getIndexPageProps(): Promise<IndexPageProps> {
   const data = await getPublicMeta();
   const layoutProps = getLayoutProps(data);
   const authorCardProps = getAuthorCardProps(data);
+  const homePageSize = data?.meta?.siteInfo?.homePageSize || 5;
   const { articles } = await getArticlesByOption({
     page: 1,
-    pageSize: 5,
+    pageSize: homePageSize,
   });
   return {
     layoutProps,
@@ -185,9 +186,10 @@ export async function getPagePagesProps(
   const layoutProps = getLayoutProps(data);
   const authorCardProps = getAuthorCardProps(data);
   const currPage = parseInt(curId);
+  const homePageSize = data?.meta?.siteInfo?.homePageSize || 5;
   const { articles } = await getArticlesByOption({
     page: currPage,
-    pageSize: 5,
+    pageSize: homePageSize,
   });
   return {
     layoutProps,

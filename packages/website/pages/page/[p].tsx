@@ -67,6 +67,7 @@ const PagePages = (props: PagePagesProps) => {
         current={props.currPage}
         base={"/"}
         more={"/page"}
+        pageSize={props.layoutProps.homePageSize || 5}
       ></PageNav>
       <Waline enable={props.layoutProps.enableComment} visible={false} />
     </Layout>
@@ -77,7 +78,8 @@ export default PagePages;
 
 export async function getStaticPaths() {
   const data = await getPublicMeta();
-  const total = Math.ceil(data.totalArticles / 5);
+  const homePageSize = data?.meta?.siteInfo?.homePageSize || 5;
+  const total = Math.ceil(data.totalArticles / homePageSize);
   const paths = [];
   for (let i = 1; i <= total; i++) {
     paths.push({

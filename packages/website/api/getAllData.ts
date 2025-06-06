@@ -132,6 +132,7 @@ export interface MetaProps {
     openArticleLinksInNewWindow: "true" | "false";
     showExpirationReminder: "true" | "false";
     showEditButton: "true" | "false";
+    homePageSize?: number;
   };
 }
 export interface PublicMetaProp {
