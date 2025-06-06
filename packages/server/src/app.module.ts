@@ -17,6 +17,7 @@ import { LinkMetaController } from './controller/admin/link/link.meta.controller
 import { RewardMetaController } from './controller/admin/reward/reward.meta.controller';
 import { SiteMetaController } from './controller/admin/site/site.meta.controller';
 import { SocialMetaController } from './controller/admin/social/social.meta.controller';
+import { ViewerMetaController } from './controller/admin/meta/viewer.meta.controller';
 import { TagController } from './controller/admin/tag/tag.controller';
 import { ArticleController } from './controller/admin/article/article.controller';
 import { DraftController } from './controller/admin/draft/draft.controller';
@@ -127,6 +128,7 @@ import { PublicMomentController } from './controller/public/moment/moment.contro
     RewardMetaController,
     SiteMetaController,
     SocialMetaController,
+    ViewerMetaController,
     TagController,
     ArticleController,
     DraftController,

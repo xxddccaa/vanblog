@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { encodeQuerystring } from "../../utils/encode";
 import PostViewer from "../PostViewer";
+import PostViewerStats from "../PostViewerStats";
 import { getTarget } from "../Link/tools";
 import { checkLogin } from "../../utils/auth";
 
@@ -168,28 +169,12 @@ export function SubTitle(props: {
           </Link>
         </span>
       )}
-      <span className="inline-flex px-2 items-center">
-        <span className={iconClass}>
-          <svg
-            viewBox="0 0 1024 1024"
-            version="1.1"
-            xmlns="http://www.w3.org/2000/svg"
-            p-id="15825"
-            width={iconSize}
-            height={iconSize}
-          >
-            <path
-              d="M942.2 486.2C847.4 286.5 704.1 186 512 186c-192.2 0-335.4 100.5-430.2 300.3-7.7 16.2-7.7 35.2 0 51.5C176.6 737.5 319.9 838 512 838c192.2 0 335.4-100.5 430.2-300.3 7.7-16.2 7.7-35 0-51.5zM512 766c-161.3 0-279.4-81.8-362.7-254C232.6 339.8 350.7 258 512 258c161.3 0 279.4 81.8 362.7 254C791.5 684.2 673.4 766 512 766z"
-              p-id="15826"
-            ></path>
-            <path
-              d="M508 336c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176-78.8-176-176-176z m0 288c-61.9 0-112-50.1-112-112s50.1-112 112-112 112 50.1 112 112-50.1 112-112 112z"
-              p-id="15827"
-            ></path>
-          </svg>
-        </span>
-        <PostViewer shouldAddViewer={props.type != "overview"} id={props.id} />
-      </span>
+      <PostViewerStats
+        shouldAddViewer={props.type != "overview"}
+        id={props.id}
+        iconSize={iconSize}
+        iconClass={iconClass}
+      />
       {props.enableComment != "false" && (
         <span className="inline-flex px-2 items-center">
           <span className={iconClass}>

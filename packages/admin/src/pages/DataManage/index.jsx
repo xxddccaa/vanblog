@@ -7,6 +7,7 @@ import Link from './tabs/Link';
 import Menu from './tabs/Menu';
 import Social from './tabs/Social';
 import Tag from './tabs/Tag';
+import Viewer from './tabs/Viewer';
 export default function () {
   const tabMap = {
     category: <Category />,
@@ -14,6 +15,7 @@ export default function () {
     donateInfo: <Donate />,
     links: <Link />,
     socials: <Social />,
+    viewer: <Viewer />,
     menuConfig: <Menu />,
   };
   const [tab, setTab] = useTab('category', 'tab');
@@ -49,6 +51,10 @@ export default function () {
         {
           tab: '联系方式',
           key: 'socials',
+        },
+        {
+          tab: '浏览量管理',
+          key: 'viewer',
         },
       ]}
       onTabChange={setTab}
