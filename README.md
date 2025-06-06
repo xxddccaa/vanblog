@@ -133,7 +133,7 @@ VanBlog 分为以下几个部分，构建后将整合到一个 `docker` 容器�
 
 ## 启动整个项目
 
-直接运行以下命令即可启动项目：
+直接运行以下命令即可启动项目(依靠编译）：
 
 ```bash
 docker compose down && docker compose up -d --build && docker compose logs -f
@@ -143,6 +143,14 @@ docker compose down && docker compose up -d --build && docker compose logs -f
 
 ```bash
 docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0' && docker push kevinchina/deeplearning:vanblog-latest
+```
+
+可以更简单启动项目，使用我推送的这个镜像，方法为：
+
+使用项目里 docker-compose/docker-compose.yml 这个文件，直接运行：
+
+```bash
+docker compose down && docker compose up -d  && docker compose logs -f
 ```
 
 ## 其他细节提示
@@ -160,5 +168,4 @@ docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BU
 	每篇文章的浏览量：
 	存储在 Article 表的 viewer 和 visited 字段中
 	与网站总浏览量是独立计算的，不是累加关系
-	关键发现：网站的总浏览量不是每篇文章浏览量的累加，而是基于所有页面（包括首页、关于页面等）的访问统计。
 	```
