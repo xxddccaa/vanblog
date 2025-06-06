@@ -40,47 +40,11 @@ export default function (props) {
             <p align="center">一款简洁实用优雅的高性能个人博客系统</p>
 
             <Space>
-              <a target={'_blank'} rel="noreferrer" href="https://github.com/Mereithhh/van-blog">
+              <a target={'_blank'} rel="noreferrer" href="https://github.com/xxddccaa/vanblog">
                 Github
-              </a>
-              <a target={'_blank'} rel="noreferrer" href="https://vanblog.mereith.com">
-                项目文档
-              </a>
-              <a
-                target={'_blank'}
-                rel="noreferrer"
-                href="https://vanblog.mereith.com/changelog.html"
-              >
-                更新日志
               </a>
               <a target={'_blank'} rel="noreferrer" href="/swagger">
                 API文档
-              </a>
-            </Space>
-            <Space style={{ marginTop: 8 }}>
-              <a
-                target={'_blank'}
-                rel="noreferrer"
-                href="https://github.com/Mereithhh/van-blog/issues/new/choose"
-              >
-                提交BUG
-              </a>
-              <a
-                target={'_blank'}
-                rel="noreferrer"
-                href="https://github.com/Mereithhh/van-blog/issues/new/choose"
-              >
-                提交案例
-              </a>
-              <a
-                target={'_blank'}
-                rel="noreferrer"
-                href="https://github.com/Mereithhh/van-blog#%E6%89%93%E8%B5%8F"
-              >
-                打赏
-              </a>
-              <a target={'_blank'} rel="noreferrer" href="https://jq.qq.com/?_wv=1027&k=5NRyK2Sw">
-                交流群
               </a>
             </Space>
           </div>
