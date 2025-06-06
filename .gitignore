@@ -151,3 +151,6 @@ log/**
 v8-compile-cache*
 
 */**/v8-compile-cache*
+
+.sync_to_remote.sh
+sync_to_remote.sh
