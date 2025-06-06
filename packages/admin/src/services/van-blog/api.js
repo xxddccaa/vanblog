@@ -601,3 +601,43 @@ export async function initializeCategoriesSort() {
     method: 'POST',
   });
 }
+
+// 图标管理API
+export async function getAllIcons(page, pageSize) {
+  const params = page && pageSize ? `?page=${page}&pageSize=${pageSize}` : '';
+  return request(`/api/admin/icon${params}`, {
+    method: 'GET',
+  });
+}
+
+export async function getIconByName(name) {
+  return request(`/api/admin/icon/${name}`, {
+    method: 'GET',
+  });
+}
+
+export async function createIcon(body) {
+  return request('/api/admin/icon', {
+    method: 'POST',
+    data: body,
+  });
+}
+
+export async function updateIcon(name, body) {
+  return request(`/api/admin/icon/${name}`, {
+    method: 'PUT',
+    data: body,
+  });
+}
+
+export async function deleteIcon(name) {
+  return request(`/api/admin/icon/${name}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function deleteAllIcons() {
+  return request('/api/admin/icon', {
+    method: 'DELETE',
+  });
+}

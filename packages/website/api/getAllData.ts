@@ -7,6 +7,29 @@ export type SocialType =
   | "wechat"
   | "gitee"
   | "wechat-dark";
+
+export type PresetIconType = 
+  | 'bilibili' 
+  | 'email' 
+  | 'github' 
+  | 'gitee' 
+  | 'wechat' 
+  | 'wechat-dark'
+  | 'weibo'
+  | 'twitter'
+  | 'facebook'
+  | 'instagram'
+  | 'linkedin'
+  | 'youtube'
+  | 'tiktok'
+  | 'zhihu'
+  | 'csdn'
+  | 'juejin'
+  | 'wechat-mp'
+  | 'qq'
+  | 'telegram'
+  | 'discord'
+  | 'custom';
 export const defaultMenu: MenuItem[] = [
   {
     id: 0,
@@ -63,6 +86,15 @@ export interface SocialItem {
   type: SocialType;
   value: string;
   dark?: string;
+  
+  // 新增字段
+  displayName?: string;
+  iconType?: PresetIconType;
+  customIconUrl?: string;
+  customIconUrlDark?: string;
+  linkType?: 'link' | 'email' | 'qrcode';
+  darkValue?: string;
+  iconName?: string; // 图标管理中的图标名称
 }
 export interface MenuItem {
   id: number;

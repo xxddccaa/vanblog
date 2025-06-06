@@ -87,6 +87,9 @@ import { Moment, MomentSchema } from './scheme/moment.schema';
 import { MomentProvider } from './provider/moment/moment.provider';
 import { MomentController } from './controller/admin/moment/moment.controller';
 import { PublicMomentController } from './controller/public/moment/moment.controller';
+import { Icon, IconSchema } from './scheme/icon.schema';
+import { IconProvider } from './provider/icon/icon.provider';
+import { IconController } from './controller/admin/icon/icon.controller';
 
 @Module({
   imports: [
@@ -107,6 +110,7 @@ import { PublicMomentController } from './controller/public/moment/moment.contro
       { name: Category.name, schema: CategorySchema },
       { name: Pipeline.name, schema: PipelineSchema },
       { name: Moment.name, schema: MomentSchema },
+      { name: Icon.name, schema: IconSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: async () => {
@@ -152,6 +156,7 @@ import { PublicMomentController } from './controller/public/moment/moment.contro
     TokenController,
     MomentController,
     PublicMomentController,
+    IconController,
   ],
   providers: [
     AppService,
@@ -190,6 +195,7 @@ import { PublicMomentController } from './controller/public/moment/moment.contro
     WebsiteProvider,
     PipelineProvider,
     MomentProvider,
+    IconProvider,
   ],
 })
 export class AppModule implements NestModule {

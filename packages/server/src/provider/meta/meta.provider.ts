@@ -93,27 +93,151 @@ export class MetaProvider {
       {
         label: '哔哩哔哩',
         value: 'bilibili',
+        iconType: 'bilibili',
+        linkType: 'link',
+        displayName: '哔哩哔哩'
       },
       {
         label: '邮箱',
         value: 'email',
+        iconType: 'email',
+        linkType: 'email',
+        displayName: 'Email'
       },
       {
         label: 'GitHub',
         value: 'github',
+        iconType: 'github',
+        linkType: 'link',
+        displayName: 'GitHub'
       },
       {
         label: 'Gitee',
         value: 'gitee',
+        iconType: 'gitee',
+        linkType: 'link',
+        displayName: 'Gitee'
       },
       {
         label: '微信',
         value: 'wechat',
+        iconType: 'wechat',
+        linkType: 'qrcode',
+        displayName: '微信'
       },
       {
         label: '微信（暗色模式）',
         value: 'wechat-dark',
+        iconType: 'wechat-dark',
+        linkType: 'qrcode',
+        displayName: '微信'
       },
+      // 新增的联系方式类型
+      {
+        label: '微博',
+        value: 'weibo',
+        iconType: 'weibo',
+        linkType: 'link',
+        displayName: '微博'
+      },
+      {
+        label: 'Twitter',
+        value: 'twitter',
+        iconType: 'twitter',
+        linkType: 'link',
+        displayName: 'Twitter'
+      },
+      {
+        label: 'Facebook',
+        value: 'facebook',
+        iconType: 'facebook',
+        linkType: 'link',
+        displayName: 'Facebook'
+      },
+      {
+        label: 'Instagram',
+        value: 'instagram',
+        iconType: 'instagram',
+        linkType: 'link',
+        displayName: 'Instagram'
+      },
+      {
+        label: 'LinkedIn',
+        value: 'linkedin',
+        iconType: 'linkedin',
+        linkType: 'link',
+        displayName: 'LinkedIn'
+      },
+      {
+        label: 'YouTube',
+        value: 'youtube',
+        iconType: 'youtube',
+        linkType: 'link',
+        displayName: 'YouTube'
+      },
+      {
+        label: 'TikTok',
+        value: 'tiktok',
+        iconType: 'tiktok',
+        linkType: 'link',
+        displayName: 'TikTok'
+      },
+      {
+        label: '知乎',
+        value: 'zhihu',
+        iconType: 'zhihu',
+        linkType: 'link',
+        displayName: '知乎'
+      },
+      {
+        label: 'CSDN',
+        value: 'csdn',
+        iconType: 'csdn',
+        linkType: 'link',
+        displayName: 'CSDN'
+      },
+      {
+        label: '掘金',
+        value: 'juejin',
+        iconType: 'juejin',
+        linkType: 'link',
+        displayName: '掘金'
+      },
+      {
+        label: '微信公众号',
+        value: 'wechat-mp',
+        iconType: 'wechat-mp',
+        linkType: 'qrcode',
+        displayName: '微信公众号'
+      },
+      {
+        label: 'QQ',
+        value: 'qq',
+        iconType: 'qq',
+        linkType: 'link',
+        displayName: 'QQ'
+      },
+      {
+        label: 'Telegram',
+        value: 'telegram',
+        iconType: 'telegram',
+        linkType: 'link',
+        displayName: 'Telegram'
+      },
+      {
+        label: 'Discord',
+        value: 'discord',
+        iconType: 'discord',
+        linkType: 'link',
+        displayName: 'Discord'
+      },
+      {
+        label: '自定义',
+        value: 'custom',
+        iconType: 'custom',
+        linkType: 'link',
+        displayName: '自定义'
+      }
     ];
   }
   async getTotalWords() {
@@ -197,8 +321,10 @@ export class MetaProvider {
   async deleteSocial(type: SocialType) {
     const meta = await this.getAll();
     const newSocials = [];
-    meta.socials.forEach((r) => {
-      if (r.type !== type) {
+    meta.socials.forEach((r, index) => {
+      // 如果传入的type包含索引（如：qq-1, qq-2），就按完整type删除
+      // 如果没有索引，就删除第一个匹配的类型
+      if (type.includes('-') ? r.type !== type : (r.type !== type && !r.type.startsWith(type + '-'))) {
         newSocials.push(r);
       }
     });
@@ -211,17 +337,29 @@ export class MetaProvider {
       updatedAt: new Date(),
       value: addSocial.value,
       type: addSocial.type,
+      // 支持新字段
+      displayName: addSocial.displayName || addSocial.type,
+      iconType: addSocial.iconType || addSocial.type as any,
+      customIconUrl: addSocial.customIconUrl,
+      customIconUrlDark: addSocial.customIconUrlDark,
+      linkType: addSocial.linkType || 'link',
+      darkValue: addSocial.darkValue,
+      iconName: addSocial.iconName,
     };
-    const newSocials = [];
+    
+    const newSocials = [...meta.socials];
     let pushed = false;
-    meta.socials.forEach((r) => {
-      if (r.type === toAdd.type) {
+    
+    // 查找是否有完全匹配的type（用于更新现有记录）
+    for (let i = 0; i < newSocials.length; i++) {
+      if (newSocials[i].type === toAdd.type) {
+        newSocials[i] = toAdd;
         pushed = true;
-        newSocials.push(toAdd);
-      } else {
-        newSocials.push(r);
+        break;
       }
-    });
+    }
+    
+    // 如果没有找到完全匹配的，直接添加新记录
     if (!pushed) {
       newSocials.push(toAdd);
     }
