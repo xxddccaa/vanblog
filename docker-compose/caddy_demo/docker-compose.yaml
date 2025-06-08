@@ -1,0 +1,63 @@
+version: '3'
+
+# 定义自定义网络
+networks:
+  vanblog-network:
+    driver: bridge
+
+services:
+  vanblog:
+    image: kevinchina/deeplearning:vanblog-latest
+    restart: always
+    environment:
+      TZ: 'Asia/Shanghai'
+      # 邮箱地址，用于自动申请 https 证书
+      EMAIL: '742971636@qq.com'
+      # 设置为生产环境
+      NODE_ENV: 'production'
+      # 设置版本号
+      VAN_BLOG_VERSION: 'v1.0.0'
+    volumes:
+      # 图床文件的存放地址，按需修改。
+      - ${PWD}/data/static:/app/static
+      # 日志文件
+      - ${PWD}/log:/var/log
+      # Caddy 配置存储
+      - ${PWD}/caddy/config:/root/.config/caddy
+      # Caddy 证书存储
+      - ${PWD}/caddy/data:/root/.local/share/caddy
+    # 移除端口映射，因为现在通过 caddy-proxy 访问
+    # ports:
+      # 前面的是映射到宿主机的端口号，改端口的话改前面的。
+      # - 801:80
+      # - 4431:443
+    networks:
+      - vanblog-network
+
+  caddy-proxy:
+    image: caddy:latest
+    restart: always
+    ports:
+      - 443:443
+      - 80:80
+    volumes:
+      - ${PWD}/caddy-proxy/Caddyfile:/etc/caddy/Caddyfile
+      - ${PWD}/caddy-proxy/data:/data
+      - ${PWD}/caddy-proxy/config:/config
+    # 移除 network_mode: host
+    networks:
+      - vanblog-network
+    environment:
+      TZ: 'Asia/Shanghai'
+
+  mongo:
+    # 某些机器不支持 avx 会报错，所以默认用 v4 版本。有的话用最新的。
+    #image: mongo:4.4.16
+    image: mongo:latest
+    restart: always
+    environment:
+      TZ: 'Asia/Shanghai'
+    volumes:
+      - ${PWD}/data/mongo:/data/db
+    networks:
+      - vanblog-network

@@ -1,0 +1,25 @@
+# 全局配置：设置邮箱用于Let's Encrypt证书申请
+{
+    email 2505472941@qq.com
+    # 使用Let's Encrypt的生产环境
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+
+# 主站配置：使用你的域名自动申请Let's Encrypt证书
+dong-blog.fun {
+    reverse_proxy vanblog:80
+    
+    # 自动申请Let's Encrypt免费证书
+    # 如果使用Cloudflare：设置DNS为橙色云朵，SSL模式为"完全"或"完全(严格)"
+}
+
+# 备用配置：如果域名有问题，可以注释掉上面的配置，启用下面的IP访问配置
+# :443 {
+#     reverse_proxy vanblog:80
+#     tls internal  # 使用自签名证书
+# }
+
+# HTTP重定向到HTTPS
+:80 {
+    redir https://{host}{uri} permanent
+}

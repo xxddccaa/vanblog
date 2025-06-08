@@ -60,6 +60,7 @@
 - ✅ 添加首页文章数量自定义设置功能。
 - ✅ 添加浏览量管理功能。以前还有人炫自建博客浏览量，数据嘛，还不是想改就改，484~。
 - ✅ admin数据看板优化。
+- ✅ 联系方式重构，可以自定义上传联系方式图标并进行显示。
 
 ## 原项目特性
 
@@ -133,9 +134,57 @@ VanBlog 分为以下几个部分，构建后将整合到一个 `docker` 容器�
 
 ## 启动整个项目
 
+### 启动方式1：直接启动此博客项目（傻瓜化方式）
+
+启动后，访问 ip：801端口的服务，项目本身没有申请证书。
+
+```bash
+mkdir vanblog_data && cd vanblog_data # 创建文件夹
+wget https://raw.githubusercontent.com/xxddccaa/vanblog/master/docker-compose/docker-compose.yml # 下载配置
+docker compose down && docker compose up -d  && docker compose logs -f # 一键启动
+```
+
+关闭此项目：
+
+```bash
+cd vanblog_data # 进入文件夹
+docker compose down # 停止服务
+```
+
+这个项目会更新，如果想更新，如此执行即可：
+
+```bash
+cd vanblog_data # 进入文件夹
+docker compose pull && docker compose down && docker compose up -d && docker compose logs -f # 拉取所有镜像并启动服务
+```
+
+### 启动方式2：在前级加Caddy证书代理的启动方式
+
+拉取代码：
+
+```bash
+git clone https://github.com/xxddccaa/vanblog.git
+cd vanblog/docker-compose/caddy_demo
+```
+
+修改Caddyfile文件，将其中的域名改为自己的域名。还需要去域名管理网站设置DNS指向自己的服务器IP。
+```bash
+vim caddy-proxy/Caddyfile
+```
+
+启动项目：
+```bash
+docker compose pull && docker compose down && docker compose up -d && docker compose logs -f # 拉取所有镜像并启动服务
+```
+
+
+## 开发
+
 直接运行以下命令即可启动项目(依靠编译）：
 
 ```bash
+git clone https://github.com/xxddccaa/vanblog.git
+cd vanblog
 docker compose down && docker compose up -d --build && docker compose logs -f
 ```
 
@@ -145,13 +194,6 @@ docker compose down && docker compose up -d --build && docker compose logs -f
 docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0' && docker push kevinchina/deeplearning:vanblog-latest
 ```
 
-可以更简单启动项目，使用我推送的这个镜像，方法为：
-
-使用项目里 docker-compose/docker-compose.yml 这个文件，直接运行：
-
-```bash
-docker compose down && docker compose up -d  && docker compose logs -f
-```
 
 ## 其他细节提示
 
