@@ -1,5 +1,5 @@
-import { useContext, useMemo, useState } from "react";
-import { SocialItem } from "../../api/getAllData";
+import { useContext, useMemo, useState, useEffect } from "react";
+import { SocialItem, getIconByName, IconItem } from "../../api/getAllData";
 import { getIcon } from "../../utils/getIcon";
 import { Popover, ArrowContainer } from "react-tiny-popover";
 import { capitalize } from "../../utils/capitalize";
@@ -8,6 +8,21 @@ import ImageBox from "../ImageBox";
 
 export default function (props: { item: SocialItem }) {
   const { theme } = useContext(ThemeContext);
+  const [customIcon, setCustomIcon] = useState<IconItem | null>(null);
+
+  // 获取自定义图标数据
+  useEffect(() => {
+    if (props.item.iconName) {
+      getIconByName(props.item.iconName).then(icon => {
+        setCustomIcon(icon);
+      }).catch(error => {
+        console.warn('Failed to load custom icon:', error);
+        setCustomIcon(null);
+      });
+    } else {
+      setCustomIcon(null);
+    }
+  }, [props.item.iconName]);
 
   // 获取显示名称
   const displayName = useMemo(() => {
@@ -62,24 +77,21 @@ export default function (props: { item: SocialItem }) {
   const iconElement = useMemo(() => {
     const iconSize = 20;
     
-    // 优先使用iconName对应的图标（新版本）
-    if (props.item.iconName) {
-      // 这里应该从图标管理系统获取图标，暂时使用customIconUrl作为fallback
-      if (props.item.customIconUrl) {
-        const iconUrl = theme.includes("dark") && props.item.customIconUrlDark 
-          ? props.item.customIconUrlDark 
-          : props.item.customIconUrl;
-          
-        return (
-          <img 
-            src={iconUrl} 
-            alt={displayName}
-            width={iconSize} 
-            height={iconSize}
-            style={{ objectFit: 'contain' }}
-          />
-        );
-      }
+    // 优先使用从图标管理系统获取的自定义图标
+    if (props.item.iconName && customIcon) {
+      const iconUrl = theme.includes("dark") && customIcon.iconUrlDark 
+        ? customIcon.iconUrlDark 
+        : customIcon.iconUrl;
+        
+      return (
+        <img 
+          src={iconUrl} 
+          alt={displayName}
+          width={iconSize} 
+          height={iconSize}
+          style={{ objectFit: 'contain' }}
+        />
+      );
     }
     
     // 兼容旧版本：如果有自定义图标URL
@@ -102,7 +114,7 @@ export default function (props: { item: SocialItem }) {
     // 使用预设图标
     const iconType = props.item.iconType || props.item.type;
     return getIcon(iconType as any, iconSize);
-  }, [props.item, theme, displayName]);
+  }, [props.item, theme, displayName, customIcon]);
 
   const arrowColor = useMemo(() => {
     if (theme.includes("dark")) {

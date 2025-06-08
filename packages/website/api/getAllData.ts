@@ -304,3 +304,55 @@ export async function getCustomPageByPath(
     }
   }
 }
+
+// 图标相关接口
+export interface IconItem {
+  name: string;
+  type: 'preset' | 'custom';
+  iconUrl: string;
+  iconUrlDark?: string;
+  presetIconType?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getAllIcons(): Promise<IconItem[]> {
+  try {
+    const url = `/api/public/icon`;
+    const res = await fetch(url);
+    const { statusCode, data } = await res.json();
+    if (statusCode == 200) {
+      return data;
+    } else {
+      return [];
+    }
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to get icons, using default values");
+      return [];
+    } else {
+      throw err;
+    }
+  }
+}
+
+export async function getIconByName(name: string): Promise<IconItem | null> {
+  try {
+    const url = `/api/public/icon/${name}`;
+    const res = await fetch(url);
+    const { statusCode, data } = await res.json();
+    if (statusCode == 200) {
+      return data;
+    } else {
+      return null;
+    }
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to get icon, using default value");
+      return null;
+    } else {
+      throw err;
+    }
+  }
+}

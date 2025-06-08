@@ -68,7 +68,7 @@ export class StaticProvider {
         // console.log(err);
       }
 
-      if (checkTrue(staticConfigInDB.enableWebp)) {
+      if (checkTrue(staticConfigInDB.enableWebp) && !updateConfig?.skipCompress) {
         try {
           buf = await compressImgToWebp(buf);
           currentSign = encryptFileMD5(buf);
@@ -93,7 +93,7 @@ export class StaticProvider {
     if (type == 'customPage') {
       fileName = customPathname + '/' + file.originalname;
     }
-    if (type == 'img' && checkTrue(staticConfigInDB.enableWebp) && compressSuccess) {
+    if (type == 'img' && checkTrue(staticConfigInDB.enableWebp) && compressSuccess && !updateConfig?.skipCompress) {
       fileName = currentSign + '.' + pureFileName + '.webp';
     }
     const realPath = await this.saveFile(

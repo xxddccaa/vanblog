@@ -12,6 +12,7 @@ import { version } from 'src/utils/loadConfig';
 import { CustomPageProvider } from 'src/provider/customPage/customPage.provider';
 import { encode } from 'js-base64';
 import { TokenProvider } from 'src/provider/token/token.provider';
+import { IconProvider } from 'src/provider/icon/icon.provider';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -25,6 +26,7 @@ export class PublicController {
     private readonly settingProvider: SettingProvider,
     private readonly customPageProvider: CustomPageProvider,
     private readonly tokenProvider: TokenProvider,
+    private readonly iconProvider: IconProvider,
   ) {}
   @Get('/customPage/all')
   async getAll() {
@@ -238,5 +240,36 @@ export class PublicController {
       statusCode: 200,
       data,
     };
+  }
+
+  @Get('/icon')
+  async getAllIcons() {
+    const icons = await this.iconProvider.getAllIcons();
+    return {
+      statusCode: 200,
+      data: icons,
+    };
+  }
+
+  @Get('/icon/:name')
+  async getIconByName(@Param('name') name: string) {
+    try {
+      const icon = await this.iconProvider.getIconByName(name);
+      if (!icon) {
+        return {
+          statusCode: 404,
+          message: '图标未找到',
+        };
+      }
+      return {
+        statusCode: 200,
+        data: icon,
+      };
+    } catch (error) {
+      return {
+        statusCode: 500,
+        message: error.message,
+      };
+    }
   }
 }

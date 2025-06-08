@@ -98,8 +98,7 @@ async function bootstrap() {
     console.log('应用已启动，端口: 3000');
     console.log('API 端点地址: http://<domain>/api');
     console.log('swagger 地址: http://<domain>/swagger');
-    console.log('项目主页: https://vanblog.mereith.com');
-    console.log('开源地址: https://github.mereith/mereithhh/van-blog');
+    console.log('开源地址: https://github.com/xxddccaa/vanblog');
   }, 3000);
 }
 bootstrap();

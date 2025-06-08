@@ -21,7 +21,6 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import { useRef, useState, useEffect } from 'react';
-import ImgCrop from 'antd-img-crop';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -133,7 +132,14 @@ const IconManagement = ({ onIconsChange }) => {
     formData.append('file', file);
     
     try {
-      const res = await fetch('/api/admin/img/upload', {
+      console.log('uploadIcon - 开始上传文件:', file.name, file.type);
+      
+      // 所有图片都标记为跳过水印，使用原图
+      let url = '/api/admin/img/upload?skipWatermark=true&skipCompress=true';
+      
+      console.log('uploadIcon - 发送请求:', url);
+      
+      const res = await fetch(url, {
         method: 'POST',
         body: formData,
         headers: {
@@ -142,13 +148,15 @@ const IconManagement = ({ onIconsChange }) => {
       });
       const data = await res.json();
       
+      console.log('uploadIcon - 服务器响应:', data);
+      
       if (data && data.statusCode === 200) {
         return data.data.src;
       } else {
-        throw new Error('上传失败');
+        throw new Error(data.message || '上传失败');
       }
     } catch (error) {
-      console.error('上传失败:', error);
+      console.log('uploadIcon - 上传失败:', error);
       throw error;
     }
   };
@@ -157,20 +165,64 @@ const IconManagement = ({ onIconsChange }) => {
   const handleIconUpload = async (file) => {
     setUploading(true);
     try {
-      const iconUrl = await uploadIcon(file);
-      const iconName = file.name.split('.')[0]; // 使用文件名作为图标名称
+      console.log('handleIconUpload - 开始处理图标上传:', file.name, '文件类型:', file.type);
       
-      await createIcon({
+      // 上传图片
+      const iconUrl = await uploadIcon(file);
+      console.log('handleIconUpload - 图标上传成功, 获取到URL:', iconUrl);
+      
+      const iconName = file.name.split('.')[0]; // 使用文件名作为图标名称
+      const description = `上传的图标: ${file.name}`;
+      
+      console.log('handleIconUpload - 准备创建图标记录, 图标名称:', iconName, '图标URL:', iconUrl);
+      try {
+        const iconData = {
         name: iconName,
         type: 'custom',
         iconUrl: iconUrl,
-        description: `上传的图标: ${file.name}`
-      });
+          description: description
+        };
+        console.log('handleIconUpload - 创建图标记录数据:', iconData);
+        const result = await createIcon(iconData);
+        console.log('handleIconUpload - 图标记录创建结果:', result);
       
       message.success('图标上传成功');
+        // 确保更新图标列表
+        setTimeout(() => {
       fetchIcons(pagination.current, pagination.pageSize);
+        }, 500); // 增加延迟，确保后端处理完成
+      } catch (createError) {
+        console.log('handleIconUpload - 创建图标记录失败:', createError);
+        // 如果图标名称已存在，尝试使用带时间戳的名称重新创建
+        if (createError.data && createError.data.message && createError.data.message.includes('已存在')) {
+          try {
+            const timestamp = new Date().getTime().toString().slice(-6);
+            const newIconName = `${iconName}_${timestamp}`;
+            console.log('handleIconUpload - 图标名称已存在，尝试使用新名称:', newIconName);
+            const iconData = {
+              name: newIconName,
+              type: 'custom',
+              iconUrl: iconUrl,
+              description: description
+            };
+            const result = await createIcon(iconData);
+            console.log('handleIconUpload - 使用新名称创建图标成功:', result);
+            message.success(`图标上传成功 (使用名称: ${newIconName})`);
+            
+            // 更新图标列表
+            setTimeout(() => {
+              fetchIcons(pagination.current, pagination.pageSize);
+            }, 500); // 增加延迟，确保后端处理完成
+          } catch (retryError) {
+            console.log('handleIconUpload - 重试创建图标记录失败:', retryError);
+            message.error('图标上传成功但创建记录失败: ' + (retryError.message || '未知错误'));
+          }
+        } else {
+          message.error('图标上传成功但创建记录失败: ' + (createError.message || '未知错误'));
+        }
+      }
     } catch (error) {
-      console.error('图标上传失败:', error);
+      console.log('handleIconUpload - 图标上传过程失败:', error);
       message.error('图标上传失败: ' + (error.message || '未知错误'));
     } finally {
       setUploading(false);
@@ -222,6 +274,16 @@ const IconManagement = ({ onIconsChange }) => {
 
   // 图标表格列配置
   const iconColumns = [
+    {
+      title: '序号',
+      key: 'index',
+      width: 60,
+      render: (_, record, index) => {
+        // 计算全局索引（考虑分页）
+        const globalIndex = (pagination.current - 1) * pagination.pageSize + index + 1;
+        return globalIndex;
+      },
+    },
     {
       title: '预览',
       dataIndex: 'iconUrl',
@@ -311,28 +373,17 @@ const IconManagement = ({ onIconsChange }) => {
   return (
     <Card title="图标管理" style={{ marginBottom: 24 }}>
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col>
-          <ImgCrop 
-            quality={1} 
-            aspect={1} 
-            fillColor="rgba(255,255,255,0)"
-            modalProps={{
-              title: '裁剪图标',
-              width: 520,
-              destroyOnClose: true,
-            }}
-            cropperProps={{
-              background: false,
-              guides: true,
-              center: true,
-              autoCropArea: 0.8,
-              dragMode: 'move',
-            }}
-          >
+        <Col span={16}>
             <Upload
+            accept=".png,.jpg,.jpeg,.svg"
               showUploadList={false}
-              accept="image/*"
               beforeUpload={(file) => {
+              console.log('检查文件类型:', file.type);
+              const isImage = file.type === 'image/png' || file.type === 'image/jpeg' || file.type === 'image/jpg' || file.type === 'image/svg+xml';
+              if (!isImage) {
+                message.error('只能上传PNG、JPG/JPEG或SVG图片!');
+                return false;
+              }
                 handleIconUpload(file);
                 return false;
               }}
@@ -345,12 +396,6 @@ const IconManagement = ({ onIconsChange }) => {
                 上传图标
               </Button>
             </Upload>
-          </ImgCrop>
-        </Col>
-        <Col>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            支持PNG、JPG、SVG格式，建议尺寸64x64像素，上传时会自动裁剪为正方形
-          </Text>
         </Col>
       </Row>
       
@@ -379,6 +424,8 @@ export default function () {
   const [editableKeys, setEditableKeys] = useState([]);
   const [socialTypes, setSocialTypes] = useState([]);
   const [availableIcons, setAvailableIcons] = useState([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addFormData, setAddFormData] = useState({});
   const actionRef = useRef();
 
   const fetchData = async () => {
@@ -480,22 +527,6 @@ export default function () {
     setAvailableIcons(icons);
   };
 
-  // 生成建议的类型标识符
-  const generateTypeIdentifier = (iconType, existingData) => {
-    if (!iconType) return '';
-    
-    // 获取现有的相同类型的数量
-    const existingTypes = existingData.filter(item => 
-      item.type && item.type.startsWith(iconType)
-    );
-    
-    if (existingTypes.length === 0) {
-      return iconType; // 第一个直接用类型名
-    } else {
-      return `${iconType}-${existingTypes.length + 1}`; // 后续加数字
-    }
-  };
-
   // 生成唯一的类型标识符
   const generateUniqueTypeIdentifier = (iconType, existingData, excludeKey = null) => {
     if (!iconType) return '';
@@ -515,12 +546,36 @@ export default function () {
     }
   };
 
+  // 邮箱验证函数
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // URL验证函数
+  const validateURL = (url) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   // 初始化获取数据
   useEffect(() => {
     fetchSocialTypes();
   }, []);
 
   const columns = [
+    {
+      title: '序号',
+      dataIndex: 'index',
+      width: 60,
+      hideInSearch: true,
+      editable: false,
+      render: (_, record, index) => index + 1,
+    },
     {
       title: '显示名称',
       dataIndex: 'displayName',
@@ -611,7 +666,23 @@ export default function () {
       dataIndex: 'value',
       width: 200,
       formItemProps: () => ({
-        rules: [{ required: true, message: '请输入链接地址' }],
+        rules: [
+          { required: true, message: '请输入链接地址' },
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              const linkType = getFieldValue('linkType');
+              if (value) {
+                if (linkType === 'email' && !validateEmail(value)) {
+                  return Promise.reject(new Error('请输入有效的邮箱地址'));
+                }
+                if (linkType === 'link' && !validateURL(value)) {
+                  return Promise.reject(new Error('请输入有效的URL地址'));
+                }
+              }
+              return Promise.resolve();
+            },
+          }),
+        ],
       }),
       renderFormItem: (_, { record }) => {
         const linkType = record?.linkType;
@@ -671,7 +742,14 @@ export default function () {
       <IconManagement onIconsChange={handleIconsChange} />
 
       {/* 联系方式管理区域 */}
-      <Card title="联系方式管理">
+      <Card 
+        title="联系方式管理"
+        extra={
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            每页显示10条数据，点击下方按钮添加新联系方式
+          </div>
+        }
+      >
 
         
         <Spin spinning={loading}>
@@ -679,30 +757,16 @@ export default function () {
             rowKey="key"
             actionRef={actionRef}
             headerTitle=""
-            maxLength={10}
-            recordCreatorProps={{
-              record: () => {
-                const timestamp = Date.now();
-                const defaultIconType = socialTypes.length > 0 ? socialTypes[0].iconType : 'github';
-                return {
-                  key: `new-${timestamp}`,
-                  displayName: '',
-                  type: '', // 将在保存时自动生成
-                  iconName: defaultIconType,
-                  iconType: defaultIconType,
-                  linkType: 'link',
-                  value: '',
-                  darkValue: '',
-                  customIconUrl: '',
-                };
-              },
-            }}
+            maxLength={20}
+
+            recordCreatorProps={false}
             loading={false}
             columns={columns}
             request={fetchData}
             pagination={{
               pageSize: 10,
               showSizeChanger: false,
+              showTotal: (total, range) => `共 ${total} 个联系方式`,
             }}
             search={false}
             dateFormatter="string"
@@ -713,6 +777,38 @@ export default function () {
               onSave: async (key, row) => {
                 try {
                   console.log('保存数据:', row);
+                  
+                  // 执行验证
+                  if (!row.displayName || row.displayName.trim() === '') {
+                    message.error('显示名称不能为空');
+                    throw new Error('显示名称不能为空');
+                  }
+                  
+                  if (!row.iconName) {
+                    message.error('请选择图标');
+                    throw new Error('请选择图标');
+                  }
+                  
+                  if (!row.linkType) {
+                    message.error('请选择链接类型');
+                    throw new Error('请选择链接类型');
+                  }
+                  
+                  if (!row.value || row.value.trim() === '') {
+                    message.error('链接地址不能为空');
+                    throw new Error('链接地址不能为空');
+                  }
+                  
+                  // 根据链接类型进行特定验证
+                  if (row.linkType === 'email' && !validateEmail(row.value.trim())) {
+                    message.error('请输入有效的邮箱地址');
+                    throw new Error('请输入有效的邮箱地址');
+                  }
+                  
+                  if (row.linkType === 'link' && !validateURL(row.value.trim())) {
+                    message.error('请输入有效的URL地址');
+                    throw new Error('请输入有效的URL地址');
+                  }
                   
                   // 获取当前数据用于生成唯一标识符
                   const currentData = await fetchData();
@@ -726,20 +822,21 @@ export default function () {
                   
                   // 构建保存数据
                   const saveData = {
-                    displayName: row.displayName,
+                    displayName: row.displayName.trim(),
                     type: typeIdentifier,
                     iconType: row.iconName || row.iconType || row.type,
+                    iconName: row.iconName, // 确保iconName字段被正确保存
                     linkType: row.linkType || 'link',
-                    value: row.value,
-                    darkValue: row.darkValue || '',
-                    customIconUrl: row.customIconUrl || '',
+                    value: row.value.trim(),
+                    darkValue: row.darkValue ? row.darkValue.trim() : '',
+                    customIconUrl: row.customIconUrl ? row.customIconUrl.trim() : '',
                   };
 
                   console.log('发送保存请求:', saveData);
                   const response = await updateSocial(saveData);
                   console.log('保存响应:', response);
                   
-                  message.success('保存成功');
+                  message.success('联系方式保存成功！');
                   
                   // 强制刷新数据
                   setTimeout(() => {
@@ -748,7 +845,9 @@ export default function () {
                   
                 } catch (error) {
                   console.error('保存失败:', error);
+                  if (!error.message.includes('请输入') && !error.message.includes('不能为空') && !error.message.includes('请选择')) {
                   message.error('保存失败：' + (error.message || '未知错误'));
+                  }
                   throw error; // 抛出错误以阻止编辑状态结束
                 }
               },
@@ -757,21 +856,235 @@ export default function () {
           />
         </Spin>
         
-        <Divider />
-        
-        <div style={{ padding: 16, background: '#f5f5f5', borderRadius: 6 }}>
-          <Title level={5}>使用说明：</Title>
-          <ul style={{ marginBottom: 0, fontSize: '14px' }}>
-            <li><strong>图标管理</strong>：可上传自定义图标到图床，支持PNG、JPG、SVG格式</li>
-            <li><strong>显示名称</strong>：在前台显示的文字，如"GitHub"、"微信群1"等</li>
-            <li><strong>图标选择</strong>：从预设图标或已上传的自定义图标中选择</li>
-            <li><strong>链接类型</strong>：普通链接（跳转）、邮箱（弹窗提示）、二维码（弹窗显示）</li>
-            <li><strong>自定义图标URL</strong>：当选择的图标不在列表中时，可直接输入图标URL</li>
-            <li><strong>链接地址</strong>：根据链接类型输入相应的地址</li>
-            <li><strong>暗色二维码</strong>：仅在链接类型为"二维码"时显示，用于暗色主题</li>
-            <li><strong>重复类型支持</strong>：可以添加多个相同类型的联系方式，如多个QQ号、微信群等</li>
-          </ul>
+        {/* 添加联系方式按钮 */}
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />}
+            size="large"
+            onClick={() => {
+              setShowAddForm(!showAddForm);
+              if (!showAddForm) {
+                // 初始化表单数据
+                const defaultIconType = socialTypes.length > 0 ? socialTypes[0].iconType : 'github';
+                setAddFormData({
+                  displayName: '',
+                  iconName: defaultIconType,
+                  linkType: 'link',
+                  value: '',
+                  darkValue: '',
+                  customIconUrl: ''
+                });
+              }
+            }}
+          >
+            {showAddForm ? '取消添加' : '添加联系方式'}
+          </Button>
         </div>
+
+        {/* 添加表单区域 */}
+        {showAddForm && (
+          <Card 
+            style={{ marginTop: 16 }}
+            title="添加新联系方式"
+            size="small"
+            extra={
+              <Button size="small" type="text" onClick={() => setShowAddForm(false)}>
+                收起
+              </Button>
+            }
+          >
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ fontWeight: 'bold' }}>显示名称 <span style={{ color: 'red' }}>*</span></label>
+                </div>
+                <Input
+                  placeholder="请输入显示名称，如：GitHub、微信群1"
+                  value={addFormData.displayName || ''}
+                  onChange={(e) => setAddFormData({...addFormData, displayName: e.target.value})}
+                />
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ fontWeight: 'bold' }}>图标选择 <span style={{ color: 'red' }}>*</span></label>
+                </div>
+                <Select
+                  placeholder="选择图标"
+                  value={addFormData.iconName}
+                  onChange={(value) => setAddFormData({...addFormData, iconName: value})}
+                  style={{ width: '100%' }}
+                  showSearch
+                  optionFilterProp="label"
+                >
+                  <Select.OptGroup label="预设图标">
+                    {socialTypes.map(type => (
+                      <Select.Option key={`preset-${type.iconType}`} value={type.iconType} label={type.label}>
+                        {type.label}
+                      </Select.Option>
+                    ))}
+                  </Select.OptGroup>
+                  <Select.OptGroup label="自定义图标">
+                    {availableIcons.map(icon => (
+                      <Select.Option key={`custom-${icon.name}`} value={icon.name} label={`${icon.name} (自定义)`}>
+                        {icon.name} (自定义)
+                      </Select.Option>
+                    ))}
+                  </Select.OptGroup>
+                </Select>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ fontWeight: 'bold' }}>链接类型 <span style={{ color: 'red' }}>*</span></label>
+                </div>
+                <Select
+                  value={addFormData.linkType}
+                  onChange={(value) => setAddFormData({...addFormData, linkType: value})}
+                  style={{ width: '100%' }}
+                >
+                  <Select.Option value="link">普通链接</Select.Option>
+                  <Select.Option value="email">邮箱</Select.Option>
+                  <Select.Option value="qrcode">二维码</Select.Option>
+                </Select>
+              </Col>
+              <Col span={12}>
+                <div style={{ marginBottom: 8 }}>
+                  <label style={{ fontWeight: 'bold' }}>链接地址 <span style={{ color: 'red' }}>*</span></label>
+                </div>
+                <Input
+                  placeholder={
+                    addFormData.linkType === 'email' ? '请输入邮箱地址' : 
+                    addFormData.linkType === 'qrcode' ? '请输入二维码图片URL' : 
+                    '请输入链接地址'
+                  }
+                  value={addFormData.value || ''}
+                  onChange={(e) => setAddFormData({...addFormData, value: e.target.value})}
+                />
+              </Col>
+              {addFormData.linkType === 'qrcode' && (
+                <Col span={12}>
+                  <div style={{ marginBottom: 8 }}>
+                    <label style={{ fontWeight: 'bold' }}>暗色二维码（可选）</label>
+                  </div>
+                  <Input
+                    placeholder="暗色主题下的二维码（可选）"
+                    value={addFormData.darkValue || ''}
+                    onChange={(e) => setAddFormData({...addFormData, darkValue: e.target.value})}
+                  />
+                </Col>
+              )}
+              {/* 自定义图标URL字段 */}
+              {addFormData.iconName && 
+               !socialTypes.some(type => type.iconType === addFormData.iconName) &&
+               !availableIcons.some(icon => icon.name === addFormData.iconName) && (
+                <Col span={12}>
+                  <div style={{ marginBottom: 8 }}>
+                    <label style={{ fontWeight: 'bold' }}>自定义图标URL</label>
+                  </div>
+                  <Input
+                    placeholder="自定义图标URL（浅色）"
+                    value={addFormData.customIconUrl || ''}
+                    onChange={(e) => setAddFormData({...addFormData, customIconUrl: e.target.value})}
+                  />
+                </Col>
+              )}
+            </Row>
+            <div style={{ marginTop: 16, textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => setShowAddForm(false)}>
+                  取消
+                </Button>
+                <Button 
+                  type="primary" 
+                  onClick={async () => {
+                    try {
+                      // 验证必填字段
+                      if (!addFormData.displayName || addFormData.displayName.trim() === '') {
+                        message.error('请输入显示名称');
+                        return;
+                      }
+                      if (!addFormData.iconName) {
+                        message.error('请选择图标');
+                        return;
+                      }
+                      if (!addFormData.linkType) {
+                        message.error('请选择链接类型');
+                        return;
+                      }
+                      if (!addFormData.value || addFormData.value.trim() === '') {
+                        message.error('请输入链接地址');
+                        return;
+                      }
+
+                      // 根据链接类型进行特定验证
+                      if (addFormData.linkType === 'email' && !validateEmail(addFormData.value.trim())) {
+                        message.error('请输入有效的邮箱地址');
+                        return;
+                      }
+                      if (addFormData.linkType === 'link' && !validateURL(addFormData.value.trim())) {
+                        message.error('请输入有效的URL地址');
+                        return;
+                      }
+
+                      // 获取当前数据用于生成唯一标识符
+                      const currentData = await fetchData();
+                      const typeIdentifier = generateUniqueTypeIdentifier(addFormData.iconName, currentData.data);
+
+                      // 构建保存数据
+                      const saveData = {
+                        displayName: addFormData.displayName.trim(),
+                        type: typeIdentifier,
+                        iconType: addFormData.iconName,
+                        iconName: addFormData.iconName, // 确保iconName字段被正确保存
+                        linkType: addFormData.linkType,
+                        value: addFormData.value.trim(),
+                        darkValue: addFormData.darkValue ? addFormData.darkValue.trim() : '',
+                        customIconUrl: addFormData.customIconUrl ? addFormData.customIconUrl.trim() : '',
+                      };
+
+                      console.log('保存新联系方式:', saveData);
+                      await updateSocial(saveData);
+                      
+                      message.success('联系方式添加成功！');
+                      
+                      // 重置表单并隐藏
+                      setAddFormData({});
+                      setShowAddForm(false);
+                      
+                      // 刷新表格数据
+                      setTimeout(() => {
+                        actionRef.current?.reload();
+                      }, 100);
+                      
+                    } catch (error) {
+                      console.error('添加失败:', error);
+                      message.error('添加失败：' + (error.message || '未知错误'));
+                    }
+                  }}
+                >
+                  保存
+                </Button>
+              </Space>
+        </div>
+          </Card>
+        )}
+
+        {/* 图标资源说明 */}
+        <Card style={{ marginTop: 16 }} size="small">
+          <div style={{ textAlign: 'center', color: '#666', fontSize: '14px' }}>
+            <span>💡 提示：可以去 </span>
+            <a 
+              href="https://www.iconfont.cn/collections/index?spm=a313x.collections_index.i1.da2e3581b.48613a8157EhHm&type=1" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#1890ff' }}
+            >
+              iconfont.cn
+            </a>
+            <span> 下载SVG图标，支持上传PNG、JPEG、JPG、SVG格式的图标文件</span>
+          </div>
+        </Card>
+
       </Card>
     </>
   );

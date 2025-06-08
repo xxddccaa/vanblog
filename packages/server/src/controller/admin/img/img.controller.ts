@@ -31,6 +31,7 @@ export class ImgController {
     @Query('favicon') favicon?: string,
     @Query('waterMarkText') waterMarkText?: string,
     @Query('withWaterMark') withWaterMark?: string,
+    @Query('skipCompress') skipCompress?: string,
   ) {
     let isFavicon = false;
     if (favicon && favicon == 'true') {
@@ -40,6 +41,7 @@ export class ImgController {
     const updateConfig = {
       withWaterMark: checkTrue(withWaterMark),
       waterMarkText,
+      skipCompress: checkTrue(skipCompress),
     };
     const res = await this.staticProvider.upload(file, 'img', isFavicon, undefined, updateConfig);
     return {
