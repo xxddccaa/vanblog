@@ -95,6 +95,7 @@ export interface SocialItem {
   linkType?: 'link' | 'email' | 'qrcode';
   darkValue?: string;
   iconName?: string; // 图标管理中的图标名称
+  iconData?: IconItem | null; // 完整的图标数据，避免异步请求
 }
 export interface MenuItem {
   id: number;

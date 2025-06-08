@@ -224,12 +224,17 @@ export class PublicController {
     const totalWordCount = await this.metaProvider.getTotalWords();
     const LayoutSetting = await this.settingProvider.getLayoutSetting();
     const LayoutRes = this.settingProvider.encodeLayoutSetting(LayoutSetting);
+    
+    // 获取包含图标数据的社交信息
+    const socialsWithIcons = await this.metaProvider.getSocials();
+    
     const data = {
       version: version,
       tags,
       meta: {
         ...metaDoc,
         categories,
+        socials: socialsWithIcons, // 使用包含图标数据的社交信息
       },
       menus,
       totalArticles,

@@ -9,6 +9,7 @@ import { LinkItem } from 'src/types/link.dto';
 import { UserProvider } from '../user/user.provider';
 import { VisitProvider } from '../visit/visit.provider';
 import { ArticleProvider } from '../article/article.provider';
+import { IconProvider } from '../icon/icon.provider';
 import dayjs from 'dayjs';
 import { isTrue } from 'src/utils/isTrue';
 import { ViewerProvider } from '../viewer/viewer.provider';
@@ -24,6 +25,7 @@ export class MetaProvider {
     private readonly viewProvider: ViewerProvider,
     @Inject(forwardRef(() => ArticleProvider))
     private readonly articleProvider: ArticleProvider,
+    private readonly iconProvider: IconProvider,
   ) {}
 
   async updateTotalWords(reason: string) {
@@ -257,7 +259,30 @@ export class MetaProvider {
     return (await this.getAll())?.rewards;
   }
   async getSocials() {
-    return (await this.getAll())?.socials;
+    const socials = (await this.getAll())?.socials || [];
+    
+    // 为每个social项目添加图标信息
+    const socialsWithIcons = await Promise.all(
+      socials.map(async (social) => {
+        let iconData = null;
+        
+        // 如果有iconName，获取自定义图标数据
+        if (social.iconName) {
+          try {
+            iconData = await this.iconProvider.getIconByName(social.iconName);
+          } catch (error) {
+            this.logger.warn(`Failed to load icon "${social.iconName}": ${error.message}`);
+          }
+        }
+        
+        return {
+          ...social,
+          iconData, // 添加图标数据到social对象中
+        };
+      })
+    );
+    
+    return socialsWithIcons;
   }
   async getLinks() {
     return (await this.getAll())?.links;

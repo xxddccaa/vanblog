@@ -1,5 +1,5 @@
-import { useContext, useMemo, useState, useEffect } from "react";
-import { SocialItem, getIconByName, IconItem } from "../../api/getAllData";
+import { useContext, useMemo, useState } from "react";
+import { SocialItem, IconItem } from "../../api/getAllData";
 import { getIcon } from "../../utils/getIcon";
 import { Popover, ArrowContainer } from "react-tiny-popover";
 import { capitalize } from "../../utils/capitalize";
@@ -8,21 +8,6 @@ import ImageBox from "../ImageBox";
 
 export default function (props: { item: SocialItem }) {
   const { theme } = useContext(ThemeContext);
-  const [customIcon, setCustomIcon] = useState<IconItem | null>(null);
-
-  // 获取自定义图标数据
-  useEffect(() => {
-    if (props.item.iconName) {
-      getIconByName(props.item.iconName).then(icon => {
-        setCustomIcon(icon);
-      }).catch(error => {
-        console.warn('Failed to load custom icon:', error);
-        setCustomIcon(null);
-      });
-    } else {
-      setCustomIcon(null);
-    }
-  }, [props.item.iconName]);
 
   // 获取显示名称
   const displayName = useMemo(() => {
@@ -77,11 +62,22 @@ export default function (props: { item: SocialItem }) {
   const iconElement = useMemo(() => {
     const iconSize = 20;
     
+    // 调试信息
+    console.log('SocialIcon Debug:', {
+      iconName: props.item.iconName,
+      iconData: props.item.iconData,
+      hasIconData: !!props.item.iconData,
+      displayName,
+      item: props.item
+    });
+    
     // 优先使用从图标管理系统获取的自定义图标
-    if (props.item.iconName && customIcon) {
-      const iconUrl = theme.includes("dark") && customIcon.iconUrlDark 
-        ? customIcon.iconUrlDark 
-        : customIcon.iconUrl;
+    if (props.item.iconName && props.item.iconData) {
+      const iconUrl = theme.includes("dark") && props.item.iconData.iconUrlDark 
+        ? props.item.iconData.iconUrlDark 
+        : props.item.iconData.iconUrl;
+        
+      console.log('Using custom icon:', iconUrl);
         
       return (
         <img 
@@ -114,7 +110,7 @@ export default function (props: { item: SocialItem }) {
     // 使用预设图标
     const iconType = props.item.iconType || props.item.type;
     return getIcon(iconType as any, iconSize);
-  }, [props.item, theme, displayName, customIcon]);
+  }, [props.item, theme, displayName]);
 
   const arrowColor = useMemo(() => {
     if (theme.includes("dark")) {
