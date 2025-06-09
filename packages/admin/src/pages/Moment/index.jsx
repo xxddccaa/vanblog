@@ -39,9 +39,14 @@ export default function MomentManage() {
       render: (text) => (
         <div 
           style={{ 
+            display: '-webkit-box',
+            WebkitLineClamp: 10,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
-            maxWidth: '400px'
+            maxWidth: '400px',
+            lineHeight: '1.5'
           }}
         >
           {text}

@@ -21,6 +21,20 @@ export const columns = [
     ellipsis: false,
     width: 500,
     tip: '标题完整显示',
+    render: (text) => (
+      <div
+        style={{
+          display: '-webkit-box',
+          WebkitLineClamp: 10,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          wordBreak: 'break-word',
+          lineHeight: '1.5'
+        }}
+      >
+        {text}
+      </div>
+    ),
     formItemProps: {
       rules: [
         {
@@ -67,11 +81,24 @@ export const columns = [
       if (!record?.tags?.length) {
         return '-';
       } else {
-        return record?.tags?.map((each) => (
-          <Tag style={{ marginBottom: 4 }} key={`tag-${each}`}>
-            {each}
-          </Tag>
-        ));
+        return (
+          <div
+            style={{
+              display: '-webkit-box',
+              WebkitLineClamp: 10,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              wordBreak: 'break-word',
+              lineHeight: '1.5'
+            }}
+          >
+            {record?.tags?.map((each) => (
+              <Tag style={{ marginBottom: 4 }} key={`tag-${each}`}>
+                {each}
+              </Tag>
+            ))}
+          </div>
+        );
       }
     },
   },
