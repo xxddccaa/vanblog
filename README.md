@@ -17,6 +17,12 @@
 我的博客地址： https://www.dong-blog.fun/
 
 
+## vanblog二开群
+
+可以进群提BUG或者功能点：
+
+![image.png](img/qrcode_1749457934178.jpg)
+
 ## 我的二次开发进展内容
 
 本项目基于 VanBlog 进行二次开发，主要进行了以下优化（只适应于我自己）:
