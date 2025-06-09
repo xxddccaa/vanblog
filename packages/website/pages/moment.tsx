@@ -11,6 +11,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import zhCN from 'dayjs/locale/zh-cn';
 import Loading from '../components/Loading';
 import AuthorCard from '../components/AuthorCard';
+import Markdown from '../components/Markdown';
 
 // 配置 dayjs
 dayjs.extend(relativeTime);
@@ -202,8 +203,8 @@ export default function MomentPage({
               className="bg-white dark:bg-dark-1 rounded-lg shadow-md p-6
                          border border-gray-200 dark:border-dark-3"
             >
-              <div className="whitespace-pre-wrap text-gray-900 dark:text-dark mb-4">
-                {moment.content}
+              <div className="text-gray-900 dark:text-dark mb-4">
+                <Markdown content={moment.content} />
               </div>
               <div className="text-sm text-gray-500 dark:text-dark-light">
                 {formatTime(moment.createdAt)}

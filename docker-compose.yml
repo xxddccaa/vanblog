@@ -6,9 +6,9 @@ services:
       args:
         VAN_BLOG_BUILD_SERVER: 'http://127.0.0.1:3000'
         VAN_BLOG_VERSIONS: 'v1.0.0'
-        http_proxy: 'http://192.168.3.2:10828'
-        https_proxy: 'http://192.168.3.2:10828'
-      network: host
+      #   http_proxy: 'http://192.168.3.2:10828'
+      #   https_proxy: 'http://192.168.3.2:10828'
+      # network: host
     restart: always
     environment:
       TZ: 'Asia/Shanghai'

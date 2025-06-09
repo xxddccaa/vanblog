@@ -13,6 +13,10 @@ import {
   updateAbout,
   updateArticle,
   updateDraft,
+  getMomentById,
+  updateMoment,
+  createMoment,
+  deleteMoment,
 } from '@/services/van-blog/api';
 import { getPathname } from '@/services/van-blog/getPathname';
 import { parseMarkdownFile, parseObjToMarkdown } from '@/services/van-blog/parseMarkdownFile';
@@ -61,6 +65,7 @@ export default function () {
     article: '文章',
     draft: '草稿',
     about: '关于',
+    moment: '动态',
   };
   const fetchData = useCallback(
     async (noMessage) => {
@@ -148,6 +153,28 @@ export default function () {
         setCurrObj(data);
         document.title = `${data?.title || ''} - VanBlog 编辑器`;
       }
+      if (type == 'moment') {
+        if (id) {
+          // 编辑现有动态
+          const { data } = await getMomentById(id);
+          const cache = checkCache(data);
+          if (cache) {
+            if (!noMessage) {
+              message.success('从缓存中恢复状态！');
+            }
+            setValue(cache);
+          } else {
+            setValue(data?.content || '');
+          }
+          setCurrObj(data);
+          document.title = `编辑动态 - VanBlog 编辑器`;
+        } else {
+          // 创建新动态
+          setValue('');
+          setCurrObj({});
+          document.title = `创建动态 - VanBlog 编辑器`;
+        }
+      }
       setLoading(false);
     },
     [history, setLoading, setValue, type],
@@ -180,7 +207,21 @@ export default function () {
       await updateAbout({ content: v });
       await fetchData();
       message.success('保存成功！');
-    } else {
+    } else if (type == 'moment') {
+      if (currObj?.id) {
+        // 更新现有动态
+        await updateMoment(currObj.id, { content: v });
+        await fetchData();
+        message.success('保存成功！');
+      } else {
+        // 创建新动态
+        const newMoment = await createMoment({ content: v });
+        message.success('发布成功！');
+        // 更新当前页面状态，使其变为编辑模式
+        setCurrObj(newMoment.data);
+        // 更新URL但不刷新页面
+        history.replace(`/editor?type=moment&id=${newMoment.data.id}`);
+      }
     }
     if (editorConfig.afterSave && editorConfig.afterSave == 'goBack') {
       history.go(-1);
@@ -191,11 +232,21 @@ export default function () {
   const handleSave = async () => {
     if (location.hostname == 'blog-demo.mereith.com' && type != 'draft') {
       Modal.info({
-        title: '演示站禁止修改此信息！',
+        title: type == 'moment' ? '确定删除这条动态吗？' : `确定删除 "${currObj.title}" 吗？`,
         content: '本来是可以的，但有个人在演示站首页放黄色信息，所以关了这个权限了。',
       });
       return;
     }
+    
+    // 对于动态类型，直接保存不需要复杂的检查
+    if (type == 'moment') {
+      Modal.confirm({
+        title: currObj?.id ? '确定保存动态吗？' : '确定发布动态吗？',
+        onOk: saveFn,
+      });
+      return;
+    }
+    
     // 先检查一下有没有 more .
     let hasMore = true;
     if (['article', 'draft'].includes(history.location.query?.type)) {
@@ -239,7 +290,13 @@ export default function () {
     const url = URL.createObjectURL(data);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${currObj?.title || '关于'}.md`;
+    let filename = '';
+    if (type == 'moment') {
+      filename = `动态_${currObj?.id || 'new'}.md`;
+    } else {
+      filename = `${currObj?.title || '关于'}.md`;
+    }
+    link.download = filename;
     link.click();
   };
   const handleImport = async (file) => {
@@ -262,14 +319,15 @@ export default function () {
   const actionMenu = (
     <Menu
       items={[
-        {
+        // 重置按钮：moment类型不显示
+        type != 'moment' ? {
           key: 'resetBtn',
           label: '重置',
           onClick: () => {
             setValue(currObj?.content || '');
             message.success('重置为初始值成功！');
           },
-        },
+        } : null,
         type != 'about'
           ? {
               key: 'updateModalBtn',
@@ -301,6 +359,7 @@ export default function () {
               ),
             }
           : null,
+        // 导入内容：暂时保留，但有编码问题需要修复
         {
           key: 'importBtn',
           label: '导入内容',
@@ -354,6 +413,8 @@ export default function () {
                     return;
                   }
                   url = `/post/${getPathname(currObj)}`;
+                } else if (type == 'moment') {
+                  url = '/moment';
                 } else {
                   url = '/about';
                 }
@@ -383,6 +444,10 @@ export default function () {
                       await deleteDraft(currObj.id);
                       message.success('删除草稿成功！返回列表页！');
                       history.push('/draft');
+                    } else if (type == 'moment') {
+                      await deleteMoment(currObj.id);
+                      message.success('删除动态成功！返回列表页！');
+                      history.push('/moment');
                     }
                   },
                 });
@@ -417,7 +482,8 @@ export default function () {
             });
           },
         },
-        {
+        // 帮助文档：moment、draft和article类型不显示
+        ['moment', 'draft', 'article'].includes(type) ? null : {
           key: 'helpBtn',
           label: '帮助文档',
           onClick: () => {
@@ -434,15 +500,18 @@ export default function () {
       header={{
         title: (
           <Space>
-            <span title={type == 'about' ? '关于' : currObj?.title}>
-              {type == 'about' ? '关于' : currObj?.title}
+            <span title={type == 'about' ? '关于' : type == 'moment' ? (currObj?.id ? '编辑动态' : '创建动态') : currObj?.title}>
+              {type == 'about' ? '关于' : type == 'moment' ? (currObj?.id ? '编辑动态' : '创建动态') : currObj?.title}
             </span>
-            {type != 'about' && (
+            {type != 'about' && type != 'moment' && (
               <>
                 <Tag color="green">{typeMap[type] || '-'}</Tag>
                 <Tag color="blue">{currObj?.category || '-'}</Tag>
                 <Tags tags={currObj?.tags} />
               </>
+            )}
+            {type == 'moment' && (
+              <Tag color="orange">{typeMap[type] || '-'}</Tag>
             )}
           </Space>
         ),
