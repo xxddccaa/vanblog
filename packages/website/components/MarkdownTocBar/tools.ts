@@ -12,7 +12,7 @@ export const washMarkdownContent = (source: string) => {
       .replace(/```([\s\S]*?)```[\s]*/g, "")
       .replace(/`#/g, "")
       .replace(/^[^#]+\n/g, "")
-      .replace(/(?:[^\n#]+)#+\s([^#\n]+)\n*/g, "") // 匹配行内出现 # 号的情况
+      .replace(/(?:[^\n#]+)#+(?![#\s])([^#\n]+)\n*/g, "") // 修复：只匹配真正的行内#号，不匹配标题开头的##
       .replace(/```[^`\n]*\n+[^```]+```\n+/g, "")
       .replace(/`([^`\n]+)`/g, "$1")
       .replace(/\*\*?([^*\n]+)\*\*?/g, "$1")

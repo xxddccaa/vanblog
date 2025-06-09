@@ -194,6 +194,11 @@ docker compose down && docker compose up -d --build && docker compose logs -f
 docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0' --build-arg http_proxy='http://192.168.3.2:10828' --build-arg https_proxy='http://192.168.3.2:10828' && docker push kevinchina/deeplearning:vanblog-latest
 ```
 
+不要proxy网络的打包推送指令：
+```bash
+docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0'  && docker push kevinchina/deeplearning:vanblog-latest
+```
+
 ## 其他细节提示
 
 - 后台前端代码是编译为静态文件后挂载的
