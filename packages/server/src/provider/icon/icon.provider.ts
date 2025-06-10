@@ -11,11 +11,13 @@ export class IconProvider {
     private iconModel: Model<Icon>,
   ) {}
 
-  async getAllIcons(): Promise<IconItem[]> {
-    const icons = await this.iconModel.find().sort({ createdAt: -1 }).exec();
+  async getAllIcons(usage?: 'nav' | 'social'): Promise<IconItem[]> {
+    const filter = usage ? { usage } : {};
+    const icons = await this.iconModel.find(filter).sort({ createdAt: -1 }).exec();
     return icons.map(icon => ({
       name: icon.name,
       type: icon.type,
+      usage: icon.usage || 'social', // 向后兼容
       iconUrl: icon.iconUrl,
       iconUrlDark: icon.iconUrlDark,
       presetIconType: icon.presetIconType,
@@ -25,22 +27,24 @@ export class IconProvider {
     }));
   }
 
-  async getIconsPaginated(page: number = 1, pageSize: number = 10): Promise<{
+  async getIconsPaginated(page: number = 1, pageSize: number = 10, usage?: 'nav' | 'social'): Promise<{
     icons: IconItem[];
     total: number;
     page: number;
     pageSize: number;
   }> {
     const skip = (page - 1) * pageSize;
+    const filter = usage ? { usage } : {};
     const [icons, total] = await Promise.all([
-      this.iconModel.find().sort({ createdAt: -1 }).skip(skip).limit(pageSize).exec(),
-      this.iconModel.countDocuments().exec(),
+      this.iconModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(pageSize).exec(),
+      this.iconModel.countDocuments(filter).exec(),
     ]);
 
     return {
       icons: icons.map(icon => ({
         name: icon.name,
         type: icon.type,
+        usage: icon.usage || 'social', // 向后兼容
         iconUrl: icon.iconUrl,
         iconUrlDark: icon.iconUrlDark,
         presetIconType: icon.presetIconType,
@@ -61,6 +65,7 @@ export class IconProvider {
     return {
       name: icon.name,
       type: icon.type,
+      usage: icon.usage || 'social', // 向后兼容
       iconUrl: icon.iconUrl,
       iconUrlDark: icon.iconUrlDark,
       presetIconType: icon.presetIconType,
@@ -79,6 +84,7 @@ export class IconProvider {
 
     const icon = new this.iconModel({
       ...iconDto,
+      usage: iconDto.usage || 'social', // 默认为social以保持兼容性
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -87,6 +93,7 @@ export class IconProvider {
     return {
       name: savedIcon.name,
       type: savedIcon.type,
+      usage: savedIcon.usage || 'social',
       iconUrl: savedIcon.iconUrl,
       iconUrlDark: savedIcon.iconUrlDark,
       presetIconType: savedIcon.presetIconType,
@@ -110,6 +117,7 @@ export class IconProvider {
     return {
       name: updatedIcon.name,
       type: updatedIcon.type,
+      usage: updatedIcon.usage || 'social',
       iconUrl: updatedIcon.iconUrl,
       iconUrlDark: updatedIcon.iconUrlDark,
       presetIconType: updatedIcon.presetIconType,

@@ -121,11 +121,10 @@ export default function (props: {
     >
       <div
         ref={innerRef}
-        className="bg-white w-3/4  p-4 rounded-xl card-shadow dark:card-shadow-dark transition-all dark:bg-dark"
+        className="bg-white w-full max-w-3xl xl:max-w-4xl p-4 rounded-xl card-shadow dark:card-shadow-dark transition-all dark:bg-dark"
         style={{
           minHeight: "280px",
           minWidth: 360,
-          maxWidth: "710px",
           transform: props.visible ? "scale(100%)" : "scale(0)",
         }}
         onTransitionEnd={() => {

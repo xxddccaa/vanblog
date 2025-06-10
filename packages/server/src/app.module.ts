@@ -90,6 +90,13 @@ import { PublicMomentController } from './controller/public/moment/moment.contro
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
+import { NavTool, NavToolSchema } from './scheme/nav-tool.schema';
+import { NavCategory, NavCategorySchema } from './scheme/nav-category.schema';
+import { NavToolProvider } from './provider/nav-tool/nav-tool.provider';
+import { NavCategoryProvider } from './provider/nav-category/nav-category.provider';
+import { NavToolController } from './controller/admin/nav-tool/nav-tool.controller';
+import { NavCategoryController } from './controller/admin/nav-category/nav-category.controller';
+import { NavController } from './controller/public/nav/nav.controller';
 
 @Module({
   imports: [
@@ -111,6 +118,8 @@ import { IconController } from './controller/admin/icon/icon.controller';
       { name: Pipeline.name, schema: PipelineSchema },
       { name: Moment.name, schema: MomentSchema },
       { name: Icon.name, schema: IconSchema },
+      { name: NavTool.name, schema: NavToolSchema },
+      { name: NavCategory.name, schema: NavCategorySchema },
     ]),
     JwtModule.registerAsync({
       useFactory: async () => {
@@ -157,6 +166,9 @@ import { IconController } from './controller/admin/icon/icon.controller';
     MomentController,
     PublicMomentController,
     IconController,
+    NavToolController,
+    NavCategoryController,
+    NavController,
   ],
   providers: [
     AppService,
@@ -196,20 +208,15 @@ import { IconController } from './controller/admin/icon/icon.controller';
     PipelineProvider,
     MomentProvider,
     IconProvider,
+    NavToolProvider,
+    NavCategoryProvider,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(InitMiddleware)
-      .exclude(
-        { path: '/api/admin/img/upload', method: RequestMethod.POST },
-        { path: '/api/admin/init/upload', method: RequestMethod.POST },
-        { path: '/api/admin/caddy/ask', method: RequestMethod.GET },
-      )
-      .forRoutes({
-        path: '*',
-        method: RequestMethod.ALL,
-      });
+      .exclude({ path: '/api/admin/init/check', method: RequestMethod.GET })
+      .forRoutes('*');
   }
 }

@@ -1,0 +1,10 @@
+.main {
+    margin: 0 auto;
+    height: 96vh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.span-3 {
+  grid-column-start: span 3;
+}

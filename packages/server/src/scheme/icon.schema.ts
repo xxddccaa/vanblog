@@ -9,6 +9,9 @@ export class Icon extends Document {
   @Prop({ required: true })
   type: 'preset' | 'custom'; // 预设图标或自定义图标
 
+  @Prop({ default: 'social' })
+  usage: 'nav' | 'social'; // 图标用途：导航或社交，默认为社交以保持兼容性
+
   @Prop()
   iconUrl: string; // 图标URL（浅色主题）
 

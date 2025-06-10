@@ -26,10 +26,10 @@ const warmupPages = async () => {
     setTimeout(async () => {
       try {
         const http = require('http');
-        console.log('🔥 开始预热动态页面...');
+        console.log('🔥 开始预热页面...');
         
         // 预热个人动态页面
-        const options = {
+        const momentOptions = {
           hostname: '127.0.0.1',
           port: 3001,
           path: '/moment',
@@ -37,7 +37,7 @@ const warmupPages = async () => {
           timeout: 10000,
         };
 
-        const req = http.request(options, (res) => {
+        const momentReq = http.request(momentOptions, (res) => {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             console.log('✅ 动态页面预热成功');
             printLog('✅ 动态页面预热成功\n', false);
@@ -47,21 +47,53 @@ const warmupPages = async () => {
           }
         });
 
-        req.on('error', (error) => {
+        momentReq.on('error', (error) => {
           console.log('⚠️ 动态页面预热出错:', error.message);
           printLog(`⚠️ 动态页面预热出错: ${error.message}\n`, false);
         });
 
-        req.on('timeout', () => {
+        momentReq.on('timeout', () => {
           console.log('⚠️ 动态页面预热超时');
           printLog('⚠️ 动态页面预热超时\n', false);
-          req.destroy();
+          momentReq.destroy();
         });
 
-        req.end();
+        momentReq.end();
+        
+        // 预热导航页面
+        const navOptions = {
+          hostname: '127.0.0.1',
+          port: 3001,
+          path: '/nav',
+          method: 'GET',
+          timeout: 10000,
+        };
+
+        const navReq = http.request(navOptions, (res) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            console.log('✅ 导航页面预热成功');
+            printLog('✅ 导航页面预热成功\n', false);
+          } else {
+            console.log('⚠️ 导航页面预热失败，状态码:', res.statusCode);
+            printLog(`⚠️ 导航页面预热失败，状态码: ${res.statusCode}\n`, false);
+          }
+        });
+
+        navReq.on('error', (error) => {
+          console.log('⚠️ 导航页面预热出错:', error.message);
+          printLog(`⚠️ 导航页面预热出错: ${error.message}\n`, false);
+        });
+
+        navReq.on('timeout', () => {
+          console.log('⚠️ 导航页面预热超时');
+          printLog('⚠️ 导航页面预热超时\n', false);
+          navReq.destroy();
+        });
+
+        navReq.end();
       } catch (error) {
-        console.log('⚠️ 动态页面预热出错:', error.message);
-        printLog(`⚠️ 动态页面预热出错: ${error.message}\n`, false);
+        console.log('⚠️ 页面预热出错:', error.message);
+        printLog(`⚠️ 页面预热出错: ${error.message}\n`, false);
       }
     }, 5000);
   } catch (error) {

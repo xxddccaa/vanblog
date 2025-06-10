@@ -10,6 +10,8 @@ import { ThemeContext } from "../../utils/themeContext";
 import RssButton from "../RssButton";
 import Item from "./item";
 import { encodeQuerystring } from "../../utils/encode";
+import { useRouter } from "next/router";
+
 export default function (props: {
   logo: string;
   logoDark: string;
@@ -30,6 +32,32 @@ export default function (props: {
   const [showSearch, setShowSearch] = useState(false);
   const [headroom, setHeadroom] = useState<Headroom>();
   const { theme } = useContext(ThemeContext);
+  const router = useRouter();
+
+  // Check if we're on the nav page
+  const isNavPage = useMemo(() => {
+    return router.pathname === '/nav';
+  }, [router.pathname]);
+
+  // If we're on the nav page and 'nav' is not in the menus, add it temporarily
+  const displayMenus = useMemo(() => {
+    if (isNavPage && !props.menus.some(menu => menu.value === '/nav')) {
+      console.log('Adding nav menu item for display');
+      const menusCopy = [...props.menus];
+      // Add nav item before 'about' if it exists
+      const aboutIndex = menusCopy.findIndex(menu => menu.value === '/about');
+      const insertIndex = aboutIndex !== -1 ? aboutIndex : menusCopy.length;
+      
+      menusCopy.splice(insertIndex, 0, {
+        id: Date.now(),
+        name: '导航',
+        value: '/nav',
+        level: 0
+      });
+      return menusCopy;
+    }
+    return props.menus;
+  }, [props.menus, isNavPage]);
 
   const picUrl = useMemo(() => {
     if (theme.includes("dark") && props.logoDark && props.logoDark != "") {
@@ -40,14 +68,30 @@ export default function (props: {
   useEffect(() => {
     const el = document.querySelector("#nav");
     if (el && !headroom) {
-      const headroom = new Headroom(el);
-      headroom.init();
-      setHeadroom(headroom);
+      const newHeadroom = new Headroom(el);
+      newHeadroom.init();
+      setHeadroom(newHeadroom);
     }
     return () => {
-      headroom?.destroy();
+      if (headroom) {
+        headroom.destroy();
+        setHeadroom(undefined);
+      }
     };
-  }, [headroom, setHeadroom]);
+  }, []);
+  
+  // Ensure headroom is properly reinitialized when component updates
+  useEffect(() => {
+    if (headroom) {
+      headroom.destroy();
+      const el = document.querySelector("#nav");
+      if (el) {
+        const newHeadroom = new Headroom(el);
+        newHeadroom.init();
+        setHeadroom(newHeadroom);
+      }
+    }
+  }, [props.isOpen]);
 
   return (
     <>
@@ -124,7 +168,7 @@ export default function (props: {
               </Link>
             </div>
             <ul className=" md:flex h-full items-center  text-sm text-gray-600 dark:text-dark hidden">
-              {props.menus.map((m) => {
+              {displayMenus.map((m) => {
                 return <Item key={m.id} item={m} />;
               })}
             </ul>

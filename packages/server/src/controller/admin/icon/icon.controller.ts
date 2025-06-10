@@ -28,18 +28,19 @@ export class IconController {
   async getAllIcons(
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('usage') usage?: 'nav' | 'social',
   ) {
     try {
       if (page && pageSize) {
         const pageNum = parseInt(page, 10);
         const pageSizeNum = parseInt(pageSize, 10);
-        const result = await this.iconProvider.getIconsPaginated(pageNum, pageSizeNum);
+        const result = await this.iconProvider.getIconsPaginated(pageNum, pageSizeNum, usage);
         return {
           statusCode: 200,
           data: result,
         };
       } else {
-        const icons = await this.iconProvider.getAllIcons();
+        const icons = await this.iconProvider.getAllIcons(usage);
         return {
           statusCode: 200,
           data: icons,

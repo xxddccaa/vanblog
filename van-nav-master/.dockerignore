@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/build
+public
+.dev
+*.py
+requirements.txt
+.DS_Store

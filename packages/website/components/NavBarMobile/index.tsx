@@ -1,7 +1,9 @@
 import { slide as Menu } from "react-burger-menu";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { MenuItem } from "../../api/getAllData";
+import { useRouter } from "next/router";
+
 export default function (props: {
   isOpen: boolean;
   setIsOpen: (i: boolean) => void;
@@ -9,6 +11,33 @@ export default function (props: {
   showAdminButton: "true" | "false";
   menus: MenuItem[];
 }) {
+  const router = useRouter();
+  
+  // Check if we're on the nav page
+  const isNavPage = useMemo(() => {
+    return router.pathname === '/nav';
+  }, [router.pathname]);
+
+  // If we're on the nav page and 'nav' is not in the menus, add it temporarily
+  const displayMenus = useMemo(() => {
+    if (isNavPage && !props.menus.some(menu => menu.value === '/nav')) {
+      console.log('Adding nav menu item for mobile display');
+      const menusCopy = [...props.menus];
+      // Add nav item before 'about' if it exists
+      const aboutIndex = menusCopy.findIndex(menu => menu.value === '/about');
+      const insertIndex = aboutIndex !== -1 ? aboutIndex : menusCopy.length;
+      
+      menusCopy.splice(insertIndex, 0, {
+        id: Date.now(),
+        name: '导航',
+        value: '/nav',
+        level: 0
+      });
+      return menusCopy;
+    }
+    return props.menus;
+  }, [props.menus, isNavPage]);
+
   const renderItem = useCallback((item: MenuItem, isSub?: boolean) => {
     if (item.value.includes("http")) {
       return (
@@ -40,9 +69,10 @@ export default function (props: {
       );
     }
   }, []);
+  
   const renderLinks = useCallback(() => {
     const arr: any[] = [];
-    props.menus.forEach((item) => {
+    displayMenus.forEach((item) => {
       arr.push(renderItem(item));
       if (item.children && item.children.length > 0) {
         item.children.forEach((i) => {
@@ -51,7 +81,8 @@ export default function (props: {
       }
     });
     return arr;
-  }, [props]);
+  }, [displayMenus, renderItem]);
+
   return (
     <>
       <div>
