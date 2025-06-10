@@ -2,7 +2,7 @@ import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
 
 import { ApiTags } from '@nestjs/swagger';
 import { config } from 'src/config/index';
-import { LayoutSetting, LoginSetting, StaticSetting, WalineSetting } from 'src/types/setting.dto';
+import { LayoutSetting, LoginSetting, StaticSetting, WalineSetting, AdminLayoutSetting } from 'src/types/setting.dto';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { SettingProvider } from 'src/provider/setting/setting.provider';
@@ -112,6 +112,29 @@ export class SettingController {
   @Get('login')
   async getLoginSetting() {
     const res = await this.settingProvider.getLoginSetting();
+    return {
+      statusCode: 200,
+      data: res,
+    };
+  }
+  @Get('adminLayout')
+  async getAdminLayoutSetting() {
+    const res = await this.settingProvider.getAdminLayoutSetting();
+    return {
+      statusCode: 200,
+      data: res,
+    };
+  }
+  @Put('adminLayout')
+  async updateAdminLayoutSetting(@Body() body: AdminLayoutSetting) {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改定制化设置！',
+      };
+    }
+    const res = await this.settingProvider.updateAdminLayoutSetting(body);
+    this.isrProvider.activeAll('更新 admin layout 设置');
     return {
       statusCode: 200,
       data: res,

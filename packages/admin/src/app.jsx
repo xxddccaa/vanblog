@@ -1,5 +1,16 @@
 import Footer from '@/components/Footer';
-import { HomeOutlined, LogoutOutlined, ProjectOutlined } from '@ant-design/icons';
+import { 
+  HomeOutlined, 
+  LogoutOutlined, 
+  ProjectOutlined,
+  SmileOutlined,
+  FormOutlined,
+  MessageOutlined,
+  CompassOutlined,
+  ContainerOutlined,
+  PictureOutlined,
+  ToolOutlined,
+} from '@ant-design/icons';
 import { PageLoading, SettingDrawer } from '@ant-design/pro-layout';
 import { message, Modal, notification } from 'antd';
 import moment from 'moment';
@@ -7,11 +18,22 @@ import { history, Link } from 'umi';
 import defaultSettings from '../config/defaultSettings';
 import LogoutButton from './components/LogoutButton';
 import ThemeButton from './components/ThemeButton';
-import { fetchAllMeta } from './services/van-blog/api';
+import { fetchAllMeta, getAdminLayoutConfig } from './services/van-blog/api';
 import { checkUrl } from './services/van-blog/checkUrl';
 import { beforeSwitchTheme, getInitTheme, mapTheme } from './services/van-blog/theme';
 const isDev = process.env.UMI_ENV === 'dev';
 const loginPath = '/user/login';
+
+// 图标映射
+const iconMapping = {
+  smile: <SmileOutlined />,
+  form: <FormOutlined />,
+  message: <MessageOutlined />,
+  compass: <CompassOutlined />,
+  container: <ContainerOutlined />,
+  picture: <PictureOutlined />,
+  tool: <ToolOutlined />,
+};
 /** 获取用户信息比较慢的时候会展示一个 loading */
 
 export const initialStateConfig = {
@@ -36,7 +58,19 @@ export async function getInitialState() {
       history.push(loginPath);
       return {};
     }
-  }; // 如果不是登录页面，执行
+  };
+
+  const fetchAdminLayoutData = async () => {
+    try {
+      const { data } = await getAdminLayoutConfig();
+      return data;
+    } catch (error) {
+      // 如果获取失败，返回默认配置
+      return null;
+    }
+  };
+
+  // 如果不是登录页面，执行
   let option = {};
   if (
     history.location.pathname == loginPath ||
@@ -46,6 +80,7 @@ export async function getInitialState() {
     option.skipErrorHandler = true;
   }
   const initData = await fetchInitData(option);
+  const adminLayoutData = await fetchAdminLayoutData();
 
   const { latestVersion, updatedAt, baseUrl, allowDomains, version } = initData;
 
@@ -55,7 +90,7 @@ export async function getInitialState() {
       content: (
         <div>
           <p>
-            您在站点设置中填写的“网站 URL”不合法，这将导致一些奇怪的问题（比如生成的 RSS
+            您在站点设置中填写的"网站 URL"不合法，这将导致一些奇怪的问题（比如生成的 RSS
             订阅源错误等）
           </p>
           <p>网站 URL 需包含完整的协议。</p>
@@ -136,6 +171,7 @@ export async function getInitialState() {
   return {
     fetchInitData,
     ...initData,
+    adminLayoutConfig: adminLayoutData,
     settings: { ...defaultSettings, navTheme: sysTheme },
     theme,
   };
@@ -163,7 +199,49 @@ window.onresize = handleSizeChange;
 
 export const layout = ({ initialState, setInitialState }) => {
   handleSizeChange();
+
+  // 动态菜单渲染函数
+  const menuDataRender = (menuList) => {
+    const { adminLayoutConfig } = initialState || {};
+    
+    if (!adminLayoutConfig || !adminLayoutConfig.menuItems) {
+      return menuList;
+    }
+
+    // 创建菜单项映射
+    const menuMapping = {};
+    menuList.forEach(menu => {
+      if (menu.path === '/welcome') menuMapping.welcome = menu;
+      else if (menu.path === '/article') menuMapping.article = menu;
+      else if (menu.path === '/moment') menuMapping.moment = menu;
+      else if (menu.path === '/nav') menuMapping.nav = menu;
+      else if (menu.path === '/draft') menuMapping.draft = menu;
+      else if (menu.path === '/static/img') menuMapping.static = menu;
+      else if (menu.path === '/site') menuMapping.site = menu;
+    });
+
+    // 根据配置生成新的菜单
+    const configuredMenus = adminLayoutConfig.menuItems
+      .filter(item => item.visible)
+      .sort((a, b) => a.order - b.order)
+      .map(item => {
+        const originalMenu = menuMapping[item.key];
+        if (originalMenu) {
+          return {
+            ...originalMenu,
+            name: item.name,
+            icon: iconMapping[item.icon] || originalMenu.icon,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    return configuredMenus;
+  };
+
   return {
+    menuDataRender,
     rightContentRender: () => {
       return (
         <div style={{ display: 'flex', alignItems: 'center' }}>

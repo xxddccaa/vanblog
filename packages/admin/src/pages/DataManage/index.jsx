@@ -8,6 +8,8 @@ import Menu from './tabs/Menu';
 import Social from './tabs/Social';
 import Tag from './tabs/Tag';
 import Viewer from './tabs/Viewer';
+import AdminLayout from './tabs/AdminLayout';
+
 export default function () {
   const tabMap = {
     category: <Category />,
@@ -17,6 +19,7 @@ export default function () {
     socials: <Social />,
     viewer: <Viewer />,
     menuConfig: <Menu />,
+    adminLayout: <AdminLayout />,
   };
   const [tab, setTab] = useTab('category', 'tab');
 
@@ -55,6 +58,10 @@ export default function () {
         {
           tab: '浏览量管理',
           key: 'viewer',
+        },
+        {
+          tab: '后台布局',
+          key: 'adminLayout',
         },
       ]}
       onTabChange={setTab}

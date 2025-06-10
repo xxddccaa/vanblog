@@ -17,7 +17,8 @@ export type SettingType =
   | 'login'
   | 'menu'
   | 'version'
-  | 'isr';
+  | 'isr'
+  | 'adminLayout';
 
 export type SettingValue =
   | StaticSetting
@@ -25,7 +26,8 @@ export type SettingValue =
   | WalineSetting
   | LayoutSetting
   | VersionSetting
-  | ISRSetting;
+  | ISRSetting
+  | AdminLayoutSetting;
 
 export interface ISRSetting {
   mode: 'delay' | 'onDemand';
@@ -101,3 +103,85 @@ export class StaticSetting {
   waterMarkText: string;
   enableWebp: boolean;
 }
+
+export interface AdminLayoutSetting {
+  menuItems: AdminMenuItem[];
+}
+
+export interface AdminMenuItem {
+  key: string;
+  name: string;
+  originalName: string;
+  icon: string;
+  path: string;
+  order: number;
+  visible: boolean;
+}
+
+export const defaultAdminLayoutSetting: AdminLayoutSetting = {
+  menuItems: [
+    {
+      key: 'welcome',
+      name: '分析概览',
+      originalName: '分析概览',
+      icon: 'smile',
+      path: '/welcome',
+      order: 0,
+      visible: true,
+    },
+    {
+      key: 'article',
+      name: '文章管理',
+      originalName: '文章管理',
+      icon: 'form',
+      path: '/article',
+      order: 1,
+      visible: true,
+    },
+    {
+      key: 'moment',
+      name: '动态管理',
+      originalName: '动态管理',
+      icon: 'message',
+      path: '/moment',
+      order: 2,
+      visible: true,
+    },
+    {
+      key: 'nav',
+      name: '导航管理',
+      originalName: '导航管理',
+      icon: 'compass',
+      path: '/nav',
+      order: 3,
+      visible: true,
+    },
+    {
+      key: 'draft',
+      name: '草稿管理',
+      originalName: '草稿管理',
+      icon: 'container',
+      path: '/draft',
+      order: 4,
+      visible: true,
+    },
+    {
+      key: 'static',
+      name: '图片管理',
+      originalName: '图片管理',
+      icon: 'picture',
+      path: '/static/img',
+      order: 5,
+      visible: true,
+    },
+    {
+      key: 'site',
+      name: '站点管理',
+      originalName: '站点管理',
+      icon: 'tool',
+      path: '/site',
+      order: 6,
+      visible: true,
+    },
+  ],
+};

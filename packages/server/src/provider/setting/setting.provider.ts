@@ -11,6 +11,8 @@ import {
   VersionSetting,
   WalineSetting,
   defaultStaticSetting,
+  AdminLayoutSetting,
+  defaultAdminLayoutSetting,
 } from 'src/types/setting.dto';
 import { SettingDocument } from 'src/scheme/setting.schema';
 import { PicgoProvider } from '../static/picgo.provider';
@@ -119,6 +121,18 @@ export class SettingProvider {
     }
     return null;
   }
+  async getAdminLayoutSetting(): Promise<AdminLayoutSetting> {
+    const res = await this.settingModel.findOne({ type: 'adminLayout' }).exec();
+    if (res) {
+      return res?.value as any;
+    } else {
+      await this.settingModel.create({
+        type: 'adminLayout',
+        value: defaultAdminLayoutSetting,
+      });
+      return defaultAdminLayoutSetting;
+    }
+  }
   async getLoginSetting(): Promise<LoginSetting> {
     const res = await this.settingModel.findOne({ type: 'login' }).exec();
     if (res) {
@@ -207,6 +221,18 @@ export class SettingProvider {
       });
     }
     const res = await this.settingModel.updateOne({ type: 'layout' }, { value: newValue });
+    return res;
+  }
+  async updateAdminLayoutSetting(dto: AdminLayoutSetting) {
+    const oldValue = await this.getAdminLayoutSetting();
+    const newValue = { ...oldValue, ...dto };
+    if (!oldValue) {
+      return await this.settingModel.create({
+        type: 'adminLayout',
+        value: newValue,
+      });
+    }
+    const res = await this.settingModel.updateOne({ type: 'adminLayout' }, { value: newValue });
     return res;
   }
   async updateHttpsSetting(dto: HttpsSetting) {

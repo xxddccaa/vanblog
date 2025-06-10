@@ -641,3 +641,16 @@ export async function deleteAllIcons() {
     method: 'DELETE',
   });
 }
+
+export async function getAdminLayoutConfig() {
+  return request('/api/admin/setting/adminLayout', {
+    method: 'GET',
+  });
+}
+
+export async function updateAdminLayoutConfig(body) {
+  return request('/api/admin/setting/adminLayout', {
+    method: 'PUT',
+    data: body,
+  });
+}
