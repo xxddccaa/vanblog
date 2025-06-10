@@ -1,7 +1,8 @@
 import { getMenu, updateMenu } from '@/services/van-blog/api';
 import { EditableProTable, useRefFunction } from '@ant-design/pro-components';
-import { message, Modal, Spin } from 'antd';
+import { message, Modal, Spin, Button } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 type DataSourceType = {
   id: React.Key;
   name: string;
@@ -71,7 +72,69 @@ export default function () {
     },
     [fetchData],
   );
+
+  // 移动菜单项的函数
+  const moveMenuItem = async (index: number, direction: 'up' | 'down') => {
+    const newDataSource = [...dataSource];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newDataSource.length) {
+      return;
+    }
+
+    // 交换位置
+    [newDataSource[index], newDataSource[targetIndex]] = [newDataSource[targetIndex], newDataSource[index]];
+    
+    try {
+      // 更新本地状态
+      setDataSource(newDataSource);
+      
+      // 调用API更新排序
+      await updateMenu({ data: newDataSource });
+      message.success('菜单排序更新成功！');
+    } catch (error) {
+      message.error('排序更新失败，请重试');
+      // 恢复原始排序
+      fetchData();
+    }
+  };
+
   const columns = [
+    {
+      title: '排序',
+      key: 'sort',
+      width: 100,
+      search: false,
+      editable: false,
+      render: (_, record, index) => {
+        // 只对顶级菜单（level=0）显示排序按钮
+        if (record.level !== 0) {
+          return null;
+        }
+        
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ minWidth: '20px' }}>{index + 1}</span>
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowUpOutlined />}
+              disabled={index === 0}
+              onClick={() => moveMenuItem(index, 'up')}
+              title="上移"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowDownOutlined />}
+              disabled={index === dataSource.length - 1}
+              onClick={() => moveMenuItem(index, 'down')}
+              title="下移"
+            />
+          </div>
+        );
+      },
+    },
     {
       title: '菜单名',
       dataIndex: 'name',
@@ -177,7 +240,11 @@ export default function () {
           }}
           actionRef={actionRef}
           rowKey="id"
-          headerTitle="导航菜单管理"
+          headerTitle={
+            <div style={{ color: '#666', fontSize: '14px' }}>
+              导航菜单管理 - 提示：使用上下箭头按钮可调整菜单显示顺序
+            </div>
+          }
           scroll={{
             x: 960,
           }}
