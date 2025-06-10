@@ -154,8 +154,11 @@ export class ArticleProvider {
   async updateViewerByPathname(pathname: string, isNew: boolean) {
     let article = await this.getByPathName(pathname, 'list');
     if (!article) {
-      // 这是通过 id 的吧。
-      article = await this.getById(Number(pathname), 'list');
+      // 这是通过 id 的吧，检查是否为有效数字
+      const numericId = Number(pathname);
+      if (!isNaN(numericId)) {
+        article = await this.getById(numericId, 'list');
+      }
       if (!article) {
         return;
       }
@@ -677,7 +680,15 @@ export class ArticleProvider {
     if (articleByPathname) {
       return articleByPathname;
     }
-    return await this.getById(Number(id), view);
+    
+    // 检查 id 是否可以转换为有效的数字
+    const numericId = Number(id);
+    if (isNaN(numericId)) {
+      // 如果不是有效数字，返回 null
+      return null;
+    }
+    
+    return await this.getById(numericId, view);
   }
 
   async getByPathName(pathname: string, view: ArticleView): Promise<Article> {
