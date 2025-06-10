@@ -15,7 +15,7 @@ import {
   Radio,
   Upload,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, LinkOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, LinkOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 
 const NavTool = () => {
   const [tools, setTools] = useState([]);
@@ -26,6 +26,7 @@ const NavTool = () => {
   const [editingTool, setEditingTool] = useState(null);
   const [form] = Form.useForm();
   const [iconMode, setIconMode] = useState('auto'); // auto, custom, upload
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
 
   // 获取工具列表
   const fetchTools = async () => {
@@ -38,12 +39,39 @@ const NavTool = () => {
       });
       const result = await response.json();
       if (result.statusCode === 200) {
-        setTools(result.data);
+        // 按sort字段排序
+        const sortedTools = result.data.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        setTools(sortedTools);
       }
     } catch (error) {
       message.error('获取工具列表失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 自动重排序所有工具
+  const reorderTools = async () => {
+    try {
+      const updatedTools = tools.map((item, index) => ({
+        id: item._id,
+        sort: index,
+      }));
+
+      const response = await fetch('/api/admin/nav-tool/sort/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': localStorage.getItem('token') || '',
+        },
+        body: JSON.stringify({ tools: updatedTools }),
+      });
+
+      if (response.ok) {
+        await fetchTools(); // 重新获取数据
+      }
+    } catch (error) {
+      console.error('重排序失败:', error);
     }
   };
 
@@ -87,6 +115,11 @@ const NavTool = () => {
     fetchIcons();
   }, []);
 
+  // 计算全局索引
+  const getGlobalIndex = (tableIndex, currentPage, pageSize) => {
+    return (currentPage - 1) * pageSize + tableIndex;
+  };
+
   // 打开创建/编辑对话框
   const handleOpenModal = (tool = null) => {
     setEditingTool(tool);
@@ -113,10 +146,19 @@ const NavTool = () => {
   // 保存工具
   const handleSave = async (values) => {
     try {
-      const data = {
+      // 根据图标模式设置相应字段
+      const submitData = {
         ...values,
         useCustomIcon: iconMode === 'custom',
       };
+
+      if (iconMode === 'custom') {
+        submitData.customIcon = values.customIcon;
+        delete submitData.logo;
+      } else {
+        submitData.logo = values.logo;
+        delete submitData.customIcon;
+      }
 
       const url = editingTool 
         ? `/api/admin/nav-tool/${editingTool._id}`
@@ -128,13 +170,17 @@ const NavTool = () => {
           'Content-Type': 'application/json',
           'token': localStorage.getItem('token') || '',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok) {
         message.success(editingTool ? '工具更新成功' : '工具创建成功');
         setModalVisible(false);
-        fetchTools();
+        await fetchTools();
+        // 如果是新建工具，自动重排序
+        if (!editingTool) {
+          setTimeout(() => reorderTools(), 500);
+        }
       } else {
         throw new Error('操作失败');
       }
@@ -155,7 +201,9 @@ const NavTool = () => {
 
       if (response.ok) {
         message.success('工具删除成功');
-        fetchTools();
+        await fetchTools();
+        // 删除后重排序
+        setTimeout(() => reorderTools(), 500);
       } else {
         throw new Error('删除失败');
       }
@@ -171,18 +219,99 @@ const NavTool = () => {
       message.warning('请先输入网站地址');
       return;
     }
-    
+
     try {
-      // 自动获取favicon
-      const faviconUrl = `${new URL(url).origin}/favicon.ico`;
-      form.setFieldsValue({ logo: faviconUrl });
-      message.success('已自动获取网站图标');
+      // 这里可以实现获取网站favicon的逻辑
+      message.info('正在获取图标...');
+      // 简单实现：构造favicon URL
+      const domain = new URL(url).origin;
+      const faviconUrl = `${domain}/favicon.ico`;
+      form.setFieldValue('logo', faviconUrl);
+      message.success('图标获取成功');
     } catch (error) {
-      message.error('无法获取网站图标');
+      message.error('图标获取失败');
+    }
+  };
+
+  // 移动工具的函数 - 支持分页
+  const moveTool = async (tableIndex, direction, currentPage = 1, pageSize = 20) => {
+    const globalIndex = getGlobalIndex(tableIndex, currentPage, pageSize);
+    const newTools = [...tools];
+    const targetIndex = direction === 'up' ? globalIndex - 1 : globalIndex + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newTools.length) {
+      return;
+    }
+
+    // 交换位置
+    [newTools[globalIndex], newTools[targetIndex]] = [newTools[targetIndex], newTools[globalIndex]];
+    
+    // 更新排序字段
+    const updatedTools = newTools.map((item, idx) => ({
+      id: item._id,
+      sort: idx,
+    }));
+
+    try {
+      // 更新本地状态
+      const updatedDataSource = newTools.map((item, idx) => ({
+        ...item,
+        sort: idx,
+      }));
+      setTools(updatedDataSource);
+
+      // 调用API更新排序
+      const response = await fetch('/api/admin/nav-tool/sort/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': localStorage.getItem('token') || '',
+        },
+        body: JSON.stringify({ tools: updatedTools }),
+      });
+
+      if (response.ok) {
+        message.success('工具排序更新成功！');
+      } else {
+        throw new Error('排序更新失败');
+      }
+    } catch (error) {
+      message.error('排序更新失败，请重试');
+      // 恢复原始排序
+      fetchTools();
     }
   };
 
   const columns = [
+    {
+      title: '排序',
+      key: 'sort',
+      width: 120,
+      render: (_, record, index) => {
+        const globalIndex = getGlobalIndex(index, pagination.current, pagination.pageSize);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ minWidth: '20px' }}>{record.sort}</span>
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowUpOutlined />}
+              disabled={globalIndex === 0}
+              onClick={() => moveTool(index, 'up', pagination.current, pagination.pageSize)}
+              title="上移"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowDownOutlined />}
+              disabled={globalIndex === tools.length - 1}
+              onClick={() => moveTool(index, 'down', pagination.current, pagination.pageSize)}
+              title="下移"
+            />
+          </div>
+        );
+      },
+    },
     {
       title: '图标',
       dataIndex: 'logo',
@@ -268,12 +397,6 @@ const NavTool = () => {
       ),
     },
     {
-      title: '排序',
-      dataIndex: 'sort',
-      key: 'sort',
-      width: 80,
-    },
-    {
       title: '隐藏',
       dataIndex: 'hide',
       key: 'hide',
@@ -318,13 +441,21 @@ const NavTool = () => {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => handleOpenModal()}
-        >
-          添加工具
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => handleOpenModal()}
+          >
+            添加工具
+          </Button>
+          <Button
+            onClick={reorderTools}
+            title="重新排序所有工具，从0开始连续排序"
+          >
+            重新排序
+          </Button>
+        </Space>
       </div>
 
       <Table
@@ -336,7 +467,12 @@ const NavTool = () => {
           pageSize: 20,
           showSizeChanger: true,
           showQuickJumper: true,
-          showTotal: (total) => `共 ${total} 条`,
+          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`,
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          onChange: (current, pageSize) => {
+            setPagination({ current, pageSize });
+          },
         }}
         tableLayout="fixed"
       />
@@ -455,14 +591,6 @@ const NavTool = () => {
           </Form.Item>
 
           <Form.Item
-            name="sort"
-            label="排序"
-            tooltip="数字越小排序越靠前"
-          >
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
             name="hide"
             label="是否隐藏"
             valuePropName="checked"
@@ -473,7 +601,7 @@ const NavTool = () => {
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit">
-                保存
+                {editingTool ? '更新' : '创建'}
               </Button>
               <Button onClick={() => setModalVisible(false)}>
                 取消

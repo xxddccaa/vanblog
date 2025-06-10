@@ -11,7 +11,7 @@ import {
   Popconfirm,
   InputNumber,
 } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
 
 const NavCategory = () => {
   const [categories, setCategories] = useState([]);
@@ -19,6 +19,7 @@ const NavCategory = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [form] = Form.useForm();
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
 
   // 获取分类列表
   const fetchCategories = async () => {
@@ -31,7 +32,9 @@ const NavCategory = () => {
       });
       const result = await response.json();
       if (result.statusCode === 200) {
-        setCategories(result.data);
+        // 按sort字段排序
+        const sortedCategories = result.data.sort((a, b) => (a.sort || 0) - (b.sort || 0));
+        setCategories(sortedCategories);
       }
     } catch (error) {
       message.error('获取分类列表失败');
@@ -40,9 +43,39 @@ const NavCategory = () => {
     }
   };
 
+  // 自动重排序所有分类
+  const reorderCategories = async () => {
+    try {
+      const updatedCategories = categories.map((item, index) => ({
+        id: item._id,
+        sort: index,
+      }));
+
+      const response = await fetch('/api/admin/nav-category/sort/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': localStorage.getItem('token') || '',
+        },
+        body: JSON.stringify({ categories: updatedCategories }),
+      });
+
+      if (response.ok) {
+        await fetchCategories(); // 重新获取数据
+      }
+    } catch (error) {
+      console.error('重排序失败:', error);
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // 计算全局索引
+  const getGlobalIndex = (tableIndex, currentPage, pageSize) => {
+    return (currentPage - 1) * pageSize + tableIndex;
+  };
 
   // 打开创建/编辑对话框
   const handleOpenModal = (category = null) => {
@@ -79,7 +112,11 @@ const NavCategory = () => {
       if (response.ok) {
         message.success(editingCategory ? '分类更新成功' : '分类创建成功');
         setModalVisible(false);
-        fetchCategories();
+        await fetchCategories();
+        // 如果是新建分类，自动重排序
+        if (!editingCategory) {
+          setTimeout(() => reorderCategories(), 500);
+        }
       } else {
         throw new Error('操作失败');
       }
@@ -100,7 +137,9 @@ const NavCategory = () => {
 
       if (response.ok) {
         message.success('分类删除成功');
-        fetchCategories();
+        await fetchCategories();
+        // 删除后重排序
+        setTimeout(() => reorderCategories(), 500);
       } else {
         throw new Error('删除失败');
       }
@@ -109,7 +148,85 @@ const NavCategory = () => {
     }
   };
 
+  // 移动分类的函数 - 支持分页
+  const moveCategory = async (tableIndex, direction, currentPage = 1, pageSize = 20) => {
+    const globalIndex = getGlobalIndex(tableIndex, currentPage, pageSize);
+    const newCategories = [...categories];
+    const targetIndex = direction === 'up' ? globalIndex - 1 : globalIndex + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newCategories.length) {
+      return;
+    }
+
+    // 交换位置
+    [newCategories[globalIndex], newCategories[targetIndex]] = [newCategories[targetIndex], newCategories[globalIndex]];
+    
+    // 更新排序字段
+    const updatedCategories = newCategories.map((item, idx) => ({
+      id: item._id,
+      sort: idx,
+    }));
+
+    try {
+      // 更新本地状态
+      const updatedDataSource = newCategories.map((item, idx) => ({
+        ...item,
+        sort: idx,
+      }));
+      setCategories(updatedDataSource);
+
+      // 调用API更新排序
+      const response = await fetch('/api/admin/nav-category/sort/update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'token': localStorage.getItem('token') || '',
+        },
+        body: JSON.stringify({ categories: updatedCategories }),
+      });
+
+      if (response.ok) {
+        message.success('分类排序更新成功！');
+      } else {
+        throw new Error('排序更新失败');
+      }
+    } catch (error) {
+      message.error('排序更新失败，请重试');
+      // 恢复原始排序
+      fetchCategories();
+    }
+  };
+
   const columns = [
+    {
+      title: '排序',
+      key: 'sort',
+      width: 120,
+      render: (_, record, index) => {
+        const globalIndex = getGlobalIndex(index, pagination.current, pagination.pageSize);
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ minWidth: '20px' }}>{record.sort}</span>
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowUpOutlined />}
+              disabled={globalIndex === 0}
+              onClick={() => moveCategory(index, 'up', pagination.current, pagination.pageSize)}
+              title="上移"
+            />
+            <Button
+              type="text"
+              size="small"
+              icon={<ArrowDownOutlined />}
+              disabled={globalIndex === categories.length - 1}
+              onClick={() => moveCategory(index, 'down', pagination.current, pagination.pageSize)}
+              title="下移"
+            />
+          </div>
+        );
+      },
+    },
     {
       title: '名称',
       dataIndex: 'name',
@@ -120,12 +237,6 @@ const NavCategory = () => {
       dataIndex: 'description',
       key: 'description',
       render: (text) => text || '-',
-    },
-    {
-      title: '排序',
-      dataIndex: 'sort',
-      key: 'sort',
-      width: 100,
     },
     {
       title: '工具数量',
@@ -179,13 +290,21 @@ const NavCategory = () => {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => handleOpenModal()}
-        >
-          添加分类
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => handleOpenModal()}
+          >
+            添加分类
+          </Button>
+          <Button
+            onClick={reorderCategories}
+            title="重新排序所有分类，从0开始连续排序"
+          >
+            重新排序
+          </Button>
+        </Space>
       </div>
 
       <Table
@@ -197,7 +316,12 @@ const NavCategory = () => {
           pageSize: 20,
           showSizeChanger: true,
           showQuickJumper: true,
-          showTotal: (total) => `共 ${total} 条`,
+          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 条/总共 ${total} 条`,
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          onChange: (current, pageSize) => {
+            setPagination({ current, pageSize });
+          },
         }}
       />
 
@@ -230,14 +354,6 @@ const NavCategory = () => {
           </Form.Item>
 
           <Form.Item
-            name="sort"
-            label="排序"
-            tooltip="数字越小排序越靠前"
-          >
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item
             name="hide"
             label="是否隐藏"
             valuePropName="checked"
@@ -248,7 +364,7 @@ const NavCategory = () => {
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit">
-                保存
+                {editingCategory ? '更新' : '创建'}
               </Button>
               <Button onClick={() => setModalVisible(false)}>
                 取消
