@@ -279,13 +279,15 @@ export default function NavPage({
                     <div className={styles.cardContent}>
                       <div className={styles.cardLeft}>
                         {tool.useCustomIcon && tool.customIcon ? (
-                          <img src={tool.customIcon} alt={tool.name} />
+                          <img src={tool.customIcon} alt={tool.name} onError={(e) => {
+                            e.currentTarget.src = '/yly_tools_logo.png';
+                          }} />
                         ) : tool.logo ? (
-                          <img src={tool.logo} alt={tool.name} />
+                          <img src={tool.logo} alt={tool.name} onError={(e) => {
+                            e.currentTarget.src = '/yly_tools_logo.png';
+                          }} />
                         ) : (
-                          <div className={styles.navToolDefaultIcon}>
-                            {tool.name.charAt(0).toUpperCase()}
-                          </div>
+                          <img src="/yly_tools_logo.png" alt={tool.name} />
                         )}
                       </div>
                       <div className={styles.cardRight}>

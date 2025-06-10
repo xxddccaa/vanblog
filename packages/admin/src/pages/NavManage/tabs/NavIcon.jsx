@@ -419,6 +419,28 @@ const NavIcon = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* 图标资源说明 */}
+      <div style={{ 
+        marginTop: 16,
+        padding: 16, 
+        background: '#f5f5f5', 
+        borderRadius: 8,
+        textAlign: 'center',
+        color: '#666',
+        fontSize: '14px'
+      }}>
+        <span>💡 提示：可以去 </span>
+        <a 
+          href="https://www.iconfont.cn/collections/index?spm=a313x.collections_index.i1.da2e3581b.48613a8157EhHm&type=1" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ color: '#1890ff' }}
+        >
+          iconfont.cn
+        </a>
+        <span> 下载SVG图标，支持上传PNG、JPEG、JPG、SVG格式的图标文件</span>
+      </div>
     </div>
   );
 };

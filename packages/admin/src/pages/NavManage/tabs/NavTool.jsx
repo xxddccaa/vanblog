@@ -325,13 +325,17 @@ const NavTool = () => {
             width={32}
             height={32}
             style={{ objectFit: 'contain' }}
-            fallback="/default-icon.png"
+            fallback="/yly_tools_logo.png"
             preview={false}
           />
         ) : (
-          <div style={{ width: 32, height: 32, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            ?
-          </div>
+          <Image
+            src="/yly_tools_logo.png"
+            width={32}
+            height={32}
+            style={{ objectFit: 'contain' }}
+            preview={false}
+          />
         );
       },
     },
