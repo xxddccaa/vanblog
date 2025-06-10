@@ -210,13 +210,30 @@ const NavTool = () => {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
+      width: 150,
+      ellipsis: false,
     },
     {
       title: '网址',
       dataIndex: 'url',
       key: 'url',
+      width: 300,
+      ellipsis: false,
       render: (url) => (
-        <a href={url} target="_blank" rel="noopener noreferrer">
+        <a 
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            wordBreak: 'break-all',
+            lineHeight: '1.4',
+            maxHeight: '2.8em'
+          }}
+        >
           {url}
         </a>
       ),
@@ -225,12 +242,30 @@ const NavTool = () => {
       title: '分类',
       dataIndex: 'categoryName',
       key: 'categoryName',
+      width: 120,
+      ellipsis: false,
     },
     {
       title: '描述',
       dataIndex: 'description',
       key: 'description',
-      render: (text) => text || '-',
+      width: 200,
+      ellipsis: false,
+      render: (text) => (
+        <div
+          style={{
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            wordBreak: 'break-word',
+            lineHeight: '1.4',
+            maxHeight: '2.8em'
+          }}
+        >
+          {text || '-'}
+        </div>
+      ),
     },
     {
       title: '排序',
@@ -249,7 +284,7 @@ const NavTool = () => {
       title: '创建时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 180,
+      width: 160,
       render: (date) => new Date(date).toLocaleString(),
     },
     {
@@ -303,7 +338,7 @@ const NavTool = () => {
           showQuickJumper: true,
           showTotal: (total) => `共 ${total} 条`,
         }}
-        scroll={{ x: 1200 }}
+        tableLayout="fixed"
       />
 
       <Modal
