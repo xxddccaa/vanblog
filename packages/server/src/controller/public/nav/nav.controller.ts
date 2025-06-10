@@ -17,6 +17,9 @@ export class NavController {
   @Get('/data')
   async getNavData(): Promise<{ statusCode: number; data: NavData }> {
     try {
+      console.log('Fetching nav data...');
+      const startTime = Date.now();
+      
       const [categories, tools] = await Promise.all([
         this.navCategoryProvider.getAllCategories(),
         this.navToolProvider.getAllTools(),
@@ -39,6 +42,9 @@ export class NavController {
         categoriesWithTools.has(category._id.toString())
       );
 
+      const endTime = Date.now();
+      console.log(`Nav data fetched successfully in ${endTime - startTime}ms. Categories: ${visibleCategories.length}, Tools: ${visibleTools.length}`);
+
       return {
         statusCode: 200,
         data: {
@@ -47,6 +53,7 @@ export class NavController {
         },
       };
     } catch (error) {
+      console.error('Error fetching nav data:', error);
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

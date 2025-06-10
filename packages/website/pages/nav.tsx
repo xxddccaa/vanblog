@@ -153,8 +153,14 @@ export default function NavPage({
     }
   }, []);
 
-  // 客户端数据更新
+  // 客户端数据更新（仅在初始数据为空时请求）
   useEffect(() => {
+    // 如果已有初始数据且数据非空，则不需要重新获取
+    if (initialNavData.tools && initialNavData.tools.length > 0) {
+      console.log('Using cached nav data, skipping client fetch');
+      return;
+    }
+
     const fetchNavData = async () => {
       try {
         setLoading(true);
@@ -165,13 +171,17 @@ export default function NavPage({
         }
       } catch (error) {
         console.error('Failed to fetch nav data:', error);
+        // 使用初始数据作为备选
+        if (initialNavData) {
+          setClientNavData(initialNavData);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchNavData();
-  }, []);
+  }, [initialNavData]);
 
   // 恢复上次选择的分类
   useEffect(() => {
@@ -345,14 +355,14 @@ export const getStaticProps: GetStaticProps = async () => {
       // 使用默认空数据，客户端会重新加载
     }
 
-    return {
-      props: {
-        layoutProps,
-        initialNavData,
-        authorCardProps,
-      },
-      revalidate: 10, // 10秒后重新生成静态页面
-    };
+          return {
+        props: {
+          layoutProps,
+          initialNavData,
+          authorCardProps,
+        },
+        revalidate: 60, // 1分钟后重新生成静态页面，减少频繁重新生成
+      };
   } catch (error) {
     console.error('Error in getStaticProps for nav page:', error);
     
@@ -361,13 +371,13 @@ export const getStaticProps: GetStaticProps = async () => {
     const layoutProps = getLayoutProps(data);
     const authorCardProps = getAuthorCardProps(data);
 
-    return {
-      props: {
-        layoutProps,
-        initialNavData: { categories: [], tools: [] },
-        authorCardProps,
-      },
-      revalidate: 60,
-    };
+          return {
+        props: {
+          layoutProps,
+          initialNavData: { categories: [], tools: [] },
+          authorCardProps,
+        },
+        revalidate: 60, // 出错时保持较短的重试间隔
+      };
   }
 }; 
