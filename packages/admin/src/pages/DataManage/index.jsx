@@ -9,6 +9,7 @@ import Social from './tabs/Social';
 import Tag from './tabs/Tag';
 import Viewer from './tabs/Viewer';
 import AdminLayout from './tabs/AdminLayout';
+import AITagging from './tabs/AITagging';
 
 export default function () {
   const tabMap = {
@@ -20,6 +21,7 @@ export default function () {
     viewer: <Viewer />,
     menuConfig: <Menu />,
     adminLayout: <AdminLayout />,
+    aiTagging: <AITagging />,
   };
   const [tab, setTab] = useTab('category', 'tab');
 
@@ -62,6 +64,10 @@ export default function () {
         {
           tab: '后台布局',
           key: 'adminLayout',
+        },
+        {
+          tab: 'AI打标',
+          key: 'aiTagging',
         },
       ]}
       onTabChange={setTab}

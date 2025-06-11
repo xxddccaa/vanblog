@@ -97,6 +97,8 @@ import { NavCategoryProvider } from './provider/nav-category/nav-category.provid
 import { NavToolController } from './controller/admin/nav-tool/nav-tool.controller';
 import { NavCategoryController } from './controller/admin/nav-category/nav-category.controller';
 import { NavController } from './controller/public/nav/nav.controller';
+import { AITaggingController } from './controller/admin/ai-tagging/ai-tagging.controller';
+import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
 
 @Module({
   imports: [
@@ -169,6 +171,7 @@ import { NavController } from './controller/public/nav/nav.controller';
     NavToolController,
     NavCategoryController,
     NavController,
+    AITaggingController,
   ],
   providers: [
     AppService,
@@ -210,6 +213,7 @@ import { NavController } from './controller/public/nav/nav.controller';
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
+    AITaggingProvider,
   ],
 })
 export class AppModule implements NestModule {
