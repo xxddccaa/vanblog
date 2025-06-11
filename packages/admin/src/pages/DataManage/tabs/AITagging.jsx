@@ -34,6 +34,10 @@ const { Text } = Typography;
 const defaultConfig = {
   baseUrl: 'https://api.openai.com/v1',
   apiKey: '',
+  model: 'gpt-4o',
+  temperature: 0.8,
+  topP: 0.8,
+  maxTokens: 150,
   conversations: [
     {
       role: 'system',
@@ -140,6 +144,10 @@ export default function AITagging() {
       const { data } = await generateAITags({
         baseUrl: config.baseUrl,
         apiKey: config.apiKey,
+        model: config.model,
+        temperature: config.temperature,
+        topP: config.topP,
+        maxTokens: config.maxTokens,
         conversations
       });
 
@@ -269,6 +277,10 @@ export default function AITagging() {
             const { data } = await generateAITags({
               baseUrl: config.baseUrl,
               apiKey: config.apiKey,
+              model: config.model,
+              temperature: config.temperature,
+              topP: config.topP,
+              maxTokens: config.maxTokens,
               conversations
             });
 
@@ -447,6 +459,80 @@ export default function AITagging() {
                 label="API Key"
                 placeholder="sk-..."
                 rules={[{ required: true, message: '请输入API Key' }]}
+              />
+            </Col>
+          </Row>
+
+          <Divider>模型参数</Divider>
+          
+          <Row gutter={16}>
+            <Col span={6}>
+              <ProFormText
+                name="model"
+                label="模型名称"
+                placeholder="gpt-4o"
+                rules={[{ required: true, message: '请输入模型名称' }]}
+                tooltip="指定要使用的AI模型，如 gpt-4o, gpt-3.5-turbo 等"
+              />
+            </Col>
+            <Col span={6}>
+              <ProFormText
+                name="temperature"
+                label="Temperature"
+                placeholder="0.8"
+                rules={[
+                  { required: true, message: '请输入Temperature' },
+                  {
+                    validator: (_, value) => {
+                      const num = parseFloat(value);
+                      if (isNaN(num) || num < 0 || num > 2) {
+                        return Promise.reject('请输入0-2之间的数字');
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+                tooltip="控制输出的随机性，0-2之间，越高越随机"
+              />
+            </Col>
+            <Col span={6}>
+              <ProFormText
+                name="topP"
+                label="Top P"
+                placeholder="0.8"
+                rules={[
+                  { required: true, message: '请输入Top P' },
+                  {
+                    validator: (_, value) => {
+                      const num = parseFloat(value);
+                      if (isNaN(num) || num < 0 || num > 1) {
+                        return Promise.reject('请输入0-1之间的数字');
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+                tooltip="核采样参数，0-1之间，控制考虑的词汇范围"
+              />
+            </Col>
+            <Col span={6}>
+              <ProFormText
+                name="maxTokens"
+                label="Max Tokens"
+                placeholder="150"
+                rules={[
+                  { required: true, message: '请输入Max Tokens' },
+                  {
+                    validator: (_, value) => {
+                      const num = parseInt(value);
+                      if (isNaN(num) || num < 1 || num > 4096) {
+                        return Promise.reject('请输入1-4096之间的整数');
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+                tooltip="生成文本的最大长度，建议150以内以控制成本"
               />
             </Col>
           </Row>

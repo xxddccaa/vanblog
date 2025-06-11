@@ -38,15 +38,24 @@ export class AITaggingProvider {
       }));
   }
 
-  async generateTags(params: { baseUrl: string; apiKey: string; conversations: any[] }) {
-    const { baseUrl, apiKey, conversations } = params;
+  async generateTags(params: { 
+    baseUrl: string; 
+    apiKey: string; 
+    model?: string;
+    temperature?: number;
+    topP?: number;
+    maxTokens?: number;
+    conversations: any[] 
+  }) {
+    const { baseUrl, apiKey, model, temperature, topP, maxTokens, conversations } = params;
     
     try {
       const response = await axios.post(`${baseUrl}/chat/completions`, {
-        model: 'gpt-4o',
+        model: model || 'gpt-4o',
         messages: conversations,
-        temperature: 0.8,
-        top_p: 0.8,
+        temperature: temperature || 0.8,
+        top_p: topP || 0.8,
+        max_tokens: maxTokens || 150,
       }, {
         headers: {
           'Content-Type': 'application/json',
