@@ -12,6 +12,7 @@ import { getTarget } from "../Link/tools";
 import TocMobile from "../TocMobile";
 import { hasToc } from "../../utils/hasToc";
 import Markdown from "../Markdown";
+import { encodeQuerystring } from "../../utils/encode";
 
 export default function (props: {
   id: number | string;
@@ -108,6 +109,25 @@ export default function (props: {
           catelog={props.catelog}
           enableComment={props.enableComment}
         />
+        
+        {props.type === "article" && props.tags && props.tags.length > 0 && (
+          <div className="flex justify-center mt-3 mb-2">
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              {props.tags.map((tag) => (
+                <Link
+                  key={`article-tag-${tag}`}
+                  href={`/tag/${encodeQuerystring(tag)}`}
+                  target={getTarget(props.openArticleLinksInNewWindow)}
+                >
+                  <span className="text-sm text-gray-800 hover:text-black dark:text-white dark:hover:text-gray-200 border-b border-gray-800 hover:border-black dark:border-white dark:hover:border-gray-200 cursor-pointer transition-colors duration-200">
+                    {tag}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="text-sm md:text-base  text-gray-600 mt-4 mx-2">
           {props.type == "article" && (
             <AlertCard
