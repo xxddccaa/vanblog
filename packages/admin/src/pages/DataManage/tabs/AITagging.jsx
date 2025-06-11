@@ -25,6 +25,7 @@ import {
   getArticlesForTagging,
   generateAITags,
   updateArticleTags,
+  triggerISR,
 } from '@/services/van-blog/ai-tagging';
 
 const { TextArea } = Input;
@@ -69,6 +70,7 @@ export default function AITagging() {
   const [batchGenerating, setBatchGenerating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [batchCancelled, setBatchCancelled] = useState(false);
+  const [isrLoading, setIsrLoading] = useState(false);
 
   // 获取配置
   const fetchConfig = useCallback(async () => {
@@ -154,8 +156,8 @@ export default function AITagging() {
       // 解析标签，去除前后空格并过滤空字符串
       const tags = data.split(',').map(tag => tag.trim()).filter(tag => tag && tag.length > 0);
       
-      // 更新文章标签
-      await updateArticleTags(article.id, tags);
+      // 更新文章标签（单个文章打标时触发ISR）
+      await updateArticleTags(article.id, tags, false);
       
       // 更新本地状态
       setArticles(prevArticles => 
@@ -188,7 +190,8 @@ export default function AITagging() {
     try {
       const tags = editingTags[article.id] || [];
       
-      await updateArticleTags(article.id, tags);
+      // 手动编辑标签时触发ISR
+      await updateArticleTags(article.id, tags, false);
       
       // 更新本地状态
       setArticles(prevArticles => 
@@ -223,6 +226,19 @@ export default function AITagging() {
   // 取消批量打标
   const handleCancelBatch = () => {
     setBatchCancelled(true);
+  };
+
+  // 手动触发ISR渲染
+  const handleTriggerISR = async () => {
+    setIsrLoading(true);
+    try {
+      await triggerISR();
+      message.success('页面渲染已触发！需要一些时间生效。');
+    } catch (error) {
+      message.error('触发渲染失败');
+    } finally {
+      setIsrLoading(false);
+    }
   };
 
   // 批量为无标签文章打标
@@ -287,8 +303,8 @@ export default function AITagging() {
             // 解析标签，去除前后空格并过滤空字符串
             const tags = data.split(',').map(tag => tag.trim()).filter(tag => tag && tag.length > 0);
             
-            // 更新文章标签
-            await updateArticleTags(article.id, tags);
+            // 更新文章标签（批量操作时跳过ISR）
+            await updateArticleTags(article.id, tags, true);
             
             // 更新本地状态
             setArticles(prevArticles => 
@@ -424,7 +440,12 @@ export default function AITagging() {
     <div>
       <Alert
         message="AI打标功能说明"
-        description="配置好AI服务后，可以为文章智能生成标签。生成的标签可以手动编辑修改。请确保API密钥有效且有足够的额度。"
+        description={
+          <div>
+            <p>配置好AI服务后，可以为文章智能生成标签。生成的标签可以手动编辑修改。请确保API密钥有效且有足够的额度。</p>
+            <p><strong>性能优化：</strong>批量打标过程中不会触发页面渲染，避免性能问题。批量完成后请手动点击"手动触发渲染"按钮更新前台页面。</p>
+          </div>
+        }
         type="info"
         showIcon
         style={{ marginBottom: 16 }}
@@ -617,6 +638,13 @@ export default function AITagging() {
                 {batchCancelled ? '正在取消...' : '取消批量打标'}
               </Button>
             )}
+            <Button
+              onClick={handleTriggerISR}
+              loading={isrLoading}
+              disabled={batchGenerating}
+            >
+              手动触发渲染
+            </Button>
             <Button
               type="primary"
               icon={<RobotOutlined />}

@@ -31,9 +31,16 @@ export async function generateAITags(data) {
 }
 
 // 更新文章标签
-export async function updateArticleTags(articleId, tags) {
+export async function updateArticleTags(articleId, tags, skipISR = false) {
   return request(`/api/admin/ai-tagging/article/${articleId}/tags`, {
     method: 'PUT',
-    data: { tags },
+    data: { tags, skipISR },
+  });
+}
+
+// 触发ISR渲染
+export async function triggerISR() {
+  return request('/api/admin/ai-tagging/trigger-isr', {
+    method: 'POST',
   });
 } 

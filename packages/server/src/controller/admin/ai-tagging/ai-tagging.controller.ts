@@ -73,10 +73,24 @@ export class AITaggingController {
       };
     }
     const data = await this.aiTaggingProvider.updateArticleTags(parseInt(id), body.tags);
-    this.isrProvider.activeAll('AI打标更新文章触发增量渲染！');
+    
+    // 如果不是批量操作，则触发ISR
+    if (!body.skipISR) {
+      this.isrProvider.activeAll('AI打标更新文章触发增量渲染！');
+    }
+    
     return {
       statusCode: 200,
       data,
+    };
+  }
+
+  @Post('/trigger-isr')
+  async triggerISR() {
+    this.isrProvider.activeAll('手动触发AI打标相关增量渲染！');
+    return {
+      statusCode: 200,
+      data: '渲染已触发',
     };
   }
 } 
