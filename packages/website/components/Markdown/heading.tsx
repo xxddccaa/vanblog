@@ -20,10 +20,23 @@ const onClickHeading = (e: any) => {
 const headingPlugin = () => (tree) => {
   visit(tree, (node) => {
     if (node.type === "element" && headings.includes(node.tagName)) {
-      const title = node.children[0]?.value;
-      node.properties['data-id'] = title;
-      node.properties['id'] = title;
-      node.properties['class'] = 'markdown-heading cursor-pointer';
+      // 获取标题的完整文本内容，包括处理嵌套元素
+      const getTitleText = (node) => {
+        if (node.type === "text") {
+          return node.value;
+        }
+        if (node.children && node.children.length > 0) {
+          return node.children.map(getTitleText).join('');
+        }
+        return '';
+      };
+      
+      const title = getTitleText(node);
+      if (title) {
+        node.properties['data-id'] = title;
+        node.properties['id'] = title;
+        node.properties['class'] = 'markdown-heading cursor-pointer';
+      }
     }
   });
 }

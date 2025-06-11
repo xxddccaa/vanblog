@@ -98,7 +98,6 @@ export default function (props: {
               to = 0;
             }
             scrollTo(window, { top: to, easing: "ease-in-out", duration: 800 });
-
           }
         }}
       >

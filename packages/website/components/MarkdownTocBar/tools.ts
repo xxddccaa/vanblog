@@ -105,6 +105,28 @@ const trimArrZero = (arr: any) => {
 export const getEl = (item: NavItem, all: NavItem[]) => {
   const tagName = `h${item.level}`;
   const els = document.querySelectorAll(`${tagName}[data-id="${item.text}"]`);
+  
+  // 如果找不到精确匹配，尝试模糊匹配
+  if (els.length === 0) {
+    // 尝试通过id属性查找
+    const elsByIdAttr = document.querySelectorAll(`${tagName}[id="${item.text}"]`);
+    if (elsByIdAttr.length > 0) {
+      return elsByIdAttr[0];
+    }
+    
+    // 尝试通过内容匹配
+    const allHeadings = document.querySelectorAll(tagName);
+    for (let i = 0; i < allHeadings.length; i++) {
+      const heading = allHeadings[i];
+      if (heading.textContent?.trim() === item.text.trim()) {
+        return heading;
+      }
+    }
+    
+    console.warn(`Could not find element for heading: ${tagName} with text "${item.text}"`);
+    return null;
+  }
+  
   if (els.length > 1) {
     // 相同的规则找 index
     const index = all
