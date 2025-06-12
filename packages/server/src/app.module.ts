@@ -220,7 +220,11 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(InitMiddleware)
-      .exclude({ path: '/api/admin/init/check', method: RequestMethod.GET })
+      .exclude(
+        { path: '/api/admin/init/check', method: RequestMethod.GET },
+        { path: '/api/admin/init', method: RequestMethod.POST },
+        { path: '/api/admin/init/upload', method: RequestMethod.POST }
+      )
       .forRoutes('*');
   }
 }

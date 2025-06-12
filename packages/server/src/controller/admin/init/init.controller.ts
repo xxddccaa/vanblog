@@ -53,6 +53,12 @@ export class InitController {
       isFavicon = true;
     }
     const res = await this.staticProvider.upload(file, 'img', isFavicon);
+    
+    // 在初始化阶段，即使图片已存在，也将isNew设置为true，确保前端显示成功
+    if (res) {
+      res.isNew = true;
+    }
+    
     return {
       statusCode: 200,
       data: res,

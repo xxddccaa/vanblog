@@ -6,7 +6,7 @@ import { InitProvider } from '../init/init.provider';
 export class InitMiddleware implements NestMiddleware {
   constructor(private readonly initProvider: InitProvider) {}
   async use(req: Request, res: Response, next: NextFunction) {
-    if (req.path == '/api/admin/init') {
+    if (req.path == '/api/admin/init' || req.path == '/api/admin/init/upload') {
       next();
     } else {
       const hasInit = await this.initProvider.checkHasInited();

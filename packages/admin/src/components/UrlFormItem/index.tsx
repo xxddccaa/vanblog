@@ -63,23 +63,32 @@ export default function (props: {
                   if (info?.response?.data?.isNew) {
                     message.success(`${info.name} 上传成功!`);
                   } else {
-                    message.warning(`${info.name} 已存在!`);
+                    if (props.isInit) {
+                      message.success(`${info.name} 上传成功!`);
+                    } else {
+                      message.warning(`${info.name} 已存在!`);
+                    }
                   }
-                  const src = getImgLink(info?.response?.data?.src);
-                  setUrl(src);
-                  if (props?.formRef?.setFieldsValue) {
-                    const oldVal = props.formRef.getFieldsValue();
-                    props?.formRef?.setFieldsValue({
-                      ...oldVal,
-                      [props.name]: src,
-                    });
-                  }
-                  if (props.formRef?.current?.setFieldsValue) {
-                    const oldVal = props.formRef.current.getFieldsValue();
-                    props?.formRef?.current.setFieldsValue({
-                      ...oldVal,
-                      [props.name]: src,
-                    });
+                  if (info?.response?.data?.src) {
+                    const src = getImgLink(info.response.data.src);
+                    setUrl(src);
+                    if (props?.formRef?.setFieldsValue) {
+                      const oldVal = props.formRef.getFieldsValue();
+                      props?.formRef?.setFieldsValue({
+                        ...oldVal,
+                        [props.name]: src,
+                      });
+                    }
+                    if (props.formRef?.current?.setFieldsValue) {
+                      const oldVal = props.formRef.current.getFieldsValue();
+                      props?.formRef?.current.setFieldsValue({
+                        ...oldVal,
+                        [props.name]: src,
+                      });
+                    }
+                  } else {
+                    console.error('上传响应中未包含图片src:', info?.response);
+                    message.error('图片上传失败，请重试');
                   }
                 }}
                 url={dest}

@@ -2,6 +2,11 @@ import { writeClipBoardText } from '@/services/van-blog/clipboard';
 import { message } from 'antd';
 import { StaticItem } from '../type';
 export const getImgLink = (realPath, autoCompleteHost = true) => {
+  if (!realPath) {
+    console.error('getImgLink received null or undefined path');
+    return '';
+  }
+  
   let url = realPath;
   if (realPath.includes('http://') || realPath.includes('https://')) {
     url = realPath;
