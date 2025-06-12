@@ -14,14 +14,14 @@ moment.locale('zh-cn');
 
 export default function MomentManage() {
   const actionRef = useRef();
-  const [defaultPageSize, setDefaultPageSize] = useState(200);
+  const [defaultPageSize, setDefaultPageSize] = useState(20);
 
   // 获取站点配置中的默认分页大小
   useEffect(() => {
     const fetchSiteInfo = async () => {
       try {
         const { data } = await getSiteInfo();
-        const configuredPageSize = data?.adminMomentPageSize || 200;
+        const configuredPageSize = data?.adminMomentPageSize || 20;
         setDefaultPageSize(configuredPageSize);
       } catch (error) {
         console.error('获取站点配置失败:', error);

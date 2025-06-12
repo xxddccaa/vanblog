@@ -6,6 +6,7 @@ import { config } from './config/index';
 import { Article, ArticleSchema } from './scheme/article.schema';
 import { Draft, DraftSchema } from './scheme/draft.schema';
 import { Meta, MetaSchema } from './scheme/meta.schema';
+import { Tag, TagSchema } from './scheme/tag.schema';
 import { ArticleProvider } from './provider/article/article.provider';
 import { CategoryProvider } from './provider/category/category.provider';
 import { DraftProvider } from './provider/draft/draft.provider';
@@ -109,6 +110,7 @@ import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
       { name: Article.name, schema: ArticleSchema },
       { name: Draft.name, schema: DraftSchema },
       { name: Meta.name, schema: MetaSchema },
+      { name: Tag.name, schema: TagSchema },
       { name: User.name, schema: UserSchema },
       { name: Viewer.name, schema: ViewerSchema },
       { name: Visit.name, schema: VisitSchema },

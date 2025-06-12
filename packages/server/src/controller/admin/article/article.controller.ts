@@ -76,27 +76,20 @@ export class ArticleController {
   }
 
   @Put('/:id')
-  async update(@Param('id') id: number, @Body() updateDto: UpdateArticleDto) {
+  async updateArticle(@Param('id') id: number, @Body() updateArticleDto: UpdateArticleDto) {
     if (config.demo && config.demo == 'true') {
       return {
         statusCode: 401,
-        message: '演示站禁止修改文章！',
+        message: '演示站禁止修改此项！',
       };
     }
-    const result = await this.pipelineProvider.dispatchEvent('beforeUpdateArticle', updateDto);
-    if (result.length > 0) {
-      const lastResult = result[result.length - 1];
-      const lastOuput = lastResult.output;
-      if (lastOuput) {
-        updateDto = lastOuput;
-      }
-    }
-    const data = await this.articleProvider.updateById(id, updateDto);
-    this.isrProvider.activeAll('更新文章触发增量渲染！', undefined, {
-      postId: id,
-    });
-    const updatedArticle = await this.articleProvider.getById(id, 'admin');
-    this.pipelineProvider.dispatchEvent('afterUpdateArticle', updatedArticle);
+    
+    // 获取更新前的文章信息，用于增量渲染比较
+    const beforeObj = await this.articleProvider.getById(id, 'admin');
+    const data = await this.articleProvider.updateById(id, updateArticleDto);
+    
+    // 使用精确的增量渲染，而不是全量渲染
+    this.isrProvider.activeArticleById(id, 'update', beforeObj);
     return {
       statusCode: 200,
       data,
@@ -104,35 +97,23 @@ export class ArticleController {
   }
 
   @Post()
-  async create(@Req() req: any, @Body() createDto: CreateArticleDto) {
+  async createArticle(@Body() createArticleDto: CreateArticleDto) {
     if (config.demo && config.demo == 'true') {
       return {
         statusCode: 401,
-        message: '演示站禁止创建文章！',
+        message: '演示站禁止修改此项！',
       };
     }
-    const author = req?.user?.nickname || undefined;
-    if (!createDto.author) {
-      createDto.author = author;
-    }
-    const result = await this.pipelineProvider.dispatchEvent('beforeUpdateArticle', createDto);
-    if (result.length > 0) {
-      const lastResult = result[result.length - 1];
-      const lastOuput = lastResult.output;
-      if (lastOuput) {
-        createDto = lastOuput;
-      }
-    }
-    const data = await this.articleProvider.create(createDto);
-    this.isrProvider.activeAll('创建文章触发增量渲染！', undefined, {
-      postId: data.id,
-    });
-    this.pipelineProvider.dispatchEvent('afterUpdateArticle', data);
+    const data = await this.articleProvider.create(createArticleDto);
+    
+    // 使用精确的增量渲染，而不是全量渲染
+    this.isrProvider.activeArticleById(data.id, 'create');
     return {
       statusCode: 200,
       data,
     };
   }
+
   @Post('searchByLink')
   async searchArtcilesByLink(@Body() searchDto: { link: string }) {
     const data = await this.articleProvider.searchArticlesByLink(searchDto?.link || '');
@@ -141,18 +122,22 @@ export class ArticleController {
       data,
     };
   }
-  @Delete('/:id')
-  async delete(@Param('id') id: number) {
-    if (config.demo && config.demo == 'true') {
-      return { statusCode: 401, message: '演示站禁止删除文章！' };
-    }
-    const toDeleteArticle = await this.articleProvider.getById(id, 'admin');
-    this.pipelineProvider.dispatchEvent('deleteArticle', toDeleteArticle);
 
+  @Delete('/:id')
+  async deleteArticle(@Param('id') id: number) {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    
+    // 获取删除前的文章信息，用于增量渲染
+    const beforeObj = await this.articleProvider.getById(id, 'admin');
     const data = await this.articleProvider.deleteById(id);
-    this.isrProvider.activeAll('删除文章触发增量渲染！', undefined, {
-      postId: id,
-    });
+    
+    // 使用精确的增量渲染，而不是全量渲染
+    this.isrProvider.activeArticleById(id, 'delete', beforeObj);
     return {
       statusCode: 200,
       data,

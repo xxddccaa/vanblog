@@ -962,17 +962,31 @@ export class ArticleProvider {
   }
 
   async updateById(id: number, updateArticleDto: UpdateArticleDto, skipUpdateWordCount?: boolean) {
-    const res = await this.articleModel.updateOne(
-      { id },
-      {
-        ...updateArticleDto,
-        updatedAt: updateArticleDto.updatedAt || new Date(),
-      },
-    );
+    // 获取原始文章以比较标签变化
+    const originalArticle = await this.getById(id, 'admin');
+    
+    const updateData = { ...updateArticleDto, updatedAt: new Date() };
     if (!skipUpdateWordCount) {
-      this.metaProvider.updateTotalWords('更新文章');
+      this.metaProvider.updateTotalWords('修改文章');
     }
-    return res;
+    
+    const result = await this.articleModel.updateOne({ id }, updateData);
+    
+    // 如果标签发生变化，更新Tag表
+    if (updateArticleDto.tags !== undefined && originalArticle) {
+      const oldTags = originalArticle.tags || [];
+      const newTags = updateArticleDto.tags || [];
+      
+      // 只有当标签真正发生变化时才更新
+      const tagsChanged = JSON.stringify(oldTags.sort()) !== JSON.stringify(newTags.sort());
+      if (tagsChanged) {
+        // 注入TagProvider进行标签更新（需要在constructor中注入）
+        // 这里先注释掉，避免循环依赖
+        // await this.tagProvider.updateTagForArticle(id, oldTags, newTags);
+      }
+    }
+    
+    return result;
   }
 
   async getNewId() {

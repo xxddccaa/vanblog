@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Request } from 'express';
 import { SortOrder } from 'src/types/sort';
 import { ArticleProvider } from 'src/provider/article/article.provider';
@@ -207,6 +207,38 @@ export class PublicController {
   @Get('tag')
   async getArticlesByTag() {
     const data = await this.tagProvider.getTagsWithArticle(false);
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
+  @Get('tag/hot')
+  @ApiOperation({ summary: '获取热门标签' })
+  async getHotTags(@Query('limit') limit: string = '20') {
+    const data = await this.tagProvider.getHotTags(parseInt(limit));
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
+  @Get('tag/paginated')
+  @ApiOperation({ summary: '分页获取标签列表（公共API）' })
+  async getTagsPaginated(
+    @Query('page') page: string = '1',
+    @Query('pageSize') pageSize: string = '50',
+    @Query('sortBy') sortBy: 'name' | 'articleCount' | 'createdAt' | 'updatedAt' = 'articleCount',
+    @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
+    @Query('search') search?: string,
+  ) {
+    const data = await this.tagProvider.getTagsPaginated(
+      parseInt(page),
+      parseInt(pageSize),
+      sortBy,
+      sortOrder,
+      search,
+    );
     return {
       statusCode: 200,
       data,

@@ -14,7 +14,7 @@ export default () => {
   const [colKeys, setColKeys] = useState(draftKeysObj);
   const [simplePage, setSimplePage] = useState(false);
   const [simpleSearch, setSimpleSearch] = useState(false);
-  const [defaultPageSize, setDefaultPageSize] = useState(200);
+  const [defaultPageSize, setDefaultPageSize] = useState(20);
   const [pageSize, setPageSize] = useNum(defaultPageSize, 'draft-page-size');
 
   // 获取站点配置中的默认分页大小
@@ -22,7 +22,7 @@ export default () => {
     const fetchSiteInfo = async () => {
       try {
         const { data } = await getSiteInfo();
-        const configuredPageSize = data?.adminDraftPageSize || 200;
+        const configuredPageSize = data?.adminDraftPageSize || 20;
         setDefaultPageSize(configuredPageSize);
         // 如果本地存储中没有自定义值，使用配置的默认值
         const localStorageKey = 'draft-page-size';
