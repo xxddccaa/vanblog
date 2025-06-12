@@ -21,7 +21,7 @@ export default function (props: {
   // If we're on the nav page and 'nav' is not in the menus, add it temporarily
   const displayMenus = useMemo(() => {
     if (isNavPage && !props.menus.some(menu => menu.value === '/nav')) {
-      console.log('Adding nav menu item for mobile display');
+      // console.log('Adding nav menu item for mobile display');
       const menusCopy = [...props.menus];
       // Add nav item before 'about' if it exists
       const aboutIndex = menusCopy.findIndex(menu => menu.value === '/about');

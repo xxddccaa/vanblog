@@ -68,10 +68,10 @@ export default function NavPage({
 
   // Ensure navigation menu exists (added debugging)
   useEffect(() => {
-    console.log('Nav menus:', layoutProps.menus);
+    // console.log('Nav menus:', layoutProps.menus);
     // Make sure this page is included in the navigation
     if (!layoutProps.menus.some(menu => menu.value === '/nav')) {
-      console.log('Adding nav menu item');
+              // console.log('Adding nav menu item');
       const menusCopy = [...layoutProps.menus];
       menusCopy.splice(6, 0, {
         id: typeof menusCopy[0].id === 'number' ? 100 : Date.now(),

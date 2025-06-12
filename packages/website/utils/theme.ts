@@ -42,13 +42,13 @@ export const applyTheme = (
     document.documentElement.classList.add("light");
     document.documentElement.classList.remove("dark");
     if (!disableLog) {
-      console.log(`[Apply Theme][${source}] ${theme}`);
+      // console.log(`[Apply Theme][${source}] ${theme}`);
     }
   } else {
     document.documentElement.classList.add("dark");
     document.documentElement.classList.remove("light");
     if (!disableLog) {
-      console.log(`[Apply Theme][${source}] ${theme}`);
+      // console.log(`[Apply Theme][${source}] ${theme}`);
     }
   }
 };

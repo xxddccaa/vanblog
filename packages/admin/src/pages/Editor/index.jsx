@@ -106,7 +106,7 @@ export default function () {
           clear();
           return false;
         } else {
-          console.log('[缓存检查] 本地缓存时间晚于服务器更新时间，使用缓存');
+          // console.log('[缓存检查] 本地缓存时间晚于服务器更新时间，使用缓存');
           return cacheObj?.content;
         }
       };

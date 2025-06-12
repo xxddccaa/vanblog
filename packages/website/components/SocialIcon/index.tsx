@@ -62,22 +62,14 @@ export default function (props: { item: SocialItem }) {
   const iconElement = useMemo(() => {
     const iconSize = 20;
     
-    // 调试信息
-    console.log('SocialIcon Debug:', {
-      iconName: props.item.iconName,
-      iconData: props.item.iconData,
-      hasIconData: !!props.item.iconData,
-      displayName,
-      item: props.item
-    });
+
     
     // 优先使用从图标管理系统获取的自定义图标
     if (props.item.iconName && props.item.iconData) {
       const iconUrl = theme.includes("dark") && props.item.iconData.iconUrlDark 
         ? props.item.iconData.iconUrlDark 
         : props.item.iconData.iconUrl;
-        
-      console.log('Using custom icon:', iconUrl);
+
         
       return (
         <img 

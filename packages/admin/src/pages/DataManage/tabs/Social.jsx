@@ -78,15 +78,15 @@ const IconManagement = ({ onIconsChange }) => {
   // 获取图标列表
   const fetchIcons = async (page = 1, pageSize = 10) => {
     setLoading(true);
-    console.log('开始获取图标列表...', { page, pageSize });
+    // console.log('开始获取图标列表...', { page, pageSize });
     try {
       const response = await getAllIcons(page, pageSize);
-      console.log('图标列表API响应:', response);
+              // console.log('图标列表API响应:', response);
       const data = response.data;
       
       if (data && data.icons) {
         // 分页数据
-        console.log('处理分页图标数据:', data.icons);
+                  // console.log('处理分页图标数据:', data.icons);
         setIcons(data.icons || []);
         setPagination({
           current: page,
@@ -96,7 +96,7 @@ const IconManagement = ({ onIconsChange }) => {
         onIconsChange && onIconsChange(data.icons || []);
       } else if (Array.isArray(data)) {
         // 全部数据
-        console.log('处理数组图标数据:', data);
+                  // console.log('处理数组图标数据:', data);
         setIcons(data);
         setPagination({
           current: 1,

@@ -34,7 +34,7 @@ function MyApp({ Component, pageProps }: AppProps) {
         setGlobalState({ ...globalState, viewer: viewer, visited: visited });
         return;
       } else {
-        console.log("[更新访客]", reason, pathname);
+        // console.log("[更新访客]", reason, pathname);
         const { viewer, visited } = await updatePageview(pathname);
         setGlobalState({ ...globalState, viewer: viewer, visited: visited });
       }

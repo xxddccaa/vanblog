@@ -39,7 +39,7 @@ export default function (props: {
       .then((res) => res.json())
       .then((data) => {
         if (isInitUpload) {
-          console.log("初始化上传响应:", data);
+          // console.log("初始化上传响应:", data);
           // 在初始化阶段，模拟成功响应
           if (data.statusCode === 233 && data.message === '未初始化!') {
             // 遇到初始化检查错误，我们仍然构造一个成功响应
