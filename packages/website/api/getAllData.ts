@@ -172,6 +172,10 @@ export interface MetaProps {
     showExpirationReminder: "true" | "false";
     showEditButton: "true" | "false";
     homePageSize?: number;
+    // 管理后台分页设置
+    adminArticlePageSize?: number;
+    adminDraftPageSize?: number;
+    adminMomentPageSize?: number;
   };
 }
 export interface PublicMetaProp {

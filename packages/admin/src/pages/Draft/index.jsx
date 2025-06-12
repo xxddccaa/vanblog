@@ -1,10 +1,10 @@
 import ImportDraftModal from '@/components/ImportDraftModal';
 import NewDraftModal from '@/components/NewDraftModal';
-import { getDraftsByOption } from '@/services/van-blog/api';
+import { getDraftsByOption, getSiteInfo } from '@/services/van-blog/api';
 import { useNum } from '@/services/van-blog/useNum';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import RcResizeObserver from 'rc-resize-observer';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { history } from 'umi';
 import { columns, draftKeysObj, draftKeysObjSmall } from './columes';
 import { Button, Space, message } from 'antd';
@@ -14,7 +14,29 @@ export default () => {
   const [colKeys, setColKeys] = useState(draftKeysObj);
   const [simplePage, setSimplePage] = useState(false);
   const [simpleSearch, setSimpleSearch] = useState(false);
-  const [pageSize, setPageSize] = useNum(200, 'draft-page-size');
+  const [defaultPageSize, setDefaultPageSize] = useState(200);
+  const [pageSize, setPageSize] = useNum(defaultPageSize, 'draft-page-size');
+
+  // 获取站点配置中的默认分页大小
+  useEffect(() => {
+    const fetchSiteInfo = async () => {
+      try {
+        const { data } = await getSiteInfo();
+        const configuredPageSize = data?.adminDraftPageSize || 200;
+        setDefaultPageSize(configuredPageSize);
+        // 如果本地存储中没有自定义值，使用配置的默认值
+        const localStorageKey = 'draft-page-size';
+        const storedPageSize = localStorage.getItem(localStorageKey);
+        if (!storedPageSize) {
+          setPageSize(configuredPageSize);
+        }
+      } catch (error) {
+        console.error('获取站点配置失败:', error);
+      }
+    };
+    fetchSiteInfo();
+  }, [setPageSize]);
+
   const searchSpan = useMemo(() => {
     if (!simpleSearch) {
       return 8;

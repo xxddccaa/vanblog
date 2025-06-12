@@ -1,9 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
 import { ActionType, ProTable } from '@ant-design/pro-table';
 import { Button, message, Popconfirm } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
-import { deleteMoment, getMoments } from '@/services/van-blog/api';
+import { deleteMoment, getMoments, getSiteInfo } from '@/services/van-blog/api';
 import { checkDemo } from '@/services/van-blog/check';
 import moment from 'moment';
 import 'moment/locale/zh-cn';
@@ -14,6 +14,21 @@ moment.locale('zh-cn');
 
 export default function MomentManage() {
   const actionRef = useRef();
+  const [defaultPageSize, setDefaultPageSize] = useState(200);
+
+  // 获取站点配置中的默认分页大小
+  useEffect(() => {
+    const fetchSiteInfo = async () => {
+      try {
+        const { data } = await getSiteInfo();
+        const configuredPageSize = data?.adminMomentPageSize || 200;
+        setDefaultPageSize(configuredPageSize);
+      } catch (error) {
+        console.error('获取站点配置失败:', error);
+      }
+    };
+    fetchSiteInfo();
+  }, []);
 
   const formatTime = (dateString) => {
     try {
@@ -159,7 +174,7 @@ export default function MomentManage() {
         ]}
         request={async (params, sort) => {
           try {
-            const { current = 1, pageSize = 200 } = params;
+            const { current = 1, pageSize = defaultPageSize } = params;
             const response = await getMoments({
               page: current,
               pageSize,
@@ -181,7 +196,7 @@ export default function MomentManage() {
         }}
         columns={columns}
         pagination={{
-          defaultPageSize: 200,
+          defaultPageSize: defaultPageSize,
           showSizeChanger: true,
           pageSizeOptions: ['10', '20', '50', '100', '200'],
         }}

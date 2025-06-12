@@ -379,6 +379,35 @@ export default function (props: {
             }}
             tooltip={'设置首页每页显示的文章数量，默认为5篇。修改后会触发全站重新渲染。'}
           />
+          
+          {/* 管理后台分页设置 */}
+          <ProFormDigit
+            name={'adminArticlePageSize'}
+            label="文章管理页面每页显示数量"
+            placeholder={'200'}
+            fieldProps={{ precision: 0 }}
+            min={10}
+            max={1000}
+            tooltip={'设置后台文章管理页面默认每页显示的文章数量，默认为200。'}
+          />
+          <ProFormDigit
+            name={'adminDraftPageSize'}
+            label="草稿管理页面每页显示数量"
+            placeholder={'200'}
+            fieldProps={{ precision: 0 }}
+            min={10}
+            max={1000}
+            tooltip={'设置后台草稿管理页面默认每页显示的草稿数量，默认为200。'}
+          />
+          <ProFormDigit
+            name={'adminMomentPageSize'}
+            label="动态管理页面每页显示数量"
+            placeholder={'200'}
+            fieldProps={{ precision: 0 }}
+            min={10}
+            max={1000}
+            tooltip={'设置后台动态管理页面默认每页显示的动态数量，默认为200。'}
+          />
         </>
       )}
     </>
