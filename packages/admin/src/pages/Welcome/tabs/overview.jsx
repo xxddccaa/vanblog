@@ -133,6 +133,7 @@ const OverView = () => {
           fontSize: '14px',
           color: '#5a6c7d',
         },
+        offsetY: 10,
       },
       content: {
         style: {
@@ -141,6 +142,7 @@ const OverView = () => {
           color: '#2c3e50',
         },
         formatter: () => `${interestingMetrics?.productivityScore || 0}分`,
+        offsetY: -5,
       },
     },
   };
@@ -157,6 +159,7 @@ const OverView = () => {
           fontSize: '14px',
           color: '#5a6c7d',
         },
+        offsetY: 10,
       },
       content: {
         style: {
@@ -165,6 +168,7 @@ const OverView = () => {
           color: '#2c3e50',
         },
         formatter: () => `${interestingMetrics?.engagementScore || 0}分`,
+        offsetY: -5,
       },
     },
   };
