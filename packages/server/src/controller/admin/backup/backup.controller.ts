@@ -408,6 +408,19 @@ export class BackupController {
         
         clearResults.articles = articleCount;
         this.logger.log(`清空文章数据完成: ${clearResults.articles} 条`);
+        
+        // 清空文章后立即同步标签数据，这会自动删除所有标签
+        try {
+          await this.tagProvider.syncTagsFromArticles();
+          const remainingTags = await this.tagProvider.getAllTags(true);
+          clearResults.tags = remainingTags.length;
+          this.logger.log(`文章清空后标签同步完成，剩余标签: ${remainingTags.length} 条`);
+        } catch (tagError) {
+          this.logger.warn('标签同步失败，使用强制删除:', tagError.message);
+          // 如果同步失败，强制删除所有标签
+          await this.tagProvider['tagModel'].deleteMany({});
+          clearResults.tags = 0;
+        }
       } catch (error) {
         this.logger.error('清空文章数据失败:', error.message);
       }
@@ -509,25 +522,41 @@ export class BackupController {
         this.logger.error('清空分类数据失败:', error.message);
       }
 
+
+
       // 7. 清空统计数据
       try {
         const viewers = await this.viewerProvider.getAll();
-        // viewer 表可能没有批量删除方法，需要逐个删除或清空表
+        // 使用MongoDB的deleteMany进行批量物理删除
+        await this.viewerProvider['viewerModel'].deleteMany({});
         clearResults.viewer = viewers?.length || 0;
-        this.logger.log(`统计访客数据: ${clearResults.viewer} 条`);
+        this.logger.log(`清空访客数据完成: ${clearResults.viewer} 条`);
       } catch (error) {
         this.logger.error('清空访客数据失败:', error.message);
       }
 
       try {
         const visits = await this.visitProvider.getAll();
+        // 使用MongoDB的deleteMany进行批量物理删除
+        await this.visitProvider['visitModel'].deleteMany({});
         clearResults.visit = visits?.length || 0;
-        this.logger.log(`统计访问数据: ${clearResults.visit} 条`);
+        this.logger.log(`清空访问数据完成: ${clearResults.visit} 条`);
       } catch (error) {
         this.logger.error('清空访问数据失败:', error.message);
       }
 
-      // 8. 清空API Token（保留用户登录token）
+      // 8. 清空静态文件记录数据
+      try {
+        const staticItems = await this.staticProvider.exportAll();
+        // 使用MongoDB的deleteMany进行批量物理删除
+        await this.staticProvider['staticModel'].deleteMany({});
+        clearResults.staticItems = staticItems?.length || 0;
+        this.logger.log(`清空静态文件记录完成: ${clearResults.staticItems} 条`);
+      } catch (error) {
+        this.logger.error('清空静态文件记录失败:', error.message);
+      }
+
+      // 9. 清空API Token（保留用户登录token）
       try {
         await this.tokenProvider.disableAllAdmin();
         this.logger.log('清空API Token完成');
@@ -535,21 +564,24 @@ export class BackupController {
         this.logger.error('清空API Token失败:', error.message);
       }
 
-      // 9. 重置网站统计信息
+      // 10. 完全清空meta表、用户表和settings表，让网站回到未初始化状态
       try {
-        const meta = await this.metaProvider.getAll();
-        if (meta) {
-          await this.metaProvider.update({
-            ...meta,
-            totalWordCount: 0,
-          });
-        }
-        this.logger.log('重置网站统计完成');
+        // 使用MongoDB的deleteMany完全删除meta记录
+        await this.metaProvider['metaModel'].deleteMany({});
+        this.logger.log('清空网站元数据完成');
+        
+        // 清空用户表，让系统回到未初始化状态
+        await this.userProvider['userModel'].deleteMany({});
+        this.logger.log('清空用户数据完成');
+        
+        // 清空settings表
+        await this.settingProvider['settingModel'].deleteMany({});
+        this.logger.log('清空网站设置完成，网站已重置为未初始化状态');
       } catch (error) {
-        this.logger.error('重置网站统计失败:', error.message);
+        this.logger.error('清空网站数据失败:', error.message);
       }
 
-      // 10. 触发全量渲染
+      // 11. 触发全量渲染
       try {
         await this.isrProvider.activeAll();
         this.logger.log('触发全量渲染完成');
