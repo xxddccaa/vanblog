@@ -3,10 +3,8 @@ import { PageContainer } from '@ant-design/pro-layout';
 import thinstyle from '../Welcome/index.less';
 import Advance from './tabs/Advance';
 import Backup from './tabs/Backup';
-import Caddy from './tabs/Caddy';
 import Customizing from './tabs/Customizing';
 import ImgTab from './tabs/ImgTab';
-import Migrate from './tabs/migrate';
 import SiteInfo from './tabs/SiteInfo';
 import User from './tabs/User';
 import WalineTab from './tabs/WalineTab';
@@ -19,9 +17,7 @@ export default function () {
     user: <User />,
     img: <ImgTab />,
     waline: <WalineTab />,
-    caddy: <Caddy />,
     advance: <Advance />,
-    migrate: <Migrate />,
     token: <Token />,
   };
   const [tab, setTab] = useTab('siteInfo', 'tab');
@@ -63,16 +59,8 @@ export default function () {
           key: 'token',
         },
         {
-          tab: 'HTTPS',
-          key: 'caddy',
-        },
-        {
           tab: '高级设置',
           key: 'advance',
-        },
-        {
-          tab: '迁移助手',
-          key: 'migrate',
         },
       ]}
       onTabChange={setTab}
