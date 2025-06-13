@@ -255,7 +255,7 @@ const TagPage = (props: TagPageProps) => {
                   )}
                 >
                   <div className="group flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all transform hover:scale-105 cursor-pointer">
-                    <span className="text-gray-700 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">
+                    <span className="text-gray-700 dark:text-dark group-hover:text-gray-900 dark:group-hover:text-dark-hover">
                       {tag.name}
                     </span>
                     {tag.articleCount > 0 && (

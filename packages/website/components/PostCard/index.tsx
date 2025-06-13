@@ -119,7 +119,7 @@ export default function (props: {
                   href={`/tag/${encodeQuerystring(tag)}`}
                   target={getTarget(props.openArticleLinksInNewWindow)}
                 >
-                  <span className="text-sm text-gray-800 hover:text-black dark:text-white dark:hover:text-gray-200 border-b border-gray-800 hover:border-black dark:border-white dark:hover:border-gray-200 cursor-pointer transition-colors duration-200">
+                  <span className="text-sm text-gray-800 hover:text-black dark:text-dark dark:hover:text-dark-hover border-b border-gray-800 hover:border-black dark:border-dark dark:hover:border-dark-hover cursor-pointer transition-colors duration-200">
                     {tag}
                   </span>
                 </Link>
