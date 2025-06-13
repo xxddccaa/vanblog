@@ -46,7 +46,7 @@ const TagPage = (props: TagPageProps) => {
 
       while (hasMore) {
         try {
-          const response = await fetch(`/api/public/tag/paginated?page=${currentPage}&pageSize=${pageSize}&sortBy=articleCount&sortOrder=desc`);
+          const response = await fetch(`/api/public/tags/paginated?page=${currentPage}&pageSize=${pageSize}&sortBy=articleCount&sortOrder=desc`);
           const result = await response.json();
           
           if (result.statusCode === 200 && result.data?.tags) {
@@ -328,7 +328,7 @@ export async function getStaticProps(): Promise<{
   // 尝试获取少量热门标签作为备用数据
   let hotTags: TagWithCount[] = [];
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/tag/hot?limit=100`);
+            const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/tags/hot?limit=100`);
     const result = await response.json();
     if (result.statusCode === 200) {
       hotTags = result.data || [];

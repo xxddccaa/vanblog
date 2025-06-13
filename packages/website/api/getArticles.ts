@@ -73,7 +73,7 @@ export const getArticlesByCategory = async () => {
 };
 export const getArticlesByTag = async (tagName: string) => {
   try {
-    const url = `${config.baseUrl}api/public/tag`;
+    const url = `${config.baseUrl}api/public/tags/all`;
     const res = await fetch(url);
     const { data } = await res.json();
     return data;

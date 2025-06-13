@@ -150,7 +150,7 @@ export class PublicController {
     };
   }
 
-  @Get('/tag/:name')
+  @Get('/tag-articles/:name')
   async getArticlesByTagName(@Param('name') name: string) {
     const data = await this.tagProvider.getArticlesByTag(name, false);
     return {
@@ -204,16 +204,7 @@ export class PublicController {
       data,
     };
   }
-  @Get('tag')
-  async getArticlesByTag() {
-    const data = await this.tagProvider.getTagsWithArticle(false);
-    return {
-      statusCode: 200,
-      data,
-    };
-  }
-
-  @Get('tag/hot')
+  @Get('tags/hot')
   @ApiOperation({ summary: '获取热门标签' })
   async getHotTags(@Query('limit') limit: string = '20') {
     const data = await this.tagProvider.getHotTags(parseInt(limit));
@@ -223,7 +214,7 @@ export class PublicController {
     };
   }
 
-  @Get('tag/paginated')
+  @Get('tags/paginated')
   @ApiOperation({ summary: '分页获取标签列表（公共API）' })
   async getTagsPaginated(
     @Query('page') page: string = '1',
@@ -232,6 +223,7 @@ export class PublicController {
     @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
     @Query('search') search?: string,
   ) {
+    console.log('[PUBLIC] getTagsPaginated called with:', { page, pageSize, sortBy, sortOrder, search });
     const data = await this.tagProvider.getTagsPaginated(
       parseInt(page),
       parseInt(pageSize),
@@ -239,6 +231,17 @@ export class PublicController {
       sortOrder,
       search,
     );
+    console.log('[PUBLIC] getTagsPaginated result type:', typeof data, 'is array:', Array.isArray(data));
+    console.log('[PUBLIC] getTagsPaginated result keys:', Object.keys(data || {}));
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
+  @Get('tags/all')
+  async getArticlesByTag() {
+    const data = await this.tagProvider.getTagsWithArticle(false);
     return {
       statusCode: 200,
       data,

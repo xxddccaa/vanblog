@@ -47,3 +47,5 @@ services:
       TZ: 'Asia/Shanghai'
     volumes:
       - /root/van/data/mongo:/data/db
+    ports:
+      - 27017:27017
