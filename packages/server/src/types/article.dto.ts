@@ -43,7 +43,7 @@ export class SearchArticleOption {
   sortTop?: SortOrder;
   startTime?: string;
   endTime?: string;
-  sortViewer?: string;
+  sortViewer?: SortOrder;
   toListView?: boolean;
   withWordCount?: boolean;
   author?: string;

@@ -126,10 +126,22 @@ export class ISRProvider {
 
   // 修改文章牵扯太多，暂时不用这个方法。
   async activeArticleById(id: number, event: 'create' | 'delete' | 'update', beforeObj?: Article) {
-    const { article, pre, next } = await this.articleProvider.getByIdOrPathnameWithPreNext(
-      id,
-      'list',
-    );
+    let article, pre, next;
+    
+    if (event === 'delete' && beforeObj) {
+      // 删除事件时使用删除前的文章信息，避免查询已删除的文章
+      article = beforeObj;
+      // 对于删除操作，我们不需要获取前后文章，只需要触发相关页面更新
+      pre = null;
+      next = null;
+    } else {
+      // 创建和更新事件正常查询
+      const result = await this.articleProvider.getByIdOrPathnameWithPreNext(id, 'list');
+      article = result.article;
+      pre = result.pre;
+      next = result.next;
+    }
+    
     // 无论是什么事件都先触发文章本身、标签和分类。
     this.activeUrl(`/post/${id}`, true);
     if (pre) {

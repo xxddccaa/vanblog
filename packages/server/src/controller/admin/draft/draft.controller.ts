@@ -19,6 +19,7 @@ import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { config } from 'src/config';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
+import { TagProvider } from 'src/provider/tag/tag.provider';
 
 @ApiTags('draft')
 @UseGuards(...AdminGuard)
@@ -29,6 +30,7 @@ export class DraftController {
     private readonly draftProvider: DraftProvider,
     private readonly isrProvider: ISRProvider,
     private readonly pipelineProvider: PipelineProvider,
+    private readonly tagProvider: TagProvider,
   ) {}
 
   @Get('/')
@@ -129,6 +131,10 @@ export class DraftController {
     const data = await this.draftProvider.publish(id, publishDto);
     this.isrProvider.activeAll('发布草稿触发增量渲染！');
     this.pipelineProvider.dispatchEvent('afterUpdateArticle', data);
+    
+    // 异步同步标签数据，不影响用户体验
+    this.syncTagsAsync('草稿发布');
+    
     return {
       statusCode: 200,
       data,
@@ -143,5 +149,25 @@ export class DraftController {
       statusCode: 200,
       data,
     };
+  }
+
+  /**
+   * 异步同步标签数据，不阻塞主要操作
+   */
+  private syncTagsAsync(operation: string) {
+    // 使用 setTimeout 确保异步执行，不影响主要业务流程
+    setTimeout(async () => {
+      try {
+        await this.tagProvider.syncTagsFromArticles();
+        // 触发标签相关页面的ISR更新
+        this.isrProvider.activeUrl('/tag', false);
+        this.isrProvider.activePath('tag');
+        console.log(`[${operation}] 标签数据同步完成`);
+      } catch (error) {
+        // 确保标签同步失败不会影响主要流程
+        console.error(`[${operation}] 标签数据同步失败:`, error.message);
+        console.error('标签同步错误详情:', error.stack);
+      }
+    }, 500); // 增加延迟到500ms，确保主要操作完全完成
   }
 }

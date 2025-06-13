@@ -18,6 +18,7 @@ import { ArticleProvider } from 'src/provider/article/article.provider';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
+import { TagProvider } from 'src/provider/tag/tag.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 @ApiTags('article')
 @ApiToken
@@ -28,6 +29,7 @@ export class ArticleController {
     private readonly articleProvider: ArticleProvider,
     private readonly isrProvider: ISRProvider,
     private readonly pipelineProvider: PipelineProvider,
+    private readonly tagProvider: TagProvider,
   ) {}
 
   @Get('/')
@@ -90,6 +92,10 @@ export class ArticleController {
     
     // 使用精确的增量渲染，而不是全量渲染
     this.isrProvider.activeArticleById(id, 'update', beforeObj);
+    
+    // 异步同步标签数据，不影响用户体验
+    this.syncTagsAsync('文章更新');
+    
     return {
       statusCode: 200,
       data,
@@ -108,6 +114,10 @@ export class ArticleController {
     
     // 使用精确的增量渲染，而不是全量渲染
     this.isrProvider.activeArticleById(data.id, 'create');
+    
+    // 异步同步标签数据，不影响用户体验
+    this.syncTagsAsync('文章创建');
+    
     return {
       statusCode: 200,
       data,
@@ -138,9 +148,33 @@ export class ArticleController {
     
     // 使用精确的增量渲染，而不是全量渲染
     this.isrProvider.activeArticleById(id, 'delete', beforeObj);
+    
+    // 异步同步标签数据，不影响用户体验
+    this.syncTagsAsync('文章删除');
+    
     return {
       statusCode: 200,
       data,
     };
+  }
+
+  /**
+   * 异步同步标签数据，不阻塞主要操作
+   */
+  private syncTagsAsync(operation: string) {
+    // 使用 setTimeout 确保异步执行，不影响主要业务流程
+    setTimeout(async () => {
+      try {
+        await this.tagProvider.syncTagsFromArticles();
+        // 触发标签相关页面的ISR更新
+        this.isrProvider.activeUrl('/tag', false);
+        this.isrProvider.activePath('tag');
+        console.log(`[${operation}] 标签数据同步完成`);
+      } catch (error) {
+        // 确保标签同步失败不会影响主要流程
+        console.error(`[${operation}] 标签数据同步失败:`, error.message);
+        console.error('标签同步错误详情:', error.stack);
+      }
+    }, 500); // 增加延迟到500ms，确保主要操作完全完成
   }
 }

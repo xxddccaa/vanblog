@@ -368,10 +368,9 @@ export class ArticleProvider {
       });
     }
     return await this.articleModel
-      .find({
+      .countDocuments({
         $and,
-      })
-      .count();
+      });
   }
 
   getView(view: ArticleView) {
@@ -621,7 +620,7 @@ export class ArticleProvider {
     }
     // withWordCount 只会返回当前分页的文字数量
 
-    const total = await this.articleModel.count(query).exec();
+    const total = await this.articleModel.countDocuments(query).exec();
     // 过滤私有文章
     if (isPublic) {
       const tmpArticles: any[] = [];
