@@ -112,13 +112,18 @@ export class StaticProvider {
       isNew: true,
     };
   }
-  async importItems(items: Static[]) {
+  async importItems(items: Static[], clearExisting: boolean = false) {
+    if (clearExisting) {
+      // 可选：清空现有的静态文件记录（不删除实际文件）
+      await this.staticModel.deleteMany({});
+    }
+    
     for (const each of items) {
       const oldItem = await this.getOneBySign(each.sign);
       if (!oldItem) {
         await this.createInDB(each);
       } else {
-        this.staticModel.updateOne({ _id: oldItem._id }, { each });
+        await this.staticModel.updateOne({ _id: oldItem._id }, each);
       }
     }
   }

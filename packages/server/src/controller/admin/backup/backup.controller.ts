@@ -37,6 +37,7 @@ import { NavToolProvider } from 'src/provider/nav-tool/nav-tool.provider';
 import { NavCategoryProvider } from 'src/provider/nav-category/nav-category.provider';
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
+import { AITaggingProvider } from 'src/provider/ai-tagging/ai-tagging.provider';
 
 @ApiTags('backup')
 @UseGuards(...AdminGuard)
@@ -63,6 +64,7 @@ export class BackupController {
     private readonly navCategoryProvider: NavCategoryProvider,
     private readonly iconProvider: IconProvider,
     private readonly isrProvider: ISRProvider,
+          private readonly aiTaggingProvider: AITaggingProvider,
   ) {}
 
   @Get('export')
@@ -88,6 +90,8 @@ export class BackupController {
         navTools,
         navCategories,
         icons,
+        layoutSetting,
+        aiTaggingConfig,
       ] = await Promise.all([
         this.articleProvider.getAll('admin', true),
         this.categoryProvider.getAllCategories(),
@@ -106,6 +110,8 @@ export class BackupController {
         this.navToolProvider.getAllTools(),
         this.navCategoryProvider.getAllCategories(),
         this.iconProvider.getAllIcons(),
+        this.settingProvider.getLayoutSetting(),
+        this.aiTaggingProvider.getConfig(),
       ]);
 
     const data = {
@@ -126,13 +132,16 @@ export class BackupController {
         navTools,
         navCategories,
         icons,
+        layoutSetting,
+        aiTaggingConfig,
         backupInfo: {
           version: '2.0.0',
           timestamp: new Date().toISOString(),
           dataTypes: [
             'articles', 'tags', 'meta', 'drafts', 'categories', 'user',
             'viewer', 'visit', 'static', 'setting', 'moments', 'customPages',
-            'pipelines', 'tokens', 'navTools', 'navCategories', 'icons'
+            'pipelines', 'tokens', 'navTools', 'navCategories', 'icons',
+            'layoutSetting', 'aiTaggingConfig'
           ],
           counts: {
             articles: articles?.length || 0,
@@ -147,6 +156,8 @@ export class BackupController {
             navCategories: navCategories?.length || 0,
             icons: icons?.length || 0,
             staticItems: staticItems?.length || 0,
+            layoutSetting: layoutSetting ? 1 : 0,
+            aiTaggingConfig: aiTaggingConfig ? 1 : 0,
           }
         }
       };
@@ -191,7 +202,7 @@ export class BackupController {
       const backupVersion = data.backupInfo?.version || '1.0.0';
       this.logger.log(`检测到备份版本: ${backupVersion}`);
 
-    const { meta, user, setting } = data;
+    const { meta, user, setting, layoutSetting, aiTaggingConfig } = data;
       let { articles, drafts, viewer, visit, static: staticItems, moments, customPages, pipelines, tokens, navTools, navCategories, icons } = data;
 
       if (articles) articles = removeID(articles);
@@ -231,17 +242,26 @@ export class BackupController {
         navTools: 0,
         icons: 0,
         staticItems: 0,
+        layoutSetting: 0,
+        aiTaggingConfig: 0,
         other: 0,
       };
 
+      // 跳过用户数据导入，避免覆盖登录信息
       if (user) {
-    await this.userProvider.updateUser(user);
-        this.logger.log('用户数据导入完成');
+        this.logger.log('跳过用户数据导入（避免覆盖登录信息）');
       }
 
+      // 导入元数据，但排除 siteInfo
       if (meta) {
-    await this.metaProvider.update(meta);
-        this.logger.log('元数据导入完成');
+        const { siteInfo, ...metaWithoutSiteInfo } = meta;
+        if (Object.keys(metaWithoutSiteInfo).length > 0) {
+          await this.metaProvider.update(metaWithoutSiteInfo);
+          this.logger.log('元数据导入完成（已排除站点信息）');
+        }
+        if (siteInfo) {
+          this.logger.log('跳过站点信息导入（避免覆盖站点配置）');
+        }
       }
 
       if (setting) {
@@ -324,7 +344,8 @@ export class BackupController {
       }
 
       if (staticItems) {
-    await this.staticProvider.importItems(staticItems);
+        this.logger.log(`开始导入静态文件记录: ${staticItems.length} 条`);
+        await this.staticProvider.importItems(staticItems, false); // false = 不清空现有记录，增量导入
         importResults.staticItems = staticItems.length;
         this.logger.log(`静态文件记录导入完成: ${importResults.staticItems} 条`);
       }
@@ -338,6 +359,34 @@ export class BackupController {
       await this.viewerProvider.import(viewer);
         this.logger.log('访客记录导入完成');
     }
+
+      // 导入定制化设置（增量导入）
+      if (layoutSetting && Object.keys(layoutSetting).length > 0) {
+        try {
+          await this.settingProvider.updateLayoutSetting(layoutSetting);
+          importResults.layoutSetting = 1;
+          this.logger.log('定制化设置导入完成');
+          // 触发ISR更新
+          this.isrProvider.activeAll('导入定制化设置');
+        } catch (error) {
+          this.logger.warn(`定制化设置导入失败: ${error.message}`);
+        }
+      } else {
+        this.logger.log('备份文件中未发现定制化设置数据或数据为空');
+      }
+
+      // 导入AI标签配置（直接覆盖）
+      if (aiTaggingConfig && Object.keys(aiTaggingConfig).length > 0) {
+        try {
+          await this.aiTaggingProvider.updateConfig(aiTaggingConfig);
+          importResults.aiTaggingConfig = 1;
+          this.logger.log('AI标签配置导入完成（覆盖模式）');
+        } catch (error) {
+          this.logger.warn(`AI标签配置导入失败: ${error.message}`);
+        }
+      } else {
+        this.logger.log('备份文件中未发现AI标签配置数据或数据为空');
+      }
 
       // 自动同步标签数据
       try {
@@ -608,29 +657,51 @@ export class BackupController {
   private async importCategoriesWithRebuild(categories: any[]) {
     for (const category of categories) {
       try {
+        // 处理分类数据，支持字符串和对象两种格式
+        let categoryName: string;
+        let categoryData: any = {};
+        
+        if (typeof category === 'string') {
+          // 旧格式：字符串数组
+          categoryName = category;
+        } else if (typeof category === 'object' && category.name) {
+          // 新格式：对象数组
+          categoryName = category.name;
+          categoryData = category;
+        } else {
+          this.logger.warn(`跳过无效分类数据: ${JSON.stringify(category)}`);
+          continue;
+        }
+
+        // 验证分类名称
+        if (!categoryName || categoryName.trim() === '') {
+          this.logger.warn(`跳过空分类名称: ${JSON.stringify(category)}`);
+          continue;
+        }
+
         // 获取所有现有分类
         const allCategories = await this.categoryProvider.getAllCategories(true) as any[];
-        const existingCategory = allCategories.find((c: any) => c.name === category.name);
+        const existingCategory = allCategories.find((c: any) => c.name === categoryName);
         
         if (existingCategory) {
           // 更新现有分类，保留新导入的数据
-          await this.categoryProvider.updateCategoryByName(category.name, {
-            private: category.private,
-            password: category.password,
+          await this.categoryProvider.updateCategoryByName(categoryName, {
+            private: categoryData.private,
+            password: categoryData.password,
           });
         } else {
           // 创建新分类
-          await this.categoryProvider.addOne(category.name);
+          await this.categoryProvider.addOne(categoryName);
           // 如果有额外属性，再更新一次
-          if (category.private || category.password) {
-            await this.categoryProvider.updateCategoryByName(category.name, {
-              private: category.private,
-              password: category.password,
+          if (categoryData.private || categoryData.password) {
+            await this.categoryProvider.updateCategoryByName(categoryName, {
+              private: categoryData.private,
+              password: categoryData.password,
             });
           }
         }
       } catch (error) {
-        this.logger.warn(`分类 ${category.name} 导入失败: ${error.message}`);
+        this.logger.warn(`分类 ${category} 导入失败: ${error.message}`);
       }
     }
   }

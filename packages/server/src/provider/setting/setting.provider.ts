@@ -213,7 +213,7 @@ export class SettingProvider {
   }
   async updateLayoutSetting(dto: LayoutSetting) {
     const oldValue = await this.getLayoutSetting();
-    const newValue = { ...oldValue, ...dto };
+    const newValue = { ...(oldValue || {}), ...dto };
     if (!oldValue) {
       return await this.settingModel.create({
         type: 'layout',

@@ -126,19 +126,35 @@ export default function (props) {
     });
   };
 
-  const dataTypes = [
-    { name: '文章数据', desc: '包括所有已发布的文章内容、标题、标签、分类等' },
-    { name: '草稿数据', desc: '所有草稿的内容和元数据' },
-    { name: '动态数据', desc: '所有动态/时刻的内容和时间信息' },
-    { name: '分类管理', desc: '文章分类及其属性设置' },
-    { name: '标签数据', desc: '所有标签及其关联关系' },
-    { name: '自定义页面', desc: '自定义HTML页面的内容和配置' },
-    { name: '导航工具', desc: '导航页面的工具和分类设置' },
-    { name: '用户设置', desc: '管理员用户的配置信息' },
-    { name: '网站配置', desc: '站点信息、主题设置等全局配置' },
-    { name: '图片记录', desc: '图床中的图片记录（不包含图片文件本身）' },
-    { name: '流水线配置', desc: '自动化流水线的脚本和配置' },
-    { name: '访问统计', desc: '访客记录和访问统计数据' },
+  const exportDataTypes = [
+    { name: '✅ 文章数据 (articles)', desc: '所有已发布的文章：标题、内容、标签、分类、置顶、隐私设置、浏览量等完整信息' },
+    { name: '✅ 草稿数据 (drafts)', desc: '所有草稿：标题、内容、标签、分类等，用于恢复未发布的文章' },
+    { name: '✅ 动态数据 (moments)', desc: '所有动态/时刻：内容、发布时间、删除状态等' },
+    { name: '✅ 分类管理 (categories)', desc: '文章分类列表：分类名称、隐私设置、密码保护等' },
+    { name: '✅ 标签数据 (tags)', desc: '所有文章标签：自动从文章中提取和同步' },
+    { name: '✅ 自定义页面 (customPages)', desc: '自定义HTML页面：路径、内容、模板等' },
+    { name: '✅ 导航管理 (navTools/navCategories)', desc: '导航页面的工具链接、分类、图标等配置' },
+    { name: '✅ 图标数据 (icons)', desc: '自定义上传的图标文件记录和使用信息' },
+    { name: '✅ 静态文件记录 (static)', desc: '图床文件索引：文件路径、元数据、签名等（不含实际文件）' },
+    { name: '✅ 流水线配置 (pipelines)', desc: '自动化脚本：触发条件、执行代码、配置参数' },
+    { name: '✅ 访问统计 (viewer/visit)', desc: '网站访问记录：每日访客数、页面浏览量统计' },
+    { name: '✅ 网站元数据 (meta)', desc: '关于页面、菜单、链接、社交账号、打赏等（不含用户和站点信息）' },
+    { name: '✅ 系统设置 (setting)', desc: '图床配置、静态文件设置等' },
+    { name: '✅ 定制化设置 (layoutSetting)', desc: '自定义CSS、JavaScript、HTML代码' },
+    { name: '✅ AI标签配置 (aiTaggingConfig)', desc: 'AI自动打标：API密钥、模型参数、对话模板等' },
+  ];
+
+  const importDataTypes = [
+    { name: '✅ 内容数据', desc: '文章、草稿、动态：增量导入，ID冲突时自动重新分配，相同标题则更新' },
+    { name: '✅ 分类和标签', desc: '自动创建缺失的分类，标签从导入文章中自动同步' },
+    { name: '✅ 导航配置', desc: '导航工具和分类：存在则更新，不存在则创建' },
+    { name: '✅ 自定义页面和流水线', desc: '按路径/名称匹配，存在则更新，不存在则创建' },
+    { name: '✅ 静态文件记录', desc: '按文件签名去重，避免重复导入相同文件' },
+    { name: '✅ 定制化设置', desc: '增量导入：与现有配置合并，不会清空已有的自定义代码' },
+    { name: '✅ AI标签配置', desc: '覆盖导入：完全替换现有的AI配置参数' },
+    { name: '✅ 访问统计', desc: '统计数据：覆盖导入历史访问记录' },
+    { name: '❌ 用户信息', desc: '跳过导入：避免覆盖当前登录账号和密码' },
+    { name: '❌ 站点信息', desc: '跳过导入：保留当前的站点名称、描述、Logo等配置' },
   ];
 
   return (
@@ -147,36 +163,61 @@ export default function (props) {
         type="info"
         showIcon
         icon={<InfoCircleOutlined />}
-        message="重要说明"
+        message="备份说明"
         description={
           <div>
-            <p><strong>备份范围：</strong>当前备份功能已升级，现在包含更全面的数据类型。</p>
-            <p><strong>图片文件：</strong>备份不包含图床中的实际图片文件，仅包含图片记录。本地图床图片请在图床设置中单独导出。</p>
-            <p><strong>导入策略：</strong>导入时相同ID的数据以新导入的为准，自动重建分类关系。</p>
+            <p><strong>数据安全：</strong>导入时会自动跳过用户信息和站点信息，确保不会覆盖当前登录账号和站点配置。</p>
+            <p><strong>图片文件：</strong>备份仅包含图片记录索引，不包含实际图片文件。本地图床请在"图床设置"中单独导出。</p>
+            <p><strong>增量导入：</strong>文章等内容数据采用智能增量导入，ID冲突时自动重新分配，避免数据覆盖。</p>
           </div>
         }
         style={{ marginBottom: 20 }}
       />
 
       <div style={{ marginBottom: 24 }}>
-        <Title level={5}>📊 备份数据类型</Title>
+        <Title level={5}>📤 导出数据范围</Title>
         <List
           size="small"
-          dataSource={dataTypes}
+          dataSource={exportDataTypes}
           renderItem={(item) => (
             <List.Item>
               <List.Item.Meta
-                title={<Text strong>{item.name}</Text>}
+                title={<Text strong style={{ color: '#52c41a' }}>{item.name}</Text>}
                 description={item.desc}
               />
             </List.Item>
           )}
           style={{ 
-            background: '#fafafa', 
+            background: '#f6ffed', 
             padding: '16px', 
             borderRadius: '6px',
             maxHeight: '200px',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            border: '1px solid #b7eb8f'
+          }}
+        />
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <Title level={5}>📥 导入处理策略</Title>
+        <List
+          size="small"
+          dataSource={importDataTypes}
+          renderItem={(item) => (
+            <List.Item>
+              <List.Item.Meta
+                title={<Text strong style={{ color: item.name.startsWith('❌') ? '#ff4d4f' : '#1890ff' }}>{item.name}</Text>}
+                description={item.desc}
+              />
+            </List.Item>
+          )}
+          style={{ 
+            background: '#f0f5ff', 
+            padding: '16px', 
+            borderRadius: '6px',
+            maxHeight: '200px',
+            overflowY: 'auto',
+            border: '1px solid #91d5ff'
           }}
         />
       </div>
@@ -308,12 +349,13 @@ export default function (props) {
       <div style={{ marginTop: 24, padding: 16, background: '#f6f8fa', borderRadius: 6 }}>
         <Title level={5}>💡 使用提示</Title>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
-          <li>建议定期备份数据，特别是在重要更新前</li>
-          <li>备份文件包含敏感信息，请妥善保管</li>
-          <li>导入数据前建议先备份当前数据</li>
-          <li>大量数据的导入可能需要较长时间，请耐心等待</li>
-          <li>如遇到导入问题，请检查备份文件的完整性</li>
-          <li><Text strong style={{ color: '#ff4d4f' }}>清空操作无法撤销，请谨慎使用！</Text></li>
+          <li><Text strong>导出安全：</Text>备份文件包含所有内容数据，但不包含登录信息，可安全分享</li>
+          <li><Text strong>导入安全：</Text>导入时会自动保护您的登录账号和站点配置不被覆盖</li>
+          <li><Text strong>智能合并：</Text>定制化代码采用增量导入，不会清空现有的CSS/JS代码</li>
+          <li><Text strong>图片处理：</Text>仅备份图片索引，实际图片文件需要单独备份文件系统</li>
+          <li><Text strong>数据完整：</Text>导入时会自动重建分类关系，处理ID冲突</li>
+          <li><Text strong>建议操作：</Text>导入前建议先备份当前数据，测试环境先验证</li>
+          <li><Text strong style={{ color: '#ff4d4f' }}>危险操作：</Text>清空数据无法撤销，执行前务必备份！</li>
         </ul>
       </div>
     </Card>
