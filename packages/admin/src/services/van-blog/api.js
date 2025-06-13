@@ -654,3 +654,9 @@ export async function updateAdminLayoutConfig(body) {
     data: body,
   });
 }
+
+export async function clearAllData() {
+  return request(`/api/admin/backup/clear-all`, {
+    method: 'POST',
+  });
+}
