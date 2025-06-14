@@ -18,7 +18,8 @@ export type SettingType =
   | 'menu'
   | 'version'
   | 'isr'
-  | 'adminLayout';
+  | 'adminLayout'
+  | 'autoBackup';
 
 export type SettingValue =
   | StaticSetting
@@ -27,7 +28,8 @@ export type SettingValue =
   | LayoutSetting
   | VersionSetting
   | ISRSetting
-  | AdminLayoutSetting;
+  | AdminLayoutSetting
+  | AutoBackupSetting;
 
 export interface ISRSetting {
   mode: 'delay' | 'onDemand';
@@ -184,4 +186,16 @@ export const defaultAdminLayoutSetting: AdminLayoutSetting = {
       visible: true,
     },
   ],
+};
+
+export interface AutoBackupSetting {
+  enabled: boolean;
+  backupTime: string; // 格式：'03:00' 表示凌晨3点
+  retentionCount: number; // 保留最新的多少个备份文件
+}
+
+export const defaultAutoBackupSetting: AutoBackupSetting = {
+  enabled: false,
+  backupTime: '03:00',
+  retentionCount: 10,
 };

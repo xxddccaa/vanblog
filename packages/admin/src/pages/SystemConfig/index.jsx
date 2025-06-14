@@ -3,6 +3,7 @@ import { PageContainer } from '@ant-design/pro-layout';
 import thinstyle from '../Welcome/index.less';
 import Advance from './tabs/Advance';
 import Backup from './tabs/Backup';
+import AutoBackup from './tabs/AutoBackup';
 import Customizing from './tabs/Customizing';
 import ImgTab from './tabs/ImgTab';
 import SiteInfo from './tabs/SiteInfo';
@@ -14,6 +15,7 @@ export default function () {
     siteInfo: <SiteInfo />,
     customizing: <Customizing />,
     backup: <Backup />,
+    autoBackup: <AutoBackup />,
     user: <User />,
     img: <ImgTab />,
     waline: <WalineTab />,
@@ -53,6 +55,10 @@ export default function () {
         {
           tab: '备份恢复',
           key: 'backup',
+        },
+        {
+          tab: '自动备份',
+          key: 'autoBackup',
         },
         {
           tab: 'Token 管理',

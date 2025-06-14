@@ -660,3 +660,29 @@ export async function clearAllData() {
     method: 'POST',
   });
 }
+
+// 自动备份相关API
+export async function getAutoBackupSetting() {
+  return request(`/api/admin/auto-backup/setting`, {
+    method: 'GET',
+  });
+}
+
+export async function updateAutoBackupSetting(data) {
+  return request(`/api/admin/auto-backup/setting`, {
+    method: 'PUT',
+    data,
+  });
+}
+
+export async function triggerAutoBackup() {
+  return request(`/api/admin/auto-backup/trigger`, {
+    method: 'POST',
+  });
+}
+
+export async function getAutoBackupFiles() {
+  return request(`/api/admin/auto-backup/files`, {
+    method: 'GET',
+  });
+}

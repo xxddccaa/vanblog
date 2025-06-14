@@ -100,6 +100,8 @@ import { NavCategoryController } from './controller/admin/nav-category/nav-categ
 import { NavController } from './controller/public/nav/nav.controller';
 import { AITaggingController } from './controller/admin/ai-tagging/ai-tagging.controller';
 import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
+import { AutoBackupController } from './controller/admin/auto-backup/auto-backup.controller';
+import { AutoBackupTask } from './schedule/auto-backup.task';
 
 @Module({
   imports: [
@@ -174,6 +176,7 @@ import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
     NavCategoryController,
     NavController,
     AITaggingController,
+    AutoBackupController,
   ],
   providers: [
     AppService,
@@ -216,6 +219,7 @@ import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
     NavToolProvider,
     NavCategoryProvider,
     AITaggingProvider,
+    AutoBackupTask,
   ],
 })
 export class AppModule implements NestModule {

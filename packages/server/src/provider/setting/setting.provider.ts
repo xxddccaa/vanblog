@@ -13,6 +13,8 @@ import {
   defaultStaticSetting,
   AdminLayoutSetting,
   defaultAdminLayoutSetting,
+  AutoBackupSetting,
+  defaultAutoBackupSetting,
 } from 'src/types/setting.dto';
 import { SettingDocument } from 'src/scheme/setting.schema';
 import { PicgoProvider } from '../static/picgo.provider';
@@ -280,5 +282,31 @@ export class SettingProvider {
       await this.updateMenuSetting({ data: toInsert });
       this.logger.log('清洗老 menu 数据成功！');
     }
+  }
+
+  async getAutoBackupSetting(): Promise<AutoBackupSetting> {
+    const res = await this.settingModel.findOne({ type: 'autoBackup' }).exec();
+    if (res) {
+      return res?.value as any;
+    } else {
+      await this.settingModel.create({
+        type: 'autoBackup',
+        value: defaultAutoBackupSetting,
+      });
+      return defaultAutoBackupSetting;
+    }
+  }
+
+  async updateAutoBackupSetting(dto: AutoBackupSetting) {
+    const oldValue = await this.getAutoBackupSetting();
+    const newValue = { ...oldValue, ...dto };
+    if (!oldValue) {
+      return await this.settingModel.create({
+        type: 'autoBackup',
+        value: newValue,
+      });
+    }
+    const res = await this.settingModel.updateOne({ type: 'autoBackup' }, { value: newValue });
+    return res;
   }
 }
