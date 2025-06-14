@@ -51,65 +51,76 @@ export class AliyunpanProvider {
       let loginUrl = '';
       let hasError = false;
 
-      // 监听输出获取登录链接
-      return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-          if (this.loginProcess) {
-            this.loginProcess.kill();
-            this.loginProcess = null;
-          }
-          resolve({ error: '获取登录链接超时' });
-        }, 15000); // 15秒超时
+             // 监听输出获取登录链接
+       return new Promise((resolve) => {
+         const timeout = setTimeout(() => {
+           if (this.loginProcess) {
+             this.loginProcess.kill();
+             this.loginProcess = null;
+           }
+           resolve({ error: '获取登录链接超时' });
+         }, 15000); // 15秒超时
 
-        this.loginProcess.stdout.on('data', (data) => {
-          const output = data.toString();
-          this.logger.log('aliyunpan login 输出:', output);
-          
-          // 查找登录链接
-          const urlMatch = output.match(/(https:\/\/openapi\.alipan\.com[^\s\n]+)/);
-          if (urlMatch && !loginUrl) {
-            loginUrl = urlMatch[1];
-            clearTimeout(timeout);
-            resolve({ loginUrl });
-          }
-        });
+         this.loginProcess.stdout.on('data', (data) => {
+           const output = data.toString();
+           this.logger.log('aliyunpan login 输出:', output);
+           
+           // 查找登录链接
+           const urlMatch = output.match(/(https:\/\/openapi\.alipan\.com[^\s\n]+)/);
+           if (urlMatch && !loginUrl) {
+             loginUrl = urlMatch[1];
+             clearTimeout(timeout);
+             // 不要在这里结束进程，保持进程活跃等待用户完成登录
+             resolve({ loginUrl });
+           }
+         });
 
-        this.loginProcess.stderr.on('data', (data) => {
-          const error = data.toString();
-          this.logger.error('aliyunpan login 错误:', error);
-          if (!hasError) {
-            hasError = true;
-            clearTimeout(timeout);
-            if (this.loginProcess) {
-              this.loginProcess.kill();
-              this.loginProcess = null;
-            }
-            resolve({ error: `登录进程错误: ${error}` });
-          }
-        });
+         this.loginProcess.stderr.on('data', (data) => {
+           const error = data.toString();
+           this.logger.error('aliyunpan login 错误:', error);
+           if (!hasError) {
+             hasError = true;
+             clearTimeout(timeout);
+             if (this.loginProcess) {
+               this.loginProcess.kill();
+               this.loginProcess = null;
+             }
+             resolve({ error: `登录进程错误: ${error}` });
+           }
+         });
 
-        this.loginProcess.on('exit', (code) => {
-          this.logger.log(`aliyunpan login 进程退出，代码: ${code}`);
-          if (!loginUrl && !hasError) {
-            clearTimeout(timeout);
-            resolve({ error: '登录进程异常退出' });
-          }
-        });
-      });
+         this.loginProcess.on('exit', (code) => {
+           this.logger.log(`aliyunpan login 进程退出，代码: ${code}`);
+           // 进程退出时清理引用
+           this.loginProcess = null;
+           
+           // 只有在没有获取到登录链接且没有其他错误时才报错
+           if (!loginUrl && !hasError) {
+             clearTimeout(timeout);
+             resolve({ error: '登录进程异常退出' });
+           }
+         });
+       });
     } catch (error) {
       this.logger.error('启动登录进程失败:', error.message);
       return { error: error.message };
     }
   }
 
-  // 完成登录（发送回车键）
+    // 完成登录（向已存在的登录进程发送回车键）
   async completeLogin(): Promise<{ success: boolean; message: string }> {
     try {
       if (!this.loginProcess) {
-        return { success: false, message: '没有活跃的登录进程' };
+        return { success: false, message: '没有活跃的登录进程，请先点击"登录阿里云盘"' };
       }
 
-      // 发送回车键给登录进程
+      // 检查进程是否还存在且stdin可用
+      if (!this.loginProcess.stdin || this.loginProcess.stdin.destroyed) {
+        this.loginProcess = null;
+        return { success: false, message: '登录进程已失效，请重新开始登录' };
+      }
+
+      this.logger.log('向登录进程发送回车键');
       this.loginProcess.stdin.write('\n');
       
       // 等待一段时间让登录完成
@@ -127,7 +138,7 @@ export class AliyunpanProvider {
       if (status.isLoggedIn) {
         return { success: true, message: '登录成功' };
       } else {
-        return { success: false, message: '登录未完成，请确保已在浏览器中完成扫码' };
+        return { success: false, message: '登录未完成，请确保已在浏览器中完成扫码后再点击"完成登录"' };
       }
     } catch (error) {
       this.logger.error('完成登录失败:', error.message);
@@ -156,8 +167,56 @@ export class AliyunpanProvider {
   // 退出登录
   async logout(): Promise<{ success: boolean; message: string }> {
     try {
-      await execAsync('aliyunpan logout');
-      return { success: true, message: '退出登录成功' };
+      const { spawn } = require('child_process');
+      
+      return new Promise((resolve) => {
+        // 启动 aliyunpan logout 进程
+        const logoutProcess = spawn('aliyunpan', ['logout'], {
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let output = '';
+        let hasError = false;
+
+        const timeout = setTimeout(() => {
+          logoutProcess.kill();
+          resolve({ success: false, message: '退出登录超时' });
+        }, 10000); // 10秒超时
+
+        logoutProcess.stdout.on('data', (data) => {
+          const text = data.toString();
+          output += text;
+          this.logger.log('aliyunpan logout 输出:', text);
+          
+          // 如果看到确认提示，自动发送 'y'
+          if (text.includes('? (y/n)') || text.includes('(y/n) >')) {
+            this.logger.log('发送确认退出指令');
+            logoutProcess.stdin.write('y\n');
+          }
+        });
+
+        logoutProcess.stderr.on('data', (data) => {
+          const error = data.toString();
+          this.logger.error('aliyunpan logout 错误:', error);
+          if (!hasError) {
+            hasError = true;
+            clearTimeout(timeout);
+            logoutProcess.kill();
+            resolve({ success: false, message: `退出登录错误: ${error}` });
+          }
+        });
+
+        logoutProcess.on('exit', (code) => {
+          clearTimeout(timeout);
+          this.logger.log(`aliyunpan logout 进程退出，代码: ${code}`);
+          
+          if (code === 0 || output.includes('退出用户成功')) {
+            resolve({ success: true, message: '退出登录成功' });
+          } else if (!hasError) {
+            resolve({ success: false, message: '退出登录失败' });
+          }
+        });
+      });
     } catch (error) {
       this.logger.error('退出登录失败:', error.message);
       return { success: false, message: error.message };
