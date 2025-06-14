@@ -192,10 +192,23 @@ export interface AutoBackupSetting {
   enabled: boolean;
   backupTime: string; // 格式：'03:00' 表示凌晨3点
   retentionCount: number; // 保留最新的多少个备份文件
+  // 阿里云盘相关配置
+  aliyunpan: {
+    enabled: boolean; // 是否启用阿里云盘备份
+    syncTime: string; // 阿里云盘同步时间，格式：'03:30'
+    localPath: string; // 本地备份路径
+    panPath: string; // 云盘路径
+  };
 }
 
 export const defaultAutoBackupSetting: AutoBackupSetting = {
   enabled: false,
   backupTime: '03:00',
   retentionCount: 10,
+  aliyunpan: {
+    enabled: false,
+    syncTime: '03:30',
+    localPath: '/app/static',
+    panPath: '/backup/vanblog-static',
+  },
 };

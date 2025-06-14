@@ -61,7 +61,7 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)
-RUN apk add --no-cache --update tzdata caddy nss-tools libwebp-tools \
+RUN apk add --no-cache --update tzdata caddy nss-tools libwebp-tools wget unzip \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
@@ -71,6 +71,17 @@ RUN apk add --no-cache --update tzdata caddy nss-tools libwebp-tools \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \
     && pnpm config set fetch-timeout 600000 -g
+
+# Install aliyunpan (阿里云盘命令行工具)
+RUN ARCH=$(uname -m) \
+    && if [ "$ARCH" = "x86_64" ]; then ALIYUNPAN_ARCH="amd64"; elif [ "$ARCH" = "aarch64" ]; then ALIYUNPAN_ARCH="arm64"; else ALIYUNPAN_ARCH="amd64"; fi \
+    && ALIYUNPAN_VERSION="v0.3.7" \
+    && wget -O /tmp/aliyunpan.zip "https://github.com/tickstep/aliyunpan/releases/download/${ALIYUNPAN_VERSION}/aliyunpan-${ALIYUNPAN_VERSION}-linux-${ALIYUNPAN_ARCH}.zip" \
+    && unzip /tmp/aliyunpan.zip -d /tmp/ \
+    && mv /tmp/aliyunpan-${ALIYUNPAN_VERSION}-linux-${ALIYUNPAN_ARCH}/aliyunpan /usr/local/bin/ \
+    && chmod +x /usr/local/bin/aliyunpan \
+    && rm -rf /tmp/aliyunpan* \
+    && aliyunpan --version
 
 # Copy CLI tool with PRODUCTION dependencies only
 WORKDIR /app/cli
@@ -125,6 +136,7 @@ VOLUME /app/static
 VOLUME /var/log
 VOLUME /root/.config/caddy
 VOLUME /root/.local/share/caddy
+VOLUME /root/.config/aliyunpan
 
 EXPOSE 80
 ENTRYPOINT [ "sh","entrypoint.sh" ]

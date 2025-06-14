@@ -102,6 +102,7 @@ import { AITaggingController } from './controller/admin/ai-tagging/ai-tagging.co
 import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
 import { AutoBackupController } from './controller/admin/auto-backup/auto-backup.controller';
 import { AutoBackupTask } from './schedule/auto-backup.task';
+import { AliyunpanProvider } from './provider/aliyunpan/aliyunpan.provider';
 
 @Module({
   imports: [
@@ -220,6 +221,7 @@ import { AutoBackupTask } from './schedule/auto-backup.task';
     NavCategoryProvider,
     AITaggingProvider,
     AutoBackupTask,
+    AliyunpanProvider,
   ],
 })
 export class AppModule implements NestModule {

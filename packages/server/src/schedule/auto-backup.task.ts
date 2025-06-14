@@ -21,6 +21,7 @@ import { NavToolProvider } from 'src/provider/nav-tool/nav-tool.provider';
 import { NavCategoryProvider } from 'src/provider/nav-category/nav-category.provider';
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { AITaggingProvider } from 'src/provider/ai-tagging/ai-tagging.provider';
+import { AliyunpanProvider } from 'src/provider/aliyunpan/aliyunpan.provider';
 
 @Injectable()
 export class AutoBackupTask {
@@ -46,6 +47,7 @@ export class AutoBackupTask {
     private readonly navCategoryProvider: NavCategoryProvider,
     private readonly iconProvider: IconProvider,
     private readonly aiTaggingProvider: AITaggingProvider,
+    private readonly aliyunpanProvider: AliyunpanProvider,
   ) {
     this.ensureBackupDirectoryExists();
   }
@@ -107,6 +109,26 @@ export class AutoBackupTask {
     }
   }
 
+  // 每小时检查阿里云盘同步时间
+  @Cron('0 * * * *')
+  async handleAliyunpanSyncCheck() {
+    try {
+      const backupSetting = await this.getAutoBackupSetting();
+      if (!backupSetting.aliyunpan.enabled) {
+        return;
+      }
+
+      const currentTime = dayjs().format('HH:mm');
+      if (currentTime === backupSetting.aliyunpan.syncTime) {
+        this.logger.log('执行阿里云盘自动同步...');
+        await this.executeAliyunpanSync();
+        this.logger.log('阿里云盘自动同步完成');
+      }
+    } catch (error) {
+      this.logger.error('阿里云盘自动同步检查失败:', error.message);
+    }
+  }
+
   private async getAutoBackupSetting() {
     try {
       return await this.settingProvider.getAutoBackupSetting();
@@ -116,6 +138,12 @@ export class AutoBackupTask {
         enabled: false,
         backupTime: '03:00',
         retentionCount: 10,
+        aliyunpan: {
+          enabled: false,
+          syncTime: '03:00',
+          localPath: '',
+          panPath: '',
+        },
       };
     }
   }
@@ -255,11 +283,45 @@ export class AutoBackupTask {
     }
   }
 
+  // 执行阿里云盘同步
+  async executeAliyunpanSync() {
+    try {
+      const backupSetting = await this.getAutoBackupSetting();
+      
+      // 检查登录状态
+      const loginStatus = await this.aliyunpanProvider.getLoginStatus();
+      if (!loginStatus.isLoggedIn) {
+        this.logger.error('阿里云盘未登录，无法执行同步');
+        return;
+      }
+
+      // 执行同步
+      const result = await this.aliyunpanProvider.executeSync(
+        backupSetting.aliyunpan.localPath,
+        backupSetting.aliyunpan.panPath
+      );
+
+      if (result.success) {
+        this.logger.log('阿里云盘同步成功');
+      } else {
+        this.logger.error('阿里云盘同步失败:', result.message);
+      }
+    } catch (error) {
+      this.logger.error('执行阿里云盘同步时发生错误:', error.message);
+    }
+  }
+
   // 手动触发备份（用于测试或立即备份）
   async triggerManualBackup() {
     this.logger.log('触发手动备份');
     await this.executeBackup();
     await this.cleanupOldBackups();
+  }
+
+  // 手动触发阿里云盘同步
+  async triggerAliyunpanSync() {
+    this.logger.log('触发手动阿里云盘同步');
+    await this.executeAliyunpanSync();
   }
 
   // 获取备份文件列表

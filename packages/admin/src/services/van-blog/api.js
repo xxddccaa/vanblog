@@ -686,3 +686,46 @@ export async function getAutoBackupFiles() {
     method: 'GET',
   });
 }
+
+// 阿里云盘相关API
+export async function getAliyunpanStatus() {
+  return request(`/api/admin/auto-backup/aliyunpan/status`, {
+    method: 'GET',
+  });
+}
+
+export async function startAliyunpanLogin() {
+  return request(`/api/admin/auto-backup/aliyunpan/login`, {
+    method: 'POST',
+  });
+}
+
+export async function completeAliyunpanLogin() {
+  return request(`/api/admin/auto-backup/aliyunpan/complete-login`, {
+    method: 'POST',
+  });
+}
+
+export async function checkAliyunpanLogin() {
+  return request(`/api/admin/auto-backup/aliyunpan/check-login`, {
+    method: 'POST',
+  });
+}
+
+export async function logoutAliyunpan() {
+  return request(`/api/admin/auto-backup/aliyunpan/logout`, {
+    method: 'POST',
+  });
+}
+
+export async function testAliyunpanConnection() {
+  return request(`/api/admin/auto-backup/aliyunpan/test`, {
+    method: 'POST',
+  });
+}
+
+export async function triggerAliyunpanSync() {
+  return request(`/api/admin/auto-backup/aliyunpan/sync`, {
+    method: 'POST',
+  });
+}

@@ -27,6 +27,8 @@ services:
       - /root/van/caddy/config:/root/.config/caddy
       # caddy 证书存储
       - /root/van/caddy/data:/root/.local/share/caddy
+      # 阿里云盘配置存储
+      - /root/van/aliyunpan/config:/root/.config/aliyunpan
     ports:
       # 直接映射各个服务的端口到宿主机
       # 后端 API 服务

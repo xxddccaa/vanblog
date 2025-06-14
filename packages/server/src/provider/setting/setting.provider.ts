@@ -285,28 +285,34 @@ export class SettingProvider {
   }
 
   async getAutoBackupSetting(): Promise<AutoBackupSetting> {
-    const res = await this.settingModel.findOne({ type: 'autoBackup' }).exec();
-    if (res) {
-      return res?.value as any;
-    } else {
-      await this.settingModel.create({
-        type: 'autoBackup',
-        value: defaultAutoBackupSetting,
-      });
+    const setting = await this.settingModel.findOne({ type: 'autoBackup' });
+    if (!setting || !setting.value) {
       return defaultAutoBackupSetting;
     }
+    
+    // 类型断言，因为我们知道这是 AutoBackupSetting 类型
+    const autoBackupValue = setting.value as AutoBackupSetting;
+    
+    // 合并默认设置以确保新增字段有默认值
+    return {
+      ...defaultAutoBackupSetting,
+      ...autoBackupValue,
+      aliyunpan: {
+        ...defaultAutoBackupSetting.aliyunpan,
+        ...(autoBackupValue.aliyunpan || {}),
+      },
+    };
   }
 
-  async updateAutoBackupSetting(dto: AutoBackupSetting) {
-    const oldValue = await this.getAutoBackupSetting();
-    const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
+  async updateAutoBackupSetting(setting: AutoBackupSetting): Promise<void> {
+    await this.settingModel.updateOne(
+      { type: 'autoBackup' },
+      { 
         type: 'autoBackup',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'autoBackup' }, { value: newValue });
-    return res;
+        value: setting,
+        updatedAt: new Date(),
+      },
+      { upsert: true }
+    );
   }
 }
