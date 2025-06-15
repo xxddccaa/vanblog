@@ -86,6 +86,25 @@ export class ArticleController {
       };
     }
     
+    // 验证自定义路径名不能为纯数字
+    if (updateArticleDto.pathname && /^\d+$/.test(updateArticleDto.pathname.trim())) {
+      return {
+        statusCode: 400,
+        message: '自定义路径名不能为纯数字，避免与文章ID冲突',
+      };
+    }
+    
+    // 验证自定义路径名的唯一性
+    if (updateArticleDto.pathname && updateArticleDto.pathname.trim()) {
+      const existingArticle = await this.articleProvider.getByPathName(updateArticleDto.pathname.trim(), 'admin');
+      if (existingArticle && existingArticle.id !== id) {
+        return {
+          statusCode: 400,
+          message: `自定义路径名 "${updateArticleDto.pathname.trim()}" 已被其他文章使用，请使用不同的路径名`,
+        };
+      }
+    }
+    
     // 获取更新前的文章信息，用于增量渲染比较
     const beforeObj = await this.articleProvider.getById(id, 'admin');
     const data = await this.articleProvider.updateById(id, updateArticleDto);
@@ -110,6 +129,26 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
+    
+    // 验证自定义路径名不能为纯数字
+    if (createArticleDto.pathname && /^\d+$/.test(createArticleDto.pathname.trim())) {
+      return {
+        statusCode: 400,
+        message: '自定义路径名不能为纯数字，避免与文章ID冲突',
+      };
+    }
+    
+    // 验证自定义路径名的唯一性
+    if (createArticleDto.pathname && createArticleDto.pathname.trim()) {
+      const existingArticle = await this.articleProvider.getByPathName(createArticleDto.pathname.trim(), 'admin');
+      if (existingArticle) {
+        return {
+          statusCode: 400,
+          message: `自定义路径名 "${createArticleDto.pathname.trim()}" 已被其他文章使用，请使用不同的路径名`,
+        };
+      }
+    }
+    
     const data = await this.articleProvider.create(createArticleDto);
     
     // 使用精确的增量渲染，而不是全量渲染
@@ -232,6 +271,31 @@ export class ArticleController {
       return {
         statusCode: 500,
         message: `清理临时ID失败: ${error.message}`,
+      };
+    }
+  }
+
+  @Post('/cleanup-duplicate-pathnames')
+  async cleanupDuplicatePathnames() {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    
+    try {
+      const data = await this.articleProvider.cleanupDuplicatePathnames();
+      
+      return {
+        statusCode: 200,
+        data,
+        message: `已清理 ${data.cleanedCount} 篇文章的重复路径名`,
+      };
+    } catch (error) {
+      return {
+        statusCode: 500,
+        message: `清理重复路径名失败: ${error.message}`,
       };
     }
   }

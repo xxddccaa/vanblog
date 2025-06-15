@@ -729,3 +729,9 @@ export async function triggerAliyunpanSync() {
     method: 'POST',
   });
 }
+
+export async function cleanupDuplicatePathnames() {
+  return request('/api/admin/article/cleanup-duplicate-pathnames', {
+    method: 'POST',
+  });
+}

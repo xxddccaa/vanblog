@@ -12,7 +12,7 @@ import {
   Progress,
 } from 'antd';
 import { ExclamationCircleOutlined, SortAscendingOutlined } from '@ant-design/icons';
-import { getArticlesByOption } from '@/services/van-blog/api';
+import { getArticlesByOption, cleanupDuplicatePathnames } from '@/services/van-blog/api';
 import { request } from 'umi';
 
 const { Title, Text } = Typography;
@@ -22,6 +22,7 @@ export default function ArticleManager() {
   const [reorderLoading, setReorderLoading] = useState(false);
   const [fixLoading, setFixLoading] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [cleanupPathnameLoading, setCleanupPathnameLoading] = useState(false);
   const [articles, setArticles] = useState([]);
   const [progress, setProgress] = useState(0);
   const [reorderProgress, setReorderProgress] = useState('');
@@ -211,6 +212,87 @@ export default function ArticleManager() {
     });
   };
 
+  const handleCleanupDuplicatePathnames = async () => {
+    // 检查是否有重复的自定义路径名
+    const pathnameCount = {};
+    const articlesWithPathname = articles.filter(a => a.pathname && a.pathname.trim());
+    
+    articlesWithPathname.forEach(article => {
+      const pathname = article.pathname.trim();
+      if (!pathnameCount[pathname]) {
+        pathnameCount[pathname] = [];
+      }
+      pathnameCount[pathname].push(article);
+    });
+    
+    const duplicatePathnames = Object.entries(pathnameCount).filter(([_, articles]) => articles.length > 1);
+    
+    if (duplicatePathnames.length === 0) {
+      message.info('没有发现重复的自定义路径名');
+      return;
+    }
+    
+    Modal.confirm({
+      title: '清理重复的自定义路径名',
+      width: 600,
+      content: (
+        <div>
+          <Alert
+            type="warning"
+            showIcon
+            message="发现重复的自定义路径名"
+            description={`检测到 ${duplicatePathnames.length} 个重复的自定义路径名，涉及 ${duplicatePathnames.reduce((sum, [_, articles]) => sum + articles.length, 0)} 篇文章。`}
+            style={{ marginBottom: 16 }}
+          />
+          <p><Text strong>重复的路径名：</Text></p>
+          <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            {duplicatePathnames.map(([pathname, duplicateArticles]) => (
+              <div key={pathname} style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 4 }}>
+                <Text strong>路径名: {pathname}</Text>
+                <div style={{ marginTop: 8 }}>
+                  {duplicateArticles.map(article => (
+                    <div key={article.id} style={{ marginLeft: 16 }}>
+                      <Text>ID {article.id}: {article.title}</Text>
+                      {article === duplicateArticles[0] && (
+                        <Text type="success" style={{ marginLeft: 8 }}>(将保留)</Text>
+                      )}
+                      {article !== duplicateArticles[0] && (
+                        <Text type="warning" style={{ marginLeft: 8 }}>(将清除路径名)</Text>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <Alert 
+            type="info" 
+            message="清理规则" 
+            description="对于每个重复的路径名，系统将保留创建时间最早的文章的自定义路径名，其他文章的自定义路径名将被清除（改为使用ID访问）。" 
+            style={{ marginTop: 16 }}
+          />
+        </div>
+      ),
+      onOk: async () => {
+        setCleanupPathnameLoading(true);
+        try {
+          const result = await cleanupDuplicatePathnames();
+          
+          if (result.statusCode === 200) {
+            message.success(result.message || `清理成功！共处理 ${result.data.cleanedCount} 篇文章的重复路径名`);
+            fetchArticles(); // 刷新列表
+          } else {
+            message.error(result.message || '清理失败');
+          }
+        } catch (error) {
+          message.error('清理失败：' + (error?.message || '网络错误'));
+        } finally {
+          setCleanupPathnameLoading(false);
+        }
+      }
+    });
+  };
+
   const columns = [
     {
       title: 'ID',
@@ -266,6 +348,19 @@ export default function ArticleManager() {
     tempIdArticles: articles.filter(a => a.id >= 50000).length,
   };
 
+  // 检查重复的自定义路径名
+  const pathnameCount = {};
+  articles.filter(a => a.pathname && a.pathname.trim()).forEach(article => {
+    const pathname = article.pathname.trim();
+    if (!pathnameCount[pathname]) {
+      pathnameCount[pathname] = [];
+    }
+    pathnameCount[pathname].push(article);
+  });
+  const duplicatePathnames = Object.entries(pathnameCount).filter(([_, articles]) => articles.length > 1);
+  stats.duplicatePathnameCount = duplicatePathnames.length;
+  stats.duplicatePathnameArticleCount = duplicatePathnames.reduce((sum, [_, articles]) => sum + articles.length, 0);
+
   return (
     <Card title="文章序号重排">
       <Alert
@@ -310,6 +405,12 @@ export default function ArticleManager() {
                <Text style={{ fontSize: '18px', color: '#ff7a00' }}>{stats.tempIdArticles}</Text>
              </div>
            )}
+           {stats.duplicatePathnameCount > 0 && (
+             <div>
+               <Text strong>重复路径名：</Text>
+               <Text style={{ fontSize: '18px', color: '#ff4d4f' }}>{stats.duplicatePathnameCount}组/{stats.duplicatePathnameArticleCount}篇</Text>
+             </div>
+           )}
          </Space>
        </div>
 
@@ -329,6 +430,16 @@ export default function ArticleManager() {
            showIcon
            message="检测到临时ID文章"
            description={`发现 ${stats.tempIdArticles} 篇文章的ID在临时范围（50000+），这些可能是重排过程中的冲突数据。建议先清理这些临时ID文章。`}
+           style={{ marginBottom: 20 }}
+         />
+       )}
+
+       {stats.duplicatePathnameCount > 0 && (
+         <Alert
+           type="error"
+           showIcon
+           message="检测到重复的自定义路径名"
+           description={`发现 ${stats.duplicatePathnameCount} 组重复的自定义路径名，涉及 ${stats.duplicatePathnameArticleCount} 篇文章。这会导致路径冲突，建议立即清理。`}
            style={{ marginBottom: 20 }}
          />
        )}
@@ -361,6 +472,16 @@ export default function ArticleManager() {
                loading={cleanupLoading}
              >
                清理临时ID ({stats.tempIdArticles}篇)
+             </Button>
+           )}
+           {stats.duplicatePathnameCount > 0 && (
+             <Button
+               type="primary"
+               danger
+               onClick={handleCleanupDuplicatePathnames}
+               loading={cleanupPathnameLoading}
+             >
+               清理重复路径名 ({stats.duplicatePathnameCount}组)
              </Button>
            )}
            <Button

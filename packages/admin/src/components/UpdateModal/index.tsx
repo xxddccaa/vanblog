@@ -128,6 +128,20 @@ export default function (props: {
             label="自定义路径名"
             tooltip="文章发布后的路径将为 /post/[自定义路径名]，如果未设置则使用文章 id 作为路径名"
             placeholder="留空或为空则使用 id 作为路径名"
+            rules={[
+              {
+                validator: async (_, value) => {
+                  if (!value) {
+                    return Promise.resolve();
+                  }
+                  // 检查是否为纯数字
+                  if (/^\d+$/.test(value.trim())) {
+                    return Promise.reject(new Error('自定义路径名不能为纯数字，避免与文章ID冲突'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
           />
           <ProFormSelect
             width="md"

@@ -1295,4 +1295,62 @@ export class ArticleProvider {
       throw new Error(`清理临时ID失败: ${error.message}`);
     }
   }
+
+  async cleanupDuplicatePathnames() {
+    console.log('开始清理重复的自定义路径名...');
+    
+    // 获取所有有自定义路径名的文章
+    const articlesWithPathname = await this.articleModel
+      .find({ 
+        pathname: { $exists: true, $ne: '' },
+        $and: [
+          {
+            $or: [
+              { deleted: false },
+              { deleted: { $exists: false } },
+            ],
+          },
+        ],
+      })
+      .sort({ createdAt: 1 }) // 按创建时间排序，保留较早的文章
+      .exec();
+
+    if (articlesWithPathname.length === 0) {
+      console.log('没有找到带有自定义路径名的文章');
+      return { cleanedCount: 0 };
+    }
+
+    // 按路径名分组
+    const pathnameGroups = new Map<string, any[]>();
+    for (const article of articlesWithPathname) {
+      const pathname = article.pathname.trim();
+      if (!pathnameGroups.has(pathname)) {
+        pathnameGroups.set(pathname, []);
+      }
+      pathnameGroups.get(pathname)!.push(article);
+    }
+
+    let cleanedCount = 0;
+    
+    // 处理每个路径名组
+    for (const [pathname, articles] of pathnameGroups) {
+      if (articles.length > 1) {
+        console.log(`发现重复路径名 "${pathname}"，共 ${articles.length} 篇文章`);
+        
+        // 保留第一篇（最早创建的），清除其他文章的自定义路径名
+        for (let i = 1; i < articles.length; i++) {
+          const article = articles[i];
+          await this.articleModel.updateOne(
+            { id: article.id },
+            { $unset: { pathname: '' } }
+          );
+          console.log(`  清除了文章 ID ${article.id} ("${article.title}") 的重复路径名`);
+          cleanedCount++;
+        }
+      }
+    }
+
+    console.log(`清理完成，共处理了 ${cleanedCount} 篇文章的重复路径名`);
+    return { cleanedCount };
+  }
 }

@@ -15,6 +15,7 @@ import { CreateDraftDto, PublishDraftDto, UpdateDraftDto } from 'src/types/draft
 import { SortOrder } from 'src/types/sort';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { DraftProvider } from 'src/provider/draft/draft.provider';
+import { ArticleProvider } from 'src/provider/article/article.provider';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { config } from 'src/config';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
@@ -28,6 +29,7 @@ import { TagProvider } from 'src/provider/tag/tag.provider';
 export class DraftController {
   constructor(
     private readonly draftProvider: DraftProvider,
+    private readonly articleProvider: ArticleProvider,
     private readonly isrProvider: ISRProvider,
     private readonly pipelineProvider: PipelineProvider,
     private readonly tagProvider: TagProvider,
@@ -120,6 +122,27 @@ export class DraftController {
         message: '演示站禁止发布草稿！',
       };
     }
+    
+    // 验证自定义路径名不能为纯数字
+    if (publishDto.pathname && /^\d+$/.test(publishDto.pathname.trim())) {
+      return {
+        statusCode: 400,
+        message: '自定义路径名不能为纯数字，避免与文章ID冲突',
+      };
+    }
+    
+    // 验证自定义路径名的唯一性
+    if (publishDto.pathname && publishDto.pathname.trim()) {
+      // 检查是否已有文章使用了相同的自定义路径名
+      const existingArticleByPathname = await this.articleProvider.getByPathName(publishDto.pathname.trim(), 'admin');
+      if (existingArticleByPathname) {
+        return {
+          statusCode: 400,
+          message: `自定义路径名 "${publishDto.pathname.trim()}" 已被其他文章使用，请使用不同的路径名`,
+        };
+      }
+    }
+    
     const result = await this.pipelineProvider.dispatchEvent('beforeUpdateArticle', publishDto);
     if (result.length > 0) {
       const lastResult = result[result.length - 1];
