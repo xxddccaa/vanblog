@@ -142,12 +142,12 @@ export class ArticleController {
       };
     }
     
-    // 获取删除前的文章信息，用于增量渲染
+    // 获取删除前的文章信息
     const beforeObj = await this.articleProvider.getById(id, 'admin');
     const data = await this.articleProvider.deleteById(id);
     
-    // 使用精确的增量渲染，而不是全量渲染
-    this.isrProvider.activeArticleById(id, 'delete', beforeObj);
+    // 删除文章后使用全量渲染，因为可能影响其他文章的链接
+    this.isrProvider.activeAll('文章删除', undefined, { forceActice: true });
     
     // 异步同步标签数据，不影响用户体验
     this.syncTagsAsync('文章删除');
@@ -156,6 +156,84 @@ export class ArticleController {
       statusCode: 200,
       data,
     };
+  }
+
+  @Post('/reorder')
+  async reorderArticles() {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    
+    try {
+      const data = await this.articleProvider.reorderArticleIds();
+      
+      // 触发全量ISR更新，因为文章ID都变了
+      this.isrProvider.activeAll('文章重排', undefined, { forceActice: true });
+      
+      // 异步同步标签数据
+      this.syncTagsAsync('文章重排');
+      
+      return {
+        statusCode: 200,
+        data,
+      };
+    } catch (error) {
+      return {
+        statusCode: 500,
+        message: `文章重排失败: ${error.message}`,
+      };
+    }
+  }
+
+  @Post('/fix-negative-ids')
+  async fixNegativeIds() {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    
+    try {
+      const data = await this.articleProvider.fixNegativeIds();
+      
+      return {
+        statusCode: 200,
+        data,
+      };
+    } catch (error) {
+      return {
+        statusCode: 500,
+        message: `修复负数ID失败: ${error.message}`,
+      };
+    }
+  }
+
+  @Post('/cleanup-temp-ids')
+  async cleanupTempIds() {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    
+    try {
+      const data = await this.articleProvider.cleanupTempIds();
+      
+      return {
+        statusCode: 200,
+        data,
+      };
+    } catch (error) {
+      return {
+        statusCode: 500,
+        message: `清理临时ID失败: ${error.message}`,
+      };
+    }
   }
 
   /**
