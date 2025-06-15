@@ -50,6 +50,7 @@ export class AutoBackupTask {
     private readonly aliyunpanProvider: AliyunpanProvider,
   ) {
     this.ensureBackupDirectoryExists();
+    this.initializeDynamicTasks();
   }
 
   private ensureBackupDirectoryExists() {
@@ -59,74 +60,102 @@ export class AutoBackupTask {
     }
   }
 
-  // 每天凌晨3点执行自动备份（避免与凌晨2点的ISR冲突）
-  @Cron('0 0 3 * * *')
-  async handleAutoBackup() {
+  // 初始化动态定时任务
+  async initializeDynamicTasks() {
     try {
-      // 检查是否启用了自动备份
       const backupSetting = await this.getAutoBackupSetting();
-      if (!backupSetting.enabled) {
-        return;
-      }
+      await this.updateBackupSchedule(backupSetting);
+      await this.updateAliyunpanSchedule(backupSetting);
+    } catch (error) {
+      this.logger.error('初始化动态任务失败:', error.message);
+    }
+  }
 
-      // 检查备份时间是否匹配
-      const currentHour = dayjs().hour();
-      const currentMinute = dayjs().minute();
-      const [backupHour, backupMinute] = backupSetting.backupTime.split(':').map(Number);
-      
-      // 只在设定的时间执行备份（允许1分钟的误差）
-      if (currentHour !== backupHour || Math.abs(currentMinute - backupMinute) > 1) {
-        return;
-      }
+  // 私有变量存储定时任务
+  private backupTimer: any = null;
 
-      this.logger.log('开始执行自动备份...');
+  // 更新备份定时任务
+  async updateBackupSchedule(setting: any) {
+    // 清除旧定时器
+    if (this.backupTimer) {
+      clearTimeout(this.backupTimer);
+      this.backupTimer = null;
+      this.logger.log('清除旧的备份定时任务');
+    }
+
+    // 如果启用备份，创建新任务
+    if (setting.enabled) {
+      this.scheduleNextBackup(setting.backupTime);
+      this.logger.log(`创建备份定时任务: 每天 ${setting.backupTime} 执行`);
+    }
+  }
+
+  // 计划下一次备份
+  private scheduleNextBackup(backupTime: string) {
+    const [hour, minute] = backupTime.split(':').map(Number);
+    const now = dayjs();
+    let nextRun = now.hour(hour).minute(minute).second(0).millisecond(0);
+    
+    // 如果今天的时间已过，设置为明天
+    if (nextRun.isBefore(now)) {
+      nextRun = nextRun.add(1, 'day');
+    }
+
+    const delay = nextRun.diff(now);
+    this.logger.log(`下次备份时间: ${nextRun.format('YYYY-MM-DD HH:mm:ss')}, 距离现在: ${Math.round(delay / 1000 / 60)} 分钟`);
+
+    this.backupTimer = setTimeout(async () => {
+      this.logger.log('执行定时备份...');
       await this.executeBackup();
       await this.cleanupOldBackups();
-      this.logger.log('自动备份完成');
-    } catch (error) {
-      this.logger.error('自动备份失败:', error.message);
+      this.logger.log('定时备份完成');
+      
+      // 设置下一次备份（24小时后）
+      this.scheduleNextBackup(backupTime);
+    }, delay);
+  }
+
+  // 私有变量存储阿里云盘同步定时任务
+  private aliyunpanTimer: any = null;
+
+  // 更新阿里云盘同步定时任务
+  async updateAliyunpanSchedule(setting: any) {
+    // 清除旧定时器
+    if (this.aliyunpanTimer) {
+      clearTimeout(this.aliyunpanTimer);
+      this.aliyunpanTimer = null;
+      this.logger.log('清除旧的阿里云盘同步定时任务');
+    }
+
+    // 如果启用阿里云盘同步，创建新任务
+    if (setting.aliyunpan.enabled) {
+      this.scheduleNextAliyunpanSync(setting.aliyunpan.syncTime);
+      this.logger.log(`创建阿里云盘同步定时任务: 每天 ${setting.aliyunpan.syncTime} 执行`);
     }
   }
 
-  // 每小时检查一次备份时间（简化版，支持任意时间备份）
-  @Cron('0 * * * *')
-  async handleHourlyCheck() {
-    try {
-      const backupSetting = await this.getAutoBackupSetting();
-      if (!backupSetting.enabled) {
-        return;
-      }
-
-      const currentTime = dayjs().format('HH:mm');
-      if (currentTime === backupSetting.backupTime) {
-        this.logger.log('执行定时自动备份...');
-        await this.executeBackup();
-        await this.cleanupOldBackups();
-        this.logger.log('定时自动备份完成');
-      }
-    } catch (error) {
-      this.logger.error('定时自动备份失败:', error.message);
+  // 计划下一次阿里云盘同步
+  private scheduleNextAliyunpanSync(syncTime: string) {
+    const [hour, minute] = syncTime.split(':').map(Number);
+    const now = dayjs();
+    let nextRun = now.hour(hour).minute(minute).second(0).millisecond(0);
+    
+    // 如果今天的时间已过，设置为明天
+    if (nextRun.isBefore(now)) {
+      nextRun = nextRun.add(1, 'day');
     }
-  }
 
-  // 每小时检查阿里云盘同步时间
-  @Cron('0 * * * *')
-  async handleAliyunpanSyncCheck() {
-    try {
-      const backupSetting = await this.getAutoBackupSetting();
-      if (!backupSetting.aliyunpan.enabled) {
-        return;
-      }
+    const delay = nextRun.diff(now);
+    this.logger.log(`下次阿里云盘同步时间: ${nextRun.format('YYYY-MM-DD HH:mm:ss')}, 距离现在: ${Math.round(delay / 1000 / 60)} 分钟`);
 
-      const currentTime = dayjs().format('HH:mm');
-      if (currentTime === backupSetting.aliyunpan.syncTime) {
-        this.logger.log('执行阿里云盘自动同步...');
-        await this.executeAliyunpanSync();
-        this.logger.log('阿里云盘自动同步完成');
-      }
-    } catch (error) {
-      this.logger.error('阿里云盘自动同步检查失败:', error.message);
-    }
+    this.aliyunpanTimer = setTimeout(async () => {
+      this.logger.log('执行定时阿里云盘同步...');
+      await this.executeAliyunpanSync();
+      this.logger.log('定时阿里云盘同步完成');
+      
+      // 设置下一次同步（24小时后）
+      this.scheduleNextAliyunpanSync(syncTime);
+    }, delay);
   }
 
   private async getAutoBackupSetting() {
@@ -140,9 +169,9 @@ export class AutoBackupTask {
         retentionCount: 10,
         aliyunpan: {
           enabled: false,
-          syncTime: '03:00',
-          localPath: '',
-          panPath: '',
+          syncTime: '03:30',
+          localPath: '/app/static',
+          panPath: '/backup/vanblog-static',
         },
       };
     }
@@ -288,12 +317,16 @@ export class AutoBackupTask {
     try {
       const backupSetting = await this.getAutoBackupSetting();
       
+      this.logger.log(`开始执行阿里云盘同步 - 本地路径: ${backupSetting.aliyunpan.localPath}, 云盘路径: ${backupSetting.aliyunpan.panPath}`);
+      
       // 检查登录状态
       const loginStatus = await this.aliyunpanProvider.getLoginStatus();
       if (!loginStatus.isLoggedIn) {
         this.logger.error('阿里云盘未登录，无法执行同步');
         return;
       }
+      
+      this.logger.log('阿里云盘登录状态正常，开始上传文件...');
 
       // 执行同步
       const result = await this.aliyunpanProvider.executeSync(
@@ -302,7 +335,7 @@ export class AutoBackupTask {
       );
 
       if (result.success) {
-        this.logger.log('阿里云盘同步成功');
+        this.logger.log('阿里云盘同步成功: ' + result.message);
       } else {
         this.logger.error('阿里云盘同步失败:', result.message);
       }

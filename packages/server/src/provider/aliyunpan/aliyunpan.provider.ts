@@ -231,20 +231,30 @@ export class AliyunpanProvider {
         throw new Error(`本地路径不存在: ${localPath}`);
       }
 
-      // 构建同步命令 - 使用onetime模式进行一次性备份
-      const command = `aliyunpan sync start -ldir "${localPath}" -pdir "${panPath}" -mode "upload" -policy "increment" -cycle "onetime" -drive "backup" -log "true"`;
+      // 构建上传命令 - 使用upload命令替代sync命令，添加skip参数跳过已存在文件
+      const command = `aliyunpan upload "${localPath}" "${panPath}" --skip`;
       
-      this.logger.log(`执行阿里云盘同步: ${command}`);
+      this.logger.log(`执行阿里云盘上传: ${command}`);
       
       // 设置较长的超时时间，因为备份可能需要较长时间
-      const { stdout, stderr } = await execAsync(command, { timeout: 30 * 60 * 1000 }); // 30分钟超时
+      const { stdout, stderr } = await execAsync(command, { timeout: 3 * 60 * 60 * 1000 }); // 3小时超时
       
-      this.logger.log(`同步输出: ${stdout}`);
+      this.logger.log(`上传输出: ${stdout}`);
       if (stderr) {
-        this.logger.warn(`同步警告: ${stderr}`);
+        this.logger.warn(`上传警告: ${stderr}`);
       }
 
-      return { success: true, message: '阿里云盘同步完成' };
+      // 解析上传结果，提取关键信息
+      let resultMessage = '阿里云盘上传完成';
+      if (stdout.includes('上传结束')) {
+        const lines = stdout.split('\n');
+        const endLine = lines.find(line => line.includes('上传结束'));
+        if (endLine) {
+          resultMessage = `阿里云盘上传完成 - ${endLine.trim()}`;
+        }
+      }
+
+      return { success: true, message: resultMessage };
     } catch (error) {
       this.logger.error('阿里云盘同步失败:', error.message);
       return { success: false, message: error.message };

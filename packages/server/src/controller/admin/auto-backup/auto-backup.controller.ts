@@ -58,11 +58,18 @@ export class AutoBackupController {
     try {
       await this.settingProvider.updateAutoBackupSetting(dto);
       
+      // 更新动态定时任务
+      await this.autoBackupTask.updateBackupSchedule(dto);
+      await this.autoBackupTask.updateAliyunpanSchedule(dto);
+      
       this.logger.log(`自动备份设置已更新：${dto.enabled ? '启用' : '停用'}，备份时间：${dto.backupTime}`);
+      if (dto.aliyunpan.enabled) {
+        this.logger.log(`阿里云盘同步：${dto.aliyunpan.enabled ? '启用' : '停用'}，同步时间：${dto.aliyunpan.syncTime}`);
+      }
 
       return {
         statusCode: 200,
-        data: '设置更新成功！',
+        data: '设置更新成功，定时任务已重新安排！',
       };
     } catch (error) {
       this.logger.error('更新自动备份设置失败', error.stack);
