@@ -24,6 +24,8 @@ services:
       - ${PWD}/caddy/config:/root/.config/caddy
       # Caddy 证书存储
       - ${PWD}/caddy/data:/root/.local/share/caddy
+      # 阿里云盘配置存储
+      - ${PWD}/aliyunpan/config:/root/.config/aliyunpan
     ports:
       # 前面的是映射到宿主机的端口号，改端口的话改前面的。
       - 801:80
