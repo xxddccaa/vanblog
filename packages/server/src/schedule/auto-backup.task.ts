@@ -27,6 +27,11 @@ import { AliyunpanProvider } from 'src/provider/aliyunpan/aliyunpan.provider';
 export class AutoBackupTask {
   private readonly logger = new Logger(AutoBackupTask.name);
   private readonly backupDir = '/app/static/blog-json';
+  
+  // 添加执行状态控制
+  private isBackupRunning = false;
+  private readonly lockFile = '/tmp/vanblog-backup.lock';
+  private readonly instanceId = `backup-${Date.now()}-${Math.random().toString(36).substring(2)}`;
 
   constructor(
     private readonly articleProvider: ArticleProvider,
@@ -49,6 +54,7 @@ export class AutoBackupTask {
     private readonly aiTaggingProvider: AITaggingProvider,
     private readonly aliyunpanProvider: AliyunpanProvider,
   ) {
+    this.logger.log(`初始化自动备份任务实例: ${this.instanceId}`);
     this.ensureBackupDirectoryExists();
     this.initializeDynamicTasks();
   }
@@ -63,11 +69,24 @@ export class AutoBackupTask {
   // 初始化动态定时任务
   async initializeDynamicTasks() {
     try {
+      this.logger.log(`实例 ${this.instanceId} 开始初始化动态任务`);
+      
+      // 添加随机延迟，避免多个实例同时初始化
+      const delay = Math.random() * 5000; // 0-5秒随机延迟
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
       const backupSetting = await this.getAutoBackupSetting();
+      
+      // 检查是否有其他实例已经在运行定时任务
+      if (fs.existsSync(this.lockFile)) {
+        this.logger.warn(`实例 ${this.instanceId} - 检测到锁文件，可能有其他实例正在管理定时任务，跳过初始化`);
+        return;
+      }
+      
       await this.updateBackupSchedule(backupSetting);
       await this.updateAliyunpanSchedule(backupSetting);
     } catch (error) {
-      this.logger.error('初始化动态任务失败:', error.message);
+      this.logger.error(`实例 ${this.instanceId} 初始化动态任务失败:`, error.message);
     }
   }
 
@@ -80,13 +99,13 @@ export class AutoBackupTask {
     if (this.backupTimer) {
       clearTimeout(this.backupTimer);
       this.backupTimer = null;
-      this.logger.log('清除旧的备份定时任务');
+      this.logger.log(`实例 ${this.instanceId} - 清除旧的备份定时任务`);
     }
 
     // 如果启用备份，创建新任务
     if (setting.enabled) {
       this.scheduleNextBackup(setting.backupTime);
-      this.logger.log(`创建备份定时任务: 每天 ${setting.backupTime} 执行`);
+      this.logger.log(`实例 ${this.instanceId} - 创建备份定时任务: 每天 ${setting.backupTime} 执行`);
     }
   }
 
@@ -102,13 +121,13 @@ export class AutoBackupTask {
     }
 
     const delay = nextRun.diff(now);
-    this.logger.log(`下次备份时间: ${nextRun.format('YYYY-MM-DD HH:mm:ss')}, 距离现在: ${Math.round(delay / 1000 / 60)} 分钟`);
+    this.logger.log(`实例 ${this.instanceId} - 下次备份时间: ${nextRun.format('YYYY-MM-DD HH:mm:ss')}, 距离现在: ${Math.round(delay / 1000 / 60)} 分钟`);
 
     this.backupTimer = setTimeout(async () => {
-      this.logger.log('执行定时备份...');
+      this.logger.log(`实例 ${this.instanceId} - 执行定时备份...`);
       await this.executeBackup();
       await this.cleanupOldBackups();
-      this.logger.log('定时备份完成');
+      this.logger.log(`实例 ${this.instanceId} - 定时备份完成`);
       
       // 设置下一次备份（24小时后）
       this.scheduleNextBackup(backupTime);
@@ -178,7 +197,39 @@ export class AutoBackupTask {
   }
 
   async executeBackup() {
+    // 防重复执行检查
+    if (this.isBackupRunning) {
+      this.logger.warn(`实例 ${this.instanceId} - 备份任务正在执行中，跳过此次触发`);
+      return;
+    }
+
+    // 检查文件锁
+    if (fs.existsSync(this.lockFile)) {
+      const lockTime = fs.statSync(this.lockFile).mtime;
+      const now = new Date();
+      const timeDiff = now.getTime() - lockTime.getTime();
+      
+      // 如果锁文件存在且创建时间在10分钟内，认为有其他备份正在执行
+      if (timeDiff < 10 * 60 * 1000) {
+        this.logger.warn(`实例 ${this.instanceId} - 检测到备份锁文件，可能有其他备份任务正在执行，跳过此次备份`);
+        return;
+      } else {
+        // 锁文件过期，删除它
+        this.logger.warn(`实例 ${this.instanceId} - 删除过期的备份锁文件`);
+        fs.unlinkSync(this.lockFile);
+      }
+    }
+
     try {
+      // 设置执行状态和文件锁
+      this.isBackupRunning = true;
+      fs.writeFileSync(this.lockFile, JSON.stringify({
+        instanceId: this.instanceId,
+        startTime: new Date().toISOString()
+      }));
+      
+      this.logger.log(`实例 ${this.instanceId} - 开始执行备份任务`);
+      
       // 获取所有数据
       const [
         articles,
@@ -245,6 +296,7 @@ export class AutoBackupTask {
         backupInfo: {
           version: '2.0.0',
           timestamp: new Date().toISOString(),
+          instanceId: this.instanceId,
           dataTypes: [
             'articles', 'tags', 'meta', 'drafts', 'categories', 'user',
             'viewer', 'visit', 'static', 'setting', 'moments', 'customPages',
@@ -277,10 +329,17 @@ export class AutoBackupTask {
       // 写入文件
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 
-      this.logger.log(`自动备份完成: ${fileName}`);
+      this.logger.log(`实例 ${this.instanceId} - 自动备份完成: ${fileName}`);
     } catch (error) {
-      this.logger.error('执行备份失败:', error.message);
+      this.logger.error(`实例 ${this.instanceId} - 执行备份失败:`, error.message);
       throw error;
+    } finally {
+      // 清理状态和锁文件
+      this.isBackupRunning = false;
+      if (fs.existsSync(this.lockFile)) {
+        fs.unlinkSync(this.lockFile);
+      }
+      this.logger.log(`实例 ${this.instanceId} - 备份任务清理完成`);
     }
   }
 
@@ -346,7 +405,14 @@ export class AutoBackupTask {
 
   // 手动触发备份（用于测试或立即备份）
   async triggerManualBackup() {
-    this.logger.log('触发手动备份');
+    this.logger.log(`实例 ${this.instanceId} - 触发手动备份`);
+    
+    // 检查是否已经有备份正在执行
+    if (this.isBackupRunning) {
+      this.logger.warn(`实例 ${this.instanceId} - 备份任务正在执行中，无法执行手动备份`);
+      throw new Error('备份任务正在执行中，请稍后再试');
+    }
+
     await this.executeBackup();
     await this.cleanupOldBackups();
   }
