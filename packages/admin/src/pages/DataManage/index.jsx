@@ -8,7 +8,6 @@ import Menu from './tabs/Menu';
 import Social from './tabs/Social';
 import Tag from './tabs/Tag';
 import Viewer from './tabs/Viewer';
-import AdminLayout from './tabs/AdminLayout';
 import AITagging from './tabs/AITagging';
 import ArticleManager from './tabs/ArticleManager';
 
@@ -21,7 +20,6 @@ export default function () {
     socials: <Social />,
     viewer: <Viewer />,
     menuConfig: <Menu />,
-    adminLayout: <AdminLayout />,
     aiTagging: <AITagging />,
     articleManager: <ArticleManager />,
   };
@@ -62,10 +60,6 @@ export default function () {
         {
           tab: '浏览量管理',
           key: 'viewer',
-        },
-        {
-          tab: '后台布局',
-          key: 'adminLayout',
         },
         {
           tab: 'AI打标',

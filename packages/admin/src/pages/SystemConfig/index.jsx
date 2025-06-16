@@ -10,6 +10,7 @@ import SiteInfo from './tabs/SiteInfo';
 import User from './tabs/User';
 import WalineTab from './tabs/WalineTab';
 import Token from './tabs/Token';
+import AdminLayout from './tabs/AdminLayout';
 export default function () {
   const tabMap = {
     siteInfo: <SiteInfo />,
@@ -21,6 +22,7 @@ export default function () {
     waline: <WalineTab />,
     advance: <Advance />,
     token: <Token />,
+    adminLayout: <AdminLayout />,
   };
   const [tab, setTab] = useTab('siteInfo', 'tab');
 
@@ -63,6 +65,10 @@ export default function () {
         {
           tab: 'Token 管理',
           key: 'token',
+        },
+        {
+          tab: '后台布局',
+          key: 'adminLayout',
         },
         {
           tab: '高级设置',
