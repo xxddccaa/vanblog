@@ -1,16 +1,36 @@
 # 全局配置：设置邮箱用于Let's Encrypt证书申请
 {
-    email 742971636@qq.com
+    email your-email@example.com
     # 使用Let's Encrypt的生产环境
     acme_ca https://acme-v02.api.letsencrypt.org/directory
 }
 
 # 主站配置：使用你的域名自动申请Let's Encrypt证书
-dong-blog.fun {
+your-domain.com {
     reverse_proxy vanblog:80
+    
+    # 启用Gzip压缩
+    encode gzip
+    
+    # 设置安全头
+    header {
+        # 启用HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # 防止点击劫持
+        X-Frame-Options "SAMEORIGIN"
+        # 防止XSS攻击
+        X-XSS-Protection "1; mode=block"
+        # 防止MIME类型嗅探
+        X-Content-Type-Options "nosniff"
+    }
     
     # 自动申请Let's Encrypt免费证书
     # 如果使用Cloudflare：设置DNS为橙色云朵，SSL模式为"完全"或"完全(严格)"
+}
+
+# 可选：www重定向到主域名 也需要DNS解析配置好
+www.your-domain.com {
+    redir https://your-domain.com{uri} permanent
 }
 
 # 备用配置：如果域名有问题，可以注释掉上面的配置，启用下面的IP访问配置
