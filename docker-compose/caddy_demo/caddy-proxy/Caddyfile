@@ -1,6 +1,6 @@
 # 全局配置：设置邮箱用于Let's Encrypt证书申请
 {
-    email 2505472941@qq.com
+    email 742971636@qq.com
     # 使用Let's Encrypt的生产环境
     acme_ca https://acme-v02.api.letsencrypt.org/directory
 }

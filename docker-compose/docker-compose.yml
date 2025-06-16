@@ -2,14 +2,11 @@ version: '3'
 
 services:
   vanblog:
-    # 阿里云镜像源
-    # image: registry.cn-beijing.aliyuncs.com/mereith/van-blog:latest
-    # image: kevinchina/deeplearning:van-blog-modify1.0
     image: kevinchina/deeplearning:vanblog-latest
     restart: always
     environment:
       TZ: 'Asia/Shanghai'
-      # 邮箱地址，用于自动申请 https 证书
+      # 邮箱地址，没用上，用caddy申请证书
       EMAIL: '742971636@qq.com'
       # 设置为生产环境
       NODE_ENV: 'production'
@@ -29,7 +26,7 @@ services:
     ports:
       # 前面的是映射到宿主机的端口号，改端口的话改前面的。
       - 801:80
-      - 4431:443
+      # - 4431:443
   mongo:
     # 某些机器不支持 avx 会报错，所以默认用 v4 版本。有的话用最新的。
     #image: mongo:4.4.16
