@@ -88,15 +88,30 @@ export default function EditorComponent(props: {
           locale={cn}
           sanitize={sanitize}
           uploadImages={async (files: File[]) => {
+            if (files.length === 1) {
+              setLoading(true);
+              const url = await uploadImg(files[0]);
+              setLoading(false);
+              return url ? [{ url: encodeURI(url) }] : [];
+            }
+            
             setLoading(true);
             const res = [];
-            for (const each of files) {
-              const url = await uploadImg(each);
-              if (url) {
-                res.push({ url: encodeURI(url) });
-              }
+            
+            try {
+              const uploadPromises = files.map(async (file) => {
+                const url = await uploadImg(file);
+                return url ? { url: encodeURI(url) } : null;
+              });
+              
+              const results = await Promise.all(uploadPromises);
+              res.push(...results.filter(Boolean));
+            } catch (error) {
+              console.error('批量上传图片失败:', error);
+            } finally {
+              setLoading(false);
             }
-            setLoading(false);
+            
             return res;
           }}
         />
