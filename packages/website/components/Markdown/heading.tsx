@@ -31,8 +31,21 @@ const headingPlugin = () => (tree) => {
         return '';
       };
       
-      const title = getTitleText(node);
+      let title = getTitleText(node);
+      
       if (title) {
+        // Clean the title text to match TOC parsing logic
+        title = title
+          .replace(/`([^`]+)`/g, "$1")           // inline code
+          .replace(/\*\*([^*]+)\*\*/g, "$1")    // bold
+          .replace(/\*([^*]+)\*/g, "$1")        // italic
+          .replace(/__([^_]+)__/g, "$1")        // bold
+          .replace(/_([^_]+)_/g, "$1")          // italic
+          .replace(/~~([^~]+)~~/g, "$1")        // strikethrough
+          .replace(/<[^>]+>/g, "")              // HTML tags
+          .replace(/\s+/g, " ")                 // normalize whitespace
+          .trim();
+        
         node.properties['data-id'] = title;
         node.properties['id'] = title;
         node.properties['class'] = 'markdown-heading cursor-pointer';

@@ -9,7 +9,8 @@ export default function (props: {
 }) {
   const navData = useMemo(() => {
     return parseNavStructure(props.content);
-  }, [props]);
+  }, [props.content]);
+
   return (
     <Core
       items={navData}
