@@ -10,8 +10,10 @@ import {
   Space,
   Popconfirm,
   InputNumber,
+  Alert,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { batchDeleteNavCategories } from '@/services/van-blog/batch';
 
 const NavCategory = () => {
   const [categories, setCategories] = useState([]);
@@ -20,6 +22,7 @@ const NavCategory = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [form] = Form.useForm();
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   // 获取分类列表
   const fetchCategories = async () => {
@@ -40,6 +43,24 @@ const NavCategory = () => {
       message.error('获取分类列表失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 批量删除处理函数
+  const handleBatchDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要删除的分类');
+      return;
+    }
+    
+    try {
+      await batchDeleteNavCategories(selectedRowKeys);
+      message.success('批量删除成功！');
+      setSelectedRowKeys([]);
+      await fetchCategories();
+      setTimeout(() => reorderCategories(), 500);
+    } catch (error) {
+      message.error('批量删除失败');
     }
   };
 
@@ -304,14 +325,44 @@ const NavCategory = () => {
           >
             重新排序
           </Button>
+          {selectedRowKeys.length > 0 && (
+            <>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleBatchDelete}
+              >
+                批量删除 ({selectedRowKeys.length})
+              </Button>
+              <Button
+                onClick={() => setSelectedRowKeys([])}
+              >
+                取消选择
+              </Button>
+            </>
+          )}
         </Space>
       </div>
+
+      {selectedRowKeys.length > 0 && (
+        <Alert
+          message={`已选择 ${selectedRowKeys.length} 个分类`}
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
 
       <Table
         columns={columns}
         dataSource={categories}
         rowKey="_id"
         loading={loading}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+          preserveSelectedRowKeys: true,
+        }}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,

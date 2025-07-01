@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
 import { ActionType, ProTable } from '@ant-design/pro-table';
-import { Button, message, Popconfirm } from 'antd';
+import { Button, message, Popconfirm, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { deleteMoment, getMoments, getSiteInfo } from '@/services/van-blog/api';
+import { batchDeleteMoments } from '@/services/van-blog/batch';
 import { checkDemo } from '@/services/van-blog/check';
 import moment from 'moment';
 import 'moment/locale/zh-cn';
@@ -162,6 +163,27 @@ export default function MomentManage() {
         actionRef={actionRef}
         rowKey="id"
         search={false}
+        rowSelection={{
+          fixed: true,
+          preserveSelectedRowKeys: true,
+        }}
+        tableAlertOptionRender={({ selectedRowKeys, onCleanSelected }) => {
+          return (
+            <Space>
+              <a
+                onClick={async () => {
+                  await batchDeleteMoments(selectedRowKeys);
+                  message.success('批量删除成功！');
+                  actionRef.current.reload();
+                  onCleanSelected();
+                }}
+              >
+                批量删除
+              </a>
+              <a onClick={onCleanSelected}>取消选择</a>
+            </Space>
+          );
+        }}
         toolBarRender={() => [
           <Button
             type="primary"

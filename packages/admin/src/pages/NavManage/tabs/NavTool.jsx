@@ -14,8 +14,10 @@ import {
   Image,
   Radio,
   Upload,
+  Alert,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, LinkOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { batchDeleteNavTools } from '@/services/van-blog/batch';
 
 const NavTool = () => {
   const [tools, setTools] = useState([]);
@@ -27,6 +29,7 @@ const NavTool = () => {
   const [form] = Form.useForm();
   const [iconMode, setIconMode] = useState('auto'); // auto, custom, upload
   const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   // 获取工具列表
   const fetchTools = async () => {
@@ -47,6 +50,24 @@ const NavTool = () => {
       message.error('获取工具列表失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 批量删除处理函数
+  const handleBatchDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请先选择要删除的工具');
+      return;
+    }
+    
+    try {
+      await batchDeleteNavTools(selectedRowKeys);
+      message.success('批量删除成功！');
+      setSelectedRowKeys([]);
+      await fetchTools();
+      setTimeout(() => reorderTools(), 500);
+    } catch (error) {
+      message.error('批量删除失败');
     }
   };
 
@@ -459,14 +480,44 @@ const NavTool = () => {
           >
             重新排序
           </Button>
+          {selectedRowKeys.length > 0 && (
+            <>
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={handleBatchDelete}
+              >
+                批量删除 ({selectedRowKeys.length})
+              </Button>
+              <Button
+                onClick={() => setSelectedRowKeys([])}
+              >
+                取消选择
+              </Button>
+            </>
+          )}
         </Space>
       </div>
+
+      {selectedRowKeys.length > 0 && (
+        <Alert
+          message={`已选择 ${selectedRowKeys.length} 个工具`}
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
 
       <Table
         columns={columns}
         dataSource={tools}
         rowKey="_id"
         loading={loading}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+          preserveSelectedRowKeys: true,
+        }}
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
