@@ -62,6 +62,35 @@ export interface LayoutSetting {
   html: string;
   css: string;
   head: string;
+  animations?: AnimationSettings;
+}
+
+export interface AnimationSettings {
+  enabled: boolean;
+  snowflake?: SnowflakeConfig;
+  particles?: ParticleConfig;
+  heartClick?: HeartClickConfig;
+}
+
+export interface SnowflakeConfig {
+  enabled: boolean;
+  color: string;
+  count: number;
+  speed: number;
+  size: number;
+}
+
+export interface ParticleConfig {
+  enabled: boolean;
+  color: string;
+  darkColor: string; // 暗色主题下的颜色
+  count: number;
+  opacity: number; // 透明度
+  zIndex: number; // 层级
+}
+
+export interface HeartClickConfig {
+  enabled: boolean;
 }
 
 export interface HeadTag {

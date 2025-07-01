@@ -154,14 +154,946 @@ export class SettingProvider {
       return null;
     }
     const res: any = {};
+    
+    // 首先处理动画，生成额外的CSS和Script
+    let additionalCss = '';
+    let additionalScript = '';
+    
+    // 如果总开关启用，或者任何子动画启用，都生成动画代码
+    const hasAnyAnimationEnabled = dto.animations && (
+      dto.animations.enabled || 
+      dto.animations.snowflake?.enabled || 
+      dto.animations.particles?.enabled || 
+      dto.animations.heartClick?.enabled
+    );
+    
+    if (hasAnyAnimationEnabled) {
+      const animationCode = this.generateAnimationCode(dto.animations);
+      additionalCss = animationCode.css || '';
+      additionalScript = animationCode.script || '';
+    }
+    
+    // 然后处理其他字段
     for (const key of Object.keys(dto)) {
       if (key == 'head') {
         res[key] = parseHtmlToHeadTagArr(dto[key]);
+      } else if (key == 'animations') {
+        // 保存动画配置
+        res[key] = dto[key];
+      } else if (key == 'css') {
+        // 合并原有CSS和动画CSS
+        const existingCss = dto[key] || '';
+        const finalCss = existingCss + (additionalCss ? '\n' + additionalCss : '');
+        res[key] = encode(finalCss);
+      } else if (key == 'script') {
+        // 合并原有Script和动画Script
+        const existingScript = dto[key] || '';
+        const finalScript = existingScript + (additionalScript ? '\n' + additionalScript : '');
+        res[key] = encode(finalScript);
       } else {
         res[key] = encode(dto[key]);
       }
     }
+    
+    // 如果没有原始的css/script字段但有动画代码，需要添加它们
+    if (additionalCss && !dto.css) {
+      res.css = encode(additionalCss);
+    }
+    if (additionalScript && !dto.script) {
+      res.script = encode(additionalScript);
+    }
+    
     return res;
+  }
+
+  private generateAnimationCode(animations: any): { css: string; script: string } {
+    let css = '';
+    let script = '';
+
+    if (animations.snowflake?.enabled) {
+      css += this.generateSnowflakeCSS(animations.snowflake);
+      script += this.generateSnowflakeJS(animations.snowflake);
+    }
+
+    if (animations.particles?.enabled) {
+      css += this.generateParticlesCSS(animations.particles);
+      script += this.generateParticlesJS(animations.particles);
+    }
+
+    if (animations.heartClick?.enabled) {
+      css += this.generateHeartClickCSS(animations.heartClick);
+      script += this.generateHeartClickJS(animations.heartClick);
+    }
+
+    return { css, script };
+  }
+
+  private generateSnowflakeCSS(config: any): string {
+    return `
+.snow-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.snowflake {
+  position: absolute;
+  will-change: transform;
+  user-select: none;
+  text-shadow: 0 0 6px ${config.color}88, 0 0 10px ${config.color}66;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  color: ${config.color};
+}
+`;
+  }
+
+  private generateSnowflakeJS(config: any): string {
+    return `
+class SnowflakeSystem {
+  constructor() {
+    this.snowflakes = [];
+    this.snowflakeChars = ['❅', '❆', '✻', '✼', '*'];
+    this.snowflakeCount = ${config.count};
+    this.isRunning = false;
+    this.lastUpdateTime = 0;
+    this.init();
+  }
+
+  init() {
+    this.container = document.createElement('div');
+    this.container.className = 'snow-container';
+    document.body.appendChild(this.container);
+
+    for (let i = 0; i < this.snowflakeCount; i++) {
+      this.addSnowflake();
+    }
+    
+    this.start();
+  }
+
+  addSnowflake() {
+    const snowflake = this.createSnowflake();
+    this.snowflakes.push(snowflake);
+    this.container.appendChild(snowflake.element);
+    return snowflake;
+  }
+
+  createSnowflake() {
+    const element = document.createElement('div');
+    element.className = 'snowflake';
+    
+    const char = this.snowflakeChars[Math.floor(Math.random() * this.snowflakeChars.length)];
+    element.textContent = char;
+    
+    const size = ${config.size} * (0.5 + Math.random() * 0.5);
+    element.style.fontSize = \`\${size}em\`;
+    
+    const opacity = 0.6 + Math.random() * 0.4;
+    element.style.opacity = opacity;
+    
+    let x;
+    const screenThird = window.innerWidth / 3;
+    
+    if (Math.random() < 0.9) {
+      if (Math.random() < 0.5) {
+        x = Math.random() * screenThird;
+      } else {
+        x = screenThird * 2 + Math.random() * screenThird;
+      }
+    } else {
+      x = screenThird + Math.random() * screenThird;
+    }
+    
+    const y = -50 - Math.random() * 100;
+    element.style.transform = \`translate3d(\${x}px, \${y}px, 0)\`;
+    
+    return {
+      element: element,
+      x: x,
+      y: y,
+      speed: ${config.speed} * (0.5 + Math.random() * 1.5),
+      drift: (Math.random() - 0.5) * 0.8,
+      size: size,
+      zone: x < screenThird ? 0 : (x > screenThird * 2 ? 2 : 1)
+    };
+  }
+
+  resetSnowflake(snowflake) {
+    const screenThird = window.innerWidth / 3;
+    
+    if (snowflake.zone === 0) {
+      snowflake.x = Math.random() * screenThird;
+    } else if (snowflake.zone === 2) {
+      snowflake.x = screenThird * 2 + Math.random() * screenThird;
+    } else {
+      snowflake.x = screenThird + Math.random() * screenThird;
+    }
+    
+    snowflake.y = -50 - Math.random() * 100;
+    snowflake.speed = ${config.speed} * (0.5 + Math.random() * 1.5);
+    snowflake.drift = (Math.random() - 0.5) * 0.8;
+  }
+
+  update(timestamp) {
+    if (!this.lastUpdateTime) this.lastUpdateTime = timestamp;
+    const deltaTime = timestamp - this.lastUpdateTime;
+    this.lastUpdateTime = timestamp;
+    
+    if (deltaTime > 100) return;
+    
+    const deltaFactor = Math.min(deltaTime / 16, 2.5);
+    
+    this.snowflakes.forEach(snowflake => {
+      snowflake.y += snowflake.speed * deltaFactor;
+      
+      if (snowflake.zone === 0 || snowflake.zone === 2) {
+        snowflake.x += snowflake.drift * deltaFactor * 1.5;
+      } else {
+        snowflake.x += snowflake.drift * deltaFactor * 0.5;
+      }
+      
+      if (snowflake.y > window.innerHeight + 50) {
+        this.resetSnowflake(snowflake);
+      }
+      
+      if (snowflake.zone !== 1) {
+        if (snowflake.x > window.innerWidth + 50) {
+          snowflake.x = -50;
+        } else if (snowflake.x < -50) {
+          snowflake.x = window.innerWidth + 50;
+        }
+      }
+      
+      snowflake.element.style.transform = \`translate3d(\${snowflake.x}px, \${snowflake.y}px, 0)\`;
+    });
+  }
+
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.lastUpdateTime = 0;
+    
+    const animate = (timestamp) => {
+      if (!this.isRunning) return;
+      this.update(timestamp);
+      requestAnimationFrame(animate);
+    };
+    
+    requestAnimationFrame(animate);
+  }
+
+  stop() {
+    this.isRunning = false;
+  }
+
+  handleResize() {
+    this.container.style.width = \`\${window.innerWidth}px\`;
+    this.container.style.height = \`\${window.innerHeight}px\`;
+    
+    const screenThird = window.innerWidth / 3;
+    
+    this.snowflakes.forEach(snowflake => {
+      snowflake.zone = snowflake.x < screenThird ? 0 : (snowflake.x > screenThird * 2 ? 2 : 1);
+      
+      if (snowflake.zone === 1 && Math.random() < 0.3) {
+        if (Math.random() < 0.5) {
+          snowflake.x = Math.random() * screenThird;
+          snowflake.zone = 0;
+        } else {
+          snowflake.x = screenThird * 2 + Math.random() * screenThird;
+          snowflake.zone = 2;
+        }
+      }
+      
+      snowflake.element.style.transform = \`translate3d(\${snowflake.x}px, \${snowflake.y}px, 0)\`;
+    });
+  }
+
+  destroy() {
+    this.stop();
+    if (this.container && this.container.parentNode) {
+      this.container.parentNode.removeChild(this.container);
+    }
+  }
+}
+
+let snowSystem;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('DOMContentLoaded', () => {
+    snowSystem = new SnowflakeSystem();
+  });
+
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (snowSystem) snowSystem.handleResize();
+    }, 100);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (snowSystem) {
+      document.hidden ? snowSystem.stop() : snowSystem.start();
+    }
+  });
+}
+`;
+  }
+
+  private generateParticlesCSS(config: any): string {
+    // 根据主题模式设置不同的默认颜色
+    const lightColor = config.color || '0,0,0';
+    const darkColor = config.darkColor || '255,255,255';
+    
+    return `
+.particles-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.particles-canvas {
+  width: 100%;
+  height: 100%;
+}
+`;
+  }
+
+  private generateParticlesJS(config: any): string {
+    // 颜色转换函数：十六进制转RGB
+    const hexToRgb = (hex: string): string => {
+      if (!hex) return '0,0,0';
+      
+      // 移除#号和空格
+      let cleanHex = hex.replace(/[#\s]/g, '');
+      
+      // 处理3位十六进制颜色（如#fff）
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex.split('').map(char => char + char).join('');
+      }
+      
+      // 确保是6位十六进制
+      if (cleanHex.length !== 6 || !/^[0-9A-Fa-f]{6}$/.test(cleanHex)) {
+        console.warn(`Invalid hex color: ${hex}, using default`);
+        return '0,0,0';
+      }
+      
+      // 解析RGB值
+      const r = parseInt(cleanHex.substring(0, 2), 16);
+      const g = parseInt(cleanHex.substring(2, 4), 16);
+      const b = parseInt(cleanHex.substring(4, 6), 16);
+      
+      return `${r},${g},${b}`;
+    };
+
+    // 转换颜色配置
+    const lightColor = hexToRgb(config.color || '#000000');
+    const darkColor = hexToRgb(config.darkColor || '#ffffff');
+
+    return `
+// Canvas-nest.js 粒子连线动画 - 基于官方实现
+(function() {
+  'use strict';
+  
+  // 颜色配置
+  const LIGHT_COLOR = '${lightColor}';
+  const DARK_COLOR = '${darkColor}';
+  
+  // 暴露到全局作用域供调试使用
+  window.LIGHT_COLOR = LIGHT_COLOR;
+  window.DARK_COLOR = DARK_COLOR;
+  
+
+  
+  // 工具函数
+  const requestAnimationFrame = window.requestAnimationFrame ||
+    window.webkitRequestAnimationFrame ||
+    window.mozRequestAnimationFrame ||
+    window.msRequestAnimationFrame ||
+    window.oRequestAnimationFrame ||
+    function(func) { return window.setTimeout(func, 1000 / 60); };
+
+  const cancelAnimationFrame = window.cancelAnimationFrame ||
+    window.webkitCancelAnimationFrame ||
+    window.mozCancelAnimationFrame ||
+    window.msCancelAnimationFrame ||
+    window.oCancelAnimationFrame ||
+    window.clearTimeout;
+
+  const range = n => new Array(n).fill(0).map((e, idx) => idx);
+
+  const canvasStyle = config => 
+    \`display:block;position:absolute;top:0;left:0;height:100%;width:100%;overflow:hidden;pointer-events:none;z-index:\${config.zIndex};opacity:\${config.opacity}\`;
+
+  // 获取当前主题颜色
+  const getCurrentThemeColor = () => {
+    if (typeof document !== 'undefined') {
+      // 优先检查VanBlog的主题设置
+      const htmlClass = document.documentElement.className;
+      const dataTheme = document.documentElement.getAttribute('data-theme');
+      const bodyClass = document.body.className;
+      
+      // VanBlog通过html class控制主题，优先级最高
+      if (htmlClass.includes('dark')) {
+        return DARK_COLOR;
+      } else if (htmlClass.includes('light')) {
+        return LIGHT_COLOR;
+      }
+      
+      // 其次检查data-theme属性
+      if (dataTheme === 'dark') {
+        return DARK_COLOR;
+      } else if (dataTheme === 'light') {
+        return LIGHT_COLOR;
+      }
+      
+      // 再检查body class
+      if (bodyClass.includes('dark')) {
+        return DARK_COLOR;
+      } else if (bodyClass.includes('light')) {
+        return LIGHT_COLOR;
+      }
+      
+      // 最后才回退到系统偏好
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return systemPrefersDark ? DARK_COLOR : LIGHT_COLOR;
+    }
+    return LIGHT_COLOR;
+  };
+
+  // 简化的size-sensor绑定
+  const bindResize = (el, callback) => {
+    const resizeHandler = () => callback();
+    window.addEventListener('resize', resizeHandler);
+    return () => window.removeEventListener('resize', resizeHandler);
+  };
+
+  // CanvasNest 类实现
+  class CanvasNest {
+    constructor(el, config) {
+      this.el = el;
+      this.c = {
+        zIndex: -1,
+        opacity: 0.5,
+        color: '0,0,0',
+        pointColor: '0,0,0',
+        count: 99,
+        ...config,
+      };
+
+      this.canvas = this.newCanvas();
+      this.context = this.canvas.getContext('2d');
+      this.points = this.randomPoints();
+      this.current = {
+        x: null,
+        y: null,
+        max: 20000
+      };
+      this.all = this.points.concat([this.current]);
+
+      this.bindEvent();
+      this.requestFrame(this.drawCanvas);
+    }
+
+    bindEvent() {
+      this.unbindResize = bindResize(this.el, () => {
+        this.canvas.width = this.el.clientWidth;
+        this.canvas.height = this.el.clientHeight;
+      });
+
+      this.onmousemove = window.onmousemove;
+      window.onmousemove = e => {
+        this.current.x = e.clientX - this.el.offsetLeft + (document.scrollingElement?.scrollLeft || 0);
+        this.current.y = e.clientY - this.el.offsetTop + (document.scrollingElement?.scrollTop || 0);
+        this.onmousemove && this.onmousemove(e);
+      };
+
+      this.onmouseout = window.onmouseout;
+      window.onmouseout = () => {
+        this.current.x = null;
+        this.current.y = null;
+        this.onmouseout && this.onmouseout();
+      };
+    }
+
+    randomPoints() {
+      return range(this.c.count).map(() => ({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        xa: 2 * Math.random() - 1,
+        ya: 2 * Math.random() - 1,
+        max: 6000
+      }));
+    }
+
+    newCanvas() {
+      if (getComputedStyle(this.el).position === 'static') {
+        this.el.style.position = 'relative';
+      }
+      const canvas = document.createElement('canvas');
+      canvas.style.cssText = canvasStyle(this.c);
+      canvas.width = this.el.clientWidth;
+      canvas.height = this.el.clientHeight;
+      this.el.appendChild(canvas);
+      return canvas;
+    }
+
+    requestFrame(func) {
+      this.tid = requestAnimationFrame(() => func.call(this));
+    }
+
+    drawCanvas() {
+      const context = this.context;
+      const width = this.canvas.width;
+      const height = this.canvas.height;
+      const current = this.current;
+      const points = this.points;
+      const all = this.all;
+      // 每帧都获取当前主题颜色，确保主题切换时颜色能实时更新
+      const currentColor = getCurrentThemeColor();
+
+      context.clearRect(0, 0, width, height);
+
+      let e, i, d, x_dist, y_dist, dist;
+      points.forEach((r, idx) => {
+        r.x += r.xa;
+        r.y += r.ya;
+        r.xa *= r.x > width || r.x < 0 ? -1 : 1;
+        r.ya *= r.y > height || r.y < 0 ? -1 : 1;
+        
+        // 绘制粒子点
+        context.fillStyle = \`rgba(\${currentColor}, 0.8)\`;
+        context.fillRect(r.x - 0.5, r.y - 0.5, 1, 1);
+
+        // 绘制连线
+        for (i = idx + 1; i < all.length; i++) {
+          e = all[i];
+          if (null !== e.x && null !== e.y) {
+            x_dist = r.x - e.x;
+            y_dist = r.y - e.y;
+            dist = x_dist * x_dist + y_dist * y_dist;
+
+            if (dist < e.max) {
+              if (e === current && dist >= e.max / 2) {
+                r.x -= 0.03 * x_dist;
+                r.y -= 0.03 * y_dist;
+              }
+              d = (e.max - dist) / e.max;
+              context.beginPath();
+              context.lineWidth = d / 2;
+              context.strokeStyle = \`rgba(\${currentColor}, \${d + 0.2})\`;
+              context.moveTo(r.x, r.y);
+              context.lineTo(e.x, e.y);
+              context.stroke();
+            }
+          }
+        }
+      });
+      this.requestFrame(this.drawCanvas);
+    }
+
+    destroy() {
+      this.unbindResize && this.unbindResize();
+      window.onmousemove = this.onmousemove;
+      window.onmouseout = this.onmouseout;
+      cancelAnimationFrame(this.tid);
+      if (this.canvas && this.canvas.parentNode) {
+        this.canvas.parentNode.removeChild(this.canvas);
+      }
+    }
+  }
+
+  // 初始化
+  let canvasNestInstance = null;
+  
+  function initCanvasNest() {
+    // 清理之前的实例
+    if (canvasNestInstance) {
+      canvasNestInstance.destroy();
+    }
+    
+    const config = {
+      zIndex: ${config.zIndex || -1},
+      opacity: ${config.opacity || 0.5},
+      color: getCurrentThemeColor(),
+      pointColor: getCurrentThemeColor(),
+      count: ${config.count || 99}
+    };
+    
+    canvasNestInstance = new CanvasNest(document.body, config);
+  }
+
+  // DOM 准备就绪时初始化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCanvasNest);
+  } else {
+    initCanvasNest();
+  }
+
+  // 主题变化时重新初始化
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      setTimeout(initCanvasNest, 100);
+    });
+  }
+
+  // 监听主题属性变化 - 专门针对VanBlog的主题切换机制
+  if (typeof MutationObserver !== 'undefined') {
+    const observer = new MutationObserver((mutations) => {
+      let shouldUpdate = false;
+      
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes') {
+          // 监听html元素的class变化（VanBlog主要通过这个控制主题）
+          if (mutation.target === document.documentElement && mutation.attributeName === 'class') {
+            const oldClass = mutation.oldValue || '';
+            const newClass = document.documentElement.className;
+            
+            // 检查主题相关的class是否发生变化
+            const oldIsDark = oldClass.includes('dark');
+            const newIsDark = newClass.includes('dark');
+            const oldIsLight = oldClass.includes('light');
+            const newIsLight = newClass.includes('light');
+            
+                         if (oldIsDark !== newIsDark || oldIsLight !== newIsLight) {
+               shouldUpdate = true;
+             }
+          }
+          
+                     // 也监听data-theme属性变化（备用）
+           if (mutation.attributeName === 'data-theme') {
+             shouldUpdate = true;
+           }
+        }
+      });
+      
+             if (shouldUpdate) {
+         setTimeout(initCanvasNest, 50);
+       }
+    });
+    
+    // 监听html元素的class和data-theme属性变化
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+      attributeOldValue: true  // 记录旧值以便比较
+    });
+    
+    // 也监听body的class变化（某些主题可能通过body控制）
+    if (document.body) {
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class'],
+        attributeOldValue: true
+      });
+    }
+  }
+})();
+`;
+  }
+
+  private generateHeartClickCSS(config: any): string {
+    return `
+/* 心形点击爆炸效果样式 */
+.heart {
+  width: 12px;
+  height: 12px;
+  position: fixed;
+  background: #ff1744;
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+  -moz-transform: rotate(45deg);
+  pointer-events: none;
+  z-index: 9999;
+  animation: heartBeat 0.1s ease-out;
+}
+
+.heart:after,
+.heart:before {
+  content: '';
+  width: inherit;
+  height: inherit;
+  background: inherit;
+  border-radius: 50%;
+  -webkit-border-radius: 50%;
+  -moz-border-radius: 50%;
+  position: absolute;
+}
+
+.heart:after {
+  top: -6px;
+}
+
+.heart:before {
+  left: -6px;
+}
+
+@keyframes heartBeat {
+  0% { transform: scale(0) rotate(45deg); }
+  50% { transform: scale(1.3) rotate(45deg); }
+  100% { transform: scale(1) rotate(45deg); }
+}
+
+/* 爆炸粒子效果 */
+.heart-particle {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  background: #ff1744;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+}
+`;
+  }
+
+  private generateHeartClickJS(config: any): string {
+    return `
+// 心形点击爆炸效果系统 - 增强版粒子爆炸
+(function(window, document, undefined) {
+  'use strict';
+  
+  var hearts = [];
+  var particles = [];
+  
+  // requestAnimationFrame 兼容性处理
+  window.requestAnimationFrame = (function() {
+    return window.requestAnimationFrame || 
+           window.webkitRequestAnimationFrame ||
+           window.mozRequestAnimationFrame ||
+           window.oRequestAnimationFrame ||
+           window.msRequestAnimationFrame ||
+           function (callback) {
+             setTimeout(callback, 1000/60);
+           }
+  })();
+  
+  init();
+  
+  function init() {
+    addHeartStyles();
+    attachEvent();
+    gameloop();
+  }
+  
+  function addHeartStyles() {
+    var style = document.createElement("style");
+    style.type = "text/css";
+    var css = \`.heart{width: 10px;height: 10px;position: fixed;background: #f00;transform: rotate(45deg);-webkit-transform: rotate(45deg);-moz-transform: rotate(45deg);pointer-events: none;z-index: 9999;}
+.heart:after,.heart:before{content: '';width: inherit;height: inherit;background: inherit;border-radius: 50%;-webkit-border-radius: 50%;-moz-border-radius: 50%;position: absolute;}
+.heart:after{top: -5px;}
+.heart:before{left: -5px;}
+.heart-particle{position: fixed;width: 4px;height: 4px;border-radius: 50%;pointer-events: none;z-index: 9998;}
+.heart-particle.small{width: 2px;height: 2px;}
+.heart-particle.large{width: 6px;height: 6px;}\`;
+    
+    try {
+      style.appendChild(document.createTextNode(css));
+    } catch(ex) {
+      style.styleSheet.cssText = css;
+    }
+    document.getElementsByTagName('head')[0].appendChild(style);
+  }
+  
+  function gameloop() {
+    // 处理心形动画
+    for(var i = 0; i < hearts.length; i++) {
+      if(hearts[i].alpha <= 0) {
+        document.body.removeChild(hearts[i].el);
+        hearts.splice(i, 1);
+        i--;
+        continue;
+      }
+      
+      // 向上飘动
+      hearts[i].y--;
+      // 逐渐放大
+      hearts[i].scale += 0.004;
+      // 透明度逐渐减少
+      hearts[i].alpha -= 0.013;
+      
+      // 更新样式
+      hearts[i].el.style.cssText = 
+        "left:" + hearts[i].x + "px;" +
+        "top:" + hearts[i].y + "px;" +
+        "opacity:" + hearts[i].alpha + ";" +
+        "transform:scale(" + hearts[i].scale + "," + hearts[i].scale + ") rotate(45deg);" +
+        "background:" + hearts[i].color + ";" +
+        "pointer-events:none;" +
+        "z-index:9999;";
+    }
+    
+    // 处理爆炸粒子动画
+    for(var j = 0; j < particles.length; j++) {
+      if(particles[j].alpha <= 0 || particles[j].life <= 0) {
+        document.body.removeChild(particles[j].el);
+        particles.splice(j, 1);
+        j--;
+        continue;
+      }
+      
+      // 粒子运动
+      particles[j].x += particles[j].vx;
+      particles[j].y += particles[j].vy;
+      particles[j].vy += particles[j].gravity; // 重力效果
+      particles[j].vx *= 0.98; // 空气阻力
+      particles[j].alpha -= particles[j].fadeSpeed;
+      particles[j].life--;
+      
+      // 更新粒子样式
+      particles[j].el.style.cssText = 
+        "left:" + particles[j].x + "px;" +
+        "top:" + particles[j].y + "px;" +
+        "opacity:" + particles[j].alpha + ";" +
+        "background:" + particles[j].color + ";" +
+        "transform:scale(" + (particles[j].scale * (particles[j].life / particles[j].maxLife)) + ");" +
+        "border-radius: 50%;" +
+        "pointer-events:none;" +
+        "z-index:9998;";
+    }
+    
+    requestAnimationFrame(gameloop);
+  }
+  
+  function attachEvent() {
+    var old = typeof window.onclick === "function" && window.onclick;
+    window.onclick = function(event) {
+      old && old();
+      createHeartExplosion(event);
+    }
+  }
+  
+  function createHeartExplosion(event) {
+    var clickX = event.clientX;
+    var clickY = event.clientY;
+    
+    // 创建主心形
+    createHeart(clickX, clickY);
+    
+    // 创建大量爆炸粒子效果
+    createExplosionParticles(clickX, clickY);
+  }
+  
+  function createHeart(x, y) {
+    var heart = document.createElement("div");
+    heart.className = "heart";
+    hearts.push({
+      el: heart,
+      x: x - 5,
+      y: y - 5,
+      scale: 1,
+      alpha: 1,
+      color: getRandomHeartColor()
+    });
+    document.body.appendChild(heart);
+  }
+  
+  function createExplosionParticles(centerX, centerY) {
+    // 创建第一圈粒子 - 大粒子，速度快
+    for(var i = 0; i < 12; i++) {
+      createParticle(centerX, centerY, {
+        angle: (i * 30) * Math.PI / 180,
+        speed: 4 + Math.random() * 3,
+        size: 'large',
+        gravity: 0.2,
+        fadeSpeed: 0.02,
+        life: 80
+      });
+    }
+    
+    // 创建第二圈粒子 - 中等粒子，速度中等
+    for(var j = 0; j < 16; j++) {
+      createParticle(centerX, centerY, {
+        angle: (j * 22.5) * Math.PI / 180,
+        speed: 2.5 + Math.random() * 2,
+        size: 'medium',
+        gravity: 0.15,
+        fadeSpeed: 0.025,
+        life: 60
+      });
+    }
+    
+    // 创建第三圈粒子 - 小粒子，速度慢，数量多
+    for(var k = 0; k < 20; k++) {
+      createParticle(centerX, centerY, {
+        angle: Math.random() * 2 * Math.PI,
+        speed: 1 + Math.random() * 2,
+        size: 'small',
+        gravity: 0.1,
+        fadeSpeed: 0.03,
+        life: 50
+      });
+    }
+    
+    // 创建随机散射粒子
+    for(var l = 0; l < 8; l++) {
+      createParticle(centerX, centerY, {
+        angle: Math.random() * 2 * Math.PI,
+        speed: 5 + Math.random() * 4,
+        size: Math.random() > 0.5 ? 'medium' : 'large',
+        gravity: 0.25,
+        fadeSpeed: 0.015,
+        life: 90
+      });
+    }
+  }
+  
+  function createParticle(centerX, centerY, options) {
+    var particle = document.createElement("div");
+    particle.className = "heart-particle " + (options.size || 'medium');
+    
+    var scale = options.size === 'large' ? 1.5 : (options.size === 'small' ? 0.7 : 1);
+    
+    particles.push({
+      el: particle,
+      x: centerX - 2,
+      y: centerY - 2,
+      vx: Math.cos(options.angle) * options.speed,
+      vy: Math.sin(options.angle) * options.speed,
+      gravity: options.gravity,
+      fadeSpeed: options.fadeSpeed,
+      alpha: 1,
+      life: options.life,
+      maxLife: options.life,
+      scale: scale,
+      color: getRandomParticleColor()
+    });
+    document.body.appendChild(particle);
+  }
+  
+  function getRandomHeartColor() {
+    var colors = [
+      "rgb(255,20,147)", "rgb(255,105,180)", "rgb(255,69,0)", "rgb(255,140,0)",
+      "rgb(255,215,0)", "rgb(50,205,50)", "rgb(0,191,255)", "rgb(138,43,226)",
+      "rgb(255,0,255)", "rgb(220,20,60)"
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+  
+  function getRandomParticleColor() {
+    var colors = [
+      "rgb(255,20,147)", "rgb(255,105,180)", "rgb(255,69,0)", "rgb(255,140,0)",
+      "rgb(255,215,0)", "rgb(50,205,50)", "rgb(0,191,255)", "rgb(138,43,226)",
+      "rgb(255,0,255)", "rgb(220,20,60)", "rgb(255,192,203)", "rgb(255,160,122)",
+      "rgb(173,216,230)", "rgb(221,160,221)", "rgb(240,230,140)", "rgb(255,218,185)"
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+  
+})(window, document);
+`;
   }
   async getWalineSetting(): Promise<WalineSetting> {
     const res = await this.settingModel.findOne({ type: 'waline' }).exec();
