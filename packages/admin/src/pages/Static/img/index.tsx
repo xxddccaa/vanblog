@@ -208,6 +208,42 @@ const ImgPage = () => {
             </Button>
           )}
 
+          {showDelBtn && (
+            <Button
+              danger
+              onClick={async () => {
+                Modal.confirm({
+                  title: '确定清空所有图片吗？',
+                  content: (
+                    <div>
+                      <p>⚠️ 此操作将删除所有图片，但会自动保留以下必要图片：</p>
+                      <ul>
+                        <li>网站图标 (favicon)</li>
+                        <li>用户头像 (authorLogo)</li>
+                        <li>站点Logo (siteLogo)</li>
+                      </ul>
+                      <p>删除后不可恢复，请谨慎操作！</p>
+                    </div>
+                  ),
+                  onOk: async () => {
+                    try {
+                      setLoading(true);
+                      const { data } = await deleteAllIMG();
+                      fetchData();
+                      message.success(data?.message || '清空完成！');
+                    } catch (err) {
+                      message.error('清空失败！');
+                    } finally {
+                      setLoading(false);
+                    }
+                  },
+                });
+              }}
+            >
+              清空所有图片
+            </Button>
+          )}
+
           <CopyUploadBtn
             setLoading={setLoading}
             onError={() => {

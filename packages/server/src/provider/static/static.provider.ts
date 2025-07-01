@@ -6,6 +6,7 @@ import { Static, StaticDocument } from 'src/scheme/static.schema';
 import { encryptFileMD5 } from 'src/utils/crypto';
 import { ArticleProvider } from '../article/article.provider';
 import { SettingProvider } from '../setting/setting.provider';
+import { MetaProvider } from '../meta/meta.provider';
 import { LocalProvider } from './local.provider';
 import { PicgoProvider } from './picgo.provider';
 import { imageSize } from 'image-size';
@@ -22,6 +23,7 @@ export class StaticProvider {
     @InjectModel('Static')
     private staticModel: Model<StaticDocument>,
     private readonly settingProvider: SettingProvider,
+    private readonly metaProvider: MetaProvider,
     private readonly localProvider: LocalProvider,
     private readonly picgoProvider: PicgoProvider,
     private readonly articleProvder: ArticleProvider,
@@ -314,10 +316,53 @@ export class StaticProvider {
     return await this.staticModel.deleteOne({ sign }).exec();
   }
   async deleteAllIMG() {
-    // 调试用的
+    // 获取站点信息，确定哪些图片需要保留
+    const siteInfo = await this.metaProvider.getSiteInfo();
     const all = await this.getAll('img', 'admin');
+    
+    let deletedCount = 0;
+    let skippedCount = 0;
+    
     for (const each of all) {
-      await this.deleteOneBySign(each.sign);
+      let shouldSkip = false;
+      
+      // 检查是否是网站图标（favicon）
+      if (each.name && each.name.startsWith('favicon.')) {
+        shouldSkip = true;
+      }
+      
+      // 检查是否是用户头像（authorLogo）
+      if (siteInfo?.authorLogo && each.realPath) {
+        // 从 authorLogo URL 中提取文件名进行比较
+        const authorLogoFileName = siteInfo.authorLogo.split('/').pop();
+        const currentFileName = each.realPath.split('/').pop();
+        if (authorLogoFileName === currentFileName) {
+          shouldSkip = true;
+        }
+      }
+      
+      // 检查是否是站点 Logo
+      if (siteInfo?.siteLogo && each.realPath) {
+        const siteLogoFileName = siteInfo.siteLogo.split('/').pop();
+        const currentFileName = each.realPath.split('/').pop();
+        if (siteLogoFileName === currentFileName) {
+          shouldSkip = true;
+        }
+      }
+      
+      if (shouldSkip) {
+        skippedCount++;
+        console.log(`跳过删除必要图片: ${each.name || each.realPath}`);
+      } else {
+        await this.deleteOneBySign(each.sign);
+        deletedCount++;
+      }
     }
+    
+    return {
+      deletedCount,
+      skippedCount,
+      message: `成功删除 ${deletedCount} 张图片，跳过 ${skippedCount} 张必要图片（网站图标、用户头像、站点Logo）`
+    };
   }
 }
