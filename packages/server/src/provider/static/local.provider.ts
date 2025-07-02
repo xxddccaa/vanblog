@@ -32,6 +32,28 @@ export class LocalProvider {
         meta,
         realPath,
       };
+    } else if (type == 'music') {
+      const storagePath = StoragePath[type];
+      const srcPath = path.join(config.staticPath, storagePath, fileName);
+      let realPath = `/static/${type}/${fileName}`;
+
+      if (isProd()) {
+        if (toRootPath) {
+          realPath = `/${fileName}`;
+        }
+      }
+      
+      // 确保音乐目录存在
+      checkOrCreateByFilePath(srcPath);
+      
+      const byteLength = buffer.byteLength;
+      fs.writeFileSync(srcPath, buffer);
+      
+      const meta = { size: formatBytes(byteLength) };
+      return {
+        meta,
+        realPath,
+      };
     }
   }
 

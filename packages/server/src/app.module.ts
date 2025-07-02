@@ -103,6 +103,7 @@ import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
 import { AutoBackupController } from './controller/admin/auto-backup/auto-backup.controller';
 import { AutoBackupTask } from './schedule/auto-backup.task';
 import { AliyunpanProvider } from './provider/aliyunpan/aliyunpan.provider';
+import { MusicController } from './controller/admin/music/music.controller';
 
 @Module({
   imports: [
@@ -178,6 +179,7 @@ import { AliyunpanProvider } from './provider/aliyunpan/aliyunpan.provider';
     NavController,
     AITaggingController,
     AutoBackupController,
+    MusicController,
   ],
   providers: [
     AppService,

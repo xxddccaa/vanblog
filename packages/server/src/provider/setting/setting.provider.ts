@@ -15,6 +15,8 @@ import {
   defaultAdminLayoutSetting,
   AutoBackupSetting,
   defaultAutoBackupSetting,
+  MusicSetting,
+  defaultMusicSetting,
 } from 'src/types/setting.dto';
 import { SettingDocument } from 'src/scheme/setting.schema';
 import { PicgoProvider } from '../static/picgo.provider';
@@ -1246,5 +1248,37 @@ if (typeof window !== 'undefined') {
       },
       { upsert: true }
     );
+  }
+
+  async getMusicSetting(): Promise<MusicSetting> {
+    const res = await this.settingModel.findOne({ type: 'music' }).exec();
+    if (res) {
+      return res?.value as any;
+    } else {
+      await this.settingModel.create({
+        type: 'music',
+        value: defaultMusicSetting,
+      });
+      return defaultMusicSetting;
+    }
+  }
+
+  async updateMusicSetting(dto: Partial<MusicSetting>) {
+    const oldValue = await this.getMusicSetting();
+    const newValue = { ...oldValue, ...dto };
+    
+    const existingSetting = await this.settingModel.findOne({ type: 'music' }).exec();
+    if (existingSetting) {
+      const res = await this.settingModel.updateOne({ type: 'music' }, { value: newValue });
+      this.logger.log('音乐设置已更新');
+      return res;
+    } else {
+      const res = await this.settingModel.create({
+        type: 'music',
+        value: newValue,
+      });
+      this.logger.log('音乐设置已创建');
+      return res;
+    }
   }
 }

@@ -90,6 +90,14 @@ export class StaticProvider {
       }
     }
 
+    // 对音乐文件也进行重复检测
+    if (type == 'music') {
+      const hasFile = await this.getOneBySign(currentSign);
+      if (hasFile) {
+        throw new HttpException('文件已存在，请勿重复上传', HttpStatus.CONFLICT);
+      }
+    }
+
     const pureFileName = arr.slice(0, arr.length - 1).join('.');
     let fileName = currentSign + '.' + file.originalname;
     if (type == 'customPage') {
@@ -97,6 +105,17 @@ export class StaticProvider {
     }
     if (type == 'img' && checkTrue(staticConfigInDB.enableWebp) && compressSuccess && !updateConfig?.skipCompress) {
       fileName = currentSign + '.' + pureFileName + '.webp';
+    }
+    if (type == 'music') {
+      // 对于音乐文件，保持原始文件名以支持中文
+      // 确保正确的 UTF-8 编码处理
+      try {
+        const originalName = decodeURIComponent(escape(file.originalname));
+        fileName = currentSign + '.' + originalName;
+      } catch (error) {
+        // 如果解码失败，使用原始文件名
+        fileName = currentSign + '.' + file.originalname;
+      }
     }
     const realPath = await this.saveFile(
       fileType,

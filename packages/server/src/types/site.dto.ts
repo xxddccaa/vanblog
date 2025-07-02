@@ -44,6 +44,10 @@ export class SiteInfo {
   adminArticlePageSize?: number;
   adminDraftPageSize?: number;
   adminMomentPageSize?: number;
+  // 音乐相关设置
+  enableMusic?: 'true' | 'false';
+  showMusicControl?: 'true' | 'false';
+  musicAutoPlay?: 'true' | 'false';
 }
 export interface updateUserDto {
   username: string;

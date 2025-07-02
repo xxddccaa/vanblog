@@ -19,7 +19,8 @@ export type SettingType =
   | 'version'
   | 'isr'
   | 'adminLayout'
-  | 'autoBackup';
+  | 'autoBackup'
+  | 'music';
 
 export type SettingValue =
   | StaticSetting
@@ -29,7 +30,8 @@ export type SettingValue =
   | VersionSetting
   | ISRSetting
   | AdminLayoutSetting
-  | AutoBackupSetting;
+  | AutoBackupSetting
+  | MusicSetting;
 
 export interface ISRSetting {
   mode: 'delay' | 'onDemand';
@@ -41,7 +43,7 @@ export interface MenuSetting {
 }
 
 export type StorageType = 'picgo' | 'local';
-export type StaticType = 'img' | 'customPage';
+export type StaticType = 'img' | 'customPage' | 'music';
 export interface LoginSetting {
   enableMaxLoginRetry: boolean;
   maxRetryTimes: number;
@@ -125,6 +127,7 @@ export interface SearchStaticOption {
 export const StoragePath: Record<StaticType, string> = {
   img: `img`,
   customPage: `customPage`,
+  music: `music`,
 };
 export class StaticSetting {
   storageType: StorageType;
@@ -240,4 +243,24 @@ export const defaultAutoBackupSetting: AutoBackupSetting = {
     localPath: '/app/static',
     panPath: '/backup/vanblog-static',
   },
+};
+
+export interface MusicSetting {
+  enabled: boolean; // 是否启用音乐功能
+  showControl: boolean; // 是否显示音乐控制器
+  autoPlay: boolean; // 是否自动播放
+  loop: boolean; // 是否循环播放
+  volume: number; // 音量 0-100
+  currentPlaylist: string[]; // 当前播放列表
+  currentIndex: number; // 当前播放的歌曲索引
+}
+
+export const defaultMusicSetting: MusicSetting = {
+  enabled: false,
+  showControl: true,
+  autoPlay: false,
+  loop: true,
+  volume: 50,
+  currentPlaylist: [],
+  currentIndex: 0,
 };

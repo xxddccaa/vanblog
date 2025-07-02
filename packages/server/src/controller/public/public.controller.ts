@@ -13,6 +13,7 @@ import { CustomPageProvider } from 'src/provider/customPage/customPage.provider'
 import { encode } from 'js-base64';
 import { TokenProvider } from 'src/provider/token/token.provider';
 import { IconProvider } from 'src/provider/icon/icon.provider';
+import { StaticProvider } from 'src/provider/static/static.provider';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -27,6 +28,7 @@ export class PublicController {
     private readonly customPageProvider: CustomPageProvider,
     private readonly tokenProvider: TokenProvider,
     private readonly iconProvider: IconProvider,
+    private readonly staticProvider: StaticProvider,
   ) {}
   @Get('/customPage/all')
   async getAll() {
@@ -141,6 +143,25 @@ export class PublicController {
       data: data,
     };
   }
+
+  @Get('/music/setting')
+  async getMusicSetting() {
+    const data = await this.settingProvider.getMusicSetting();
+    return {
+      statusCode: 200,
+      data: data,
+    };
+  }
+
+  @Get('/music/list')
+  async getMusicList() {
+    const data = await this.staticProvider.getAll('music', 'public');
+    return {
+      statusCode: 200,
+      data: data,
+    };
+  }
+
   @Get('/article/viewer/:id')
   async getViewerByArticleIdOrPathname(@Param('id') id: number | string) {
     const data = await this.visitProvider.getByArticleId(id);

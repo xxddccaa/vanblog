@@ -10,6 +10,7 @@ import Tag from './tabs/Tag';
 import Viewer from './tabs/Viewer';
 import AITagging from './tabs/AITagging';
 import ArticleManager from './tabs/ArticleManager';
+import Music from './tabs/Music';
 
 export default function () {
   const tabMap = {
@@ -22,6 +23,7 @@ export default function () {
     menuConfig: <Menu />,
     aiTagging: <AITagging />,
     articleManager: <ArticleManager />,
+    music: <Music />,
   };
   const [tab, setTab] = useTab('category', 'tab');
 
@@ -68,6 +70,10 @@ export default function () {
         {
           tab: '文章管理',
           key: 'articleManager',
+        },
+        {
+          tab: '音乐管理',
+          key: 'music',
         },
       ]}
       onTabChange={setTab}

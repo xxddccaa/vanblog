@@ -1,6 +1,7 @@
 import Head from "next/head";
 import BackToTopBtn from "../BackToTop";
 import NavBar from "../NavBar";
+import MusicPlayer from "../MusicPlayer";
 import { useEffect, useRef, useState } from "react";
 import BaiduAnalysis from "../BaiduAnalysis";
 import GaAnalysis from "../gaAnalysis";
@@ -52,6 +53,7 @@ export default function (props: {
         <meta name="robots" content="index, follow"></meta>
       </Head>
       <BackToTopBtn></BackToTopBtn>
+      <MusicPlayer />
       {props.option.baiduAnalysisID != "" &&
         process.env.NODE_ENV != "development" && (
           <BaiduAnalysis id={props.option.baiduAnalysisID}></BaiduAnalysis>
