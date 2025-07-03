@@ -101,6 +101,17 @@ export class PublicController {
     };
   }
 
+  @Post('/verify-admin-token')
+  async verifyAdminToken(@Body() body: { token: string }) {
+    // 验证token是否有效
+    const isValidToken = await this.tokenProvider.checkToken(body?.token);
+    return {
+      statusCode: isValidToken ? 200 : 401,
+      data: { valid: isValidToken },
+      message: isValidToken ? 'Token is valid' : 'Invalid token',
+    };
+  }
+
   @Get('/search')
   async searchArticle(@Query('value') search: string) {
     const data = await this.articleProvider.searchByString(search, false);

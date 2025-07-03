@@ -176,6 +176,8 @@ export interface MetaProps {
     adminArticlePageSize?: number;
     adminDraftPageSize?: number;
     adminMomentPageSize?: number;
+    // 全站隐私设置
+    privateSite?: 'true' | 'false';
   };
 }
 export interface PublicMetaProp {

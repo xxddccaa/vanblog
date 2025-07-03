@@ -14,6 +14,7 @@ import { Toaster } from "react-hot-toast";
 import Footer from "../Footer";
 import NavBarMobile from "../NavBarMobile";
 import LayoutBody from "../LayoutBody";
+import { checkLoginAsync } from "../../utils/auth";
 export default function (props: {
   option: LayoutProps;
   title: string;
@@ -30,6 +31,29 @@ export default function (props: {
     console.log("关闭或刷新页面");
     localStorage.removeItem("saidHello");
   };
+  
+  // 全站隐私检查
+  useEffect(() => {
+    const checkPrivateSite = async () => {
+      if (props.option.privateSite === "true") {
+        const isLoggedIn = await checkLoginAsync();
+        if (!isLoggedIn) {
+          // 如果启用了全站隐私且用户未登录，重定向到登录页面
+          const currentUrl = window.location.href;
+          const loginUrl = `/admin/user/login`;
+          
+          // 避免在登录页面无限重定向
+          if (!currentUrl.includes('/admin/user/login')) {
+            window.location.href = loginUrl;
+            return;
+          }
+        }
+      }
+    };
+    
+    checkPrivateSite();
+  }, [props.option.privateSite]);
+  
   useEffect(() => {
     if (!current.hasInit && !localStorage.getItem("saidHello")) {
       current.hasInit = true;

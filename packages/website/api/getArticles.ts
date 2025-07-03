@@ -161,3 +161,20 @@ export const getArticleByIdOrPathnameWithAdminToken = async (
     }
   }
 };
+
+export const verifyAdminToken = async (token: string) => {
+  try {
+    const url = `/api/public/verify-admin-token`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ token }),
+    });
+    const { statusCode, data } = await res.json();
+    return statusCode === 200 && data?.valid === true;
+  } catch (err) {
+    return false;
+  }
+};

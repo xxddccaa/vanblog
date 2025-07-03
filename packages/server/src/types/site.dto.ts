@@ -48,6 +48,8 @@ export class SiteInfo {
   enableMusic?: 'true' | 'false';
   showMusicControl?: 'true' | 'false';
   musicAutoPlay?: 'true' | 'false';
+  // 全站隐私设置
+  privateSite?: 'true' | 'false';
 }
 export interface updateUserDto {
   username: string;

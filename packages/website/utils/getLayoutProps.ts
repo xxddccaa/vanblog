@@ -41,6 +41,7 @@ export interface LayoutProps {
   customHtml?: string;
   customHead?: HeadTag[];
   homePageSize?: number;
+  privateSite?: 'true' | 'false';
 }
 
 export interface HeadTag {
@@ -148,6 +149,7 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     showRSS,
     showEditButton,
     homePageSize: siteInfo?.homePageSize || 5,
+    privateSite: siteInfo?.privateSite || "false",
     ...customSetting,
   };
 }

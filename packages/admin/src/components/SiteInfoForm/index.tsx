@@ -195,6 +195,16 @@ export default function (props: {
             }}
             tooltip={'默认关闭'}
           />
+          <ProFormSelect
+            name={'privateSite'}
+            label="全站隐私设置"
+            placeholder={'关闭'}
+            valueEnum={{
+              true: '开启',
+              false: '关闭',
+            }}
+            tooltip={'开启后，未登录用户将无法访问前台任何页面，会自动跳转到登录页面'}
+          />
           <ProFormDateTimePicker
             name="since"
             width={'lg'}
