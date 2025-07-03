@@ -430,6 +430,11 @@ export async function getSiteInfo() {
     method: 'GET',
   });
 }
+export async function getPublicSiteInfo() {
+  return request(`/api/public/site-info`, {
+    method: 'GET',
+  });
+}
 export async function getArticlesByOption(option) {
   const newQuery = {};
   for (const [k, v] of Object.entries(option)) {

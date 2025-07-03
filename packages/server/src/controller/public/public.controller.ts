@@ -341,4 +341,31 @@ export class PublicController {
       };
     }
   }
+
+  @Get('/site-info')
+  async getBasicSiteInfo() {
+    // 获取站点基本信息，不需要登录权限
+    // 主要用于显示备案信息等公开信息
+    const siteInfo = await this.metaProvider.getSiteInfo();
+    
+    // 只返回公开需要的字段
+    const publicSiteInfo = {
+      siteName: siteInfo.siteName,
+      siteDesc: siteInfo.siteDesc,
+      siteLogo: siteInfo.siteLogo,
+      favicon: siteInfo.favicon,
+      beianNumber: siteInfo.beianNumber,
+      beianUrl: siteInfo.beianUrl,
+      gaBeianNumber: siteInfo.gaBeianNumber,
+      gaBeianUrl: siteInfo.gaBeianUrl,
+      gaBeianLogoUrl: siteInfo.gaBeianLogoUrl,
+      since: siteInfo.since,
+      baseUrl: siteInfo.baseUrl,
+    };
+    
+    return {
+      statusCode: 200,
+      data: publicSiteInfo,
+    };
+  }
 }
