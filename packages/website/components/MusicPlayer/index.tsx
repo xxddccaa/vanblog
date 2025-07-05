@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styles from './index.module.scss';
+import globalMusicPlayer from '../../utils/globalMusicPlayer';
 
 interface MusicFile {
   sign: string;
@@ -25,6 +26,7 @@ interface MusicPlayerProps {
 }
 
 const MusicPlayer: React.FC<MusicPlayerProps> = ({ className }) => {
+  // 全局状态（通过订阅获得）
   const [musicSetting, setMusicSetting] = useState<MusicSetting | null>(null);
   const [musicList, setMusicList] = useState<MusicFile[]>([]);
   const [currentTrack, setCurrentTrack] = useState<MusicFile | null>(null);
@@ -33,185 +35,62 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ className }) => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(50);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [autoPlayPending, setAutoPlayPending] = useState(false);
+  
+  // 本地UI状态
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [autoPlayPending, setAutoPlayPending] = useState(false); // 标记是否有待播放的自动播放
-  const [interactionListenersAdded, setInteractionListenersAdded] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
-  // 获取音乐设置
-  const fetchMusicSetting = useCallback(async () => {
-    try {
-      const response = await fetch('/api/public/music/setting');
-      const result = await response.json();
-      if (result.statusCode === 200) {
-        setMusicSetting(result.data);
-        setVolume(result.data.volume || 50);
-        return result.data;
-      } else {
-        console.error('获取音乐设置失败:', result);
-      }
-    } catch (error) {
-      console.error('获取音乐设置失败:', error);
-    }
-    return null;
+  // 订阅全局音乐播放器状态
+  useEffect(() => {
+    if (!globalMusicPlayer) return;
+
+    const unsubscribe = globalMusicPlayer.subscribe((state) => {
+      setMusicSetting(state.musicSetting);
+      setMusicList(state.musicList);
+      setCurrentTrack(state.currentTrack);
+      setIsPlaying(state.isPlaying);
+      setCurrentTime(state.currentTime);
+      setDuration(state.duration);
+      setVolume(state.volume);
+      setIsLoading(state.isLoading);
+      setHasUserInteracted(state.hasUserInteracted);
+      setAutoPlayPending(state.autoPlayPending);
+    });
+
+    // 初始化全局音乐播放器
+    globalMusicPlayer.initialize();
+
+    return unsubscribe;
   }, []);
-
-  // 获取音乐列表
-  const fetchMusicList = useCallback(async () => {
-    try {
-      const response = await fetch('/api/public/music/list');
-      const result = await response.json();
-      if (result.statusCode === 200) {
-        setMusicList(result.data);
-        return result.data;
-      } else {
-        console.error('获取音乐列表失败:', result);
-      }
-    } catch (error) {
-      console.error('获取音乐列表失败:', error);
-    }
-    return [];
-  }, []);
-
-  // 添加用户交互监听器
-  const addInteractionListeners = useCallback(() => {
-    if (interactionListenersAdded || hasUserInteracted) return;
-
-    const handleFirstInteraction = async () => {
-      setHasUserInteracted(true);
-      
-      // 如果有待播放的自动播放，立即执行
-      if (autoPlayPending && audioRef.current && currentTrack) {
-        try {
-          // 确保音频已准备好
-          if (audioRef.current.readyState >= 2) {
-            await audioRef.current.play();
-            setIsPlaying(true);
-            setAutoPlayPending(false);
-          } else {
-            // 如果音频还没准备好，等待 canplay 事件
-            audioRef.current.addEventListener('canplay', async () => {
-              try {
-                await audioRef.current!.play();
-                setIsPlaying(true);
-                setAutoPlayPending(false);
-              } catch (error) {
-                setAutoPlayPending(false);
-              }
-            }, { once: true });
-          }
-        } catch (error) {
-          setAutoPlayPending(false);
-        }
-      }
-      
-      // 移除监听器
-      removeInteractionListeners();
-    };
-
-    const removeInteractionListeners = () => {
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('touchstart', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-      document.removeEventListener('scroll', handleFirstInteraction);
-      document.removeEventListener('mousemove', handleFirstInteraction);
-      setInteractionListenersAdded(false);
-    };
-
-    // 添加多种交互事件监听器
-    document.addEventListener('click', handleFirstInteraction, { passive: true });
-    document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
-    document.addEventListener('keydown', handleFirstInteraction, { passive: true });
-    document.addEventListener('scroll', handleFirstInteraction, { passive: true });
-    document.addEventListener('mousemove', handleFirstInteraction, { passive: true });
-    
-    setInteractionListenersAdded(true);
-    
-    // 返回清理函数
-    return removeInteractionListeners;
-  }, [autoPlayPending, currentTrack, hasUserInteracted, interactionListenersAdded]);
-
-  // 尝试自动播放
-  const attemptAutoPlay = useCallback(async () => {
-    if (!autoPlayPending || !currentTrack || !audioRef.current) {
-      return;
-    }
-
-    // 如果用户已经交互过，直接尝试播放
-    if (hasUserInteracted) {
-      try {
-        await audioRef.current.play();
-        setIsPlaying(true);
-        setAutoPlayPending(false);
-      } catch (error) {
-        setAutoPlayPending(false);
-      }
-    } else {
-      // 如果用户还没交互，添加交互监听器
-      addInteractionListeners();
-    }
-  }, [autoPlayPending, currentTrack, hasUserInteracted, addInteractionListeners]);
 
   // 播放/暂停
   const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-
-    // 标记用户已交互
-    if (!hasUserInteracted) {
-      setHasUserInteracted(true);
-    }
-
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-      setAutoPlayPending(false);
-    } else {
-      // 如果有待播放的自动播放，直接播放
-      if (autoPlayPending) {
-        setAutoPlayPending(false);
-      }
-      
-      audio.play().then(() => {
-        setIsPlaying(true);
-      }).catch((error) => {
-        console.error('播放失败:', error);
-      });
-    }
+    globalMusicPlayer?.togglePlay();
   };
 
   // 播放上一首
   const playPrevious = () => {
-    if (musicList.length === 0) return;
-    const currentIndex = musicList.findIndex(track => track.sign === currentTrack?.sign);
-    const previousIndex = currentIndex > 0 ? currentIndex - 1 : musicList.length - 1;
-    setCurrentTrack(musicList[previousIndex]);
+    globalMusicPlayer?.playPrevious();
   };
 
   // 播放下一首
   const playNext = () => {
-    if (musicList.length === 0) return;
-    const currentIndex = musicList.findIndex(track => track.sign === currentTrack?.sign);
-    const nextIndex = currentIndex < musicList.length - 1 ? currentIndex + 1 : 0;
-    setCurrentTrack(musicList[nextIndex]);
+    globalMusicPlayer?.playNext();
   };
 
   // 播放指定歌曲
   const playTrack = (track: MusicFile) => {
-    setCurrentTrack(track);
+    globalMusicPlayer?.setCurrentTrack(track, true);
   };
 
   // 调整音量
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value);
-    setVolume(newVolume);
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume / 100;
-    }
+    globalMusicPlayer?.setVolume(newVolume);
   };
 
   // 调整进度
@@ -220,9 +99,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ className }) => {
     const percent = (e.clientX - rect.left) / rect.width;
     const newTime = percent * duration;
     
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
+    globalMusicPlayer?.setCurrentTime(newTime);
   };
 
   // 格式化时间
@@ -259,171 +136,21 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({ className }) => {
 
   // 切换播放列表显示状态
   const togglePlaylist = () => {
-    const newState = !showPlaylist;
-    setShowPlaylist(newState);
+    setShowPlaylist(!showPlaylist);
   };
 
-  // 初始化音乐播放器
-  const initializePlayer = useCallback(async () => {
-    setIsLoading(true);
-    const setting = await fetchMusicSetting();
-    const list = await fetchMusicList();
-    
-    if (setting && setting.enabled && list.length > 0) {
-      const currentIndex = Math.max(0, Math.min(setting.currentIndex || 0, list.length - 1));
-      const selectedTrack = list[currentIndex];
-      setCurrentTrack(selectedTrack);
-      
-      // 如果启用了自动播放，设置待播放状态
-      if (setting.autoPlay) {
-        setAutoPlayPending(true);
-      }
-          }
-    setIsLoading(false);
-  }, [fetchMusicSetting, fetchMusicList]);
-
-  useEffect(() => {
-    initializePlayer();
-  }, [initializePlayer]);
-
-  // 当autoPlayPending或currentTrack改变时尝试自动播放
-  useEffect(() => {
-    if (autoPlayPending && currentTrack) {
-      // 延迟执行，确保音频元素已经更新
-      const timer = setTimeout(() => {
-        attemptAutoPlay();
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [autoPlayPending, currentTrack, attemptAutoPlay]);
-
-  // 当currentTrack改变时的处理
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-
-    // 重置播放状态
-    setCurrentTime(0);
-    
-    // 如果之前正在播放，继续播放新音乐
-    if (isPlaying) {
-      // 等待音频加载完成后播放
-              const handleCanPlay = () => {
-          audio.play().then(() => {
-          }).catch((error) => {
-            setIsPlaying(false);
-          });
-          audio.removeEventListener('canplay', handleCanPlay);
-        };
-      
-      audio.addEventListener('canplay', handleCanPlay);
-      audio.load(); // 重新加载音频
-    }
-  }, [currentTrack, isPlaying]);
-
-  // 音频事件处理
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleLoadedData = () => {
-      setDuration(audio.duration || 0);
-      audio.volume = volume / 100;
-    };
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime || 0);
-    };
-
-    const handlePlay = () => {
-      setIsPlaying(true);
-      setAutoPlayPending(false); // 开始播放时清除待播放状态
-    };
-
-    const handlePause = () => {
-      setIsPlaying(false);
-    };
-
-    const handleEnded = () => {
-      if (musicSetting?.loop) {
-        playNext();
-      } else {
-        setIsPlaying(false);
-      }
-    };
-
-    const handleCanPlay = () => {
-      // 音频可以播放时的处理
-      
-      // 如果有待播放的自动播放且用户已交互，立即播放
-      if (autoPlayPending && hasUserInteracted) {
-        audio.play().then(() => {
-        }).catch((error) => {
-          setAutoPlayPending(false);
-        });
-      }
-    };
-
-    const handleError = (e) => {
-      console.error('音频加载错误:', e);
-      setIsPlaying(false);
-      setAutoPlayPending(false);
-    };
-
-    audio.addEventListener('loadeddata', handleLoadedData);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('canplay', handleCanPlay);
-    audio.addEventListener('error', handleError);
-
-    return () => {
-      audio.removeEventListener('loadeddata', handleLoadedData);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('canplay', handleCanPlay);
-      audio.removeEventListener('error', handleError);
-    };
-  }, [musicSetting?.loop, currentTrack, volume, autoPlayPending, hasUserInteracted]);
-
-  // 组件卸载时清理交互监听器
-  useEffect(() => {
-    return () => {
-      if (interactionListenersAdded) {
-        document.removeEventListener('click', () => {});
-        document.removeEventListener('touchstart', () => {});
-        document.removeEventListener('keydown', () => {});
-        document.removeEventListener('scroll', () => {});
-        document.removeEventListener('mousemove', () => {});
-      }
-    };
-  }, [interactionListenersAdded]);
-
-  // 如果音乐功能未启用，不渲染组件
+  // 如果音乐功能未启用或正在加载，不渲染组件
   if (!musicSetting?.enabled || isLoading) {
     return null;
   }
 
-  // 如果设置为不显示控制器，只渲染隐藏的audio元素
+  // 如果设置为不显示控制器，返回null（全局音乐播放器会处理音频播放）
   if (!musicSetting.showControl) {
-    return (
-      <audio
-        ref={audioRef}
-        src={currentTrack?.realPath}
-        loop={musicSetting.loop && musicList.length === 1}
-        style={{ display: 'none' }}
-        // 移除 autoPlay 属性，改为通过 JavaScript 控制
-      />
-    );
+    return null;
   }
 
   return (
     <div className={`${styles.musicPlayer} ${isMinimized ? styles.minimized : ''} ${className || ''}`}>
-      <audio ref={audioRef} src={currentTrack?.realPath} />
       
       {/* 最小化/展开按钮 */}
       <button 
