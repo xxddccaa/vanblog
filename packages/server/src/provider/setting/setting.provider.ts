@@ -505,19 +505,18 @@ if (typeof window !== 'undefined') {
     const darkColor = hexToRgb(config.darkColor || '#ffffff');
 
     return `
-// Canvas-nest.js 粒子连线动画 - 基于官方实现
+// Canvas-nest.js 粒子连线动画 - 修复版本
 (function() {
   'use strict';
+  
+  // 全局唯一标识符，避免多次初始化
+  if (window.CANVAS_NEST_INITIALIZED) {
+    return;
+  }
   
   // 颜色配置
   const LIGHT_COLOR = '${lightColor}';
   const DARK_COLOR = '${darkColor}';
-  
-  // 暴露到全局作用域供调试使用
-  window.LIGHT_COLOR = LIGHT_COLOR;
-  window.DARK_COLOR = DARK_COLOR;
-  
-
   
   // 工具函数
   const requestAnimationFrame = window.requestAnimationFrame ||
@@ -582,7 +581,7 @@ if (typeof window !== 'undefined') {
     return () => window.removeEventListener('resize', resizeHandler);
   };
 
-  // CanvasNest 类实现
+  // CanvasNest 类实现 - 修复版本
   class CanvasNest {
     constructor(el, config) {
       this.el = el;
@@ -595,6 +594,7 @@ if (typeof window !== 'undefined') {
         ...config,
       };
 
+      this.destroyed = false;
       this.canvas = this.newCanvas();
       this.context = this.canvas.getContext('2d');
       this.points = this.randomPoints();
@@ -611,31 +611,49 @@ if (typeof window !== 'undefined') {
 
     bindEvent() {
       this.unbindResize = bindResize(this.el, () => {
-        this.canvas.width = this.el.clientWidth;
-        this.canvas.height = this.el.clientHeight;
+        if (!this.destroyed) {
+          this.canvas.width = this.el.clientWidth;
+          this.canvas.height = this.el.clientHeight;
+          // 重新生成粒子点以适应新的尺寸
+          this.points = this.randomPoints();
+          this.all = this.points.concat([this.current]);
+        }
       });
 
       this.onmousemove = window.onmousemove;
       window.onmousemove = e => {
-        this.current.x = e.clientX - this.el.offsetLeft + (document.scrollingElement?.scrollLeft || 0);
-        this.current.y = e.clientY - this.el.offsetTop + (document.scrollingElement?.scrollTop || 0);
+        if (!this.destroyed) {
+          try {
+            this.current.x = e.clientX - this.el.offsetLeft + (document.scrollingElement?.scrollLeft || 0);
+            this.current.y = e.clientY - this.el.offsetTop + (document.scrollingElement?.scrollTop || 0);
+          } catch (err) {
+            // 防止错误导致动画崩溃
+            this.current.x = null;
+            this.current.y = null;
+          }
+        }
         this.onmousemove && this.onmousemove(e);
       };
 
       this.onmouseout = window.onmouseout;
       window.onmouseout = () => {
-        this.current.x = null;
-        this.current.y = null;
+        if (!this.destroyed) {
+          this.current.x = null;
+          this.current.y = null;
+        }
         this.onmouseout && this.onmouseout();
       };
     }
 
     randomPoints() {
+      const width = this.canvas.width;
+      const height = this.canvas.height;
+      
       return range(this.c.count).map(() => ({
-        x: Math.random() * this.canvas.width,
-        y: Math.random() * this.canvas.height,
-        xa: 2 * Math.random() - 1,
-        ya: 2 * Math.random() - 1,
+        x: Math.random() * width,
+        y: Math.random() * height,
+        xa: (Math.random() - 0.5) * 2,  // 范围 -1 到 1
+        ya: (Math.random() - 0.5) * 2,
         max: 6000
       }));
     }
@@ -653,155 +671,288 @@ if (typeof window !== 'undefined') {
     }
 
     requestFrame(func) {
-      this.tid = requestAnimationFrame(() => func.call(this));
+      if (!this.destroyed) {
+        this.tid = requestAnimationFrame(() => func.call(this));
+      }
     }
 
     drawCanvas() {
-      const context = this.context;
-      const width = this.canvas.width;
-      const height = this.canvas.height;
-      const current = this.current;
-      const points = this.points;
-      const all = this.all;
-      // 每帧都获取当前主题颜色，确保主题切换时颜色能实时更新
-      const currentColor = getCurrentThemeColor();
-
-      context.clearRect(0, 0, width, height);
-
-      let e, i, d, x_dist, y_dist, dist;
-      points.forEach((r, idx) => {
-        r.x += r.xa;
-        r.y += r.ya;
-        r.xa *= r.x > width || r.x < 0 ? -1 : 1;
-        r.ya *= r.y > height || r.y < 0 ? -1 : 1;
+      if (this.destroyed) return;
+      
+      try {
+        const context = this.context;
+        const width = this.canvas.width;
+        const height = this.canvas.height;
+        const current = this.current;
+        const points = this.points;
+        const all = this.all;
         
-        // 绘制粒子点
-        context.fillStyle = \`rgba(\${currentColor}, 0.8)\`;
-        context.fillRect(r.x - 0.5, r.y - 0.5, 1, 1);
+        // 检查canvas是否有效
+        if (!context || width <= 0 || height <= 0) {
+          this.requestFrame(this.drawCanvas);
+          return;
+        }
 
-        // 绘制连线
-        for (i = idx + 1; i < all.length; i++) {
-          e = all[i];
-          if (null !== e.x && null !== e.y) {
-            x_dist = r.x - e.x;
-            y_dist = r.y - e.y;
-            dist = x_dist * x_dist + y_dist * y_dist;
+        context.clearRect(0, 0, width, height);
 
-            if (dist < e.max) {
-              if (e === current && dist >= e.max / 2) {
-                r.x -= 0.03 * x_dist;
-                r.y -= 0.03 * y_dist;
+        // 每帧获取当前主题颜色
+        const currentColor = getCurrentThemeColor();
+
+        let e, i, d, x_dist, y_dist, dist;
+        points.forEach((r, idx) => {
+          // 移动粒子
+          r.x += r.xa;
+          r.y += r.ya;
+          
+          // 边界检查和反弹 - 增强版
+          if (r.x >= width || r.x <= 0) {
+            r.xa = -r.xa;
+            r.x = Math.max(0, Math.min(width, r.x));
+          }
+          if (r.y >= height || r.y <= 0) {
+            r.ya = -r.ya;
+            r.y = Math.max(0, Math.min(height, r.y));
+          }
+          
+          // 数值稳定性检查
+          if (Math.abs(r.xa) > 3) r.xa = (r.xa > 0 ? 1 : -1) * Math.random() * 2;
+          if (Math.abs(r.ya) > 3) r.ya = (r.ya > 0 ? 1 : -1) * Math.random() * 2;
+          
+          // 绘制粒子点
+          context.fillStyle = \`rgba(\${currentColor}, 0.8)\`;
+          context.fillRect(r.x - 0.5, r.y - 0.5, 1, 1);
+
+          // 绘制连线
+          for (i = idx + 1; i < all.length; i++) {
+            e = all[i];
+            if (null !== e.x && null !== e.y) {
+              x_dist = r.x - e.x;
+              y_dist = r.y - e.y;
+              dist = x_dist * x_dist + y_dist * y_dist;
+
+              if (dist < e.max && dist > 0) {
+                if (e === current && dist >= e.max / 2) {
+                  r.x -= 0.03 * x_dist;
+                  r.y -= 0.03 * y_dist;
+                }
+                d = (e.max - dist) / e.max;
+                
+                // 确保透明度在合理范围内
+                const opacity = Math.max(0, Math.min(1, d + 0.2));
+                
+                context.beginPath();
+                context.lineWidth = Math.max(0.1, d / 2);
+                context.strokeStyle = \`rgba(\${currentColor}, \${opacity})\`;
+                context.moveTo(r.x, r.y);
+                context.lineTo(e.x, e.y);
+                context.stroke();
               }
-              d = (e.max - dist) / e.max;
-              context.beginPath();
-              context.lineWidth = d / 2;
-              context.strokeStyle = \`rgba(\${currentColor}, \${d + 0.2})\`;
-              context.moveTo(r.x, r.y);
-              context.lineTo(e.x, e.y);
-              context.stroke();
             }
           }
-        }
-      });
-      this.requestFrame(this.drawCanvas);
+        });
+        
+        this.requestFrame(this.drawCanvas);
+      } catch (err) {
+        console.warn('Canvas-nest animation error:', err);
+        // 发生错误时重新初始化
+        setTimeout(() => {
+          if (!this.destroyed) {
+            this.points = this.randomPoints();
+            this.all = this.points.concat([this.current]);
+            this.requestFrame(this.drawCanvas);
+          }
+        }, 1000);
+      }
     }
 
     destroy() {
-      this.unbindResize && this.unbindResize();
+      this.destroyed = true;
+      
+      // 清除事件监听器
+      if (this.unbindResize) {
+        this.unbindResize();
+        this.unbindResize = null;
+      }
+      
+      // 恢复原始的鼠标事件处理器
       window.onmousemove = this.onmousemove;
       window.onmouseout = this.onmouseout;
-      cancelAnimationFrame(this.tid);
+      
+      // 清除动画循环
+      if (this.tid) {
+        cancelAnimationFrame(this.tid);
+        this.tid = null;
+      }
+      
+      // 移除canvas元素
       if (this.canvas && this.canvas.parentNode) {
         this.canvas.parentNode.removeChild(this.canvas);
       }
+      
+      // 清除引用
+      this.canvas = null;
+      this.context = null;
+      this.points = null;
+      this.all = null;
     }
   }
 
-  // 初始化
+  // 全局状态管理
   let canvasNestInstance = null;
+  let themeObserver = null;
+  let systemThemeMediaQuery = null;
+  let lastThemeState = null;
+  let initializationTimeout = null;
+  
+  function getCurrentThemeState() {
+    const htmlClass = document.documentElement.className;
+    const dataTheme = document.documentElement.getAttribute('data-theme');
+    const bodyClass = document.body.className;
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    return {
+      htmlClass,
+      dataTheme,
+      bodyClass,
+      systemPrefersDark
+    };
+  }
+  
+  function hasThemeChanged() {
+    const currentState = getCurrentThemeState();
+    if (!lastThemeState) {
+      lastThemeState = currentState;
+      return true;
+    }
+    
+    const changed = JSON.stringify(currentState) !== JSON.stringify(lastThemeState);
+    if (changed) {
+      lastThemeState = currentState;
+    }
+    return changed;
+  }
   
   function initCanvasNest() {
-    // 清理之前的实例
-    if (canvasNestInstance) {
-      canvasNestInstance.destroy();
+    // 防止重复初始化
+    if (initializationTimeout) {
+      clearTimeout(initializationTimeout);
     }
     
-    const config = {
-      zIndex: ${config.zIndex || -1},
-      opacity: ${config.opacity || 0.5},
-      color: getCurrentThemeColor(),
-      pointColor: getCurrentThemeColor(),
-      count: ${config.count || 99}
-    };
-    
-    canvasNestInstance = new CanvasNest(document.body, config);
-  }
-
-  // DOM 准备就绪时初始化
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCanvasNest);
-  } else {
-    initCanvasNest();
-  }
-
-  // 主题变化时重新初始化
-  if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      setTimeout(initCanvasNest, 100);
-    });
-  }
-
-  // 监听主题属性变化 - 专门针对VanBlog的主题切换机制
-  if (typeof MutationObserver !== 'undefined') {
-    const observer = new MutationObserver((mutations) => {
-      let shouldUpdate = false;
+    initializationTimeout = setTimeout(() => {
+      // 清理之前的实例
+      if (canvasNestInstance) {
+        canvasNestInstance.destroy();
+        canvasNestInstance = null;
+      }
       
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes') {
-          // 监听html元素的class变化（VanBlog主要通过这个控制主题）
-          if (mutation.target === document.documentElement && mutation.attributeName === 'class') {
-            const oldClass = mutation.oldValue || '';
-            const newClass = document.documentElement.className;
-            
-            // 检查主题相关的class是否发生变化
-            const oldIsDark = oldClass.includes('dark');
-            const newIsDark = newClass.includes('dark');
-            const oldIsLight = oldClass.includes('light');
-            const newIsLight = newClass.includes('light');
-            
-                         if (oldIsDark !== newIsDark || oldIsLight !== newIsLight) {
-               shouldUpdate = true;
-             }
+      const config = {
+        zIndex: ${config.zIndex || -1},
+        opacity: ${config.opacity || 0.5},
+        color: getCurrentThemeColor(),
+        pointColor: getCurrentThemeColor(),
+        count: ${config.count || 99}
+      };
+      
+      canvasNestInstance = new CanvasNest(document.body, config);
+      initializationTimeout = null;
+    }, 100);
+  }
+
+  function setupThemeObserver() {
+    // 清理之前的观察器
+    if (themeObserver) {
+      themeObserver.disconnect();
+    }
+    
+    if (systemThemeMediaQuery) {
+      systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange);
+    }
+    
+    // 设置DOM变化观察器
+    if (typeof MutationObserver !== 'undefined') {
+      themeObserver = new MutationObserver((mutations) => {
+        let shouldUpdate = false;
+        
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'attributes' && 
+              (mutation.attributeName === 'class' || mutation.attributeName === 'data-theme')) {
+            shouldUpdate = true;
           }
-          
-                     // 也监听data-theme属性变化（备用）
-           if (mutation.attributeName === 'data-theme') {
-             shouldUpdate = true;
-           }
+        });
+        
+        if (shouldUpdate && hasThemeChanged()) {
+          initCanvasNest();
         }
       });
       
-             if (shouldUpdate) {
-         setTimeout(initCanvasNest, 50);
-       }
-    });
-    
-    // 监听html元素的class和data-theme属性变化
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'data-theme'],
-      attributeOldValue: true  // 记录旧值以便比较
-    });
-    
-    // 也监听body的class变化（某些主题可能通过body控制）
-    if (document.body) {
-      observer.observe(document.body, {
+      // 观察html和body元素的属性变化
+      themeObserver.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ['class'],
-        attributeOldValue: true
+        attributeFilter: ['class', 'data-theme']
       });
+      
+      if (document.body) {
+        themeObserver.observe(document.body, {
+          attributes: true,
+          attributeFilter: ['class']
+        });
+      }
+    }
+    
+    // 设置系统主题变化监听
+    if (window.matchMedia) {
+      systemThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      systemThemeMediaQuery.addEventListener('change', handleSystemThemeChange);
     }
   }
+  
+  function handleSystemThemeChange() {
+    if (hasThemeChanged()) {
+      initCanvasNest();
+    }
+  }
+  
+  function cleanup() {
+    if (canvasNestInstance) {
+      canvasNestInstance.destroy();
+      canvasNestInstance = null;
+    }
+    
+    if (themeObserver) {
+      themeObserver.disconnect();
+      themeObserver = null;
+    }
+    
+    if (systemThemeMediaQuery) {
+      systemThemeMediaQuery.removeEventListener('change', handleSystemThemeChange);
+      systemThemeMediaQuery = null;
+    }
+    
+    if (initializationTimeout) {
+      clearTimeout(initializationTimeout);
+      initializationTimeout = null;
+    }
+  }
+  
+  // 页面卸载时清理资源
+  window.addEventListener('beforeunload', cleanup);
+  
+  // 初始化
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setupThemeObserver();
+      initCanvasNest();
+    });
+  } else {
+    setupThemeObserver();
+    initCanvasNest();
+  }
+  
+  // 标记已初始化
+  window.CANVAS_NEST_INITIALIZED = true;
+  
+  // 提供全局清理方法
+  window.CANVAS_NEST_CLEANUP = cleanup;
 })();
 `;
   }
