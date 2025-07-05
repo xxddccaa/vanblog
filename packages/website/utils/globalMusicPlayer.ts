@@ -105,10 +105,29 @@ class GlobalMusicPlayer {
     });
 
     this.audio.addEventListener('canplay', () => {
+      console.log('音频canplay事件触发');
       // 当音频可以播放时，如果有待播放的自动播放且用户已交互，立即播放
       if (this.state.autoPlayPending && this.state.hasUserInteracted) {
-        this.audio?.play().catch(() => {
+        console.log('执行延迟的自动播放');
+        this.audio?.play().then(() => {
+          console.log('延迟自动播放成功');
+        }).catch((error) => {
+          console.error('延迟自动播放失败:', error);
           this.updateState({ autoPlayPending: false });
+        });
+      }
+      // 如果是初次加载且设置了自动播放，也尝试播放
+      else if (this.state.autoPlayPending && this.state.musicSetting?.autoPlay) {
+        console.log('尝试无用户交互的自动播放');
+        this.audio?.play().then(() => {
+          console.log('无用户交互自动播放成功');
+          this.updateState({ autoPlayPending: false, hasUserInteracted: true });
+        }).catch((error) => {
+          console.log('无用户交互自动播放失败，等待用户交互:', error.message);
+          // 播放失败时确保添加交互监听器
+          if (!this.interactionListenersAdded) {
+            this.addInteractionListeners();
+          }
         });
       }
     });
@@ -189,27 +208,36 @@ class GlobalMusicPlayer {
   }
 
   // 添加用户交互监听器
+  private interactionHandlers: { [key: string]: () => void } = {};
+
   private addInteractionListeners() {
     if (this.interactionListenersAdded || this.state.hasUserInteracted) return;
 
     const handleFirstInteraction = async () => {
+      console.log('用户首次交互，尝试自动播放');
       this.updateState({ hasUserInteracted: true });
       
       // 如果有待播放的自动播放，立即执行
       if (this.state.autoPlayPending && this.audio && this.state.currentTrack) {
+        console.log('检测到待播放状态，开始播放音乐');
         try {
           if (this.audio.readyState >= 2) {
             await this.audio.play();
+            console.log('音乐开始播放');
           } else {
+            console.log('等待音频加载完成');
             this.audio.addEventListener('canplay', async () => {
               try {
                 await this.audio!.play();
+                console.log('音频加载完成，开始播放');
               } catch (error) {
+                console.error('自动播放失败:', error);
                 this.updateState({ autoPlayPending: false });
               }
             }, { once: true });
           }
         } catch (error) {
+          console.error('自动播放失败:', error);
           this.updateState({ autoPlayPending: false });
         }
       }
@@ -218,19 +246,39 @@ class GlobalMusicPlayer {
       this.removeInteractionListeners();
     };
 
+    // 保存事件处理器引用以便正确移除
+    this.interactionHandlers = {
+      click: handleFirstInteraction,
+      touchstart: handleFirstInteraction,
+      keydown: handleFirstInteraction,
+      scroll: handleFirstInteraction,
+      mousemove: handleFirstInteraction,
+    };
+
     // 添加多种交互事件监听器
-    document.addEventListener('click', handleFirstInteraction, { passive: true });
-    document.addEventListener('touchstart', handleFirstInteraction, { passive: true });
-    document.addEventListener('keydown', handleFirstInteraction, { passive: true });
-    document.addEventListener('scroll', handleFirstInteraction, { passive: true });
-    document.addEventListener('mousemove', handleFirstInteraction, { passive: true });
+    document.addEventListener('click', this.interactionHandlers.click, { passive: true });
+    document.addEventListener('touchstart', this.interactionHandlers.touchstart, { passive: true });
+    document.addEventListener('keydown', this.interactionHandlers.keydown, { passive: true });
+    document.addEventListener('scroll', this.interactionHandlers.scroll, { passive: true });
+    document.addEventListener('mousemove', this.interactionHandlers.mousemove, { passive: true });
     
     this.interactionListenersAdded = true;
+    console.log('用户交互监听器已添加');
   }
 
   private removeInteractionListeners() {
-    // 这里需要保存引用才能正确移除，但由于是临时解决方案，我们采用重新绑定的方式
+    if (!this.interactionListenersAdded) return;
+
+    // 移除所有事件监听器
+    document.removeEventListener('click', this.interactionHandlers.click);
+    document.removeEventListener('touchstart', this.interactionHandlers.touchstart);
+    document.removeEventListener('keydown', this.interactionHandlers.keydown);
+    document.removeEventListener('scroll', this.interactionHandlers.scroll);
+    document.removeEventListener('mousemove', this.interactionHandlers.mousemove);
+    
     this.interactionListenersAdded = false;
+    this.interactionHandlers = {};
+    console.log('用户交互监听器已移除');
   }
 
   // 获取音乐设置
@@ -271,6 +319,8 @@ class GlobalMusicPlayer {
 
   // 初始化播放器
   public async initialize(): Promise<void> {
+    console.log('初始化全局音乐播放器');
+    
     if (!this.audio) {
       this.initializeAudio();
     }
@@ -280,22 +330,45 @@ class GlobalMusicPlayer {
     const setting = await this.fetchMusicSetting();
     const list = await this.fetchMusicList();
     
+    console.log('音乐设置:', setting);
+    console.log('音乐列表长度:', list.length);
+    
     if (setting && setting.enabled && list.length > 0) {
       // 如果没有当前音轨或当前音轨不在列表中，选择一个
       if (!this.state.currentTrack || !list.find(track => track.sign === this.state.currentTrack?.sign)) {
         const currentIndex = Math.max(0, Math.min(setting.currentIndex || 0, list.length - 1));
         const selectedTrack = list[currentIndex];
+        console.log('选择音轨:', selectedTrack.name);
         this.setCurrentTrack(selectedTrack, false); // 不自动播放
       }
       
-      // 如果启用了自动播放且没有用户交互，设置待播放状态
-      if (setting.autoPlay && !this.state.hasUserInteracted) {
-        this.updateState({ autoPlayPending: true });
-        this.addInteractionListeners();
+      // 如果启用了自动播放，尝试自动播放
+      if (setting.autoPlay) {
+        console.log('检测到自动播放设置已启用');
+        
+        // 首先尝试直接播放（可能会因为浏览器策略失败）
+        if (this.audio && this.state.currentTrack) {
+          try {
+            console.log('尝试直接自动播放');
+            await this.audio.play();
+            console.log('直接自动播放成功');
+          } catch (error) {
+            console.log('直接自动播放失败，等待用户交互:', error.message);
+            // 如果直接播放失败，设置待播放状态并添加交互监听器
+            this.updateState({ autoPlayPending: true });
+            this.addInteractionListeners();
+          }
+        } else {
+          // 如果音频还没准备好，设置待播放状态
+          console.log('音频未准备好，设置待播放状态');
+          this.updateState({ autoPlayPending: true });
+          this.addInteractionListeners();
+        }
       }
     }
     
     this.updateState({ isLoading: false });
+    console.log('音乐播放器初始化完成');
   }
 
   // 设置当前音轨
@@ -304,14 +377,19 @@ class GlobalMusicPlayer {
 
     const wasPlaying = this.state.isPlaying;
     
+    console.log('设置当前音轨:', track.name, '自动播放:', autoPlay);
     this.updateState({ currentTrack: track, currentTime: 0 });
     this.audio.src = track.realPath;
     
     if (autoPlay || wasPlaying) {
       // 等待音频加载完成后播放
       const handleCanPlay = () => {
-        if (this.state.hasUserInteracted) {
-          this.audio?.play().catch(() => {
+        console.log('音频加载完成，准备播放');
+        if (this.state.hasUserInteracted || autoPlay) {
+          this.audio?.play().then(() => {
+            console.log('音轨切换播放成功');
+          }).catch((error) => {
+            console.error('音轨切换播放失败:', error);
             this.updateState({ isPlaying: false });
           });
         }
@@ -319,6 +397,9 @@ class GlobalMusicPlayer {
       };
       
       this.audio.addEventListener('canplay', handleCanPlay);
+      this.audio.load();
+    } else {
+      // 不自动播放时也要加载音频
       this.audio.load();
     }
     
