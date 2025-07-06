@@ -166,7 +166,8 @@ export class SettingProvider {
       dto.animations.enabled || 
       dto.animations.snowflake?.enabled || 
       dto.animations.particles?.enabled || 
-      dto.animations.heartClick?.enabled
+      dto.animations.heartClick?.enabled ||
+      dto.animations.mouseDrag?.enabled
     );
     
     if (hasAnyAnimationEnabled) {
@@ -225,6 +226,11 @@ export class SettingProvider {
     if (animations.heartClick?.enabled) {
       css += this.generateHeartClickCSS(animations.heartClick);
       script += this.generateHeartClickJS(animations.heartClick);
+    }
+
+    if (animations.mouseDrag?.enabled) {
+      css += this.generateMouseDragCSS(animations.mouseDrag);
+      script += this.generateMouseDragJS(animations.mouseDrag);
     }
 
     return { css, script };
@@ -1246,6 +1252,218 @@ if (typeof window !== 'undefined') {
   }
   
 })(window, document);
+`;
+  }
+
+  private generateMouseDragCSS(config: any): string {
+    return `
+.mouse-drag-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: ${config.opacity || 0.8};
+}
+`;
+  }
+
+  private generateMouseDragJS(config: any): string {
+    return `
+class MouseDragSystem {
+  constructor() {
+    this.canvas = null;
+    this.ctx = null;
+    this.particles = [];
+    this.mouseX = 0;
+    this.mouseY = 0;
+    this.lastMouseX = 0;
+    this.lastMouseY = 0;
+    this.isMouseDown = false;
+    this.isRunning = false;
+    this.animationId = null;
+    
+         this.config = {
+       particleCount: ${config.particleCount || 30},
+       particleSize: ${config.particleSize || 2},
+       trailLength: ${config.trailLength || 20},
+       speed: ${config.speed || 1},
+       color: '${config.color || '#e81111'}',
+       darkColor: '${config.darkColor || '#ffffff'}',
+       intensity: ${config.intensity || 3}
+     };
+    
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.canvas.className = 'mouse-drag-canvas';
+    this.ctx = this.canvas.getContext('2d');
+    
+    this.updateCanvasSize();
+    document.body.appendChild(this.canvas);
+    
+    this.bindEvents();
+    this.start();
+  }
+
+  updateCanvasSize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  bindEvents() {
+    let self = this;
+    
+         document.addEventListener('mousemove', function(e) {
+       self.lastMouseX = self.mouseX;
+       self.lastMouseY = self.mouseY;
+       self.mouseX = e.clientX;
+       self.mouseY = e.clientY;
+       
+       // 鼠标移动时总是发射粒子，但强度不同
+       if (self.isMouseDown) {
+         self.emitParticles();
+       } else {
+         // 鼠标移动时发射较少的粒子
+         self.emitParticles(0.3);
+       }
+     });
+
+    document.addEventListener('mousedown', function(e) {
+      self.isMouseDown = true;
+      self.mouseX = e.clientX;
+      self.mouseY = e.clientY;
+      self.emitParticles();
+    });
+
+    document.addEventListener('mouseup', function() {
+      self.isMouseDown = false;
+    });
+
+    window.addEventListener('resize', function() {
+      self.updateCanvasSize();
+    });
+  }
+
+     emitParticles(multiplier = 1) {
+     const distance = Math.sqrt(
+       Math.pow(this.mouseX - this.lastMouseX, 2) + 
+       Math.pow(this.mouseY - this.lastMouseY, 2)
+     );
+     
+     const baseIntensity = this.config.intensity * multiplier;
+     const particleCount = Math.min(Math.floor(distance / 5) * baseIntensity, this.config.particleCount * multiplier);
+    
+    for (let i = 0; i < particleCount; i++) {
+      this.particles.push({
+        x: this.mouseX + (Math.random() - 0.5) * 10,
+        y: this.mouseY + (Math.random() - 0.5) * 10,
+        vx: (Math.random() - 0.5) * 4 * this.config.speed,
+        vy: (Math.random() - 0.5) * 4 * this.config.speed,
+        life: this.config.trailLength,
+        maxLife: this.config.trailLength,
+        size: this.config.particleSize * (0.5 + Math.random() * 0.5)
+      });
+    }
+    
+    // 限制粒子数量
+    if (this.particles.length > this.config.particleCount * 10) {
+      this.particles = this.particles.slice(-this.config.particleCount * 5);
+    }
+  }
+
+  hexToRgb(hex) {
+    const result = /^#?([a-f\\d]{2})([a-f\\d]{2})([a-f\\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 255, g: 255, b: 255 };
+  }
+
+     update() {
+     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+     
+     // 检测当前主题 - 参考粒子动画的实现
+     const isDarkTheme = document.documentElement.className.includes('dark') || 
+                        document.body.className.includes('dark') ||
+                        window.matchMedia('(prefers-color-scheme: dark)').matches;
+     
+     const currentColor = isDarkTheme ? this.config.darkColor : this.config.color;
+     const color = this.hexToRgb(currentColor);
+    
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const particle = this.particles[i];
+      
+      // 更新粒子位置
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      
+      // 减少粒子生命
+      particle.life--;
+      
+      // 移除死亡粒子
+      if (particle.life <= 0) {
+        this.particles.splice(i, 1);
+        continue;
+      }
+      
+      // 计算透明度
+      const alpha = particle.life / particle.maxLife;
+      
+      // 绘制粒子
+      this.ctx.save();
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = \`rgba(\${color.r}, \${color.g}, \${color.b}, \${alpha})\`;
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.restore();
+    }
+  }
+
+  start() {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    
+    const animate = () => {
+      if (!this.isRunning) return;
+      this.update();
+      this.animationId = requestAnimationFrame(animate);
+    };
+    
+    animate();
+  }
+
+  stop() {
+    this.isRunning = false;
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+  }
+
+  destroy() {
+    this.stop();
+    if (this.canvas && this.canvas.parentNode) {
+      this.canvas.parentNode.removeChild(this.canvas);
+    }
+  }
+}
+
+// 初始化鼠标拖动系统
+if (typeof window !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', function() {
+    if (window.mouseDragSystem) {
+      window.mouseDragSystem.destroy();
+    }
+    window.mouseDragSystem = new MouseDragSystem();
+  });
+}
 `;
   }
   async getWalineSetting(): Promise<WalineSetting> {

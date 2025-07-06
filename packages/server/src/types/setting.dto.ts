@@ -72,6 +72,7 @@ export interface AnimationSettings {
   snowflake?: SnowflakeConfig;
   particles?: ParticleConfig;
   heartClick?: HeartClickConfig;
+  mouseDrag?: MouseDragConfig;
 }
 
 export interface SnowflakeConfig {
@@ -93,6 +94,18 @@ export interface ParticleConfig {
 
 export interface HeartClickConfig {
   enabled: boolean;
+}
+
+export interface MouseDragConfig {
+  enabled: boolean;
+  color: string;
+  darkColor: string;
+  particleCount: number;
+  particleSize: number;
+  trailLength: number;
+  speed: number;
+  opacity: number;
+  intensity: number;
 }
 
 export interface HeadTag {

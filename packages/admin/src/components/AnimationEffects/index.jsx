@@ -12,7 +12,8 @@ const AnimationEffects = ({ value = {}, onChange }) => {
     const hasAnyAnimationEnabled = 
       newConfig.snowflake?.enabled || 
       newConfig.particles?.enabled || 
-      newConfig.heartClick?.enabled;
+      newConfig.heartClick?.enabled ||
+      newConfig.mouseDrag?.enabled;
     
     newConfig.enabled = hasAnyAnimationEnabled;
     
@@ -40,6 +41,13 @@ const AnimationEffects = ({ value = {}, onChange }) => {
     });
   };
 
+  const handleMouseDragChange = (field, newValue) => {
+    handleChange('mouseDrag', {
+      ...value.mouseDrag,
+      [field]: newValue,
+    });
+  };
+
   // Simple color input component
   const ColorInput = ({ value: colorValue, onChange: onColorChange, label }) => (
     <Space>
@@ -61,6 +69,110 @@ const AnimationEffects = ({ value = {}, onChange }) => {
 
   return (
     <div>
+      {/* 鼠标拖动特效 */}
+      <Card title="🌟 鼠标拖动特效" style={{ marginBottom: 16 }}>
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Space align="center">
+              <span style={{ minWidth: '80px' }}>启用拖动特效:</span>
+              <Switch
+                checked={value.mouseDrag?.enabled || false}
+                onChange={(checked) => handleMouseDragChange('enabled', checked)}
+              />
+            </Space>
+          </Col>
+          
+          {value.mouseDrag?.enabled && (
+            <>
+              <Col span={24}>
+                <ColorInput
+                  label="粒子颜色"
+                  value={value.mouseDrag?.darkColor || '#ffffff'}
+                  onChange={(color) => handleMouseDragChange('darkColor', color)}
+                />
+              </Col>
+              
+              <Col span={12}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <span>粒子数量: {value.mouseDrag?.particleCount || 30}</span>
+                  <Slider
+                    min={100}
+                    max={1000000}
+                    value={value.mouseDrag?.particleCount || 30}
+                    onChange={(val) => handleMouseDragChange('particleCount', val)}
+                  />
+                </Space>
+              </Col>
+              
+              <Col span={12}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <span>粒子大小: {value.mouseDrag?.particleSize || 2}</span>
+                  <Slider
+                    min={1}
+                    max={5}
+                    step={0.5}
+                    value={value.mouseDrag?.particleSize || 2}
+                    onChange={(val) => handleMouseDragChange('particleSize', val)}
+                  />
+                </Space>
+              </Col>
+              
+              <Col span={12}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <span>拖尾长度: {value.mouseDrag?.trailLength || 20}</span>
+                  <Slider
+                    min={5}
+                    max={50}
+                    value={value.mouseDrag?.trailLength || 20}
+                    onChange={(val) => handleMouseDragChange('trailLength', val)}
+                  />
+                </Space>
+              </Col>
+              
+              <Col span={12}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <span>运动速度: {value.mouseDrag?.speed || 1}</span>
+                  <Slider
+                    min={0.1}
+                    max={3}
+                    step={0.1}
+                    value={value.mouseDrag?.speed || 1}
+                    onChange={(val) => handleMouseDragChange('speed', val)}
+                  />
+                </Space>
+              </Col>
+              
+              <Col span={12}>
+                <Space align="center">
+                  <span style={{ minWidth: '80px' }}>透明度:</span>
+                  <InputNumber
+                    min={0.1}
+                    max={1}
+                    step={0.1}
+                    value={value.mouseDrag?.opacity || 0.8}
+                    onChange={(val) => handleMouseDragChange('opacity', val)}
+                    style={{ width: '100px' }}
+                  />
+                </Space>
+              </Col>
+              
+              <Col span={12}>
+                <Space align="center">
+                  <span style={{ minWidth: '80px' }}>发射强度:</span>
+                  <InputNumber
+                    min={1}
+                    max={10}
+                    value={value.mouseDrag?.intensity || 3}
+                    onChange={(val) => handleMouseDragChange('intensity', val)}
+                    style={{ width: '100px' }}
+                  />
+                </Space>
+              </Col>
+            </>
+          )}
+        </Row>
+      </Card>
+
       {/* 雪花动画 */}
       <Card title="❄️ 雪花动画" style={{ marginBottom: 16 }}>
         <Row gutter={[16, 16]}>
