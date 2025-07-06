@@ -96,11 +96,27 @@ class GlobalMusicPlayer {
     });
 
     this.audio.addEventListener('ended', () => {
-      if (this.state.musicSetting?.loop) {
-        this.playNext();
-      } else {
+      if (this.state.musicList.length === 0 || !this.state.currentTrack) {
         this.updateState({ isPlaying: false });
+        this.saveStateToStorage();
+        return;
       }
+      
+      const currentIndex = this.state.musicList.findIndex(track => track.sign === this.state.currentTrack?.sign);
+      const isLastTrack = currentIndex === this.state.musicList.length - 1;
+      
+      if (isLastTrack) {
+        // 如果是最后一首歌，根据循环设置决定是否重新开始
+        if (this.state.musicSetting?.loop) {
+          this.playNext(true); // 播放第一首并自动播放
+        } else {
+          this.updateState({ isPlaying: false });
+        }
+      } else {
+        // 如果不是最后一首歌，总是播放下一首
+        this.playNext(true); // 自动播放
+      }
+      
       this.saveStateToStorage();
     });
 
@@ -439,12 +455,11 @@ class GlobalMusicPlayer {
   }
 
   // 播放下一首
-  public playNext(): void {
+  public playNext(autoPlay: boolean = false): void {
     if (this.state.musicList.length === 0 || !this.state.currentTrack) return;
-    
     const currentIndex = this.state.musicList.findIndex(track => track.sign === this.state.currentTrack?.sign);
     const nextIndex = currentIndex < this.state.musicList.length - 1 ? currentIndex + 1 : 0;
-    this.setCurrentTrack(this.state.musicList[nextIndex], this.state.isPlaying);
+    this.setCurrentTrack(this.state.musicList[nextIndex], autoPlay);
   }
 
   // 设置音量
