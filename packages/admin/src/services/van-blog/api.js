@@ -321,6 +321,12 @@ export async function getMenu() {
     method: 'GET',
   });
 }
+
+export async function resetMenuToDefault() {
+  return request(`/api/admin/meta/menu/reset`, {
+    method: 'POST',
+  });
+}
 export async function deleteLink(name) {
   return request(`/api/admin/meta/link/${encodeQuerystring(name)}`, {
     method: 'DELETE',

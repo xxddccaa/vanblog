@@ -1,8 +1,8 @@
-import { getMenu, updateMenu } from '@/services/van-blog/api';
+import { getMenu, updateMenu, resetMenuToDefault } from '@/services/van-blog/api';
 import { EditableProTable, useRefFunction } from '@ant-design/pro-components';
-import { message, Modal, Spin, Button } from 'antd';
+import { message, Modal, Spin, Button, Space } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { ArrowUpOutlined, ArrowDownOutlined, ReloadOutlined } from '@ant-design/icons';
 type DataSourceType = {
   id: React.Key;
   name: string;
@@ -97,6 +97,31 @@ export default function () {
       // 恢复原始排序
       fetchData();
     }
+  };
+
+  // 恢复默认设置的处理函数
+  const handleResetToDefault = () => {
+    Modal.confirm({
+      title: '恢复默认设置',
+      content: (
+        <div>
+          <p>确定要恢复到系统默认的菜单设置吗？</p>
+          <p style={{ color: '#ff4d4f' }}>此操作将清除所有自定义菜单设置，恢复为系统默认的8个菜单项。</p>
+        </div>
+      ),
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await resetMenuToDefault();
+          message.success('恢复默认设置成功！');
+          await fetchData();
+        } catch (error) {
+          message.error('恢复默认设置失败，请重试');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const columns = [
@@ -241,9 +266,20 @@ export default function () {
           actionRef={actionRef}
           rowKey="id"
           headerTitle={
-            <div style={{ color: '#666', fontSize: '14px' }}>
-              导航菜单管理 - 提示：使用上下箭头按钮可调整菜单显示顺序
-            </div>
+            <Space>
+              <div style={{ color: '#666', fontSize: '14px' }}>
+                导航菜单管理 - 提示：使用上下箭头按钮可调整菜单显示顺序
+              </div>
+              <Button
+                type="default"
+                icon={<ReloadOutlined />}
+                onClick={handleResetToDefault}
+                size="small"
+                style={{ marginLeft: 16 }}
+              >
+                恢复系统默认设置
+              </Button>
+            </Space>
           }
           scroll={{
             x: 960,

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 
 import { AdminGuard } from 'src/provider/auth/auth.guard';
@@ -8,6 +8,7 @@ import { config } from 'src/config';
 import { SettingProvider } from 'src/provider/setting/setting.provider';
 import { MenuSetting } from 'src/types/setting.dto';
 import { ApiToken } from 'src/provider/swagger/token';
+import { defaultMenu } from 'src/types/menu.dto';
 @ApiTags('menu')
 @ApiToken
 @UseGuards(...AdminGuard)
@@ -40,6 +41,22 @@ export class MenuMetaController {
     return {
       statusCode: 200,
       data,
+    };
+  }
+
+  @Post('/reset')
+  async resetToDefault() {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    await this.settingProvider.updateMenuSetting({ data: defaultMenu });
+    const data = await this.isrProvider.activeAll('恢复默认菜单设置触发增量渲染！');
+    return {
+      statusCode: 200,
+      data: '恢复默认菜单设置成功！',
     };
   }
 }
