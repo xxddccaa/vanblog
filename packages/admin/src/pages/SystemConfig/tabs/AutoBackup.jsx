@@ -296,7 +296,7 @@ export default function AutoBackup() {
           message="自动备份说明"
           description={
             <div>
-              <p><strong>备份内容：</strong>与手动导出功能完全一致，包含所有文章、草稿、设置等数据。</p>
+              <p><strong>备份内容：</strong>与手动导出功能完全一致，包含所有文章、草稿、私密文档库、设置等数据。</p>
               <p><strong>备份位置：</strong>文件保存在 <code>/static/blog-json/</code> 目录下。</p>
               <p><strong>文件清理：</strong>系统会自动清理旧备份，只保留最新的指定数量文件。</p>
             </div>

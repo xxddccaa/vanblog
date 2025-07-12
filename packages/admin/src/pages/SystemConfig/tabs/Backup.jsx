@@ -46,6 +46,7 @@ export default function (props) {
             <li>删除所有动态/时刻</li>
             <li>删除所有分类和标签</li>
             <li>删除所有自定义页面</li>
+            <li>删除所有私密文档库和文档</li>
             <li>删除所有导航工具和分类</li>
             <li>删除所有流水线配置</li>
             <li>清空访问统计数据</li>
@@ -142,6 +143,7 @@ export default function (props) {
     { name: '✅ 系统设置 (setting)', desc: '图床配置、静态文件设置等' },
     { name: '✅ 定制化设置 (layoutSetting)', desc: '自定义CSS、JavaScript、HTML代码' },
     { name: '✅ AI标签配置 (aiTaggingConfig)', desc: 'AI自动打标：API密钥、模型参数、对话模板等' },
+    { name: '✅ 私密文档库 (documents)', desc: '所有私密文档库和文档：文档库、文档、内容、层级关系等' },
   ];
 
   const importDataTypes = [
@@ -152,6 +154,7 @@ export default function (props) {
     { name: '✅ 静态文件记录', desc: '按文件签名去重，避免重复导入相同文件' },
     { name: '✅ 定制化设置', desc: '增量导入：与现有配置合并，不会清空已有的自定义代码' },
     { name: '✅ AI标签配置', desc: '覆盖导入：完全替换现有的AI配置参数' },
+    { name: '✅ 私密文档库', desc: '增量导入：ID冲突时自动重新分配，相同标题则更新' },
     { name: '✅ 访问统计', desc: '统计数据：覆盖导入历史访问记录' },
     { name: '❌ 用户信息', desc: '跳过导入：避免覆盖当前登录账号和密码' },
     { name: '❌ 站点信息', desc: '跳过导入：保留当前的站点名称、描述、Logo等配置' },

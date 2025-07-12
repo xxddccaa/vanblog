@@ -22,6 +22,7 @@ import { NavCategoryProvider } from 'src/provider/nav-category/nav-category.prov
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { AITaggingProvider } from 'src/provider/ai-tagging/ai-tagging.provider';
 import { AliyunpanProvider } from 'src/provider/aliyunpan/aliyunpan.provider';
+import { DocumentProvider } from 'src/provider/document/document.provider';
 
 @Injectable()
 export class AutoBackupTask {
@@ -53,6 +54,7 @@ export class AutoBackupTask {
     private readonly iconProvider: IconProvider,
     private readonly aiTaggingProvider: AITaggingProvider,
     private readonly aliyunpanProvider: AliyunpanProvider,
+    private readonly documentProvider: DocumentProvider,
   ) {
     this.logger.log(`初始化自动备份任务实例: ${this.instanceId}`);
     this.ensureBackupDirectoryExists();
@@ -251,6 +253,7 @@ export class AutoBackupTask {
         icons,
         layoutSetting,
         aiTaggingConfig,
+        documents,
       ] = await Promise.all([
         this.articleProvider.getAll('admin', true),
         this.categoryProvider.getAllCategories(),
@@ -271,6 +274,7 @@ export class AutoBackupTask {
         this.iconProvider.getAllIcons(),
         this.settingProvider.getLayoutSetting(),
         this.aiTaggingProvider.getConfig(),
+        this.documentProvider.getByOption({ page: 1, pageSize: -1 }).then(result => result.documents),
       ]);
 
       const data = {
@@ -293,6 +297,7 @@ export class AutoBackupTask {
         icons,
         layoutSetting,
         aiTaggingConfig,
+        documents,
         backupInfo: {
           version: '2.0.0',
           timestamp: new Date().toISOString(),
@@ -301,7 +306,7 @@ export class AutoBackupTask {
             'articles', 'tags', 'meta', 'drafts', 'categories', 'user',
             'viewer', 'visit', 'static', 'setting', 'moments', 'customPages',
             'pipelines', 'tokens', 'navTools', 'navCategories', 'icons',
-            'layoutSetting', 'aiTaggingConfig'
+            'layoutSetting', 'aiTaggingConfig', 'documents'
           ],
           counts: {
             articles: articles?.length || 0,
@@ -318,6 +323,7 @@ export class AutoBackupTask {
             staticItems: staticItems?.length || 0,
             layoutSetting: layoutSetting ? 1 : 0,
             aiTaggingConfig: aiTaggingConfig ? 1 : 0,
+            documents: documents?.length || 0,
           }
         }
       };

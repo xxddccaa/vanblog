@@ -38,6 +38,7 @@ import { NavCategoryProvider } from 'src/provider/nav-category/nav-category.prov
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { AITaggingProvider } from 'src/provider/ai-tagging/ai-tagging.provider';
+import { DocumentProvider } from 'src/provider/document/document.provider';
 
 @ApiTags('backup')
 @UseGuards(...AdminGuard)
@@ -64,7 +65,8 @@ export class BackupController {
     private readonly navCategoryProvider: NavCategoryProvider,
     private readonly iconProvider: IconProvider,
     private readonly isrProvider: ISRProvider,
-          private readonly aiTaggingProvider: AITaggingProvider,
+    private readonly aiTaggingProvider: AITaggingProvider,
+    private readonly documentProvider: DocumentProvider,
   ) {}
 
   @Get('export')
@@ -92,6 +94,7 @@ export class BackupController {
         icons,
         layoutSetting,
         aiTaggingConfig,
+        documents,
       ] = await Promise.all([
         this.articleProvider.getAll('admin', true),
         this.categoryProvider.getAllCategories(),
@@ -112,6 +115,7 @@ export class BackupController {
         this.iconProvider.getAllIcons(),
         this.settingProvider.getLayoutSetting(),
         this.aiTaggingProvider.getConfig(),
+        this.documentProvider.getByOption({ page: 1, pageSize: -1 }).then(result => result.documents),
       ]);
 
     const data = {
@@ -134,6 +138,7 @@ export class BackupController {
         icons,
         layoutSetting,
         aiTaggingConfig,
+        documents,
         backupInfo: {
           version: '2.0.0',
           timestamp: new Date().toISOString(),
@@ -141,7 +146,7 @@ export class BackupController {
             'articles', 'tags', 'meta', 'drafts', 'categories', 'user',
             'viewer', 'visit', 'static', 'setting', 'moments', 'customPages',
             'pipelines', 'tokens', 'navTools', 'navCategories', 'icons',
-            'layoutSetting', 'aiTaggingConfig'
+            'layoutSetting', 'aiTaggingConfig', 'documents'
           ],
           counts: {
             articles: articles?.length || 0,
@@ -158,6 +163,7 @@ export class BackupController {
             staticItems: staticItems?.length || 0,
             layoutSetting: layoutSetting ? 1 : 0,
             aiTaggingConfig: aiTaggingConfig ? 1 : 0,
+            documents: documents?.length || 0,
           }
         }
       };
@@ -202,8 +208,8 @@ export class BackupController {
       const backupVersion = data.backupInfo?.version || '1.0.0';
       this.logger.log(`检测到备份版本: ${backupVersion}`);
 
-    const { meta, user, setting, layoutSetting, aiTaggingConfig } = data;
-      let { articles, drafts, viewer, visit, static: staticItems, moments, customPages, pipelines, tokens, navTools, navCategories, icons } = data;
+          const { meta, user, setting, layoutSetting, aiTaggingConfig } = data;
+      let { articles, drafts, viewer, visit, static: staticItems, moments, customPages, pipelines, tokens, navTools, navCategories, icons, documents } = data;
 
       if (articles) articles = removeID(articles);
       if (drafts) drafts = removeID(drafts);
@@ -217,6 +223,7 @@ export class BackupController {
       if (navTools) navTools = removeID(navTools);
       if (navCategories) navCategories = removeID(navCategories);
       if (icons) icons = removeID(icons);
+      if (documents) documents = removeID(documents);
 
     if (setting && setting.static) {
       setting.static = { ...setting.static, _id: undefined, __v: undefined };
@@ -244,6 +251,7 @@ export class BackupController {
         staticItems: 0,
         layoutSetting: 0,
         aiTaggingConfig: 0,
+        documents: 0,
         other: 0,
       };
 
@@ -388,6 +396,19 @@ export class BackupController {
         this.logger.log('备份文件中未发现AI标签配置数据或数据为空');
       }
 
+      // 导入私密文档库数据
+      if (documents && documents.length > 0) {
+        try {
+          await this.importDocumentsEnhanced(documents);
+          importResults.documents = documents.length;
+          this.logger.log(`私密文档库数据导入完成: ${importResults.documents} 条`);
+        } catch (error) {
+          this.logger.warn(`私密文档库数据导入失败: ${error.message}`);
+        }
+      } else {
+        this.logger.log('备份文件中未发现私密文档库数据或数据为空');
+      }
+
       // 自动同步标签数据
       try {
         this.logger.log('开始同步标签数据...');
@@ -444,6 +465,7 @@ export class BackupController {
         viewer: 0,
         visit: 0,
         tokens: 0,
+        documents: 0,
       };
 
       // 1. 清空内容数据 - 使用物理删除
@@ -553,6 +575,19 @@ export class BackupController {
         this.logger.log(`清空流水线完成: ${clearResults.pipelines} 条`);
       } catch (error) {
         this.logger.error('清空流水线失败:', error.message);
+      }
+
+      // 6. 清空私密文档库
+      try {
+        const documents = await this.documentProvider.getByOption({ page: 1, pageSize: -1 });
+        
+        // 使用MongoDB的deleteMany进行批量物理删除
+        await this.documentProvider['documentModel'].deleteMany({});
+        
+        clearResults.documents = documents.documents.length;
+        this.logger.log(`清空私密文档库完成: ${clearResults.documents} 条`);
+      } catch (error) {
+        this.logger.error('清空私密文档库失败:', error.message);
       }
 
       // 6. 清空分类和标签（在文章清空后）
@@ -1128,6 +1163,74 @@ export class BackupController {
       this.logger.log(`导航分类自动创建完成: 新建 ${createdCount} 个分类`);
     } catch (error) {
       this.logger.error('自动创建导航分类失败:', error.message);
+    }
+  }
+
+  private async importDocumentsEnhanced(documents: any[]) {
+    if (!documents || documents.length === 0) return;
+
+    try {
+      this.logger.log(`开始增量导入 ${documents.length} 个私密文档...`);
+      let newIdCount = 0;
+      let updatedCount = 0;
+      let createdCount = 0;
+
+      for (const document of documents) {
+        let targetId = document.id;
+        
+        // 检查ID是否冲突（包括软删除的记录）
+        if (targetId) {
+          const existingDocument = await this.documentProvider['documentModel'].findOne({ id: targetId });
+          if (existingDocument) {
+            // ID冲突，分配新ID
+            targetId = await this.documentProvider.getNewId();
+            newIdCount++;
+            this.logger.log(`文档ID冲突 (${document.id} -> ${targetId}): ${document.title}`);
+          }
+        } else {
+          // 没有ID，分配新ID
+          targetId = await this.documentProvider.getNewId();
+          newIdCount++;
+        }
+
+        const { id, _id, __v, ...createDto } = document;
+        
+        try {
+          // 先尝试根据标题查找是否已存在相同文档（只查未删除的）
+          const existingByTitle = await this.documentProvider['documentModel'].findOne({ 
+            title: document.title, 
+            deleted: false 
+          });
+          if (existingByTitle) {
+            // 更新现有文档
+            await this.documentProvider.updateById(
+              existingByTitle.id,
+              {
+                ...createDto,
+                deleted: false,
+                updatedAt: new Date(),
+              }
+            );
+            updatedCount++;
+            this.logger.log(`更新文档: ${document.title}`);
+          } else {
+            // 创建新文档
+            await this.documentProvider.create({
+              ...createDto,
+              id: targetId,
+              updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
+            });
+            createdCount++;
+          }
+        } catch (error) {
+          this.logger.error(`导入文档失败 (${document.title}): ${error.message}`);
+        }
+      }
+
+      this.logger.log(`私密文档增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`);
+    } catch (error) {
+      this.logger.error('批量导入私密文档失败:', error.message);
+      throw error;
     }
   }
 }
