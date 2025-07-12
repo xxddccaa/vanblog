@@ -18,6 +18,7 @@ const codeBlockPlugin = () => (tree) => {
         }
       }
       if (language === 'mermaid') return;
+      
       // 复制按钮
       const codeCopyBtn = {
         type: 'element',
@@ -27,6 +28,23 @@ const codeBlockPlugin = () => (tree) => {
         },
         children: [],
       };
+      
+      // 展开/收起按钮
+      const codeToggleBtn = {
+        type: 'element',
+        tagName: 'div',
+        properties: {
+          class: 'code-toggle-btn ml-1',
+          title: '展开/收起代码',
+        },
+        children: [
+          {
+            type: 'text',
+            value: '展开代码',
+          },
+        ],
+      };
+      
       const languageTag = {
         type: 'element',
         tagName: 'span',
@@ -41,6 +59,7 @@ const codeBlockPlugin = () => (tree) => {
           },
         ],
       };
+      
       // 上方右侧 header
       const headerRight = {
         type: 'element',
@@ -49,8 +68,19 @@ const codeBlockPlugin = () => (tree) => {
           class: 'header-right flex',
           style: 'color: #6f7177',
         },
-        children: [languageTag, codeCopyBtn],
+        children: [languageTag, codeCopyBtn, codeToggleBtn],
       };
+      
+      // 代码内容包装器，用于控制展开/收起
+      const codeContentWrapper = {
+        type: 'element',
+        tagName: 'div',
+        properties: {
+          class: 'code-content-wrapper',
+        },
+        children: [...oldChildren],
+      };
+      
       // 包裹的 div
       const wrapperDiv = {
         type: 'element',
@@ -58,7 +88,7 @@ const codeBlockPlugin = () => (tree) => {
         properties: {
           class: 'code-block-wrapper relative',
         },
-        children: [headerRight, ...oldChildren],
+        children: [headerRight, codeContentWrapper],
       };
       node.children = [wrapperDiv];
     }
@@ -72,15 +102,76 @@ const onClickCopyCode = (e: PointerEvent) => {
   message.success('复制成功');
 };
 
+const onClickToggleCode = (e: PointerEvent) => {
+  const toggleBtn = e.target as HTMLElement;
+  const codeBlockWrapper = toggleBtn.closest('.code-block-wrapper');
+  const codeContentWrapper = codeBlockWrapper?.querySelector('.code-content-wrapper') as HTMLElement;
+  
+  if (!codeContentWrapper) return;
+  
+  const isCollapsed = codeContentWrapper.classList.contains('code-collapsed');
+  
+  if (isCollapsed) {
+    codeContentWrapper.classList.remove('code-collapsed');
+    toggleBtn.classList.remove('code-collapsed');
+    toggleBtn.textContent = '收起代码';
+    toggleBtn.title = '收起代码';
+  } else {
+    codeContentWrapper.classList.add('code-collapsed');
+    toggleBtn.classList.add('code-collapsed');
+    toggleBtn.textContent = '展开代码';
+    toggleBtn.title = '展开代码';
+  }
+};
+
+// 检查代码是否超过15行
+const shouldCollapseCode = (codeElement: Element): boolean => {
+  const codeText = codeElement.textContent || '';
+  // 移除首尾空白字符，然后按换行符分割
+  const lines = codeText.trim().split('\n');
+  // 过滤掉空行，只计算有内容的行数
+  const nonEmptyLines = lines.filter(line => line.trim().length > 0);
+  // 如果总行数超过15行，或者非空行数超过12行，就需要折叠
+  return lines.length > 15 || nonEmptyLines.length > 12;
+};
+
 export function customCodeBlock(): BytemdPlugin {
   return {
     rehype: (processor) => processor.use(codeBlockPlugin),
     viewerEffect: ({ markdownBody }) => {
       markdownBody.querySelectorAll('.code-block-wrapper').forEach((codeBlock) => {
-        const copyBtn = codeBlock.querySelector('.code-copy-btn');
-        //remove first
-        copyBtn.removeEventListener('click', onClickCopyCode);
-        copyBtn.addEventListener('click', onClickCopyCode);
+        const copyBtn = codeBlock.querySelector('.code-copy-btn') as HTMLElement;
+        const toggleBtn = codeBlock.querySelector('.code-toggle-btn') as HTMLElement;
+        const codeContentWrapper = codeBlock.querySelector('.code-content-wrapper') as HTMLElement;
+        const codeElement = codeBlock.querySelector('code');
+        
+        // 移除之前的事件监听器
+        copyBtn?.removeEventListener('click', onClickCopyCode);
+        toggleBtn?.removeEventListener('click', onClickToggleCode);
+        
+        // 添加复制按钮事件
+        copyBtn?.addEventListener('click', onClickCopyCode);
+        
+        // 检查是否需要折叠
+        if (codeElement && shouldCollapseCode(codeElement)) {
+          // 默认折叠状态
+          codeContentWrapper?.classList.add('code-collapsed');
+          toggleBtn?.classList.add('code-collapsed');
+          if (toggleBtn) {
+            toggleBtn.textContent = '展开代码';
+            toggleBtn.title = '展开代码';
+          }
+          // 显示切换按钮
+          if (toggleBtn) {
+            toggleBtn.style.display = 'block';
+            toggleBtn.addEventListener('click', onClickToggleCode);
+          }
+        } else {
+          // 代码行数不多，隐藏切换按钮
+          if (toggleBtn) {
+            toggleBtn.style.display = 'none';
+          }
+        }
       });
     },
   };

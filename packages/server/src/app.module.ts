@@ -104,6 +104,9 @@ import { AutoBackupController } from './controller/admin/auto-backup/auto-backup
 import { AutoBackupTask } from './schedule/auto-backup.task';
 import { AliyunpanProvider } from './provider/aliyunpan/aliyunpan.provider';
 import { MusicController } from './controller/admin/music/music.controller';
+import { Document, DocumentSchema } from './scheme/document.schema';
+import { DocumentProvider } from './provider/document/document.provider';
+import { DocumentController } from './controller/admin/document/document.controller';
 
 @Module({
   imports: [
@@ -128,6 +131,7 @@ import { MusicController } from './controller/admin/music/music.controller';
       { name: Icon.name, schema: IconSchema },
       { name: NavTool.name, schema: NavToolSchema },
       { name: NavCategory.name, schema: NavCategorySchema },
+      { name: Document.name, schema: DocumentSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: async () => {
@@ -180,6 +184,7 @@ import { MusicController } from './controller/admin/music/music.controller';
     AITaggingController,
     AutoBackupController,
     MusicController,
+    DocumentController,
   ],
   providers: [
     AppService,
@@ -224,6 +229,7 @@ import { MusicController } from './controller/admin/music/music.controller';
     AITaggingProvider,
     AutoBackupTask,
     AliyunpanProvider,
+    DocumentProvider,
   ],
 })
 export class AppModule implements NestModule {

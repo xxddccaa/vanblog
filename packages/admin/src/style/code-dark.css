@@ -113,3 +113,25 @@
   display: inline-block;
   width: 100%;
 }
+
+/* 暗色主题下的代码折叠样式 */
+.dark pre .code-content-wrapper {
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+
+.dark pre .code-content-wrapper.code-collapsed {
+  max-height: 21em; /* 调整为更适合的高度，约15行 * 1.4em line-height */
+}
+
+.dark pre .code-content-wrapper.code-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3em;
+  background: linear-gradient(transparent, #1c1f23);
+  pointer-events: none;
+}

@@ -42,6 +42,7 @@ export default [
     hideInMenu: true,
   },
   { name: '草稿管理', icon: 'container', path: '/draft', component: './Draft' },
+  { name: '私密文档', icon: 'folder', path: '/document', component: './Document' },
   {
     name: '图片管理',
     icon: 'picture',

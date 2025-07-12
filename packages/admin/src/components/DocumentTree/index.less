@@ -1,0 +1,170 @@
+.document-tree {
+  &-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  &-header {
+    margin-bottom: 12px;
+    flex-shrink: 0;
+  }
+
+  &-tree-wrapper {
+    flex: 1;
+    overflow: hidden;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  &-content {
+    flex: 1;
+    overflow: auto;
+    padding: 8px;
+    min-height: 0;
+    
+    /* 自定义滚动条样式 */
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+      
+      &:hover {
+        background: #a8a8a8;
+      }
+    }
+
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+  }
+
+  &-scroll {
+    /* 兼容性类名，实际样式在 &-content 中定义 */
+  }
+}
+
+/* 确保Tree组件的节点能够正确显示 */
+.ant-tree {
+  background: transparent;
+  
+  .ant-tree-treenode {
+    padding: 2px 0;
+    
+    &:hover {
+      background-color: #f5f5f5;
+    }
+  }
+  
+  .ant-tree-node-content-wrapper {
+    transition: all 0.2s ease;
+    border-radius: 4px;
+    
+    &:hover {
+      background-color: #f5f5f5;
+    }
+    
+    &.ant-tree-node-selected {
+      background-color: #e6f7ff !important;
+    }
+  }
+  
+  .ant-tree-switcher {
+    &:hover {
+      background-color: #f5f5f5;
+    }
+  }
+}
+
+/* 文档树节点样式 */
+.document-tree-node {
+  position: relative;
+  
+  .document-tree-node-title {
+    // 确保图标和文字正确对齐
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    
+    // 确保文字部分的样式
+    span {
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1.4;
+    }
+    
+    // 确保图标的样式
+    .anticon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+  }
+  
+  .document-tree-node-actions {
+    // 确保按钮在hover时完全可见
+    transition: opacity 0.2s ease;
+    display: flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    
+    .ant-btn {
+      transition: all 0.2s ease;
+      min-width: 24px;
+      height: 24px;
+      
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.06);
+      }
+    }
+  }
+  
+  // 确保按钮始终可见，特别是文档库的单个按钮
+  .document-tree-node-actions {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+  }
+  
+  &:hover .document-tree-node-actions {
+    opacity: 1;
+  }
+}
+
+/* 响应式设计 - 在窄屏时优化按钮显示 */
+@media (max-width: 200px) {
+  .document-tree-node-actions {
+    // 在很窄的屏幕上，只显示更多操作按钮
+    .ant-btn:not(:last-child) {
+      display: none;
+    }
+  }
+}
+
+/* 确保在任何宽度下都能看到更多操作按钮 */
+.document-tree-node-actions {
+  /* 确保按钮容器不会被压缩 */
+  flex-shrink: 0;
+  justify-content: flex-end;
+  min-width: 28px; // 至少保证能显示一个按钮
+  
+  /* 在容器宽度不足时的响应式处理 */
+  @media (max-width: 200px) {
+    .ant-btn:not(:last-child) {
+      display: none;
+    }
+  }
+} 

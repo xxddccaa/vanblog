@@ -17,6 +17,9 @@ import {
   updateMoment,
   createMoment,
   deleteMoment,
+  getDocumentById,
+  updateDocument,
+  deleteDocument,
 } from '@/services/van-blog/api';
 import { getPathname } from '@/services/van-blog/getPathname';
 import { parseMarkdownFile, parseObjToMarkdown } from '@/services/van-blog/parseMarkdownFile';
@@ -66,6 +69,7 @@ export default function () {
     draft: '草稿',
     about: '关于',
     moment: '动态',
+    document: '文档',
   };
   const fetchData = useCallback(
     async (noMessage) => {
@@ -175,6 +179,20 @@ export default function () {
           document.title = `创建动态 - VanBlog 编辑器`;
         }
       }
+      if (type == 'document' && id) {
+        const { data } = await getDocumentById(id);
+        const cache = checkCache(data);
+        if (cache) {
+          setValue(cache);
+          if (!noMessage) {
+            message.success('从缓存中恢复状态！');
+          }
+        } else {
+          setValue(data?.content || '');
+        }
+        document.title = `${data?.title || ''} - VanBlog 编辑器`;
+        setCurrObj(data);
+      }
       setLoading(false);
     },
     [history, setLoading, setValue, type],
@@ -222,6 +240,10 @@ export default function () {
         // 更新URL但不刷新页面
         history.replace(`/editor?type=moment&id=${newMoment.data.id}`);
       }
+    } else if (type == 'document') {
+      await updateDocument(currObj?.id, { content: v });
+      await fetchData();
+      message.success('保存成功！');
     }
     if (editorConfig.afterSave && editorConfig.afterSave == 'goBack') {
       history.go(-1);
@@ -448,6 +470,10 @@ export default function () {
                       await deleteMoment(currObj.id);
                       message.success('删除动态成功！返回列表页！');
                       history.push('/moment');
+                    } else if (type == 'document') {
+                      await deleteDocument(currObj.id);
+                      message.success('删除文档成功！返回列表页！');
+                      history.push('/document');
                     }
                   },
                 });

@@ -1,0 +1,237 @@
+/* 统一背景色设置 */
+.document-page-container {
+  background-color: #f5f5f5;
+  min-height: 100vh;
+  padding-bottom: 40px; /* 增加底部余量 */
+  
+  .ant-row {
+    background-color: transparent;
+  }
+  
+  .ant-col {
+    background-color: transparent;
+    transition: width 0.3s ease, flex 0.3s ease;
+  }
+  
+  /* 拖拽调整宽度的手柄样式 */
+  .resize-handle {
+    &:hover {
+      background-color: #f0f0f0 !important;
+      color: #1890ff !important;
+    }
+    
+    &:active {
+      background-color: #e6f7ff !important;
+      color: #1890ff !important;
+    }
+  }
+  
+  /* 收起/展开时的过渡效果 */
+  .ant-col {
+    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+  
+  /* 展开按钮的悬停效果 */
+  .ant-btn {
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    }
+  }
+  
+  /* 宽度提示动画 */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-50%) scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
+    }
+  }
+}
+
+.document-page {
+  &-content {
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+      
+      &:hover {
+        background: #a8a8a8;
+      }
+    }
+    
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+  }
+  
+  &-viewer {
+    width: 100%;
+    overflow: auto;
+    padding: 20px;
+    min-height: 400px;
+    background-color: #fff;
+    
+    &::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+      
+      &:hover {
+        background: #a8a8a8;
+      }
+    }
+    
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+  }
+  
+  &-library-info {
+    padding: 20px;
+    text-align: center;
+    background-color: #fff;
+    
+    h3 {
+      margin-bottom: 16px;
+      color: #333;
+    }
+    
+    p {
+      margin-bottom: 16px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+  
+  &-editor-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    background-color: #fff;
+    min-height: 400px;
+    
+    .editor-wrapper {
+      width: 100%;
+      min-height: 400px;
+      
+      /* 确保编辑器内部的滚动条与整体风格一致 */
+      * {
+        &::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        &::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+        
+        &::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 4px;
+          
+          &:hover {
+            background: #a8a8a8;
+          }
+        }
+        
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 #f1f1f1;
+      }
+    }
+  }
+}
+
+/* 确保卡片内容区域高度正确和背景色统一 */
+.ant-card {
+  &.document-tree-card {
+    background-color: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    
+    .ant-card-body {
+      padding: 16px;
+      overflow: auto;
+      background-color: #fff;
+    }
+  }
+  
+  &.document-content-card {
+    background-color: #fff;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    
+    .ant-card-body {
+      padding: 0;
+      overflow: auto;
+      background-color: #fff;
+    }
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .document-page {
+    &-content {
+      min-height: 400px;
+    }
+    
+    &-viewer {
+      min-height: 400px;
+    }
+  }
+  
+  .ant-card {
+    &.document-tree-card {
+      min-height: 300px;
+      
+      .ant-card-body {
+        min-height: 250px;
+      }
+    }
+    
+    &.document-content-card {
+      min-height: 500px;
+      
+      .ant-card-body {
+        min-height: 450px;
+      }
+    }
+  }
+  
+  .document-page-container {
+    /* 在移动端隐藏拖拽手柄 */
+    .resize-handle {
+      display: none;
+    }
+    
+    /* 在移动端时，文档树默认收起 */
+    .ant-col {
+      transition: none;
+    }
+  }
+} 

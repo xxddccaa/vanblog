@@ -1244,12 +1244,19 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
   border-radius: 6px;
 }
 
+.markdown-body .code-block-wrapper {
+  position: relative !important;
+}
+
 .markdown-body .header-right {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  z-index: 1;
-  line-height: 1;
+  position: absolute !important;
+  top: 2px !important;
+  right: 2px !important;
+  z-index: 10 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
 }
 
 .markdown-body .code-copy-btn {
@@ -1270,6 +1277,71 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
   content: url('data:image/svg+xml,%3Csvg%0Awidth%3D%2214%22%0Aheight%3D%2214%22%0AviewBox%3D%220%200%2015%2019%22%0Afill%3D%22currentColor%22%0Axmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%0A%3E%0A%3Cpath%0A%20%20d%3D%22M11.0475%200.905273H1.67197C0.812542%200.905273%200.109375%201.60844%200.109375%202.46787V13.406H1.67197V2.46787H11.0475V0.905273ZM13.3914%204.03046H4.79716C3.93773%204.03046%203.23456%204.73363%203.23456%205.59306V16.5312C3.23456%2017.3906%203.93773%2018.0938%204.79716%2018.0938H13.3914C14.2509%2018.0938%2014.954%2017.3906%2014.954%2016.5312V5.59306C14.954%204.73363%2014.2509%204.03046%2013.3914%204.03046ZM13.3914%2016.5312H4.79716V5.59306H13.3914V16.5312Z%22%0A%20%20fill%3D%22%236f7177%22%0A%3E%3C%2Fpath%3E%0A%3C%2Fsvg%3E');
   display: inline-block;
   padding: 4px 8px;
+}
+
+/* 代码展开/收起按钮样式 - 提高优先级 */
+.markdown-body .code-toggle-btn {
+  cursor: pointer !important;
+  transition: background-color 0.2s ease-in-out !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  color: #6f7177 !important;
+  border: 1px solid #d0d7de !important;
+  background-color: #fff !important;
+  user-select: none !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
+
+.markdown-body .code-toggle-btn:hover {
+  background-color: rgb(229 231 235) !important;
+  border-color: #bbb !important;
+}
+
+.dark .markdown-body .code-toggle-btn {
+  border-color: #3e4145 !important;
+  color: #8b949e !important;
+  background-color: #1c1f23 !important;
+}
+
+.dark .markdown-body .code-toggle-btn:hover {
+  background-color: rgb(55 65 81) !important;
+  border-color: #555 !important;
+}
+
+/* 代码内容包装器样式 - 提高优先级 */
+.markdown-body .code-content-wrapper {
+  transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* 折叠状态：限制高度为大约15行 */
+.markdown-body .code-content-wrapper.code-collapsed {
+  max-height: 21em !important; /* 调整为更适合的高度，约15行 * 1.4em line-height */
+}
+
+/* 折叠状态时添加渐变遮罩 */
+.markdown-body .code-content-wrapper.code-collapsed::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3em !important;
+  background: linear-gradient(transparent, #f6f8fa) !important;
+  pointer-events: none !important;
+}
+
+/* 暗色模式下的渐变遮罩 */
+.dark .markdown-body .code-content-wrapper.code-collapsed::after {
+  background: linear-gradient(transparent, #1c1f23) !important;
+}
+
+/* 确保代码块在折叠状态下正确显示 */
+.markdown-body .code-content-wrapper.code-collapsed pre {
+  margin-bottom: 0 !important;
 }
 .markdown-body iframe {
   border: none;

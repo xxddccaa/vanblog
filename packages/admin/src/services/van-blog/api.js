@@ -666,6 +666,66 @@ export async function clearAllData() {
   });
 }
 
+// 私密文档相关API
+export async function getDocumentsByOption(params) {
+  return request('/api/admin/document', {
+    method: 'GET',
+    params,
+  });
+}
+
+export async function getDocumentTree(libraryId) {
+  return request('/api/admin/document/tree', {
+    method: 'GET',
+    params: libraryId ? { library_id: libraryId } : {},
+  });
+}
+
+export async function getLibraries() {
+  return request('/api/admin/document/libraries', {
+    method: 'GET',
+  });
+}
+
+export async function getDocumentsByLibrary(libraryId) {
+  return request(`/api/admin/document/library/${libraryId}`, {
+    method: 'GET',
+  });
+}
+
+export async function getDocumentById(id) {
+  return request(`/api/admin/document/${id}`, {
+    method: 'GET',
+  });
+}
+
+export async function createDocument(data) {
+  return request('/api/admin/document', {
+    method: 'POST',
+    data,
+  });
+}
+
+export async function updateDocument(id, data) {
+  return request(`/api/admin/document/${id}`, {
+    method: 'PUT',
+    data,
+  });
+}
+
+export async function deleteDocument(id) {
+  return request(`/api/admin/document/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function moveDocument(id, data) {
+  return request(`/api/admin/document/${id}/move`, {
+    method: 'PUT',
+    data,
+  });
+}
+
 // 自动备份相关API
 export async function getAutoBackupSetting() {
   return request(`/api/admin/auto-backup/setting`, {
@@ -738,5 +798,27 @@ export async function triggerAliyunpanSync() {
 export async function cleanupDuplicatePathnames() {
   return request('/api/admin/article/cleanup-duplicate-pathnames', {
     method: 'POST',
+  });
+}
+
+// 导出文档库所有文档
+export async function exportLibraryDocuments(libraryId) {
+  return request(`/api/admin/document/library/${libraryId}/export`, {
+    method: 'GET',
+  });
+}
+
+// 更新文档库信息
+export async function updateLibrary(id, data) {
+  return request(`/api/admin/document/${id}`, {
+    method: 'PUT',
+    data,
+  });
+}
+
+// 删除文档库
+export async function deleteLibrary(id) {
+  return request(`/api/admin/document/${id}`, {
+    method: 'DELETE',
   });
 }

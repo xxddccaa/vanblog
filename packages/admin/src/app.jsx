@@ -10,6 +10,7 @@ import {
   ContainerOutlined,
   PictureOutlined,
   ToolOutlined,
+  FolderOutlined,
 } from '@ant-design/icons';
 import { PageLoading, SettingDrawer } from '@ant-design/pro-layout';
 import { message, Modal, notification } from 'antd';
@@ -33,6 +34,7 @@ const iconMapping = {
   container: <ContainerOutlined />,
   picture: <PictureOutlined />,
   tool: <ToolOutlined />,
+  folder: <FolderOutlined />,
 };
 /** 获取用户信息比较慢的时候会展示一个 loading */
 
@@ -216,6 +218,7 @@ export const layout = ({ initialState, setInitialState }) => {
       else if (menu.path === '/moment') menuMapping.moment = menu;
       else if (menu.path === '/nav') menuMapping.nav = menu;
       else if (menu.path === '/draft') menuMapping.draft = menu;
+      else if (menu.path === '/document') menuMapping.document = menu;
       else if (menu.path === '/static/img') menuMapping.static = menu;
       else if (menu.path === '/site') menuMapping.site = menu;
     });

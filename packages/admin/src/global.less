@@ -144,6 +144,25 @@ body .ant-pro-table .ant-pro-table-search {
   margin-bottom: 22px;
 }
 
+/* 为 Article 页面添加底部余量 */
+.ant-pro-page-container {
+  &.t-8 {
+    padding-bottom: 60px; /* 增加底部余量 */
+  }
+}
+
+/* 确保 ProTable 容器有足够的底部空间 */
+.ant-pro-table-container {
+  padding-bottom: 20px;
+}
+
+/* 为 Document 页面添加底部余量 */
+.document-page-container {
+  .ant-pro-page-container-children-content {
+    padding-bottom: 40px !important;
+  }
+}
+
 .editor-full .ant-spin-container > div {
   height: 100%;
   position: relative;
