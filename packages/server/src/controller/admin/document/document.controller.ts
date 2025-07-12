@@ -61,6 +61,18 @@ export class DocumentController {
     };
   }
 
+  @Get('/search')
+  async searchDocument(@Query('value') search: string) {
+    const data = await this.documentProvider.searchByString(search);
+    return {
+      statusCode: 200,
+      data: {
+        total: data.length,
+        data: data,
+      },
+    };
+  }
+
   @Get('/tree')
   async getDocumentTree(@Query('library_id') libraryId?: number) {
     const data = await this.documentProvider.getDocumentTree(libraryId);

@@ -429,4 +429,64 @@ export class DocumentProvider {
 
     return draft;
   }
+
+  async searchByString(str: string): Promise<Document[]> {
+    const $and: any = [
+      {
+        $or: [
+          { content: { $regex: `${str}`, $options: 'i' } },
+          { title: { $regex: `${str}`, $options: 'i' } },
+        ],
+      },
+      {
+        $or: [
+          {
+            deleted: false,
+          },
+          {
+            deleted: { $exists: false },
+          },
+        ],
+      },
+    ];
+    
+    const documents = await this.documentModel
+      .find({
+        $and,
+      }, this.adminView)
+      .sort({ createdAt: -1 })
+      .exec();
+
+    // 获取所有相关的文档ID，包括父级路径
+    const relatedIds = new Set<number>();
+    
+    documents.forEach(doc => {
+      relatedIds.add(doc.id);
+      if (doc.library_id) relatedIds.add(doc.library_id);
+      if (doc.parent_id) relatedIds.add(doc.parent_id);
+      // 添加路径中的所有父级
+      if (doc.path && doc.path.length > 0) {
+        doc.path.forEach(id => relatedIds.add(id));
+      }
+    });
+
+    // 获取所有相关文档（包括父级和文档库）
+    const allRelatedDocs = await this.documentModel
+      .find({
+        id: { $in: Array.from(relatedIds) },
+        $or: [
+          { deleted: false },
+          { deleted: { $exists: false } },
+        ],
+      }, this.adminView)
+      .sort({ sort_order: 1, createdAt: -1 })
+      .exec();
+
+    // 标记哪些是搜索结果
+    const searchResultIds = new Set(documents.map(doc => doc.id));
+    return allRelatedDocs.map(doc => ({
+      ...JSON.parse(JSON.stringify(doc)),
+      isSearchResult: searchResultIds.has(doc.id),
+    }));
+  }
 } 

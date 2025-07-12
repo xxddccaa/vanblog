@@ -107,6 +107,11 @@
             margin: 0;
           }
           
+          .result-type {
+            flex-shrink: 0;
+            margin: 0;
+          }
+          
           .result-viewer {
             font-size: 12px;
             color: #666;
@@ -114,6 +119,16 @@
             align-items: center;
             gap: 4px;
             flex-shrink: 0;
+          }
+          
+          &.search-result-highlighted {
+            background-color: #fff7e6;
+            border-color: #ffa940;
+            
+            .result-title {
+              font-weight: 600;
+              color: #d48806;
+            }
           }
         }
       }
@@ -208,6 +223,15 @@
           
           .result-viewer {
             color: #a6a6a6;
+          }
+          
+          &.search-result-highlighted {
+            background-color: #2c1810;
+            border-color: #d48806;
+            
+            .result-title {
+              color: #ffa940;
+            }
           }
         }
       }

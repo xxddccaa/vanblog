@@ -1,16 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
-import { Row, Col, Card, Button, Space, message } from 'antd';
+import { Row, Col, Card, Button, Space, message, Tooltip } from 'antd';
 import { 
   EditOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   DragOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { history } from 'umi';
 import DocumentViewer from '@/components/DocumentViewer';
 import DocumentTree from '@/components/DocumentTree';
 import NewDocumentModal from '@/components/NewDocumentModal';
+import ContentSearchModal from '@/components/ContentSearchModal';
 import { 
   getDocumentById, 
   getLibraries,
@@ -33,6 +35,21 @@ export default function Document() {
     return saved ? parseInt(saved) : 6; // 默认宽度为6个栅格
   });
   const [isResizing, setIsResizing] = useState(false);
+  const [showContentSearch, setShowContentSearch] = useState(false);
+
+  // 处理搜索结果选择
+  const handleSearchSelect = async (document) => {
+    if (document.type === 'library') {
+      // 如果是文档库，只显示信息
+      setCurrentDocument(document);
+      setDocumentContent('');
+      setSelectedDocumentId(document.id);
+    } else {
+      // 如果是文档，加载内容
+      await loadDocument(document.id);
+    }
+    setShowContentSearch(false);
+  };
 
   // 获取文档库列表
   const fetchLibraries = async () => {
@@ -266,9 +283,19 @@ export default function Document() {
       title="私密文档"
       className="document-page-container"
       extra={
-        <div style={{ color: '#666', fontSize: '12px' }}>
-          快捷键：Ctrl/Cmd + B 切换文档树
-        </div>
+        <Space>
+          <Tooltip title="搜索文档内容">
+            <Button
+              icon={<SearchOutlined />}
+              onClick={() => setShowContentSearch(true)}
+            >
+              内容搜索
+            </Button>
+          </Tooltip>
+          <div style={{ color: '#666', fontSize: '12px' }}>
+            快捷键：Ctrl/Cmd + B 切换文档树
+          </div>
+        </Space>
       }
     >
               <Row gutter={[16, 16]} style={{ minHeight: '600px' }}>
@@ -386,6 +413,14 @@ export default function Document() {
           {renderContent()}
         </Col>
       </Row>
+      
+      {/* 内容搜索模态框 */}
+      <ContentSearchModal
+        visible={showContentSearch}
+        onCancel={() => setShowContentSearch(false)}
+        type="document"
+        onSelect={handleSearchSelect}
+      />
     </PageContainer>
   );
 } 
