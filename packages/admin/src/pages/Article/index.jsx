@@ -1,10 +1,12 @@
 import ImportArticleModal from '@/components/ImportArticleModal';
 import NewArticleModal from '@/components/NewArticleModal';
+import ContentSearchModal from '@/components/ContentSearchModal';
 import { getArticlesByOption, getSiteInfo } from '@/services/van-blog/api';
 import { batchExport, batchDelete } from '@/services/van-blog/batch';
 import { useNum } from '@/services/van-blog/useNum';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { Button, Space, message } from 'antd';
+import { Button, Space, message, Tooltip } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import RcResizeObserver from 'rc-resize-observer';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { history } from 'umi';
@@ -17,6 +19,12 @@ export default () => {
   const [simpleSearch, setSimpleSearch] = useState(false);
   const [defaultPageSize, setDefaultPageSize] = useState(20);
   const [pageSize, setPageSize] = useNum(defaultPageSize, 'article-page-size');
+  const [showContentSearch, setShowContentSearch] = useState(false);
+
+  // 处理搜索结果选择
+  const handleSearchSelect = (article) => {
+    history.push(`/editor?type=article&id=${article.id}`);
+  };
 
   // 获取站点配置中的默认分页大小
   useEffect(() => {
@@ -199,6 +207,14 @@ export default () => {
           headerTitle={simpleSearch ? undefined : '文章管理'}
           options={simpleSearch ? false : true}
           toolBarRender={() => [
+            <Tooltip title="搜索文章内容" key="searchContent">
+              <Button
+                icon={<SearchOutlined />}
+                onClick={() => setShowContentSearch(true)}
+              >
+                内容搜索
+              </Button>
+            </Tooltip>,
             <Button
               key="editAboutMe"
               onClick={() => {
@@ -224,6 +240,14 @@ export default () => {
           ]}
         />
       </RcResizeObserver>
+      
+      {/* 内容搜索模态框 */}
+      <ContentSearchModal
+        visible={showContentSearch}
+        onCancel={() => setShowContentSearch(false)}
+        type="article"
+        onSelect={handleSearchSelect}
+      />
     </PageContainer>
   );
 };

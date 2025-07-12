@@ -1,0 +1,228 @@
+@import (reference) '~antd/es/style/themes/index';
+
+.content-search-modal {
+  .search-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    
+    .title-icon {
+      color: @primary-color;
+    }
+  }
+  
+  .search-modal-content {
+    .search-input-container {
+      margin-bottom: 16px;
+      
+      .search-input {
+        .ant-input {
+          border-radius: 8px;
+          border: 1px solid #d9d9d9;
+          box-shadow: none;
+          
+          &:focus, &:hover {
+            border-color: @primary-color;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+          }
+        }
+      }
+    }
+    
+    .search-results-container {
+      max-height: 500px;
+      overflow-y: auto;
+      
+      .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        
+        .loading-text {
+          margin-top: 16px;
+          color: #666;
+          font-size: 14px;
+        }
+      }
+      
+      .results-header {
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 12px;
+      }
+      
+      .search-results-list {
+        .search-result-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          cursor: pointer;
+          padding: 8px 12px;
+          border-radius: 6px;
+          margin-bottom: 4px;
+          transition: all 0.2s ease;
+          border: 1px solid transparent;
+          
+          &:hover {
+            background-color: #f5f5f5;
+            border-color: #e6f7ff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+          }
+          
+          .result-icon {
+            font-size: 16px;
+            color: @primary-color;
+            flex-shrink: 0;
+          }
+          
+          .result-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #262626;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          
+          .result-id {
+            font-size: 11px;
+            color: #999;
+            background-color: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            flex-shrink: 0;
+          }
+          
+          .result-category {
+            flex-shrink: 0;
+            margin: 0;
+          }
+          
+          .result-viewer {
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+          }
+        }
+      }
+      
+      .search-hint {
+        padding: 40px 20px;
+        text-align: center;
+        
+        .hint-title {
+          font-size: 16px;
+          font-weight: 500;
+          color: #262626;
+          margin-bottom: 16px;
+        }
+        
+        .hint-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+          
+          li {
+            padding: 8px 0;
+            color: #666;
+            font-size: 14px;
+            position: relative;
+            
+            &:before {
+              content: '•';
+              color: @primary-color;
+              margin-right: 8px;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  .ant-modal-header {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 16px 24px;
+  }
+  
+  .ant-modal-body {
+    padding: 20px 24px;
+  }
+  
+  .ant-modal-close {
+    top: 16px;
+    right: 16px;
+  }
+}
+
+// 暗色主题适配
+[data-theme='dark'] .content-search-modal {
+  .search-modal-content {
+    .search-input-container {
+      .search-input {
+        .ant-input {
+          background-color: #141414;
+          border-color: #434343;
+          color: #fff;
+          
+          &:focus, &:hover {
+            border-color: @primary-color;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+          }
+        }
+      }
+    }
+    
+    .search-results-container {
+      .results-header {
+        border-bottom-color: #434343;
+        color: #a6a6a6;
+      }
+      
+      .search-results-list {
+        .search-result-item {
+          &:hover {
+            background-color: #1f1f1f;
+            border-color: #1890ff;
+          }
+          
+          .result-title {
+            color: #fff;
+          }
+          
+          .result-id {
+            background-color: #434343;
+            color: #a6a6a6;
+          }
+          
+          .result-viewer {
+            color: #a6a6a6;
+          }
+        }
+      }
+      
+      .search-hint {
+        .hint-title {
+          color: #fff;
+        }
+        
+        .hint-list {
+          li {
+            color: #a6a6a6;
+          }
+        }
+      }
+    }
+  }
+} 

@@ -200,12 +200,29 @@ export class DraftProvider {
   }
 
   async searchByString(str: string): Promise<Draft[]> {
+    const $and: any = [
+      {
+        $or: [
+          { content: { $regex: `${str}`, $options: 'i' } },
+          { title: { $regex: `${str}`, $options: 'i' } },
+          { category: { $regex: `${str}`, $options: 'i' } },
+          { tags: { $regex: `${str}`, $options: 'i' } },
+        ],
+      },
+      {
+        $or: [
+          {
+            deleted: false,
+          },
+          {
+            deleted: { $exists: false },
+          },
+        ],
+      },
+    ];
     return this.draftModel
       .find({
-        $or: [
-          { content: { $regex: `*${str}*`, $options: 'i' } },
-          { title: { $regex: `*${str}*`, $options: 'i' } },
-        ],
+        $and,
       })
       .exec();
   }

@@ -1,6 +1,7 @@
 import ImportDraftModal from '@/components/ImportDraftModal';
 import NewDraftModal from '@/components/NewDraftModal';
 import ConvertToDocumentModal from '@/components/ConvertToDocumentModal';
+import ContentSearchModal from '@/components/ContentSearchModal';
 import { getDraftsByOption, getSiteInfo } from '@/services/van-blog/api';
 import { useNum } from '@/services/van-blog/useNum';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
@@ -8,7 +9,8 @@ import RcResizeObserver from 'rc-resize-observer';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { history } from 'umi';
 import { getColumns, draftKeysObj, draftKeysObjSmall } from './columes';
-import { Button, Space, message } from 'antd';
+import { Button, Space, message, Tooltip } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
 import { batchExport, batchDelete } from '@/services/van-blog/batch';
 
 export default () => {
@@ -20,6 +22,12 @@ export default () => {
   const [pageSize, setPageSize] = useNum(defaultPageSize, 'draft-page-size');
   const [showConvertToDocumentModal, setShowConvertToDocumentModal] = useState(false);
   const [convertingDraft, setConvertingDraft] = useState(null);
+  const [showContentSearch, setShowContentSearch] = useState(false);
+
+  // 处理搜索结果选择
+  const handleSearchSelect = (draft) => {
+    history.push(`/editor?type=draft&id=${draft.id}`);
+  };
 
   // 处理转换为文档
   const handleConvertToDocument = (draft) => {
@@ -213,6 +221,14 @@ export default () => {
           headerTitle={simpleSearch ? undefined : '草稿管理'}
           options={simpleSearch ? false : true}
           toolBarRender={() => [
+            <Tooltip title="搜索草稿内容" key="searchContent">
+              <Button
+                icon={<SearchOutlined />}
+                onClick={() => setShowContentSearch(true)}
+              >
+                内容搜索
+              </Button>
+            </Tooltip>,
             <NewDraftModal
               key="newDraft123"
               onFinish={(data) => {
@@ -240,6 +256,14 @@ export default () => {
           setConvertingDraft(null);
         }}
         onOk={handleConvertToDocumentSuccess}
+      />
+      
+      {/* 内容搜索模态框 */}
+      <ContentSearchModal
+        visible={showContentSearch}
+        onCancel={() => setShowContentSearch(false)}
+        type="draft"
+        onSelect={handleSearchSelect}
       />
     </PageContainer>
   );

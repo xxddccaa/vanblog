@@ -67,6 +67,25 @@ export class DraftController {
     };
   }
 
+  @Get('/search')
+  async searchDraft(@Query('value') search: string) {
+    const data = await this.draftProvider.searchByString(search);
+    return {
+      statusCode: 200,
+      data: {
+        total: data.length,
+        data: data.map(draft => ({
+          id: draft.id,
+          title: draft.title,
+          category: draft.category,
+          tags: draft.tags,
+          createdAt: draft.createdAt,
+          updatedAt: draft.updatedAt,
+        })),
+      },
+    };
+  }
+
   @Get('/:id')
   async getOne(@Param('id') id: number) {
     const data = await this.draftProvider.findById(id);

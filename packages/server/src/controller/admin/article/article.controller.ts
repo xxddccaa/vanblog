@@ -68,6 +68,18 @@ export class ArticleController {
     };
   }
 
+  @Get('/search')
+  async searchArticle(@Query('value') search: string) {
+    const data = await this.articleProvider.searchByString(search, true);
+    return {
+      statusCode: 200,
+      data: {
+        total: data.length,
+        data: this.articleProvider.toSearchResult(data),
+      },
+    };
+  }
+
   @Get('/:id')
   async getOneByIdOrPathname(@Param('id') id: string) {
     const data = await this.articleProvider.getByIdOrPathname(id, 'admin');
