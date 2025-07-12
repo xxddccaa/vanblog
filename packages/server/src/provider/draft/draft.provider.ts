@@ -11,6 +11,7 @@ import {
 import { Draft, DraftDocument } from 'src/scheme/draft.schema';
 import { ArticleProvider } from '../article/article.provider';
 import { sleep } from 'src/utils/sleep';
+
 export type DraftView = 'admin' | 'public' | 'list';
 @Injectable()
 export class DraftProvider {
@@ -233,4 +234,6 @@ export class DraftProvider {
     this.idLock = false;
     return res;
   }
+
+
 }

@@ -828,3 +828,19 @@ export async function deleteLibrary(id) {
     method: 'DELETE',
   });
 }
+
+// 文档转换为草稿
+export async function convertDocumentToDraft(id, category) {
+  return request(`/api/admin/document/${id}/convert-to-draft`, {
+    method: 'POST',
+    data: { category },
+  });
+}
+
+// 草稿转换为文档
+export async function convertDraftToDocument(id, libraryId, parentId) {
+  return request(`/api/admin/draft/${id}/convert-to-document`, {
+    method: 'POST',
+    data: { libraryId, parentId },
+  });
+}

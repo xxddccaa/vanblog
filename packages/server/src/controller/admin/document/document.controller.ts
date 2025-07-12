@@ -152,4 +152,20 @@ export class DocumentController {
       data,
     };
   }
+
+  @Post('/:id/convert-to-draft')
+  async convertToDraft(@Param('id') id: number, @Body() body: { category: string }) {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止此操作！',
+      };
+    }
+    
+    const data = await this.documentProvider.convertToDraft(id, body.category);
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
 } 

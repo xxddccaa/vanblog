@@ -8,11 +8,13 @@ import {
   FileAddOutlined,
   ExportOutlined,
   InfoCircleOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import { getDocumentTree, getLibraries, deleteDocument, exportLibraryDocuments, deleteLibrary } from '@/services/van-blog/api';
 import NewDocumentModal from '../NewDocumentModal';
 import EditLibraryModal from '../EditLibraryModal';
+import ConvertToDraftModal from './ConvertToDraftModal';
 import './index.less';
 
 export default function DocumentTree(props) {
@@ -27,6 +29,8 @@ export default function DocumentTree(props) {
   const [showEditLibraryModal, setShowEditLibraryModal] = useState(false);
   const [editingLibrary, setEditingLibrary] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
+  const [showConvertToDraftModal, setShowConvertToDraftModal] = useState(false);
+  const [convertingDocument, setConvertingDocument] = useState(null);
 
   // 获取文档库列表
   const fetchLibraries = async () => {
@@ -220,6 +224,18 @@ export default function DocumentTree(props) {
         icon: <FileAddOutlined />,
         onClick: () => handleAddSubDocument(doc),
       });
+      
+      // 只有当文档没有子文档时才显示转换选项
+      const hasChildren = doc.children && doc.children.length > 0;
+      if (!hasChildren) {
+        items.push({
+          key: 'convert-to-draft',
+          label: '转为草稿',
+          icon: <SwapOutlined />,
+          onClick: () => handleConvertToDraft(doc),
+        });
+      }
+      
       items.push({
         key: 'delete',
         label: '删除',
@@ -363,6 +379,24 @@ export default function DocumentTree(props) {
     });
   };
 
+  // 处理转为草稿
+  const handleConvertToDraft = (doc) => {
+    setConvertingDocument(doc);
+    setShowConvertToDraftModal(true);
+  };
+
+  // 处理转换成功
+  const handleConvertToDraftSuccess = async () => {
+    setShowConvertToDraftModal(false);
+    setConvertingDocument(null);
+    // 刷新数据
+    await fetchTreeData();
+    await fetchLibraries();
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   // 处理树节点选择
   const handleTreeSelect = (selectedKeys, info) => {
     if (selectedKeys.length > 0) {
@@ -491,6 +525,17 @@ export default function DocumentTree(props) {
             await onRefresh();
           }
         }}
+      />
+
+      {/* 转为草稿模态框 */}
+      <ConvertToDraftModal
+        visible={showConvertToDraftModal}
+        document={convertingDocument}
+        onCancel={() => {
+          setShowConvertToDraftModal(false);
+          setConvertingDocument(null);
+        }}
+        onOk={handleConvertToDraftSuccess}
       />
     </div>
   );

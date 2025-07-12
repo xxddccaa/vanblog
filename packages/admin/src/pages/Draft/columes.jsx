@@ -5,8 +5,10 @@ import { genActiveObj } from '@/services/van-blog/activeColTools';
 import { deleteDraft, getAllCategories, getDraftById, getTags } from '@/services/van-blog/api';
 import { parseObjToMarkdown } from '@/services/van-blog/parseMarkdownFile';
 import { message, Modal, Tag } from 'antd';
+import { SwapOutlined } from '@ant-design/icons';
 import { history } from 'umi';
-export const columns = [
+
+export const getColumns = (handleConvertToDocument) => [
   {
     dataIndex: 'id',
     valueType: 'number',
@@ -153,6 +155,7 @@ export const columns = [
           ]}
           nodes={[
             <UpdateModal
+              key={'updateDraft' + record.id}
               currObj={record}
               setLoading={() => {}}
               type="draft"
@@ -160,6 +163,14 @@ export const columns = [
                 action?.reload();
               }}
             />,
+            <a
+              key={'convertToDocument' + record.id}
+              onClick={() => {
+                handleConvertToDocument(record);
+              }}
+            >
+              <SwapOutlined /> 转为文档
+            </a>,
             <a
               key={'exportDraft' + record.id}
               onClick={async () => {
@@ -196,6 +207,12 @@ export const columns = [
     },
   },
 ];
+
+// 为了保持向后兼容，导出默认的columns
+export const columns = getColumns(() => {
+  console.warn('handleConvertToDocument function not provided');
+});
+
 export const draftKeys = ['category', 'id', 'option', 'showTime', 'tags', 'title'];
 export const draftKeysSmall = ['category', 'id', 'option', 'title'];
 

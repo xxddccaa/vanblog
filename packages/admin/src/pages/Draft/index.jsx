@@ -1,14 +1,16 @@
 import ImportDraftModal from '@/components/ImportDraftModal';
 import NewDraftModal from '@/components/NewDraftModal';
+import ConvertToDocumentModal from '@/components/ConvertToDocumentModal';
 import { getDraftsByOption, getSiteInfo } from '@/services/van-blog/api';
 import { useNum } from '@/services/van-blog/useNum';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import RcResizeObserver from 'rc-resize-observer';
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { history } from 'umi';
-import { columns, draftKeysObj, draftKeysObjSmall } from './columes';
+import { getColumns, draftKeysObj, draftKeysObjSmall } from './columes';
 import { Button, Space, message } from 'antd';
 import { batchExport, batchDelete } from '@/services/van-blog/batch';
+
 export default () => {
   const actionRef = useRef();
   const [colKeys, setColKeys] = useState(draftKeysObj);
@@ -16,6 +18,22 @@ export default () => {
   const [simpleSearch, setSimpleSearch] = useState(false);
   const [defaultPageSize, setDefaultPageSize] = useState(20);
   const [pageSize, setPageSize] = useNum(defaultPageSize, 'draft-page-size');
+  const [showConvertToDocumentModal, setShowConvertToDocumentModal] = useState(false);
+  const [convertingDraft, setConvertingDraft] = useState(null);
+
+  // 处理转换为文档
+  const handleConvertToDocument = (draft) => {
+    setConvertingDraft(draft);
+    setShowConvertToDocumentModal(true);
+  };
+
+  // 处理转换成功
+  const handleConvertToDocumentSuccess = () => {
+    setShowConvertToDocumentModal(false);
+    setConvertingDraft(null);
+    actionRef.current?.reload();
+    message.success('转换成功！');
+  };
 
   // 获取站点配置中的默认分页大小
   useEffect(() => {
@@ -44,6 +62,10 @@ export default () => {
       return 24;
     }
   }, [simpleSearch]);
+
+  const columns = useMemo(() => {
+    return getColumns(handleConvertToDocument);
+  }, [handleConvertToDocument]);
   return (
     <PageContainer
       title={null}
@@ -208,6 +230,17 @@ export default () => {
           ]}
         />
       </RcResizeObserver>
+      
+      {/* 转换为文档模态框 */}
+      <ConvertToDocumentModal
+        visible={showConvertToDocumentModal}
+        draft={convertingDraft}
+        onCancel={() => {
+          setShowConvertToDocumentModal(false);
+          setConvertingDraft(null);
+        }}
+        onOk={handleConvertToDocumentSuccess}
+      />
     </PageContainer>
   );
 };

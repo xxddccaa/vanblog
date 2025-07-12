@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Document, DocumentDocument } from 'src/scheme/document.schema';
 import { CreateDocumentDto, UpdateDocumentDto, SearchDocumentOption, MoveDocumentDto } from 'src/types/document.dto';
+import { DraftProvider } from '../draft/draft.provider';
 
 export type DocumentView = 'admin' | 'public' | 'list';
 
@@ -11,6 +12,7 @@ export class DocumentProvider {
   constructor(
     @InjectModel(Document.name)
     private documentModel: Model<DocumentDocument>,
+    private readonly draftProvider: DraftProvider,
   ) {}
 
   publicView = {
@@ -396,5 +398,35 @@ export class DocumentProvider {
   async getNewId(): Promise<number> {
     const maxDoc = await this.documentModel.findOne().sort({ id: -1 }).exec();
     return maxDoc ? maxDoc.id + 1 : 1;
+  }
+
+  async convertToDraft(id: number, category: string): Promise<any> {
+    // 获取要转换的文档
+    const document = await this.getById(id);
+    if (!document) {
+      throw new Error('文档不存在');
+    }
+
+    // 检查是否有子文档
+    const children = await this.documentModel.find({ parent_id: id, deleted: false });
+    if (children.length > 0) {
+      throw new Error('该文档有子文档，不能转换为草稿');
+    }
+
+    // 创建草稿
+    const draftData = {
+      title: document.title,
+      content: document.content,
+      author: document.author,
+      category: category,
+      tags: [], // 文档没有tags字段，设置为空数组
+    };
+
+    const draft = await this.draftProvider.create(draftData);
+
+    // 删除原文档
+    await this.deleteById(id);
+
+    return draft;
   }
 } 

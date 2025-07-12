@@ -21,6 +21,7 @@ import { config } from 'src/config';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 import { TagProvider } from 'src/provider/tag/tag.provider';
+import { DocumentProvider } from 'src/provider/document/document.provider';
 
 @ApiTags('draft')
 @UseGuards(...AdminGuard)
@@ -33,6 +34,7 @@ export class DraftController {
     private readonly isrProvider: ISRProvider,
     private readonly pipelineProvider: PipelineProvider,
     private readonly tagProvider: TagProvider,
+    private readonly documentProvider: DocumentProvider,
   ) {}
 
   @Get('/')
@@ -192,5 +194,44 @@ export class DraftController {
         console.error('标签同步错误详情:', error.stack);
       }
     }, 500); // 增加延迟到500ms，确保主要操作完全完成
+  }
+
+  @Post('/:id/convert-to-document')
+  async convertToDocument(@Param('id') id: number, @Body() body: { libraryId: number; parentId?: number }) {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止此操作！',
+      };
+    }
+    
+    // 获取要转换的草稿
+    const draft = await this.draftProvider.getById(id);
+    if (!draft) {
+      return {
+        statusCode: 404,
+        message: '草稿不存在',
+      };
+    }
+
+    // 创建文档
+    const documentData = {
+      title: draft.title,
+      content: draft.content,
+      author: draft.author,
+      library_id: body.libraryId,
+      parent_id: body.parentId || null,
+      type: 'document' as 'document',
+    };
+
+    const document = await this.documentProvider.create(documentData);
+
+    // 删除原草稿
+    await this.draftProvider.deleteById(id);
+
+    return {
+      statusCode: 200,
+      data: document,
+    };
   }
 }
