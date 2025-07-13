@@ -40,7 +40,6 @@ export default () => {
     setShowConvertToDocumentModal(false);
     setConvertingDraft(null);
     actionRef.current?.reload();
-    message.success('转换成功！');
   };
 
   // 获取站点配置中的默认分页大小

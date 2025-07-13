@@ -1,7 +1,7 @@
-import { EyeOutlined, EyeInvisibleOutlined, ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { EyeOutlined, EyeInvisibleOutlined, ArrowUpOutlined, ArrowDownOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Table, Modal, Form, Input, Space, message, Tooltip } from 'antd';
 import { useState, useEffect, useCallback } from 'react';
-import { getAdminLayoutConfig, updateAdminLayoutConfig } from '@/services/van-blog/api';
+import { getAdminLayoutConfig, updateAdminLayoutConfig, resetAdminLayoutToDefault } from '@/services/van-blog/api';
 
 export default function AdminLayout() {
   const [loading, setLoading] = useState(false);
@@ -25,6 +25,32 @@ export default function AdminLayout() {
       setLoading(false);
     }
   }, []);
+
+  // 恢复默认设置的处理函数
+  const handleResetToDefault = () => {
+    Modal.confirm({
+      title: '恢复系统默认设置',
+      content: (
+        <div>
+          <p>确定要恢复到系统默认的后台布局设置吗？</p>
+          <p style={{ color: '#ff4d4f' }}>此操作将清除所有自定义布局设置，恢复为系统默认的8个菜单项。</p>
+          <p>恢复后将包含以下菜单项：分析概览、文章管理、动态管理、导航管理、草稿管理、私密文档、图片管理、站点管理</p>
+        </div>
+      ),
+      onOk: async () => {
+        try {
+          setLoading(true);
+          await resetAdminLayoutToDefault();
+          message.success('恢复默认设置成功！');
+          await fetchData();
+        } catch (error) {
+          message.error('恢复默认设置失败，请重试');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
 
   // 保存配置
   const handleSave = async () => {
@@ -195,6 +221,14 @@ export default function AdminLayout() {
             <Button type="primary" onClick={handleSave} loading={loading}>
               保存配置
             </Button>
+            <Button 
+              type="default"
+              icon={<ReloadOutlined />}
+              onClick={handleResetToDefault} 
+              loading={loading}
+            >
+              恢复系统默认设置
+            </Button>
           </Space>
         }
       >
@@ -203,6 +237,7 @@ export default function AdminLayout() {
             • 点击上移/下移按钮可以调整菜单顺序<br />
             • 点击眼睛图标可以切换菜单的显示/隐藏<br />
             • 点击"编辑名称"可以修改菜单显示名称<br />
+            • 点击"恢复系统默认设置"可以恢复所有菜单项（包括私密文档）<br />
             • 修改后需要手动刷新页面才能看到效果
           </div>
         </div>

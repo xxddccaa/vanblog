@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Put, Post, UseGuards } from '@nestjs/common';
 
 import { ApiTags } from '@nestjs/swagger';
 import { config } from 'src/config/index';
-import { LayoutSetting, LoginSetting, StaticSetting, WalineSetting, AdminLayoutSetting } from 'src/types/setting.dto';
+import { LayoutSetting, LoginSetting, StaticSetting, WalineSetting, AdminLayoutSetting, defaultAdminLayoutSetting } from 'src/types/setting.dto';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { SettingProvider } from 'src/provider/setting/setting.provider';
@@ -138,6 +138,22 @@ export class SettingController {
     return {
       statusCode: 200,
       data: res,
+    };
+  }
+
+  @Post('adminLayout/reset')
+  async resetAdminLayoutToDefault() {
+    if (config.demo && config.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    await this.settingProvider.updateAdminLayoutSetting(defaultAdminLayoutSetting);
+    const data = await this.isrProvider.activeAll('恢复默认后台布局设置触发增量渲染！');
+    return {
+      statusCode: 200,
+      data: '恢复默认后台布局设置成功！',
     };
   }
 }

@@ -666,6 +666,12 @@ export async function updateAdminLayoutConfig(body) {
   });
 }
 
+export async function resetAdminLayoutToDefault() {
+  return request('/api/admin/setting/adminLayout/reset', {
+    method: 'POST',
+  });
+}
+
 export async function clearAllData() {
   return request(`/api/admin/backup/clear-all`, {
     method: 'POST',

@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react';
 import { getDocumentTree, getLibraries, deleteDocument, exportLibraryDocuments, deleteLibrary } from '@/services/van-blog/api';
 import NewDocumentModal from '../NewDocumentModal';
 import EditLibraryModal from '../EditLibraryModal';
+import EditDocumentModal from '../EditDocumentModal';
 import ConvertToDraftModal from './ConvertToDraftModal';
 import './index.less';
 
@@ -28,6 +29,8 @@ export default function DocumentTree(props) {
   const [parentDocument, setParentDocument] = useState(null);
   const [showEditLibraryModal, setShowEditLibraryModal] = useState(false);
   const [editingLibrary, setEditingLibrary] = useState(null);
+  const [showEditDocumentModal, setShowEditDocumentModal] = useState(false);
+  const [editingDocument, setEditingDocument] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
   const [showConvertToDraftModal, setShowConvertToDraftModal] = useState(false);
   const [convertingDocument, setConvertingDocument] = useState(null);
@@ -225,6 +228,13 @@ export default function DocumentTree(props) {
         onClick: () => handleAddSubDocument(doc),
       });
       
+      items.push({
+        key: 'edit-document-info',
+        label: '修改信息',
+        icon: <InfoCircleOutlined />,
+        onClick: () => handleEditDocumentInfo(doc),
+      });
+      
       // 只有当文档没有子文档时才显示转换选项
       const hasChildren = doc.children && doc.children.length > 0;
       if (!hasChildren) {
@@ -353,6 +363,12 @@ export default function DocumentTree(props) {
     if (doc.type !== 'library' && onNodeSelect) {
       onNodeSelect(doc, 'edit');
     }
+  };
+
+  // 处理编辑文档信息
+  const handleEditDocumentInfo = (doc) => {
+    setEditingDocument(doc);
+    setShowEditDocumentModal(true);
   };
 
   // 处理删除文档
@@ -518,6 +534,26 @@ export default function DocumentTree(props) {
         onFinish={async () => {
           setShowEditLibraryModal(false);
           setEditingLibrary(null);
+          // 刷新树数据
+          await fetchTreeData();
+          await fetchLibraries();
+          if (onRefresh) {
+            await onRefresh();
+          }
+        }}
+      />
+
+      {/* 编辑文档信息模态框 */}
+      <EditDocumentModal
+        visible={showEditDocumentModal}
+        document={editingDocument}
+        onCancel={() => {
+          setShowEditDocumentModal(false);
+          setEditingDocument(null);
+        }}
+        onFinish={async () => {
+          setShowEditDocumentModal(false);
+          setEditingDocument(null);
           // 刷新树数据
           await fetchTreeData();
           await fetchLibraries();
