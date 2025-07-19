@@ -269,6 +269,12 @@ export default function () {
       return;
     }
     
+    // 对于文档类型，直接保存不需要复杂的检查
+    if (type == 'document') {
+      saveFn();
+      return;
+    }
+    
     // 先检查一下有没有 more .
     let hasMore = true;
     if (['article', 'draft'].includes(history.location.query?.type)) {
@@ -315,6 +321,8 @@ export default function () {
     let filename = '';
     if (type == 'moment') {
       filename = `动态_${currObj?.id || 'new'}.md`;
+    } else if (type == 'document') {
+      filename = `文档_${currObj?.title || 'new'}.md`;
     } else {
       filename = `${currObj?.title || '关于'}.md`;
     }
@@ -350,7 +358,7 @@ export default function () {
             message.success('重置为初始值成功！');
           },
         } : null,
-        type != 'about'
+        type != 'about' && type != 'moment'
           ? {
               key: 'updateModalBtn',
               label: (
@@ -397,7 +405,7 @@ export default function () {
           label: `导出${typeMap[type]}`,
           onClick: handleExport,
         },
-        type != 'draft'
+        type != 'draft' && type != 'document'
           ? {
               key: 'viewFE',
               label: `查看前台`,
@@ -444,7 +452,7 @@ export default function () {
               },
             }
           : undefined,
-        type != 'about'
+        type != 'about' && type != 'moment'
           ? {
               key: 'deleteBtn',
               label: `删除${typeMap[type]}`,
@@ -508,8 +516,8 @@ export default function () {
             });
           },
         },
-        // 帮助文档：moment、draft和article类型不显示
-        ['moment', 'draft', 'article'].includes(type) ? null : {
+        // 帮助文档：moment、draft、article和document类型不显示
+        ['moment', 'draft', 'article', 'document'].includes(type) ? null : {
           key: 'helpBtn',
           label: '帮助文档',
           onClick: () => {
@@ -529,11 +537,16 @@ export default function () {
             <span title={type == 'about' ? '关于' : type == 'moment' ? (currObj?.id ? '编辑动态' : '创建动态') : currObj?.title}>
               {type == 'about' ? '关于' : type == 'moment' ? (currObj?.id ? '编辑动态' : '创建动态') : currObj?.title}
             </span>
-            {type != 'about' && type != 'moment' && (
+            {type != 'about' && type != 'moment' && type != 'document' && (
               <>
                 <Tag color="green">{typeMap[type] || '-'}</Tag>
                 <Tag color="blue">{currObj?.category || '-'}</Tag>
                 <Tags tags={currObj?.tags} />
+              </>
+            )}
+            {type == 'document' && (
+              <>
+                <Tag color="green">{typeMap[type] || '-'}</Tag>
               </>
             )}
             {type == 'moment' && (

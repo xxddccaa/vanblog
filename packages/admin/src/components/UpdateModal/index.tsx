@@ -1,4 +1,4 @@
-import { getAllCategories, getTags, updateArticle, updateDraft } from '@/services/van-blog/api';
+import { getAllCategories, getTags, updateArticle, updateDraft, updateDocument, getLibraries } from '@/services/van-blog/api';
 import { ModalForm, ProFormDateTimePicker, ProFormSelect, ProFormText } from '@ant-design/pro-form';
 import { Form, message, Modal } from 'antd';
 import moment from 'moment';
@@ -8,7 +8,7 @@ export default function (props: {
   currObj: any;
   setLoading: any;
   onFinish: any;
-  type: 'article' | 'draft' | 'about';
+  type: 'article' | 'draft' | 'about' | 'document';
 }) {
   const { currObj, setLoading, type, onFinish } = props;
   const [form] = Form.useForm();
@@ -50,6 +50,11 @@ export default function (props: {
           onFinish();
           message.success('修改草稿成功！');
           setLoading(false);
+        } else if (type == 'document') {
+          await updateDocument(currObj?.id, values);
+          onFinish();
+          message.success('修改文档成功！');
+          setLoading(false);
         } else {
           return false;
         }
@@ -70,38 +75,42 @@ export default function (props: {
         placeholder="请输入标题"
         rules={[{ required: true, message: '这是必填项' }]}
       />
-      <AuthorField />
-      <ProFormSelect
-        mode="tags"
-        tokenSeparators={[',']}
-        width="md"
-        name="tags"
-        label="标签"
-        placeholder="请选择或输入标签"
-        request={async () => {
-          const msg = await getTags();
-          return msg?.data?.map((item) => ({ label: item, value: item })) || [];
-        }}
-      />
-      <ProFormSelect
-        width="md"
-        required
-        id="category"
-        tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
-        name="category"
-        label="分类"
-        placeholder="请选择分类"
-        rules={[{ required: true, message: '这是必填项' }]}
-        request={async () => {
-          const { data: categories } = await getAllCategories();
-          return categories?.map((e) => {
-            return {
-              label: e,
-              value: e,
-            };
-          });
-        }}
-      />
+      {type !== 'document' && <AuthorField />}
+      {type !== 'document' && (
+        <ProFormSelect
+          mode="tags"
+          tokenSeparators={[',']}
+          width="md"
+          name="tags"
+          label="标签"
+          placeholder="请选择或输入标签"
+          request={async () => {
+            const msg = await getTags();
+            return msg?.data?.map((item) => ({ label: item, value: item })) || [];
+          }}
+        />
+      )}
+      {type !== 'document' && (
+        <ProFormSelect
+          width="md"
+          required
+          id="category"
+          tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
+          name="category"
+          label="分类"
+          placeholder="请选择分类"
+          rules={[{ required: true, message: '这是必填项' }]}
+          request={async () => {
+            const { data: categories } = await getAllCategories();
+            return categories?.map((e) => {
+              return {
+                label: e,
+                value: e,
+              };
+            });
+          }}
+        />
+      )}
       <ProFormDateTimePicker
         width="md"
         name="createdAt"
@@ -112,6 +121,23 @@ export default function (props: {
           defaultValue: moment('00:00:00', 'HH:mm:ss'),
         }}
       />
+      {type === 'document' && (
+        <ProFormSelect
+          width="md"
+          name="library_id"
+          label="所属文档库"
+          placeholder="请选择所属文档库"
+          request={async () => {
+            const { data: libraries } = await getLibraries();
+            return libraries?.map((lib) => {
+              return {
+                label: lib.title,
+                value: lib.id,
+              };
+            }) || [];
+          }}
+        />
+      )}
       {type == 'article' && (
         <>
           <ProFormText
