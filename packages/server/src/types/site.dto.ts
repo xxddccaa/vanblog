@@ -50,6 +50,10 @@ export class SiteInfo {
   musicAutoPlay?: 'true' | 'false';
   // 全站隐私设置
   privateSite?: 'true' | 'false';
+  // 代码显示行数设置
+  codeMaxLines?: number;
+  // 是否显示建站时间
+  showRunningTime?: 'true' | 'false';
 }
 export interface updateUserDto {
   username: string;

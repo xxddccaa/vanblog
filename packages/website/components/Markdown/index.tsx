@@ -45,7 +45,25 @@ const sanitize = (schema) => {
   return schema
 }
 
-export default function ({ content }: { content: string }) {
+export default function ({ content, codeMaxLines = 15 }: { content: string; codeMaxLines?: number }) {
+  const plugins = [
+    rawHTML(),
+    gfm(),
+    highlight(),
+    math({
+      katexOptions: {
+        strict: false,
+        throwOnError: false,
+      }
+    }),
+    customMermaidPlugin(),
+    customContainer(),
+    customCodeBlock(codeMaxLines),
+    LinkTarget(),
+    Heading(),
+    Img(),
+  ];
+
   return <div className="markdown-body">
     <Viewer value={content} plugins={plugins} remarkRehype={{ allowDangerousHtml: true }} sanitize={sanitize} />
   </div>

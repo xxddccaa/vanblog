@@ -40,6 +40,7 @@ export default function (props: {
   customCopyRight: string | null;
   showExpirationReminder: boolean;
   showEditButton: boolean;
+  codeMaxLines?: number;
 }) {
   const [lock, setLock] = useState(props.type != "overview" && props.private);
   const { content, setContent } = props;
@@ -145,7 +146,7 @@ export default function (props: {
           ) : (
             <>
               {showToc && <TocMobile content={calContent} />}
-              <Markdown content={calContent}></Markdown>
+              <Markdown content={calContent} codeMaxLines={props.codeMaxLines}></Markdown>
             </>
           )}
         </div>

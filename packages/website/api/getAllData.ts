@@ -178,6 +178,10 @@ export interface MetaProps {
     adminMomentPageSize?: number;
     // 全站隐私设置
     privateSite?: 'true' | 'false';
+    // 代码显示行数设置
+    codeMaxLines?: number;
+    // 是否显示建站时间
+    showRunningTime?: 'true' | 'false';
   };
 }
 export interface PublicMetaProp {
@@ -239,6 +243,9 @@ const defaultMeta: MetaProps = {
     showRSS: "true",
     openArticleLinksInNewWindow: "false",
     showEditButton: "false",
+    privateSite: "false",
+    codeMaxLines: 15,
+    showRunningTime: "false",
   },
 };
 

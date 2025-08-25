@@ -132,6 +132,7 @@ export default function (props: {
               gaBeianLogoUrl={props.option.gaBeianLogoUrl}
               gaBeianNumber={props.option.gaBeianNumber}
               gaBeianUrl={props.option.gaBeianUrl}
+              showRunningTime={props.option.showRunningTime}
             />
           </div>
         {/* </ImageProvider> */}

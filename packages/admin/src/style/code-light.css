@@ -78,7 +78,7 @@
 }
 
 .light pre .code-content-wrapper.code-collapsed {
-  max-height: 21em; /* 调整为更适合的高度，约15行 * 1.4em line-height */
+  max-height: var(--code-max-height, 21em); /* 调整为更适合的高度，约15行 * 1.4em line-height */
 }
 
 .light pre .code-content-wrapper.code-collapsed::after {

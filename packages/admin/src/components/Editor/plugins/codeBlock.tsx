@@ -124,18 +124,18 @@ const onClickToggleCode = (e: PointerEvent) => {
   }
 };
 
-// 检查代码是否超过15行
-const shouldCollapseCode = (codeElement: Element): boolean => {
+// 检查代码是否超过指定行数
+const shouldCollapseCode = (codeElement: Element, maxLines: number = 15): boolean => {
   const codeText = codeElement.textContent || '';
   // 移除首尾空白字符，然后按换行符分割
   const lines = codeText.trim().split('\n');
   // 过滤掉空行，只计算有内容的行数
   const nonEmptyLines = lines.filter(line => line.trim().length > 0);
-  // 如果总行数超过15行，或者非空行数超过12行，就需要折叠
-  return lines.length > 15 || nonEmptyLines.length > 12;
+  // 如果总行数超过设定行数，或者非空行数超过设定行数-3，就需要折叠
+  return lines.length > maxLines || nonEmptyLines.length > Math.max(maxLines - 3, 5);
 };
 
-export function customCodeBlock(): BytemdPlugin {
+export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
   return {
     rehype: (processor) => processor.use(codeBlockPlugin),
     viewerEffect: ({ markdownBody }) => {
@@ -152,8 +152,8 @@ export function customCodeBlock(): BytemdPlugin {
         // 添加复制按钮事件
         copyBtn?.addEventListener('click', onClickCopyCode);
         
-        // 检查是否需要折叠
-        if (codeElement && shouldCollapseCode(codeElement)) {
+        // 检查是否需要折叠，使用传入的maxLines参数
+        if (codeElement && shouldCollapseCode(codeElement, maxLines)) {
           // 默认折叠状态
           codeContentWrapper?.classList.add('code-collapsed');
           toggleBtn?.classList.add('code-collapsed');
@@ -165,6 +165,16 @@ export function customCodeBlock(): BytemdPlugin {
           if (toggleBtn) {
             toggleBtn.style.display = 'block';
             toggleBtn.addEventListener('click', onClickToggleCode);
+          }
+          
+          // 动态设置折叠高度
+          if (codeContentWrapper) {
+            // 计算高度：每行约1.4em，加上一些padding
+            const lineHeight = 1.4;
+            const padding = 1; // 额外的padding
+            const maxHeight = (maxLines * lineHeight + padding) + 'em';
+            codeContentWrapper.style.setProperty('--code-max-height', maxHeight);
+            codeContentWrapper.style.maxHeight = maxHeight;
           }
         } else {
           // 代码行数不多，隐藏切换按钮

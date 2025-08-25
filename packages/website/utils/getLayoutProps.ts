@@ -42,6 +42,8 @@ export interface LayoutProps {
   customHead?: HeadTag[];
   homePageSize?: number;
   privateSite?: 'true' | 'false';
+  codeMaxLines?: number;
+  showRunningTime?: 'true' | 'false';
 }
 
 export interface HeadTag {
@@ -150,6 +152,8 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     showEditButton,
     homePageSize: siteInfo?.homePageSize || 5,
     privateSite: siteInfo?.privateSite || "false",
+    codeMaxLines: siteInfo?.codeMaxLines || 15,
+    showRunningTime: siteInfo?.showRunningTime || "false",
     ...customSetting,
   };
 }

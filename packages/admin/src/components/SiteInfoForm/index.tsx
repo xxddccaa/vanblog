@@ -418,6 +418,29 @@ export default function (props: {
             max={1000}
             tooltip={'设置后台动态管理页面默认每页显示的动态数量，默认为20。'}
           />
+          
+          {/* 代码显示设置 */}
+          <ProFormDigit
+            name={'codeMaxLines'}
+            label="代码块最大显示行数"
+            placeholder={'15'}
+            fieldProps={{ precision: 0 }}
+            min={5}
+            max={50}
+            tooltip={'设置代码块默认显示的最大行数，超过此行数的代码将自动折叠。默认为15行。'}
+          />
+          
+          {/* 建站时间显示设置 */}
+          <ProFormSelect
+            name={'showRunningTime'}
+            label="是否显示建站时间"
+            placeholder={'隐藏'}
+            valueEnum={{
+              true: '显示',
+              false: '隐藏',
+            }}
+            tooltip={'默认隐藏，开启后将在前台页面底部显示网站运行时间。'}
+          />
         </>
       )}
     </>

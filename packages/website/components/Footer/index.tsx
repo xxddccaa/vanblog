@@ -10,6 +10,7 @@ export default function ({
   gaBeianLogoUrl,
   gaBeianNumber,
   gaBeianUrl,
+  showRunningTime,
 }: {
   // 公安备案
   gaBeianNumber: string;
@@ -20,6 +21,7 @@ export default function ({
   ipcHref: string;
   since: string;
   version: string;
+  showRunningTime?: 'true' | 'false';
 }) {
   return (
     <footer className="text-center text-sm space-y-1 mt-8 md:mt-12 dark:text-dark footer-icp-number">
@@ -55,7 +57,7 @@ export default function ({
           </a>
         </p>
       )}
-      <RunningTime since={since}></RunningTime>
+      <RunningTime since={since} showRunningTime={showRunningTime}></RunningTime>
       <p className="select-none footer-copy-right">
         © {new Date(since).getFullYear()} - {new Date().getFullYear()}
       </p>

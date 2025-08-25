@@ -37,7 +37,7 @@ const sanitize = (schema) => {
 };
 
 export default function DocumentViewer(props) {
-  const { value } = props;
+  const { value, codeMaxLines = 15 } = props;
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
@@ -56,13 +56,13 @@ export default function DocumentViewer(props) {
         }
       }),
       customMermaidPlugin(),
-      customCodeBlock(),
+      customCodeBlock(codeMaxLines),
       LinkTarget(),
       rawHTML(),
       Heading(),
       smartCodeBlock(),
     ];
-  }, []);
+  }, [codeMaxLines]);
 
   // 确保样式在渲染后正确应用
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function DocumentViewer(props) {
             const codeText = codeElement.textContent || '';
             const lines = codeText.trim().split('\n');
             const nonEmptyLines = lines.filter(line => line.trim().length > 0);
-            const shouldCollapse = lines.length > 15 || nonEmptyLines.length > 12;
+            const shouldCollapse = lines.length > codeMaxLines || nonEmptyLines.length > Math.max(codeMaxLines - 3, 5);
             
             if (shouldCollapse) {
               contentWrapper.classList.add('code-collapsed');
@@ -92,6 +92,13 @@ export default function DocumentViewer(props) {
               toggleBtn.textContent = '展开代码';
               toggleBtn.title = '展开代码';
               toggleBtn.style.display = 'block';
+              
+              // 动态设置折叠高度
+              const lineHeight = 1.4;
+              const padding = 1; // 额外的padding
+              const maxHeight = (codeMaxLines * lineHeight + padding) + 'em';
+              contentWrapper.style.setProperty('--code-max-height', maxHeight);
+              contentWrapper.style.maxHeight = maxHeight;
             } else {
               toggleBtn.style.display = 'none';
             }

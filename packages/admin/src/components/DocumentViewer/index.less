@@ -95,7 +95,7 @@
         
         /* 折叠状态：限制高度为大约15行 */
         &.code-collapsed {
-          max-height: 21em !important; /* 调整为更适合的高度，约15行 * 1.4em line-height */
+          max-height: var(--code-max-height, 21em) !important; /* 调整为更适合的高度，约15行 * 1.4em line-height */
           
           /* 折叠状态时添加渐变遮罩 */
           &::after {

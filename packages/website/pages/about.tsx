@@ -75,6 +75,7 @@ const AboutPage = (props: AboutPageProps) => {
         showDonateInAbout={props.showDonateInAbout == "true"}
         copyrightAggreement={props.layoutProps.copyrightAggreement}
         showEditButton={props.layoutProps.showEditButton === "true"}
+        codeMaxLines={props.layoutProps.codeMaxLines}
       ></PostCard>
     </Layout>
   );

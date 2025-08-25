@@ -17,6 +17,7 @@ import {
   getDocumentById, 
   getLibraries,
   createDocument,
+  getSiteInfo,
 } from '@/services/van-blog/api';
 import './index.less';
 
@@ -36,6 +37,7 @@ export default function Document() {
   });
   const [isResizing, setIsResizing] = useState(false);
   const [showContentSearch, setShowContentSearch] = useState(false);
+  const [siteInfo, setSiteInfo] = useState(null);
 
   // 处理搜索结果选择
   const handleSearchSelect = async (document) => {
@@ -49,6 +51,16 @@ export default function Document() {
       await loadDocument(document.id);
     }
     setShowContentSearch(false);
+  };
+
+  // 获取站点配置
+  const fetchSiteInfo = async () => {
+    try {
+      const { data } = await getSiteInfo();
+      setSiteInfo(data);
+    } catch (error) {
+      console.error('获取站点配置失败:', error);
+    }
   };
 
   // 获取文档库列表
@@ -209,6 +221,7 @@ export default function Document() {
   }, [isTreeCollapsed]);
 
   useEffect(() => {
+    fetchSiteInfo();
     fetchLibraries();
   }, []);
 
@@ -271,6 +284,7 @@ export default function Document() {
           ) : (
             <DocumentViewer
               value={documentContent}
+              codeMaxLines={siteInfo?.codeMaxLines || 15}
             />
           )}
         </div>

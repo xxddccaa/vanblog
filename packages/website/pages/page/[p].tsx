@@ -59,6 +59,7 @@ const PagePages = (props: PagePagesProps) => {
             type={"overview"}
             enableComment={props.layoutProps.enableComment}
             private={article.private}
+            codeMaxLines={props.layoutProps.codeMaxLines}
           ></PostCard>
         ))}
       </div>
