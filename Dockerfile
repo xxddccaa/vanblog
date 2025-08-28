@@ -61,7 +61,7 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)
-RUN apk add --no-cache --update tzdata caddy nss-tools libwebp-tools wget unzip \
+RUN apk add --no-cache --update tzdata caddy nss-tools libwebp-tools wget unzip curl \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
