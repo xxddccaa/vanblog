@@ -8,6 +8,7 @@
 	log {
 		output file /var/log/caddy.log
 	}
+  
 }
 (h) {
   trusted_proxies private_ranges
@@ -23,7 +24,8 @@
   tls {
     on_demand
   }
-
+  
+  # 保持向后兼容的原有路径
   handle /ui* {
     reverse_proxy 127.0.0.1:8360 {
       import h
@@ -89,12 +91,20 @@
 	handle /swagger* {
 		reverse_proxy 127.0.0.1:3000
 	}
-  handle /api/comment {
+  
+  handle /api/comment* {
     uri strip_prefix /api
-		reverse_proxy 127.0.0.1:8360 {
+    reverse_proxy 127.0.0.1:8360 {
       import h
     }
-	}
+  }
+   handle /api/token* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+
 	handle /api/* {
 		reverse_proxy 127.0.0.1:3000
 	}
@@ -109,4 +119,3 @@
 :80, :443 {
   import van
 }
-
