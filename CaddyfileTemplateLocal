@@ -24,38 +24,7 @@
   tls {
     on_demand
   }
-  
-  # 保持向后兼容的原有路径
-  handle /ui* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /user* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /token* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /db* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /comment* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /oauth* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
+
 	handle /favicon* {
     uri replace /favicon /static/img/favicon
 		reverse_proxy 127.0.0.1:3000
@@ -91,20 +60,44 @@
 	handle /swagger* {
 		reverse_proxy 127.0.0.1:3000
 	}
-  
-  handle /api/comment* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-   handle /api/token* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
 
+  handle /api/user* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+    handle /api/db* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+    handle /api/comment* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/token* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/oauth* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/ui* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  
 	handle /api/* {
 		reverse_proxy 127.0.0.1:3000
 	}

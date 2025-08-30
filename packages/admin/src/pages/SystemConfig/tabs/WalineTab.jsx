@@ -10,14 +10,7 @@ export default function () {
           message={
             <div>
               <p>
-                <span>本表单可以控制内嵌 waline 评论系统的配置。具体请参考：</span>
-                <a
-                  target={'_blank'}
-                  rel="noreferrer"
-                  href="https://vanblog.mereith.com/feature/basic/comment.html"
-                >
-                  帮助文档
-                </a>
+                <span>本表单可以控制内嵌 waline 评论系统的配置。</span>
               </p>
             </div>
           }

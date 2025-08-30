@@ -11,7 +11,7 @@ export default function () {
     if (initialState?.version && initialState?.version == 'dev') {
       return 'http://192.168.5.11:8360/ui';
     } else {
-      return '/ui/';
+      return '/api/ui/';
     }
   }, [initialState]);
   const showTips = () => {
@@ -28,19 +28,6 @@ export default function () {
           </p>
           <p>本管理页面也是内嵌的 Waline 后台管理页面。</p>
           <p>首次使用请先注册，首个注册的用户将默认成为管理员。</p>
-          <p>
-            PS: 评论功能默认开启，关闭请前往
-            站点设置->系统设置->站点配置->高级设置->是否开启评论系统
-          </p>
-          <p>
-            <a
-              target={'_blank'}
-              rel="noreferrer"
-              href="https://vanblog.mereith.com/feature/basic/comment.html"
-            >
-              帮助文档
-            </a>
-          </p>
         </div>
       ),
     });
