@@ -77,6 +77,7 @@
 - ✅ feat: admin登录页面显示备案信息
 - ✅ feat: admin增加私密文档功能，私密文档可以和草稿互相转换
 - ✅ feat: admin增加搜索，在文章、草稿、私密文档都可以搜索
+- ✅ Fix：修复了waline评论系统，可以看这里的文章：https://www.dong-blog.fun/post/2245
 
 ## 原项目特性
 
