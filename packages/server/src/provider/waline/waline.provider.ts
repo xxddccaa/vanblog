@@ -87,7 +87,7 @@ export class WalineProvider {
     const siteInfo = await this.metaProvider.getSiteInfo();
     const otherEnv = {
       SITE_NAME: siteInfo?.siteName || undefined,
-      SITE_URL: siteInfo?.baseUrl || undefined,
+      SITE_URL: undefined,
       JWT_TOKEN: global.jwtSecret || makeSalt(),
     };
     const walineConfig = await this.settingProvider.getWalineSetting();
