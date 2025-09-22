@@ -118,6 +118,7 @@ WORKDIR /app
 COPY caddyTemplate.json /app/caddyTemplate.json
 COPY CaddyfileTemplateLocal /app/CaddyfileTemplateLocal
 COPY ./scripts/start.js ./
+COPY ./scripts/fix-waline-dashboard.js ./scripts/
 COPY ./entrypoint.sh ./
 
 # Set production environment variables

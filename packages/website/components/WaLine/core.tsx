@@ -12,7 +12,7 @@ export default function (props: {
       if (props.visible) {
         current.wa = init({
           el: "#waline",
-          serverURL: `${window.location.protocol}//${window.location.host}`,
+          serverURL: `${window.location.origin}/api`,
           comment: true,
           pageview: false,
           dark: ".dark",
@@ -20,7 +20,7 @@ export default function (props: {
         });
       } else {
         current.wa = commentCount({
-          serverURL: `${window.location.protocol}//${window.location.host}`,
+          serverURL: `${window.location.origin}/api`,
         });
       }
     }
