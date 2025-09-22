@@ -8,7 +8,7 @@ import { Editor } from '@bytemd/react';
 import { Spin } from 'antd';
 import 'bytemd/dist/index.css';
 import 'katex/dist/katex.css';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import '../../style/github-markdown.css';
 import '../../style/code-light.css';
 import '../../style/code-dark.css';
@@ -26,6 +26,7 @@ import { Heading } from './plugins/heading';
 import { customCodeBlock } from './plugins/codeBlock';
 import { LinkTarget } from './plugins/linkTarget';
 import { smartCodeBlock } from './plugins/smartCodeBlock';
+import { getLayoutConfig } from '@/services/van-blog/api';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -53,6 +54,20 @@ export default function EditorComponent(props: {
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
+  const [codeMaxLines, setCodeMaxLines] = useState(15);
+  
+  useEffect(() => {
+    const fetchLayoutConfig = async () => {
+      try {
+        const { data } = await getLayoutConfig();
+        setCodeMaxLines(data?.codeMaxLines || 15);
+      } catch (error) {
+        console.error('Failed to fetch layout config:', error);
+      }
+    };
+    fetchLayoutConfig();
+  }, []);
+  
   const plugins = useMemo(() => {
     return [
       customContainer(),
@@ -72,11 +87,11 @@ export default function EditorComponent(props: {
       rawHTML(),
       historyIcon(),
       Heading(),
-      customCodeBlock(),
+      customCodeBlock(codeMaxLines),
       LinkTarget(),
       smartCodeBlock(),
     ];
-  }, []);
+  }, [codeMaxLines]);
 
   return (
     <div style={{ height: '100%' }} className={themeClass}>

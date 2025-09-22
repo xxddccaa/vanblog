@@ -11,24 +11,6 @@ import { LinkTarget } from "./linkTarget";
 import { Heading } from "./heading";
 import { Img } from "./img";
 
-const plugins = [
-  rawHTML(),
-  gfm(),
-  highlight(),
-  math({
-    katexOptions: {
-      strict: false,
-      throwOnError: false,
-    }
-  }),
-  customMermaidPlugin(),
-  customContainer(),
-  customCodeBlock(),
-  LinkTarget(),
-  Heading(),
-  Img(),
-]
-
 const sanitize = (schema) => {
   schema.protocols.src.push('data')
   schema.tagNames.push("center")

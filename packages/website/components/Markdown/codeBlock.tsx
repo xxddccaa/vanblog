@@ -127,6 +127,8 @@ const onClickToggleCode = (e: PointerEvent) => {
   if (isCollapsed) {
     codeContentWrapper.classList.remove('code-collapsed');
     toggleBtn.classList.remove('code-collapsed');
+    // 清除可能残留的内联 max-height，确保真正展开
+    codeContentWrapper.style.removeProperty('max-height');
     toggleBtn.textContent = '收起代码';
     toggleBtn.title = '收起代码';
   } else {
@@ -188,7 +190,7 @@ export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
             const padding = 1; // 额外的padding
             const maxHeight = (maxLines * lineHeight + padding) + 'em';
             codeContentWrapper.style.setProperty('--code-max-height', maxHeight);
-            codeContentWrapper.style.maxHeight = maxHeight;
+            // 不设置内联 max-height，避免展开时被内联样式覆盖
           }
         } else {
           // 代码行数不多，隐藏切换按钮
@@ -196,7 +198,7 @@ export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
             toggleBtn.style.display = 'none';
           }
         }
-      })
-    }
+      });
+    },
   };
 }

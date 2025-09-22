@@ -204,7 +204,7 @@ export default function MomentPage({
                          border border-gray-200 dark:border-dark-3"
             >
               <div className="text-gray-900 dark:text-dark mb-4">
-                <Markdown content={moment.content} />
+                <Markdown content={moment.content} codeMaxLines={layoutProps.codeMaxLines} />
               </div>
               <div className="text-sm text-gray-500 dark:text-dark-light">
                 {formatTime(moment.createdAt)}

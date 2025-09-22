@@ -9,6 +9,7 @@ services:
         # http_proxy: 'http://192.168.3.2:10828'
         # https_proxy: 'http://192.168.3.2:10828'
       network: host
+    image: kevinchina/deeplearning:vanblog-latest
     restart: always
     environment:
       TZ: 'Asia/Shanghai'
