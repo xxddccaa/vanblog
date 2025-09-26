@@ -36,7 +36,7 @@ export default function () {
   const [currObj, setCurrObj] = useState({});
   const [loading, setLoading] = useState(true);
   const [editorConfig, setEditorConfig] = useCacheState(
-    { afterSave: 'stay', useLocalCache: 'close' },
+    { afterSave: 'stay', useLocalCache: 'open' },
     'editorConfig',
   );
   const type = history.location.query?.type || 'article';
@@ -96,21 +96,30 @@ export default function () {
           clear();
           return false;
         }
+        // 如果服务器没有内容，优先使用本地缓存
+        if (!data || !data?.content) {
+          return cacheObj?.content;
+        }
         if (cacheObj?.content == data?.content) {
           clear();
           return false;
         }
         const updatedAt = data?.updatedAt;
+        // 如果服务器没有更新时间，优先使用本地缓存
         if (!updatedAt) {
-          clear();
-          return false;
+          return cacheObj?.content;
         }
         const cacheTime = cacheObj?.time;
-        if (moment(updatedAt).isAfter(cacheTime)) {
+        const serverTime = moment(updatedAt).valueOf();
+        console.log('[缓存检查]', {
+          serverTime: new Date(serverTime).toLocaleString(),
+          cacheTime: new Date(cacheTime).toLocaleString(),
+          useCache: cacheTime > serverTime
+        });
+        if (serverTime > cacheTime) {
           clear();
           return false;
         } else {
-          // console.log('[缓存检查] 本地缓存时间晚于服务器更新时间，使用缓存');
           return cacheObj?.content;
         }
       };
@@ -364,6 +373,16 @@ export default function () {
               label: (
                 <UpdateModal
                   onFinish={() => {
+                    try {
+                      // 使用一个远未来的时间戳，确保本地缓存优先级最高
+                      window.localStorage.setItem(
+                        getCacheKey(),
+                        JSON.stringify({
+                          content: value,
+                          time: new Date().valueOf() + 24 * 60 * 60 * 1000, // 向后偏移24小时，确保优先使用本地缓存
+                        }),
+                      );
+                    } catch (e) {}
                     fetchData(true);
                   }}
                   type={type}
