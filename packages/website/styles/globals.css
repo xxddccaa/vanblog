@@ -5,9 +5,19 @@
 @layer base {
   html {
     @apply bg-slate-100;
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
   html.dark {
     background-color: #1d2025;
+    background-image: var(--bg-image-dark);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
   pre,
   code {

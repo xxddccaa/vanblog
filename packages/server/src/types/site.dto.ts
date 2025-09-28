@@ -54,6 +54,9 @@ export class SiteInfo {
   codeMaxLines?: number;
   // 是否显示建站时间
   showRunningTime?: 'true' | 'false';
+  // 网站背景图
+  backgroundImage?: string;
+  backgroundImageDark?: string;
 }
 export interface updateUserDto {
   username: string;

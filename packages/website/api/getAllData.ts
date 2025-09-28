@@ -182,6 +182,9 @@ export interface MetaProps {
     codeMaxLines?: number;
     // 是否显示建站时间
     showRunningTime?: 'true' | 'false';
+    // 网站背景图
+    backgroundImage?: string;
+    backgroundImageDark?: string;
   };
 }
 export interface PublicMetaProp {
@@ -246,6 +249,8 @@ const defaultMeta: MetaProps = {
     privateSite: "false",
     codeMaxLines: 15,
     showRunningTime: "false",
+    backgroundImage: "",
+    backgroundImageDark: "",
   },
 };
 

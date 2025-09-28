@@ -75,6 +75,12 @@ export default function (props: {
         <link rel="icon" href={props.option.favicon}></link>
         <meta name="description" content={props.option.description}></meta>
         <meta name="robots" content="index, follow"></meta>
+        <style>{`
+          :root {
+            --bg-image: url('${props.option.backgroundImage || ''}');
+            --bg-image-dark: url('${props.option.backgroundImageDark || props.option.backgroundImage || ''}');
+          }
+        `}</style>
       </Head>
       <BackToTopBtn></BackToTopBtn>
       <MusicPlayer />

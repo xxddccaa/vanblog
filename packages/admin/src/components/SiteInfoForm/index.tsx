@@ -441,6 +441,24 @@ export default function (props: {
             }}
             tooltip={'默认隐藏，开启后将在前台页面底部显示网站运行时间。'}
           />
+          <UrlFormItem
+            formRef={props.form}
+            isInit={props.isInit}
+            name="backgroundImage"
+            label="网站背景图"
+            placeholder={'请输入网站背景图 Url，留空不使用背景图'}
+            required={false}
+            isBackground={true}
+          />
+          <UrlFormItem
+            formRef={props.form}
+            isInit={props.isInit}
+            name="backgroundImageDark"
+            label="网站背景图（黑暗模式）"
+            placeholder={'请输入黑暗模式背景图 Url，留空沿用上个'}
+            required={false}
+            isBackground={true}
+          />
         </>
       )}
     </>

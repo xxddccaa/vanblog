@@ -14,6 +14,7 @@ export default function (props: {
   formRef: any;
   isInit: boolean;
   isFavicon?: boolean;
+  isBackground?: boolean;
 }) {
   const [url, setUrl] = useState('');
   const handleOnChange = debounce((ev) => {
@@ -57,7 +58,7 @@ export default function (props: {
               <UploadBtn
                 setLoading={() => {}}
                 muti={false}
-                crop={true}
+                crop={!props.isBackground}
                 text="上传图片"
                 onFinish={(info) => {
                   if (info?.response?.data?.isNew) {

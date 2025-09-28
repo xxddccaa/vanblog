@@ -44,6 +44,8 @@ export interface LayoutProps {
   privateSite?: 'true' | 'false';
   codeMaxLines?: number;
   showRunningTime?: 'true' | 'false';
+  backgroundImage?: string;
+  backgroundImageDark?: string;
 }
 
 export interface HeadTag {
@@ -154,6 +156,8 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     privateSite: siteInfo?.privateSite || "false",
     codeMaxLines: siteInfo?.codeMaxLines || 15,
     showRunningTime: siteInfo?.showRunningTime || "false",
+    backgroundImage: siteInfo?.backgroundImage || "",
+    backgroundImageDark: siteInfo?.backgroundImageDark || "",
     ...customSetting,
   };
 }
