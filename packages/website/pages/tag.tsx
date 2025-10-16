@@ -259,7 +259,7 @@ const TagPage = (props: TagPageProps) => {
                       {tag.name}
                     </span>
                     {tag.articleCount > 0 && (
-                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full">
+                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full text-[10px]">
                         {tag.articleCount}
                       </span>
                     )}
