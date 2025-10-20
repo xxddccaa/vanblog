@@ -1,5 +1,5 @@
 import { Article } from "../../types/article";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getTarget } from "../Link/tools";
 import { getArticlePath } from "../../utils/getArticlePath";
@@ -16,10 +16,23 @@ interface TimelinePageProps {
   openArticleLinksInNewWindow: boolean;
   pageTitle: string;
   pageSubtitle?: string;
+  defaultExpanded?: boolean;
 }
 
 export default function TimelinePage(props: TimelinePageProps) {
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(() => {
+    if (props.defaultExpanded) {
+      return new Set(Object.keys(props.sortedArticles));
+    }
+    return new Set();
+  });
+
+  // 当 props.defaultExpanded 或分组数据变化时，重新计算默认展开集合
+  useEffect(() => {
+    if (props.defaultExpanded) {
+      setExpandedDates(new Set(Object.keys(props.sortedArticles)));
+    }
+  }, [props.defaultExpanded, props.sortedArticles]);
 
   const toggleDate = (date: string) => {
     const newExpanded = new Set(expandedDates);
@@ -52,10 +65,14 @@ export default function TimelinePage(props: TimelinePageProps) {
         {sortedDates.map((date, index) => {
           const articles = props.sortedArticles[date];
           const isExpanded = expandedDates.has(date);
-          const year = date.substring(0, 4);
-          const month = date.substring(4, 6);
-          const day = date.substring(6, 8);
-          const formattedDate = `${year}-${month}-${day}`;
+          const isYYYYMMDD = /^\d{8}$/.test(date);
+          let formattedDate = date;
+          if (isYYYYMMDD) {
+            const year = date.substring(0, 4);
+            const month = date.substring(4, 6);
+            const day = date.substring(6, 8);
+            formattedDate = `${year}-${month}-${day}`;
+          }
           
           return (
             <div
@@ -135,12 +152,29 @@ export default function TimelinePage(props: TimelinePageProps) {
                                   </h4>
                                   <div className="flex items-center space-x-2 mt-1">
                                     <p className="text-xs text-gray-500 dark:text-dark-400">
-                                      {dayjs(article.createdAt).format('HH:mm')}
+                                      {dayjs(article.createdAt).format('YYYY-MM-DD')}
                                     </p>
                                     {article.category && (
                                       <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
                                         {article.category}
                                       </span>
+                                    )}
+                                    {article.tags && article.tags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1">
+                                        {article.tags.slice(0, 2).map((tag, tagIndex) => (
+                                          <span
+                                            key={tagIndex}
+                                            className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
+                                        {article.tags.length > 2 && (
+                                          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full">
+                                            +{article.tags.length - 2}
+                                          </span>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 </div>

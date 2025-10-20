@@ -42,7 +42,7 @@ export function Title(props: {
     <div className="flex justify-center post-card-title ">
       {props.type === "about" ? (
         <div
-          className={`text-lg block font-medium mb-2 mt-2 dark:text-dark text-gray-700 md:text-2xl ua ua-link select-text cursor-text ${
+          className={`text-2xl md:text-3xl text-gray-700 text-center dark:text-dark font-bold mb-4 ${
             showEditButton ? "ml-12 mr-4" : ""
           }`}
         >

@@ -24,6 +24,7 @@ const CategoryPage = (props: CategoryPageProps) => {
         authorCardProps={props.authorCardProps}
         wordTotal={props.wordTotal}
         openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
+        showTags={true}
       />
     </Layout>
   );

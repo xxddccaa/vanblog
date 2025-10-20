@@ -163,9 +163,14 @@ const TagPage = (props: TagPageProps) => {
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >
       <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-4">
+            标签
+          </h1>
+        </div>
         <div className="flex items-center justify-between mb-4">
           <div className="text-lg md:text-xl text-gray-700 dark:text-dark">
-            标签
+            所有标签
           </div>
           <button
             onClick={handleReload}

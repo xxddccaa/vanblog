@@ -466,11 +466,13 @@ export class ArticleProvider {
       )
       .sort({ createdAt: -1 })
       .exec();
-    // 清洗一下数据。
-    const dates = Array.from(new Set(articles.map((a) => a.createdAt.getFullYear())));
+    // 清洗一下数据：按年分组
+    const years = Array.from(
+      new Set(articles.map((a) => a.createdAt.getFullYear()))
+    ).sort((a, b) => b - a);
     const res: Record<string, Article[]> = {};
-    dates.forEach((date) => {
-      res[date] = articles.filter((a) => a.createdAt.getFullYear() == date);
+    years.forEach((year) => {
+      res[String(year)] = articles.filter((a) => a.createdAt.getFullYear() === year);
     });
     return res;
   }

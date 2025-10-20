@@ -138,10 +138,10 @@ export async function getTagPagesProps(
   });
   const wordTotal = totalWordCount || 0;
   const curNum = total;
-  const sortedArticles = washArticlesByKey(
-    articlesInThisTag,
-    (each) => new Date(each.createdAt).getFullYear(),
-    false
+  // 仅一个卡片：使用标签名作为分组键
+  const sortedArticles: Record<string, any[]> = {};
+  sortedArticles[currTag] = [...articlesInThisTag].sort(
+    (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
   return {
     layoutProps,
@@ -218,10 +218,10 @@ export async function getCategoryPagesProps(
 
   const wordTotal = totalWordCount as number;
   const curNum = total;
-  const sortedArticles = washArticlesByKey(
-    articlesInThisCategory,
-    (each) => each.category,
-    false
+  // 仅一个卡片：使用分类名作为分组键
+  const sortedArticles: Record<string, any[]> = {};
+  sortedArticles[curCategory] = [...articlesInThisCategory].sort(
+    (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
   return {
     layoutProps,

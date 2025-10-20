@@ -2,6 +2,7 @@ import { getPublicMeta } from "../../api/getAllData";
 import AuthorCard, { AuthorCardProps } from "../../components/AuthorCard";
 import Layout from "../../components/Layout";
 import TimelinePageComponent from "../../components/TimelinePage";
+import ArticleList from "../../components/ArticleList";
 import { Article } from "../../types/article";
 import { LayoutProps } from "../../utils/getLayoutProps";
 import { getTagPagesProps } from "../../utils/getPageProps";
@@ -25,14 +26,23 @@ const TagPages = (props: TagPagesProps) => {
       title={props.currTag}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >
-      <TimelinePageComponent
-        sortedArticles={props.sortedArticles}
-        authorCardProps={props.authorCardProps}
-        wordTotal={props.wordTotal}
-        openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
-        pageTitle={props.currTag}
-        pageSubtitle={`${props.curNum} 文章 × ${props.wordTotal} 字`}
-      />
+      <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-2">
+            {props.currTag}
+          </h1>
+          <div className="text-center text-gray-600 text-sm font-light dark:text-dark">
+            {`${props.curNum} 文章 × ${props.wordTotal} 字`}
+          </div>
+        </div>
+
+        <ArticleList
+          articles={props.sortedArticles[props.currTag] || []}
+          showYear={false}
+          openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
+          showTags={true}
+        />
+      </div>
     </Layout>
   );
 };
@@ -53,8 +63,10 @@ export async function getStaticPaths() {
 export async function getStaticProps({
   params,
 }: any): Promise<{ props: TagPagesProps; revalidate?: number }> {
+  // 解码URL参数中的标签名称
+  const decodedTag = decodeURIComponent(params.tag);
   return {
-    props: await getTagPagesProps(params.tag),
+    props: await getTagPagesProps(decodedTag),
     ...revalidate,
   };
 }

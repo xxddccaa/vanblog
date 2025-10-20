@@ -51,16 +51,17 @@ const LinkPage = (props: LinkPageProps) => {
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
       <div className="bg-white dark:text-dark card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
-        <div>
-          <div className="text-2xl md:text-3xl text-gray-700 dark:text-dark text-center">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-4">
             友情链接
-          </div>
+          </h1>
+          <div className="text-center text-gray-600 text-sm font-light dark:text-dark mb-6">以下是本站的友情链接，排名不分先后</div>
         </div>
         <div className="flex flex-col mt-6 mb-2">
           <p className="mb-6 ">以下是本站的友情链接，排名不分先后：</p>
           <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-3">
             {props.links.map((link) => (
-              <LinkCard link={link} key={`${link.url}${link.name}`} />
+              <LinkCard key={`${link.url}${link.name}`} link={link} />
             ))}
           </div>
           <hr className="mt-8 dark:border-hr-dark" />

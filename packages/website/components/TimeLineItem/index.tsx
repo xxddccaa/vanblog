@@ -37,6 +37,7 @@ export default function (props: {
           articles={props.articles}
           showYear={props.showYear}
           openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
+          showTags={true}
         ></ArticleList>
       </div>
     </div>
