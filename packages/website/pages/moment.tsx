@@ -12,6 +12,7 @@ import zhCN from 'dayjs/locale/zh-cn';
 import Loading from '../components/Loading';
 import AuthorCard from '../components/AuthorCard';
 import Markdown from '../components/Markdown';
+import ImageUpload from '../components/ImageUpload';
 
 // 配置 dayjs
 dayjs.extend(relativeTime);
@@ -43,6 +44,7 @@ export default function MomentPage({
   const [newMoment, setNewMoment] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [justPublished, setJustPublished] = useState(false);
   const pageSize = 10;
 
   // 检查是否为admin用户
@@ -89,6 +91,29 @@ export default function MomentPage({
     loadMoments(nextPage);
   };
 
+  const handleImageInsert = (markdown: string) => {
+    // 在光标位置插入图片markdown，如果没有光标位置则插入到末尾
+    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = newMoment;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      const newText = before + markdown + after;
+      setNewMoment(newText);
+      
+      // 设置光标位置到插入内容之后
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + markdown.length, start + markdown.length);
+      }, 0);
+    } else {
+      // 如果没有找到textarea，直接添加到末尾
+      setNewMoment(prev => prev + markdown);
+    }
+  };
+
   const handleSubmitMoment = async () => {
     if (!newMoment.trim()) {
       toast.error('动态内容不能为空');
@@ -101,21 +126,36 @@ export default function MomentPage({
       const response = await createMoment({ content: newMoment.trim() }, token!);
       
       toast.success('发布成功');
+      
+      // 保存当前内容用于创建新动态项
+      const currentContent = newMoment.trim();
       setNewMoment('');
       
       // 直接在前端添加新动态，而不是重新加载
       const newMomentItem = {
         id: response.id || Date.now(), // 使用返回的ID或时间戳
-        content: newMoment.trim(),
+        content: currentContent,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       
-      // 将新动态添加到列表开头
-      setMoments(prev => [newMomentItem, ...prev]);
+      // 将新动态添加到列表开头，使用函数式更新确保状态正确
+      setMoments(prev => {
+        const newList = [newMomentItem, ...prev];
+        return newList;
+      });
       setTotal(prev => prev + 1);
       
+      // 标记刚刚发布了动态，用于UI反馈
+      setJustPublished(true);
+      
+      // 3秒后清除发布状态
+      setTimeout(() => {
+        setJustPublished(false);
+      }, 3000);
+      
     } catch (error) {
+      console.error('发布动态失败:', error);
       toast.error('发布失败');
     } finally {
       setSubmitting(false);
@@ -181,7 +221,13 @@ export default function MomentPage({
                          resize-vertical min-h-[100px]"
               rows={4}
             />
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <ImageUpload 
+                  onImageInsert={handleImageInsert}
+                  disabled={submitting}
+                />
+              </div>
               <button
                 onClick={handleSubmitMoment}
                 disabled={submitting || !newMoment.trim()}
@@ -197,17 +243,28 @@ export default function MomentPage({
 
         {/* 动态列表 */}
         <div className="space-y-6">
-          {moments.map((moment) => (
+          {moments.map((moment, index) => (
             <div
               key={moment.id}
-              className="bg-white dark:bg-dark-1 rounded-lg shadow-md p-6
-                         border border-gray-200 dark:border-dark-3"
+              className={`bg-white dark:bg-dark-1 rounded-lg shadow-md p-6
+                         border border-gray-200 dark:border-dark-3 transition-all duration-500
+                         ${justPublished && index === 0 ? 'ring-2 ring-green-400 ring-opacity-50 bg-green-50 dark:bg-green-900/20' : ''}`}
             >
               <div className="text-gray-900 dark:text-dark mb-4">
                 <Markdown content={moment.content} codeMaxLines={layoutProps.codeMaxLines} />
               </div>
-              <div className="text-sm text-gray-500 dark:text-dark-light">
-                {formatTime(moment.createdAt)}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500 dark:text-dark-light">
+                  {formatTime(moment.createdAt)}
+                </div>
+                {justPublished && index === 0 && (
+                  <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    刚刚发布
+                  </div>
+                )}
               </div>
             </div>
           ))}
