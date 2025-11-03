@@ -278,12 +278,19 @@ export default function () {
       return;
     }
     
+    // 对于文章和草稿类型，直接保存不需要确认弹窗
+    if (type == 'article' || type == 'draft') {
+      saveFn();
+      return;
+    }
+    
     // 对于文档类型，直接保存不需要复杂的检查
     if (type == 'document') {
       saveFn();
       return;
     }
     
+    // 对于其他类型（如about），保留原有的确认逻辑
     // 先检查一下有没有 more .
     let hasMore = true;
     if (['article', 'draft'].includes(history.location.query?.type)) {
