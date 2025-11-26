@@ -676,20 +676,42 @@ export class ArticleProvider {
   }
 
   async getByIdOrPathname(id: string | number, view: ArticleView) {
-    const articleByPathname = await this.getByPathName(String(id), view);
+    const idString = String(id);
+    // 先尝试通过 pathname 查找
+    const articleByPathname = await this.getByPathName(idString, view);
 
     if (articleByPathname) {
       return articleByPathname;
     }
     
     // 检查 id 是否可以转换为有效的数字
-    const numericId = Number(id);
+    const numericId = Number(idString);
     if (isNaN(numericId)) {
-      // 如果不是有效数字，返回 null
+      // 如果不是有效数字，说明传入的是 pathname，但找不到对应的文章
       return null;
     }
     
-    return await this.getById(numericId, view);
+    // 通过 ID 查找文章
+    const articleById = await this.getById(numericId, view);
+    
+    // 如果通过 ID 找到了文章，需要验证：
+    // 1. 如果传入的 id 是数字字符串（如 "123"），说明是通过 ID 访问，直接返回
+    // 2. 如果传入的 id 不是数字字符串（如 "my-article"），说明是通过 pathname 访问
+    //    此时如果文章有 pathname 且与传入的不匹配，说明是旧的 pathname，应该返回 null
+    if (articleById) {
+      const isNumericInput = /^\d+$/.test(idString.trim());
+      
+      // 如果不是纯数字输入（说明是 pathname），但文章有 pathname 且不匹配，返回 null
+      if (!isNumericInput && articleById.pathname && articleById.pathname !== idString) {
+        // 这是旧的 pathname，应该返回 null 使旧路径失效
+        return null;
+      }
+      
+      // 其他情况都返回找到的文章
+      return articleById;
+    }
+    
+    return null;
   }
 
   async getByPathName(pathname: string, view: ArticleView): Promise<Article> {

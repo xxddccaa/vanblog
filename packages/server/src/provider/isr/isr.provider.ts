@@ -144,22 +144,22 @@ export class ISRProvider {
     
     // 无论是什么事件都先触发文章本身、标签和分类。
     this.activeUrl(`/post/${id}`, true);
-    if (pre) {
-      this.activeUrl(`/post/${pre?.id}`, true);
+    
+    // 如果文章有自定义路径名，触发基于 pathname 的路径重新生成
+    if (article.pathname) {
+      this.activeUrl(`/post/${article.pathname}`, true);
     }
-    if (next) {
-      this.activeUrl(`/post/${next?.id}`, true);
-    }
-    const tags = article.tags;
-    if (tags && tags.length > 0) {
-      for (const each of tags) {
-        this.activeUrl(`/tag/${each}`, true);
-      }
-    }
-    const category = article.category;
-    this.activeUrl(`/category/${category}`, true);
-
+    
     if (event == 'update' && beforeObj) {
+      // 如果 pathname 发生变化，触发旧 pathname 路径的重新生成（使旧路径失效）
+      const oldPathname = beforeObj.pathname;
+      const newPathname = article.pathname;
+      if (oldPathname && oldPathname !== newPathname) {
+        this.logger.log(`检测到 pathname 变化：${oldPathname} -> ${newPathname}，触发旧路径失效`);
+        // 触发旧路径的重新生成，由于 getByIdOrPathname 的修复，旧路径会返回 404
+        this.activeUrl(`/post/${oldPathname}`, true);
+      }
+      
       // 更新文档需要考虑更新之前的标签和分类。
       const tags = beforeObj.tags;
       if (tags && tags.length > 0) {
@@ -170,6 +170,29 @@ export class ISRProvider {
       const category = beforeObj.category;
       this.activeUrl(`/category/${category}`, true);
     }
+    
+    if (pre) {
+      this.activeUrl(`/post/${pre?.id}`, true);
+      // 如果前一篇有 pathname，也触发
+      if (pre?.pathname) {
+        this.activeUrl(`/post/${pre.pathname}`, true);
+      }
+    }
+    if (next) {
+      this.activeUrl(`/post/${next?.id}`, true);
+      // 如果后一篇有 pathname，也触发
+      if (next?.pathname) {
+        this.activeUrl(`/post/${next.pathname}`, true);
+      }
+    }
+    const tags = article.tags;
+    if (tags && tags.length > 0) {
+      for (const each of tags) {
+        this.activeUrl(`/tag/${each}`, true);
+      }
+    }
+    const category = article.category;
+    this.activeUrl(`/category/${category}`, true);
 
     // 时间线、首页、标签页、tag 页
 
