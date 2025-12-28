@@ -57,6 +57,9 @@ export class SiteInfo {
   // 网站背景图
   backgroundImage?: string;
   backgroundImageDark?: string;
+  // Markdown 渲染主题（自定义 CSS），分别用于亮色和暗色模式
+  markdownLightThemeUrl?: string;
+  markdownDarkThemeUrl?: string;
 }
 export interface updateUserDto {
   username: string;

@@ -81,6 +81,23 @@ export default function (props: {
             --bg-image-dark: url('${props.option.backgroundImageDark || props.option.backgroundImage || ''}');
           }
         `}</style>
+        {/* Markdown 主题 CSS：同时挂载亮/暗两套，通过 HTML data-theme 属性和 CSS 选择器自动切换 */}
+        {props.option.markdownLightThemeUrl && (
+          <link
+            rel="stylesheet"
+            href={props.option.markdownLightThemeUrl}
+            key="markdown-light-theme"
+            data-theme-for="light"
+          />
+        )}
+        {props.option.markdownDarkThemeUrl && (
+          <link
+            rel="stylesheet"
+            href={props.option.markdownDarkThemeUrl}
+            key="markdown-dark-theme"
+            data-theme-for="dark"
+          />
+        )}
       </Head>
       <BackToTopBtn></BackToTopBtn>
       <MusicPlayer />

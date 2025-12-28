@@ -1,0 +1,401 @@
+.markdown-body {
+  /* Phycat Dark 主题主色（偏樱桃的深色） */
+  --head-title-color: #ff8a80;
+  --head-title-h2-color: #212121;
+  --head-title-h2-background: linear-gradient(to right, #ffccbc, #ff8a80, #ffccbc);
+
+  /* 元素主色系 */
+  --element-color: #ff8a80;
+  --element-color-deep: #ff5252;
+  --element-color-shallow: #ffccbc;
+  --element-color-so-shallow: #fbe9e7;
+  --element-color-soo-shallow: #2b2628;
+
+  /* 行内代码颜色 */
+  --element-color-linecode: #ffccbc;
+  --element-color-linecode-background: #3e2723;
+
+  /* 背景图案（在暗色下稍微弱化） */
+  --bg-style: url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h30v30H0z' fill='none'/%3E%3Cpath d='M0 0L15 15M30 0L15 15M0 30L15 15M30 30L15 15' stroke='white' stroke-width='0.2'/%3E%3C/svg%3E");
+}
+
+.markdown-body {
+  max-width: 950px;
+  margin: 0 auto;
+  padding: 15px;
+  line-height: 2.25;
+  color: #f5f5f5;
+  letter-spacing: 1.1px;
+  word-break: break-word;
+  word-wrap: break-word;
+  text-align: left;
+  position: relative;
+  z-index: 0;
+  background-color: #121212;
+}
+
+.markdown-body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-color: var(--element-color);
+  opacity: 0.05;
+  -webkit-mask-image: var(--bg-style);
+  mask-image: var(--bg-style);
+  -webkit-mask-size: 20px 20px;
+  mask-size: 20px 20px;
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.markdown-body p {
+  color: #eeeeee;
+  margin: 10px 10px;
+  font-size: 1rem;
+  word-spacing: 2px;
+}
+
+/* H1 */
+.markdown-body h1 {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+  margin: 1em auto 0.8em;
+  line-height: 1.4;
+  display: table;
+  color: #ffffff;
+  position: relative;
+  padding-bottom: 12px;
+  transition: color 0.3s ease, transform 0.3s ease;
+  border-bottom: none;
+}
+
+.markdown-body h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--head-title-h2-background);
+  background-size: 100% auto;
+  transform: translateX(-50%);
+  transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.markdown-body h1:hover {
+  color: var(--head-title-color);
+  transform: translateY(-2px);
+}
+
+.markdown-body h1:hover::after {
+  width: 100%;
+}
+
+/* H2 */
+.markdown-body h2 {
+  color: var(--head-title-h2-color);
+  font-size: 1.4rem;
+  line-height: 1.5;
+  width: fit-content;
+  font-weight: bold;
+  margin: 20px 0;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--head-title-h2-background);
+  background-size: 200% auto;
+  background-position: 0% center;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+  transition: background-position 0.5s ease-out, transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.markdown-body h2:hover {
+  background-position: 100% center;
+  transform: scale(1.01);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8);
+}
+
+/* H3 */
+.markdown-body h3 {
+  position: relative;
+  width: fit-content;
+  margin: 20px 0;
+  text-align: left;
+  font-size: 1.3rem;
+  padding-left: 10px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  color: #fce4ec;
+}
+
+.markdown-body h3::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 61%;
+  border-radius: 4px;
+  background-color: var(--head-title-color);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.markdown-body h3 span {
+  border-bottom: 2px hidden var(--head-title-color);
+  transition: color 0.3s ease;
+}
+
+.markdown-body h3:hover {
+  padding-left: 18px;
+  color: var(--head-title-color);
+  cursor: pointer;
+}
+
+.markdown-body h3:hover::before {
+  height: 66%;
+  background-color: var(--head-title-color);
+  width: 7px;
+}
+
+/* H4~H6 */
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  transition: color 0.3s ease, transform 0.3s ease;
+  color: #ffccbc;
+}
+
+/* H4 */
+.markdown-body h4 {
+  margin: 20px 0;
+  font-size: 1.15rem;
+  text-align: left;
+}
+
+.markdown-body h4::before {
+  content: "";
+  margin-right: 7px;
+  display: inline-block;
+  background-color: var(--head-title-color);
+  width: 10px;
+  height: 10px;
+  border-radius: 100%;
+  border: var(--head-title-color) 1px solid;
+  vertical-align: inherit;
+}
+
+/* H5 */
+.markdown-body h5 {
+  margin: 23px 0;
+  font-size: 1.1rem;
+  text-align: left;
+}
+
+.markdown-body h5::before {
+  content: "";
+  margin-right: 7px;
+  display: inline-block;
+  background-color: #121212;
+  width: 10px;
+  height: 10px;
+  border-radius: 100%;
+  border: var(--head-title-color) 2px solid;
+  vertical-align: inherit;
+  box-sizing: border-box;
+}
+
+/* H6 */
+.markdown-body h6 {
+  margin: 23px 0;
+  font-size: 1.1rem;
+  text-align: left;
+}
+
+.markdown-body h6::before {
+  content: "-";
+  color: var(--head-title-color);
+  margin-right: 7px;
+  display: inline-block;
+  vertical-align: inherit;
+}
+
+.markdown-body h4:hover,
+.markdown-body h5:hover,
+.markdown-body h6:hover {
+  color: var(--element-color);
+  transform: translateX(6px);
+}
+
+/* 列表 */
+.markdown-body ul,
+.markdown-body ol {
+  margin-top: 0px;
+  margin-left: 16px;
+  margin-bottom: 8px;
+  padding-left: 13px;
+}
+
+.markdown-body li {
+  margin: 0.4rem 0;
+}
+
+/* 引用块 */
+.markdown-body blockquote {
+  position: relative;
+  margin: 20px 0;
+  padding: 18px 20px 18px 48px;
+  background-color: #1e1b1d;
+  border: none;
+  border-radius: 16px;
+  color: #eeeeee;
+  line-height: 1.6;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease;
+}
+
+.markdown-body blockquote::before {
+  content: "✨";
+  position: absolute;
+  left: 16px;
+  top: 18px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.markdown-body blockquote p {
+  color: #eeeeee;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body blockquote:hover {
+  transform: scale(1.02);
+}
+
+/* 链接 */
+.markdown-body a {
+  color: #ffab91;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 2px 4px;
+  margin: 0 -2px;
+  border-radius: 4px;
+  background: transparent;
+  border-bottom: none;
+  transition: all 0.2s ease;
+}
+
+.markdown-body a:hover {
+  color: #ffccbc;
+  background: #3e2723;
+}
+
+/* 高亮 mark */
+.markdown-body mark {
+  background-color: #4e342e;
+  color: #ffccbc;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin: 0 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* 粗体 / 斜体 / 删除线 */
+.markdown-body strong {
+  color: var(--element-color);
+  font-weight: bold;
+  display: inline-block;
+}
+
+.markdown-body em {
+  font-style: italic;
+  color: #ffccbc;
+  padding: 0 2px;
+}
+
+.markdown-body del {
+  text-decoration: line-through;
+  text-decoration-color: var(--element-color);
+  color: #9e9e9e;
+}
+
+/* 分割线 */
+.markdown-body hr {
+  border: none;
+  border-top: 3px dashed #4e342e;
+  margin: 30px 0;
+  opacity: 0.8;
+  transform: scaleX(0.8);
+}
+
+/* 图片 */
+.markdown-body p:has(img) {
+  text-align: center;
+}
+
+.markdown-body img {
+  border-radius: 12px;
+  display: inline-block;
+  margin: 15px 5px;
+  object-fit: contain;
+  box-shadow: 0 6px 10px -2px rgba(0, 0, 0, 0.7);
+  max-width: 100%;
+}
+
+/* 行内代码 */
+.markdown-body p code,
+.markdown-body li code {
+  padding: 3px 3px 1px;
+  color: var(--element-color-linecode);
+  background: var(--element-color-linecode-background);
+  border-radius: 3px;
+  font-family: "CascadiaCode", Menlo, Consolas, monospace;
+  letter-spacing: 0.5px;
+}
+
+/* 表格 */
+.markdown-body table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  margin: 20px 0;
+  border: 1px solid #4e342e;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.markdown-body table th,
+.markdown-body table td {
+  padding: 8px 12px;
+  color: #f5f5f5;
+  border-right: 1px solid #3e2723;
+  border-bottom: 1px solid #3e2723;
+}
+
+.markdown-body table th {
+  background-color: #2b2628;
+  color: #ffccbc;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.markdown-body table tbody tr:hover td,
+.markdown-body table tbody td:hover {
+  background-color: #3e2723;
+  color: #ffccbc;
+}
+
+

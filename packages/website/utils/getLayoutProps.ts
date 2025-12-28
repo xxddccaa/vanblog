@@ -46,6 +46,9 @@ export interface LayoutProps {
   showRunningTime?: 'true' | 'false';
   backgroundImage?: string;
   backgroundImageDark?: string;
+  // Markdown 主题 CSS（亮色 / 暗色）
+  markdownLightThemeUrl?: string;
+  markdownDarkThemeUrl?: string;
 }
 
 export interface HeadTag {
@@ -158,6 +161,9 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     showRunningTime: siteInfo?.showRunningTime || "false",
     backgroundImage: siteInfo?.backgroundImage || "",
     backgroundImageDark: siteInfo?.backgroundImageDark || "",
+    // 默认内置一套 Phycat Cherry / Dark 主题（包裹版，根据 html.dark 自动切换），可被后台配置覆盖
+    markdownLightThemeUrl: siteInfo?.markdownLightThemeUrl || "/markdown-themes/phycat-cherry-light-only.css",
+    markdownDarkThemeUrl: siteInfo?.markdownDarkThemeUrl || "/markdown-themes/phycat-dark-only.css",
     ...customSetting,
   };
 }

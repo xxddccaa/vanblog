@@ -185,6 +185,9 @@ export interface MetaProps {
     // 网站背景图
     backgroundImage?: string;
     backgroundImageDark?: string;
+    // Markdown 渲染主题 CSS（亮色 / 暗色）
+    markdownLightThemeUrl?: string;
+    markdownDarkThemeUrl?: string;
   };
 }
 export interface PublicMetaProp {
@@ -251,6 +254,8 @@ const defaultMeta: MetaProps = {
     showRunningTime: "false",
     backgroundImage: "",
     backgroundImageDark: "",
+    markdownLightThemeUrl: "/markdown-themes/phycat-cherry-light-only.css",
+    markdownDarkThemeUrl: "/markdown-themes/phycat-dark-only.css",
   },
 };
 

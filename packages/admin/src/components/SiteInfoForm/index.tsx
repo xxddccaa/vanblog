@@ -441,6 +441,19 @@ export default function (props: {
             }}
             tooltip={'默认隐藏，开启后将在前台页面底部显示网站运行时间。'}
           />
+          {/* Markdown 渲染主题（外部编辑器主题风格，自定义 CSS 文件路径） */}
+          <ProFormText
+            name="markdownLightThemeUrl"
+            label="Markdown 亮色主题 CSS 路径"
+            placeholder="/static/markdown-themes/phycat-sky.css"
+            tooltip="可选。填写一个可被前台访问到的 CSS 地址，例如挂在 data/static/markdown-themes 目录下的文件：/static/markdown-themes/xxx.css。"
+          />
+          <ProFormText
+            name="markdownDarkThemeUrl"
+            label="Markdown 暗色主题 CSS 路径"
+            placeholder="/static/markdown-themes/phycat-dark.css"
+            tooltip="可选。暗色模式下使用的 Markdown CSS；不填写时，暗色下仍然使用默认的 GitHub 风格。"
+          />
           <UrlFormItem
             formRef={props.form}
             isInit={props.isInit}
