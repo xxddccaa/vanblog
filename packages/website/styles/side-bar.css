@@ -47,7 +47,7 @@ Note: Beware of modifying this element as it can break the animations - you shou
   z-index: 110;
 }
 .dark .bm-menu {
-  background: #26282c;
+  background: #212428;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
 }
 

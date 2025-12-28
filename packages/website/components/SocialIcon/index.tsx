@@ -106,7 +106,7 @@ export default function (props: { item: SocialItem }) {
 
   const arrowColor = useMemo(() => {
     if (theme.includes("dark")) {
-      return "#1b1c1f";
+      return "#1a1d21";
     } else {
       return "white";
     }

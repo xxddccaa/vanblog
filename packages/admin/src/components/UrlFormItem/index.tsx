@@ -3,7 +3,7 @@ import { getImgLink } from '@/pages/Static/img/tools';
 import { ProFormText } from '@ant-design/pro-form';
 import { Image, message } from 'antd';
 import { debounce } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import UploadBtn from '../UploadBtn';
 
 export default function (props: {
@@ -17,29 +17,75 @@ export default function (props: {
   isBackground?: boolean;
 }) {
   const [url, setUrl] = useState('');
+  const [shouldLoadImage, setShouldLoadImage] = useState(false);
+  const mountedRef = useRef(false);
+  
   const handleOnChange = debounce((ev) => {
     const val = ev?.target?.value;
     if (val && val != url) {
       setUrl(val);
+      // 只有在有有效URL时才加载图片
+      setShouldLoadImage(!!val && val.trim() !== '');
     }
   }, 500);
+  
   useEffect(() => {
-    if (props.formRef && props.formRef.getFieldValue) {
-      const src = props.formRef.getFieldValue(props.name);
-      setUrl(src);
+    // 只在组件挂载后延迟加载图片，避免首次加载时阻塞
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      // 延迟加载图片，避免首次加载时所有图片同时请求
+      const timer = setTimeout(() => {
+        let src = '';
+        if (props.formRef && props.formRef.getFieldValue) {
+          src = props.formRef.getFieldValue(props.name);
+        } else if (props.formRef?.current?.getFieldValue) {
+          src = props.formRef.current.getFieldValue(props.name);
+        }
+        if (src) {
+          setUrl(src);
+          setShouldLoadImage(true);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      // 组件更新时，直接从form获取值
+      let src = '';
+      if (props.formRef && props.formRef.getFieldValue) {
+        src = props.formRef.getFieldValue(props.name);
+      } else if (props.formRef?.current?.getFieldValue) {
+        src = props.formRef.current.getFieldValue(props.name);
+      }
+      if (src !== url) {
+        setUrl(src || '');
+        setShouldLoadImage(!!src && src.trim() !== '');
+      }
     }
-    if (props.formRef?.current?.getFieldValue) {
-      const src = props.formRef.current.getFieldValue(props.name);
-      setUrl(src);
-    }
-  }, [props, setUrl]);
+  }, [props.name, props.formRef]);
+  
   const dest = useMemo(() => {
     let r = props.isInit ? '/api/admin/init/upload' : '/api/admin/img/upload';
     if (props.isFavicon) {
       r = r + '?favicon=true';
     }
     return r;
-  }, [props]);
+  }, [props.isInit, props.isFavicon]);
+  
+  // 只在有有效URL时才渲染Image组件
+  const imageComponent = shouldLoadImage && url ? (
+    <Image 
+      src={url} 
+      fallback={errorImg} 
+      height={100} 
+      width={100}
+      loading="lazy"
+      preview={false}
+    />
+  ) : (
+    <div style={{ width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed #d9d9d9', borderRadius: 4 }}>
+      <span style={{ color: '#999', fontSize: 12 }}>暂无图片</span>
+    </div>
+  );
+  
   return (
     <>
       <ProFormText
@@ -53,7 +99,7 @@ export default function (props: {
         }}
         extra={
           <div style={{ display: 'flex', marginTop: '10px' }}>
-            <Image src={url || ''} fallback={errorImg} height={100} width={100} />
+            {imageComponent}
             <div style={{ marginLeft: 10 }}>
               <UploadBtn
                 setLoading={() => {}}
@@ -73,6 +119,7 @@ export default function (props: {
                   if (info?.response?.data?.src) {
                     const src = getImgLink(info.response.data.src);
                     setUrl(src);
+                    setShouldLoadImage(true);
                     if (props?.formRef?.setFieldsValue) {
                       const oldVal = props.formRef.getFieldsValue();
                       props?.formRef?.setFieldsValue({

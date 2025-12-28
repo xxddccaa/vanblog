@@ -33,7 +33,7 @@
   --color-fg-default: rgb(158, 158, 158);
   --color-fg-muted: rgb(120, 120, 120);
   --color-fg-subtle: rgb(80, 80, 80);
-  --color-canvas-default: #26282c;
+  --color-canvas-default: #1f2226;
   --color-canvas-subtle: rgb(30, 30, 30);
   --color-border-default: #30363d;
   --color-border-muted: #3e4145;
@@ -1048,7 +1048,7 @@
   list-style: decimal;
 }
 .dark .language-mermaid {
-  background-color: #26282c;
+  background-color: #212428;
 }
 .language-mermaid {
   background-color: white;
@@ -1162,7 +1162,7 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 
 /* 暗色模式下的渐变遮罩 */
 .dark .markdown-body .code-content-wrapper.code-collapsed::after {
-  background: linear-gradient(transparent, #26282c);
+  background: linear-gradient(transparent, #212428);
 }
 
 /* 确保代码块在折叠状态下正确显示 */
