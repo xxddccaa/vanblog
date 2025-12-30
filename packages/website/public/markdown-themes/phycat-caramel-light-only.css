@@ -1,0 +1,19 @@
+/* 基于 Phycat Cherry Light Only 主题的配色变体：Phycat Caramel（仅亮色生效） */
+@import url("./phycat-cherry-light-only.css");
+
+html:not(.dark) .markdown-body {
+  --head-title-color: #e08958;
+  --head-title-h2-color: #fff;
+  --head-title-h2-background: linear-gradient(to right, #ff9f68, #ff6b35, #ff9f68);
+
+  --element-color: #e08958;
+  --element-color-deep: #bf663b;
+  --element-color-shallow: #fab57f;
+  --element-color-so-shallow: #f7e6d9;
+  --element-color-soo-shallow: #fdfaf7;
+
+  --element-color-linecode: #8c5e46;
+  --element-color-linecode-background: #f2ebe6;
+}
+
+

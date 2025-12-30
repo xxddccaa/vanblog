@@ -1,0 +1,121 @@
+/* Vanblog Minimal（仅暗色生效）：阅读舒适——低对比护眼、克制线条、轻强调 */
+html.dark .markdown-body {
+  --vb-text: rgba(226, 232, 240, 0.92);
+  --vb-muted: rgba(148, 163, 184, 0.85);
+  --vb-accent: #60a5fa;
+  --vb-accent-2: #22d3ee;
+  --vb-line: rgba(226, 232, 240, 0.14);
+  --vb-soft: rgba(2, 6, 23, 0.42);
+
+  color: var(--vb-text);
+  line-height: 2.1;
+  letter-spacing: 0.3px;
+  font-size: 16px;
+}
+
+html.dark .markdown-body p,
+html.dark .markdown-body li {
+  color: var(--vb-text);
+}
+
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3 {
+  border: 0;
+}
+
+html.dark .markdown-body h1 {
+  text-align: center;
+  font-size: 2.1rem;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 1.2em;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+html.dark .markdown-body h2 {
+  display: inline-block;
+  padding-bottom: 8px;
+  margin-top: 1.8em;
+  margin-bottom: 0.9em;
+  font-weight: 600;
+  border-bottom: 2.5px solid rgba(96, 165, 250, 0.25);
+  transition: border-color 0.2s ease;
+}
+
+html.dark .markdown-body h2:hover {
+  border-bottom-color: rgba(96, 165, 250, 0.45);
+}
+
+html.dark .markdown-body h3 {
+  position: relative;
+  padding-left: 12px;
+}
+html.dark .markdown-body h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 4px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.70), rgba(34, 211, 238, 0.55));
+}
+
+html.dark .markdown-body a {
+  color: rgba(96, 165, 250, 0.95);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(96, 165, 250, 0.25);
+}
+html.dark .markdown-body a:hover {
+  border-bottom-color: rgba(34, 211, 238, 0.55);
+}
+
+html.dark .markdown-body blockquote {
+  border: 0;
+  border-radius: 16px;
+  background: rgba(96, 165, 250, 0.04);
+  border-left: 4px solid rgba(96, 165, 250, 0.25);
+  padding: 16px 20px;
+  margin: 1.5em 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+html.dark .markdown-body :not(pre) > code {
+  background: rgba(96, 165, 250, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.14);
+  border-radius: 6px;
+  padding: 0.2em 0.5em;
+  font-size: 0.92em;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+html.dark .markdown-body .code-block-wrapper {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--vb-line);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: rgba(2, 6, 23, 0.55);
+  border-bottom: 1px solid var(--vb-line);
+}
+
+html.dark .markdown-body table {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--vb-line);
+  background: rgba(2, 6, 23, 0.30);
+}
+html.dark .markdown-body table tbody tr:hover td {
+  background: rgba(96, 165, 250, 0.06);
+}
+
+html.dark .markdown-body hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(226, 232, 240, 0.22), transparent);
+  opacity: 0.9;
+}
+
+

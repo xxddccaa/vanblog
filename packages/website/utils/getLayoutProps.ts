@@ -161,9 +161,20 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     showRunningTime: siteInfo?.showRunningTime || "false",
     backgroundImage: siteInfo?.backgroundImage || "",
     backgroundImageDark: siteInfo?.backgroundImageDark || "",
-    // 默认内置一套 Phycat Cherry / Dark 主题（包裹版，根据 html.dark 自动切换），可被后台配置覆盖
-    markdownLightThemeUrl: siteInfo?.markdownLightThemeUrl || "/markdown-themes/phycat-cherry-light-only.css",
-    markdownDarkThemeUrl: siteInfo?.markdownDarkThemeUrl || "/markdown-themes/phycat-dark-only.css",
+    // Markdown 主题：优先使用自定义URL，否则使用预设，最后使用默认主题
+    // 朴素/经典模式：如果显式设置为空字符串，则不注入 markdown-themes 的 link（仅保留系统自带 github-markdown.css）
+    markdownLightThemeUrl:
+      siteInfo?.markdownLightThemeUrl === "" && !siteInfo?.markdownLightThemePreset
+        ? ""
+        : siteInfo?.markdownLightThemeUrl ||
+          siteInfo?.markdownLightThemePreset ||
+          "/markdown-themes/phycat-cherry-light-only.css",
+    markdownDarkThemeUrl:
+      siteInfo?.markdownDarkThemeUrl === "" && !siteInfo?.markdownDarkThemePreset
+        ? ""
+        : siteInfo?.markdownDarkThemeUrl ||
+          siteInfo?.markdownDarkThemePreset ||
+          "/markdown-themes/phycat-dark-only.css",
     ...customSetting,
   };
 }

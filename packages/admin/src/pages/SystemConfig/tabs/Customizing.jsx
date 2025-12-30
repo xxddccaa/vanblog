@@ -1,6 +1,8 @@
 import CodeEditor from '@/components/CodeEditor';
 import AnimationEffects from '@/components/AnimationEffects';
+import MarkdownThemeSelector from '@/components/MarkdownThemeSelector';
 import { getLayoutConfig, updateLayoutConfig } from '@/services/van-blog/api';
+import { getSiteInfo, updateSiteInfo } from '@/services/van-blog/api';
 import { useTab } from '@/services/van-blog/useTab';
 import { Button, Card, message, Modal, Spin } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -35,26 +37,45 @@ export default function () {
       }
     },
   });
+  const [themeValues, setThemeValues] = useState({
+    markdownLightThemeUrl: '',
+    markdownDarkThemeUrl: '',
+    markdownLightThemePreset: '',
+    markdownDarkThemePreset: '',
+  });
   const cardRef = useRef();
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await getLayoutConfig();
-      if (data) {
+      const [layoutRes, siteInfoRes] = await Promise.all([
+        getLayoutConfig(),
+        getSiteInfo(),
+      ]);
+      
+      if (layoutRes.data) {
         setValues(prev => ({
-          css: data?.css || '',
-          script: data?.script || '',
-          html: data?.html || '',
-          head: data?.head || '',
-          animations: data?.animations || prev.animations,
+          css: layoutRes.data?.css || '',
+          script: layoutRes.data?.script || '',
+          html: layoutRes.data?.html || '',
+          head: layoutRes.data?.head || '',
+          animations: layoutRes.data?.animations || prev.animations,
         }));
+      }
+      
+      if (siteInfoRes.data) {
+        setThemeValues({
+          markdownLightThemeUrl: siteInfoRes.data?.markdownLightThemeUrl || '',
+          markdownDarkThemeUrl: siteInfoRes.data?.markdownDarkThemeUrl || '',
+          markdownLightThemePreset: siteInfoRes.data?.markdownLightThemePreset || '',
+          markdownDarkThemePreset: siteInfoRes.data?.markdownDarkThemePreset || '',
+        });
       }
     } catch (err) {
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [setValues, setLoading]);
+  }, [setValues, setThemeValues, setLoading]);
   const handleSave = async () => {
     Modal.confirm({
       title: '保存确认',
@@ -63,7 +84,12 @@ export default function () {
       onOk: async () => {
         setLoading(true);
         try {
+          // 保存布局配置
           await updateLayoutConfig(values);
+          
+          // 同步保存 Markdown 主题配置（避免用户切换到其他tab后点击“保存”导致主题未写入）
+          await updateSiteInfo(themeValues);
+          
           setLoading(false);
           message.success('更新成功！');
         } catch (err) {
@@ -90,6 +116,10 @@ export default function () {
   };
 
   const tabList = [
+    {
+      key: 'mdTheme',
+      tab: '🎨 Markdown 主题',
+    },
     {
       key: 'animations',
       tab: '🎭 动画效果',
@@ -130,6 +160,14 @@ export default function () {
         ]}
       >
         <Spin spinning={loading}>
+          {tab == 'mdTheme' && (
+            <MarkdownThemeSelector
+              value={themeValues}
+              onChange={(newThemeValues) => {
+                setThemeValues(newThemeValues);
+              }}
+            />
+          )}
           {tab == 'animations' && (
             <AnimationEffects
               value={values.animations}

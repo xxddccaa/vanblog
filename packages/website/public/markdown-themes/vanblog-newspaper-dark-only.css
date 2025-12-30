@@ -1,0 +1,116 @@
+/* Vanblog Newspaper（仅暗色生效）：暗色报纸（“墨水在炭纸上”） */
+html.dark .markdown-body {
+  --vb-paper: rgba(2, 6, 23, 0.55);
+  --vb-ink: rgba(226, 232, 240, 0.92);
+  --vb-muted: rgba(148, 163, 184, 0.85);
+  --vb-border: rgba(226, 232, 240, 0.16);
+  --vb-accent: #f59e0b;
+  color: var(--vb-ink);
+  position: relative;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+html.dark .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(226, 232, 240, 0.06) 0 1px, transparent 1.5px) 0 0/18px 18px,
+    radial-gradient(620px 260px at 50% 0%, rgba(245, 158, 11, 0.12), transparent 60%);
+  opacity: 0.9;
+}
+
+html.dark .markdown-body p {
+  line-height: 2.05;
+  text-align: justify;
+}
+
+html.dark .markdown-body > p:first-of-type::first-letter {
+  float: left;
+  font-size: 3.1em;
+  line-height: 1;
+  padding: 0.05em 0.12em 0 0;
+  color: rgba(245, 158, 11, 0.95);
+}
+
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3 { border: 0; letter-spacing: 0.02em; }
+
+html.dark .markdown-body h1 {
+  text-align: center;
+  font-variant: small-caps;
+  border-top: 2px solid var(--vb-border);
+  border-bottom: 2px solid var(--vb-border);
+  padding: 12px 0;
+}
+
+html.dark .markdown-body h2 {
+  display: inline-block;
+  padding-bottom: 6px;
+  border-bottom: 2px solid rgba(245, 158, 11, 0.25);
+}
+
+html.dark .markdown-body blockquote {
+  border: 0;
+  border-left: 3px solid rgba(245, 158, 11, 0.35);
+  background: rgba(2, 6, 23, 0.45);
+  padding: 12px 14px;
+}
+html.dark .markdown-body blockquote::before {
+  content: "❝";
+  color: rgba(245, 158, 11, 0.35);
+  font-size: 28px;
+  line-height: 1;
+  margin-right: 6px;
+}
+
+html.dark .markdown-body a {
+  color: rgba(226, 232, 240, 0.92);
+  text-decoration: none;
+  background: linear-gradient(transparent 60%, rgba(245, 158, 11, 0.18) 0);
+}
+html.dark .markdown-body a:hover {
+  background: linear-gradient(transparent 60%, rgba(245, 158, 11, 0.28) 0);
+}
+
+html.dark .markdown-body :not(pre) > code {
+  background: rgba(226, 232, 240, 0.08);
+  border: 1px solid rgba(226, 232, 240, 0.14);
+  border-radius: 8px;
+  padding: 0.15em 0.45em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+html.dark .markdown-body .code-block-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.14);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: rgba(2, 6, 23, 0.55);
+  border-bottom: 1px dashed rgba(226, 232, 240, 0.16);
+}
+
+html.dark .markdown-body table {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.14);
+  background: rgba(2, 6, 23, 0.40);
+}
+html.dark .markdown-body table th { background: rgba(2, 6, 23, 0.60); }
+html.dark .markdown-body table tbody tr:hover td { background: rgba(245, 158, 11, 0.06); }
+
+html.dark .markdown-body hr {
+  border: 0;
+  height: 10px;
+  background:
+    linear-gradient(90deg, transparent, rgba(226, 232, 240, 0.35), transparent) center/100% 1px no-repeat,
+    radial-gradient(circle, rgba(245, 158, 11, 0.35) 0 2px, transparent 2.5px) center/28px 10px repeat-x;
+  opacity: 0.8;
+}
+
+

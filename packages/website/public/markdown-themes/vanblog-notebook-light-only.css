@@ -1,0 +1,167 @@
+/* Vanblog Notebook（仅亮色生效）：笔记本横线纸 + 胶带标题 + 便签引用 */
+html:not(.dark) .markdown-body {
+  --vb-ink: #1f2937;
+  --vb-muted: #6b7280;
+  --vb-line: rgba(59, 130, 246, 0.12);
+  --vb-line-strong: rgba(239, 68, 68, 0.18);
+  --vb-paper: rgba(255, 255, 255, 0.78);
+  --vb-sticky: rgba(255, 243, 196, 0.92);
+  --vb-accent: #ef4444;
+  --vb-radius: 14px;
+
+  color: var(--vb-ink);
+  position: relative;
+}
+
+html:not(.dark) .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: calc(var(--vb-radius) + 12px);
+  background:
+    linear-gradient(to bottom, transparent 0 29px, var(--vb-line) 29px 30px) 0 0/100% 30px repeat-y,
+    linear-gradient(to right, var(--vb-line-strong), var(--vb-line-strong)) 44px 0/3px 100% no-repeat,
+    linear-gradient(135deg, rgba(255, 243, 196, 0.05), rgba(255, 255, 255, 0.02));
+  opacity: 1;
+}
+
+html:not(.dark) .markdown-body > p,
+html:not(.dark) .markdown-body > ul,
+html:not(.dark) .markdown-body > ol,
+html:not(.dark) .markdown-body > blockquote,
+html:not(.dark) .markdown-body > table,
+html:not(.dark) .markdown-body > pre,
+html:not(.dark) .markdown-body > h1,
+html:not(.dark) .markdown-body > h2,
+html:not(.dark) .markdown-body > h3,
+html:not(.dark) .markdown-body > h4 {
+  background: var(--vb-paper);
+  border-radius: var(--vb-radius);
+  padding: 10px 12px;
+}
+
+html:not(.dark) .markdown-body p {
+  line-height: 2.2;
+  letter-spacing: 0.3px;
+  font-size: 16px;
+}
+
+/* 标题：胶带效果 */
+html:not(.dark) .markdown-body h1,
+html:not(.dark) .markdown-body h2 {
+  border: none;
+  position: relative;
+  padding: 14px 14px 14px 52px;
+}
+
+html:not(.dark) .markdown-body h1::before,
+html:not(.dark) .markdown-body h2::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 32px;
+  height: 18px;
+  transform: translateY(-50%) rotate(-8deg);
+  border-radius: 7px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.22), rgba(59, 130, 246, 0.12));
+  box-shadow: 0 10px 22px rgba(59, 130, 246, 0.15);
+  transition: transform 0.3s ease;
+}
+
+html:not(.dark) .markdown-body h1:hover::before,
+html:not(.dark) .markdown-body h2:hover::before {
+  transform: translateY(-50%) rotate(-4deg);
+}
+
+html:not(.dark) .markdown-body h1::after,
+html:not(.dark) .markdown-body h2::after {
+  content: "";
+  position: absolute;
+  inset: 8px 10px 8px 10px;
+  border-radius: var(--vb-radius);
+  border: 1px dashed rgba(17, 24, 39, 0.10);
+  pointer-events: none;
+}
+
+/* 引用：便签纸 */
+html:not(.dark) .markdown-body blockquote {
+  border: none;
+  background: var(--vb-sticky);
+  padding: 16px 16px 16px 18px;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.12);
+  transform: rotate(-0.5deg);
+  transition: transform 0.2s ease;
+}
+
+html:not(.dark) .markdown-body blockquote:hover {
+  transform: rotate(0deg);
+}
+
+html:not(.dark) .markdown-body blockquote::before {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.28);
+}
+
+html:not(.dark) .markdown-body blockquote::after {
+  content: "";
+  position: absolute;
+  right: 11px;
+  top: 11px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(17, 24, 39, 0.18);
+}
+
+/* 列表：更“手写感”的 marker */
+html:not(.dark) .markdown-body ul > li::marker {
+  color: var(--vb-accent);
+}
+
+/* 链接：像批注 */
+html:not(.dark) .markdown-body a {
+  color: var(--vb-ink);
+  text-decoration: none;
+  border-bottom: 2px solid rgba(239, 68, 68, 0.35);
+}
+
+html:not(.dark) .markdown-body a:hover {
+  border-bottom-color: rgba(239, 68, 68, 0.75);
+}
+
+/* 代码：像贴纸 */
+html:not(.dark) .markdown-body :not(pre) > code {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  border-radius: 10px;
+  padding: 0.15em 0.45em;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper {
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+}
+
+/* 分割线：手账撕纸 */
+html:not(.dark) .markdown-body hr {
+  border: none;
+  height: 12px;
+  background:
+    repeating-linear-gradient(90deg, rgba(239, 68, 68, 0.0) 0 10px, rgba(239, 68, 68, 0.18) 10px 12px);
+  border-radius: 999px;
+  opacity: 0.8;
+}
+
+

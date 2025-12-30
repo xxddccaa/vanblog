@@ -31,7 +31,7 @@
   text-align: left;
   position: relative;
   z-index: 0;
-  background-color: #1f2226;
+  background-color: #121212;
 }
 
 .markdown-body::before {
@@ -247,11 +247,11 @@
   margin: 0.4rem 0;
 }
 
-/* 引用块 */
+/* 引用块 - 修复图标遮挡问题 */
 .markdown-body blockquote {
   position: relative;
   margin: 20px 0;
-  padding: 18px 20px 18px 48px;
+  padding: 18px 20px 18px 52px; /* 增加左边距从 48px 到 52px */
   background-color: #1e1b1d;
   border: none;
   border-radius: 16px;
@@ -263,9 +263,9 @@
 .markdown-body blockquote::before {
   content: "✨";
   position: absolute;
-  left: 16px;
-  top: 18px;
-  font-size: 20px;
+  left: 18px; /* 从 16px 调整到 18px */
+  top: 20px; /* 从 18px 调整到 20px，让它更居中 */
+  font-size: 18px; /* 从 20px 缩小到 18px，避免太大 */
   line-height: 1;
 }
 
@@ -397,5 +397,6 @@
   background-color: #3e2723;
   color: #ffccbc;
 }
+
 
 

@@ -1,0 +1,76 @@
+/* Vanblog Nord（仅暗色生效）：阅读舒适——北欧暗色（低刺激、层次清晰） */
+html.dark .markdown-body {
+  --vb-text: rgba(229, 233, 240, 0.92);
+  --vb-muted: rgba(216, 222, 233, 0.78);
+  --vb-accent: #88c0d0;
+  --vb-accent-2: #81a1c1;
+  --vb-line: rgba(229, 233, 240, 0.14);
+  --vb-soft: rgba(136, 192, 208, 0.08);
+  color: var(--vb-text);
+  line-height: 2.05;
+  letter-spacing: 0.2px;
+}
+
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3 { border: 0; }
+
+html.dark .markdown-body h1 {
+  text-align: center;
+  padding-bottom: 12px;
+  position: relative;
+}
+html.dark .markdown-body h1::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 56px;
+  height: 3px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, var(--vb-accent), var(--vb-accent-2));
+  opacity: 0.85;
+}
+
+html.dark .markdown-body a {
+  color: rgba(136, 192, 208, 0.95);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(136, 192, 208, 0.25);
+}
+html.dark .markdown-body a:hover { border-bottom-color: rgba(129, 161, 193, 0.55); }
+
+html.dark .markdown-body blockquote {
+  border: 0;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.42);
+  border: 1px solid rgba(136, 192, 208, 0.12);
+  padding: 12px 14px;
+}
+
+html.dark .markdown-body :not(pre) > code {
+  background: rgba(136, 192, 208, 0.10);
+  border: 1px solid rgba(136, 192, 208, 0.16);
+  border-radius: 10px;
+  padding: 0.15em 0.45em;
+}
+
+html.dark .markdown-body .code-block-wrapper {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--vb-line);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: rgba(2, 6, 23, 0.55);
+  border-bottom: 1px solid var(--vb-line);
+}
+
+html.dark .markdown-body hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(136, 192, 208, 0.35), transparent);
+  opacity: 0.85;
+}
+
+

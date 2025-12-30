@@ -1,0 +1,131 @@
+/* Vanblog Pixel（仅暗色生效）：像素/8-bit 暗色（CRT 扫描线 + 像素边框） */
+html.dark .markdown-body {
+  --vb-text: rgba(226, 232, 240, 0.92);
+  --vb-muted: rgba(148, 163, 184, 0.85);
+  --vb-accent: #22c55e;
+  --vb-accent-2: #60a5fa;
+  --vb-border: rgba(34, 197, 94, 0.18);
+  color: var(--vb-text);
+  position: relative;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+html.dark .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    repeating-linear-gradient(0deg, rgba(34, 197, 94, 0.06) 0 1px, transparent 1px 5px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.08) 1px, transparent 1px) 0 0/18px 18px;
+  opacity: 0.55;
+}
+
+html.dark .markdown-body p { line-height: 1.95; }
+
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3 {
+  border: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+html.dark .markdown-body h1 {
+  padding: 14px 16px;
+  background: rgba(2, 6, 23, 0.65);
+  border: 3px solid rgba(34, 197, 94, 0.40);
+  box-shadow: 
+    8px 8px 0 rgba(96, 165, 250, 0.28),
+    0 0 20px rgba(34, 197, 94, 0.15);
+  transition: all 0.1s steps(2);
+  position: relative;
+}
+
+html.dark .markdown-body h1:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 
+    10px 10px 0 rgba(96, 165, 250, 0.35),
+    0 0 25px rgba(34, 197, 94, 0.20);
+}
+
+html.dark .markdown-body h2 {
+  display: inline-block;
+  padding: 10px 14px;
+  background: rgba(2, 6, 23, 0.50);
+  border: 3px solid rgba(96, 165, 250, 0.38);
+  box-shadow: 6px 6px 0 rgba(34, 197, 94, 0.25);
+  transition: all 0.1s steps(2);
+}
+
+html.dark .markdown-body h2:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 rgba(34, 197, 94, 0.32);
+}
+
+html.dark .markdown-body blockquote {
+  border: 0;
+  padding: 12px 12px 12px 14px;
+  background: rgba(2, 6, 23, 0.45);
+  border: 2px dashed rgba(34, 197, 94, 0.22);
+  box-shadow: 6px 6px 0 rgba(96, 165, 250, 0.14);
+}
+
+html.dark .markdown-body a {
+  color: rgba(134, 239, 172, 0.95);
+  text-decoration: none;
+  border-bottom: 2px solid rgba(34, 197, 94, 0.45);
+}
+html.dark .markdown-body a:hover { border-bottom-color: rgba(96, 165, 250, 0.60); }
+
+html.dark .markdown-body :not(pre) > code {
+  background: rgba(34, 197, 94, 0.12);
+  border: 2px solid rgba(34, 197, 94, 0.25);
+  padding: 0.15em 0.45em;
+  box-shadow: 2px 2px 0 rgba(96, 165, 250, 0.15);
+  font-weight: 500;
+}
+
+html.dark .markdown-body .code-block-wrapper {
+  border: 3px solid rgba(34, 197, 94, 0.25);
+  box-shadow: 10px 10px 0 rgba(96, 165, 250, 0.22);
+  border-radius: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+html.dark .markdown-body .code-block-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, 
+    rgba(34, 197, 94, 0.4) 0 4px, 
+    rgba(96, 165, 250, 0.3) 4px 8px);
+  z-index: 1;
+}
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: rgba(2, 6, 23, 0.55);
+  border-bottom: 2px solid rgba(34, 197, 94, 0.12);
+}
+
+html.dark .markdown-body table {
+  border-radius: 0;
+  overflow: hidden;
+  border: 2px solid rgba(34, 197, 94, 0.18);
+  background: rgba(2, 6, 23, 0.40);
+}
+html.dark .markdown-body table th { background: rgba(2, 6, 23, 0.60); }
+html.dark .markdown-body table tbody tr:hover td { background: rgba(34, 197, 94, 0.06); }
+
+html.dark .markdown-body hr {
+  border: 0;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, rgba(34, 197, 94, 0.0) 0 10px, rgba(34, 197, 94, 0.30) 10px 12px);
+  opacity: 0.7;
+}
+
+

@@ -1,0 +1,19 @@
+/* Vanblog Paper（仅亮色生效）：基于 Phycat Cherry Light Only 的排版，替换为更清爽的纸张蓝配色 */
+@import url("./phycat-cherry-light-only.css");
+
+html:not(.dark) .markdown-body {
+  --head-title-color: #2563eb;
+  --head-title-h2-color: #ffffff;
+  --head-title-h2-background: linear-gradient(to right, #bfdbfe, #2563eb, #bfdbfe);
+
+  --element-color: #2563eb;
+  --element-color-deep: #1d4ed8;
+  --element-color-shallow: #bfdbfe;
+  --element-color-so-shallow: #eaf2ff;
+  --element-color-soo-shallow: #f5f9ff;
+
+  --element-color-linecode: #1e3a8a;
+  --element-color-linecode-background: #eaf2ff;
+}
+
+

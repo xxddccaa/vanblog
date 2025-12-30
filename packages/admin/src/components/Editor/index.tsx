@@ -26,7 +26,7 @@ import { Heading } from './plugins/heading';
 import { customCodeBlock } from './plugins/codeBlock';
 import { LinkTarget } from './plugins/linkTarget';
 import { smartCodeBlock } from './plugins/smartCodeBlock';
-import { getLayoutConfig } from '@/services/van-blog/api';
+import { getSiteInfo } from '@/services/van-blog/api';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -54,18 +54,81 @@ export default function EditorComponent(props: {
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
-  const [codeMaxLines, setCodeMaxLines] = useState(15);
-  
+
+  // 编辑器预览：默认不折叠代码块（避免编辑时还要点“展开代码”）
+  const EDITOR_CODE_MAX_LINES = 1000000;
+
+  // 让后台编辑器也支持前台同款的 html.dark / html:not(.dark) 主题选择器
   useEffect(() => {
-    const fetchLayoutConfig = async () => {
+    const root = document.documentElement;
+    const hadDark = root.classList.contains('dark');
+    const shouldDark = navTheme.toLowerCase().includes('dark');
+
+    if (shouldDark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+
+    return () => {
+      // 卸载时恢复初始状态，避免影响其它后台页面
+      if (hadDark) root.classList.add('dark');
+      else root.classList.remove('dark');
+    };
+  }, [navTheme]);
+
+  // 在后台编辑器中注入站点配置的 Markdown 主题 CSS（亮/暗两套）
+  useEffect(() => {
+    let cancelled = false;
+    const LINK_ID_LIGHT = 'vanblog-admin-markdown-theme-light';
+    const LINK_ID_DARK = 'vanblog-admin-markdown-theme-dark';
+
+    const upsertLink = (id: string, href?: string) => {
+      const head = document.head;
+      const existed = document.getElementById(id) as HTMLLinkElement | null;
+      if (!href) {
+        existed?.remove();
+        return;
+      }
+      if (existed) {
+        if (existed.href !== new URL(href, window.location.href).href) {
+          existed.href = href;
+        }
+        return;
+      }
+      const link = document.createElement('link');
+      link.id = id;
+      link.rel = 'stylesheet';
+      link.href = href;
+      head.appendChild(link);
+    };
+
+    const run = async () => {
       try {
-        const { data } = await getLayoutConfig();
-        setCodeMaxLines(data?.codeMaxLines || 15);
-      } catch (error) {
-        console.error('Failed to fetch layout config:', error);
+        const { data } = await getSiteInfo();
+        if (cancelled) return;
+        const lightUrl =
+          data?.markdownLightThemeUrl ||
+          data?.markdownLightThemePreset ||
+          '/markdown-themes/phycat-cherry-light-only.css';
+        const darkUrl =
+          data?.markdownDarkThemeUrl ||
+          data?.markdownDarkThemePreset ||
+          '/markdown-themes/phycat-dark-only.css';
+        upsertLink(LINK_ID_LIGHT, lightUrl);
+        upsertLink(LINK_ID_DARK, darkUrl);
+      } catch (e) {
+        // 不阻塞编辑器：拿不到配置就按默认主题
+        upsertLink(LINK_ID_LIGHT, '/markdown-themes/phycat-cherry-light-only.css');
+        upsertLink(LINK_ID_DARK, '/markdown-themes/phycat-dark-only.css');
       }
     };
-    fetchLayoutConfig();
+
+    run();
+    return () => {
+      cancelled = true;
+      // 不移除link：保留主题对编辑器体验更稳定；如果你希望离开编辑页就移除，可以在这里 remove。
+    };
   }, []);
   
   const plugins = useMemo(() => {
@@ -87,11 +150,11 @@ export default function EditorComponent(props: {
       rawHTML(),
       historyIcon(),
       Heading(),
-      customCodeBlock(codeMaxLines),
+      customCodeBlock(EDITOR_CODE_MAX_LINES),
       LinkTarget(),
       smartCodeBlock(),
     ];
-  }, [codeMaxLines]);
+  }, [setLoading]);
 
   return (
     <div style={{ height: '100%' }} className={themeClass}>

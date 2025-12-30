@@ -1,0 +1,184 @@
+/* Vanblog Neon（仅暗色生效）：赛博霓虹 + 发光标题 + 玻璃面板代码块 */
+html.dark .markdown-body {
+  --vb-accent: #22d3ee;
+  --vb-accent-2: #a78bfa;
+  --vb-accent-3: #fb7185;
+  --vb-text: rgba(226, 232, 240, 0.92);
+  --vb-muted: rgba(148, 163, 184, 0.85);
+  --vb-panel: rgba(15, 23, 42, 0.62);
+  --vb-border: rgba(34, 211, 238, 0.18);
+  --vb-shadow: 0 18px 46px rgba(34, 211, 238, 0.10);
+  --vb-radius: 18px;
+
+  color: var(--vb-text);
+  position: relative;
+}
+
+html.dark .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: calc(var(--vb-radius) + 14px);
+  background:
+    radial-gradient(700px 280px at 15% 10%, rgba(34, 211, 238, 0.22), transparent 60%),
+    radial-gradient(680px 280px at 85% 20%, rgba(167, 139, 250, 0.22), transparent 60%),
+    radial-gradient(520px 260px at 50% 92%, rgba(251, 113, 133, 0.14), transparent 55%);
+  opacity: 1;
+}
+
+html.dark .markdown-body p {
+  color: var(--vb-text);
+  line-height: 2.05;
+}
+
+html.dark .markdown-body h1 {
+  border: 0;
+  text-align: center;
+  padding: 18px 16px 20px;
+  border-radius: var(--vb-radius);
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  box-shadow: 
+    var(--vb-shadow),
+    0 0 30px rgba(34, 211, 238, 0.15),
+    inset 0 0 25px rgba(34, 211, 238, 0.05);
+  text-shadow: 
+    0 0 20px rgba(34, 211, 238, 0.45),
+    0 0 35px rgba(167, 139, 250, 0.25);
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+html.dark .markdown-body h1:hover {
+  text-shadow: 
+    0 0 25px rgba(34, 211, 238, 0.65),
+    0 0 45px rgba(167, 139, 250, 0.35);
+  box-shadow: 
+    var(--vb-shadow),
+    0 0 40px rgba(34, 211, 238, 0.25),
+    inset 0 0 30px rgba(34, 211, 238, 0.08);
+}
+
+html.dark .markdown-body h2 {
+  border: 0;
+  display: inline-block;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.20), rgba(167, 139, 250, 0.20));
+  box-shadow: 
+    var(--vb-shadow),
+    0 0 20px rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  transition: all 0.3s ease;
+}
+
+html.dark .markdown-body h2:hover {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.28), rgba(167, 139, 250, 0.28));
+  box-shadow: 
+    var(--vb-shadow),
+    0 0 30px rgba(34, 211, 238, 0.22);
+  text-shadow: 0 0 12px rgba(167, 139, 250, 0.3);
+}
+
+html.dark .markdown-body h3 {
+  border: 0;
+  padding-left: 12px;
+  position: relative;
+}
+html.dark .markdown-body h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 6px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--vb-accent), var(--vb-accent-2));
+  box-shadow: 
+    0 0 20px rgba(34, 211, 238, 0.25),
+    0 0 35px rgba(167, 139, 250, 0.15);
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(34, 211, 238, 0.25),
+      0 0 35px rgba(167, 139, 250, 0.15);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(34, 211, 238, 0.40),
+      0 0 50px rgba(167, 139, 250, 0.25);
+  }
+}
+
+html.dark .markdown-body blockquote {
+  border: 0;
+  background: var(--vb-panel);
+  border: 1px solid rgba(34, 211, 238, 0.14);
+  box-shadow: var(--vb-shadow);
+  border-radius: var(--vb-radius);
+  padding: 14px 14px 14px 18px;
+  position: relative;
+}
+
+html.dark .markdown-body blockquote::before {
+  content: "▍";
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  color: var(--vb-accent);
+  opacity: 0.9;
+}
+
+html.dark .markdown-body a {
+  color: rgba(34, 211, 238, 0.95);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.35);
+}
+html.dark .markdown-body a:hover {
+  border-bottom-color: rgba(167, 139, 250, 0.55);
+}
+
+html.dark .markdown-body :not(pre) > code {
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  border-radius: 10px;
+  padding: 0.2em 0.5em;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.08);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+html.dark .markdown-body .code-block-wrapper {
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  box-shadow: var(--vb-shadow);
+}
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: rgba(15, 23, 42, 0.50);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+html.dark .markdown-body table {
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  background: rgba(15, 23, 42, 0.45);
+}
+html.dark .markdown-body table tbody tr:hover td {
+  background: rgba(34, 211, 238, 0.06);
+}
+
+html.dark .markdown-body hr {
+  border: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.55), rgba(167, 139, 250, 0.55), transparent);
+  opacity: 0.9;
+}
+
+

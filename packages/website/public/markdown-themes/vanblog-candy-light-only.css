@@ -1,0 +1,212 @@
+/* Vanblog Candy（仅亮色生效）：糖果风 + 点阵纸背景 + 更明显的标题/引用/代码块视觉 */
+html:not(.dark) .markdown-body {
+  --vb-accent: #ff4d8d;
+  --vb-accent-2: #7c3aed;
+  --vb-text: #1f2937;
+  --vb-muted: #6b7280;
+  --vb-panel: rgba(255, 255, 255, 0.75);
+  --vb-panel-2: rgba(255, 245, 250, 0.85);
+  --vb-border: rgba(255, 77, 141, 0.18);
+  --vb-shadow: 0 10px 30px rgba(255, 77, 141, 0.12);
+  --vb-code-bg: rgba(255, 77, 141, 0.08);
+  --vb-code-border: rgba(255, 77, 141, 0.22);
+  --vb-radius: 16px;
+
+  color: var(--vb-text);
+  position: relative;
+}
+
+html:not(.dark) .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -12px -12px -12px -12px;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: calc(var(--vb-radius) + 10px);
+  background:
+    radial-gradient(circle at 12px 12px, rgba(255, 77, 141, 0.14) 0 1px, transparent 1.5px) 0 0/24px 24px,
+    radial-gradient(circle at 12px 12px, rgba(124, 58, 237, 0.10) 0 1px, transparent 1.5px) 12px 12px/24px 24px;
+  opacity: 0.9;
+}
+
+html:not(.dark) .markdown-body > * {
+  position: relative;
+}
+
+html:not(.dark) .markdown-body p {
+  color: var(--vb-text);
+  line-height: 2.05;
+}
+
+/* 标题：糖果条纹 + hover 微动效 */
+html:not(.dark) .markdown-body h1,
+html:not(.dark) .markdown-body h2,
+html:not(.dark) .markdown-body h3 {
+  border: none;
+  margin-top: 1.6em;
+  margin-bottom: 0.8em;
+}
+
+html:not(.dark) .markdown-body h1 {
+  font-size: 2.0rem;
+  text-align: center;
+  padding: 0.65rem 1.1rem 0.85rem;
+  border-radius: var(--vb-radius);
+  background: linear-gradient(135deg, rgba(255, 77, 141, 0.12), rgba(124, 58, 237, 0.10));
+  border: 1px solid rgba(255, 77, 141, 0.12);
+  box-shadow: 
+    var(--vb-shadow),
+    0 0 20px rgba(255, 77, 141, 0.08);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: all 0.3s ease;
+}
+
+html:not(.dark) .markdown-body h1:hover {
+  transform: scale(1.01);
+  box-shadow: 
+    0 12px 35px rgba(255, 77, 141, 0.18),
+    0 0 30px rgba(255, 77, 141, 0.12);
+}
+
+html:not(.dark) .markdown-body h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.3rem 0.6rem 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 77, 141, 0.18), rgba(124, 58, 237, 0.14));
+}
+
+html:not(.dark) .markdown-body h2::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--vb-accent), var(--vb-accent-2));
+  box-shadow: 
+    0 6px 18px rgba(255, 77, 141, 0.30),
+    0 0 12px rgba(255, 77, 141, 0.15);
+  animation: candy-spin 3s linear infinite;
+}
+
+@keyframes candy-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+html:not(.dark) .markdown-body h3 {
+  padding-left: 12px;
+  position: relative;
+}
+
+html:not(.dark) .markdown-body h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 5px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--vb-accent), var(--vb-accent-2));
+}
+
+html:not(.dark) .markdown-body h1:hover,
+html:not(.dark) .markdown-body h2:hover,
+html:not(.dark) .markdown-body h3:hover {
+  transform: translateY(-1px);
+  transition: transform 180ms ease;
+}
+
+/* 引用块：卡片 + 角标 */
+html:not(.dark) .markdown-body blockquote {
+  border: 0;
+  margin: 1.1rem 0;
+  padding: 1.0rem 1.0rem 1.0rem 1.2rem;
+  border-radius: var(--vb-radius);
+  background: var(--vb-panel-2);
+  box-shadow: var(--vb-shadow);
+  position: relative;
+}
+
+html:not(.dark) .markdown-body blockquote::before {
+  content: "✦";
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  color: var(--vb-accent);
+  opacity: 0.85;
+  font-size: 1.2em;
+  animation: candy-twinkle 2s ease-in-out infinite;
+}
+
+@keyframes candy-twinkle {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+html:not(.dark) .markdown-body blockquote p {
+  margin: 0.4rem 0;
+  color: var(--vb-text);
+}
+
+/* 链接：下划线渐显 */
+html:not(.dark) .markdown-body a {
+  color: var(--vb-accent-2);
+  text-decoration: none;
+  background-image: linear-gradient(90deg, rgba(124, 58, 237, 0.35), rgba(255, 77, 141, 0.35));
+  background-repeat: no-repeat;
+  background-size: 0% 2px;
+  background-position: 0 100%;
+  transition: background-size 220ms ease;
+}
+
+html:not(.dark) .markdown-body a:hover {
+  background-size: 100% 2px;
+}
+
+/* 代码：更统一的“糖果芯片” */
+html:not(.dark) .markdown-body :not(pre) > code {
+  background: var(--vb-code-bg);
+  border: 1px solid var(--vb-code-border);
+  border-radius: 10px;
+  padding: 0.15em 0.45em;
+  margin: 0 0.15em;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper {
+  border-radius: var(--vb-radius);
+  border: 1px solid rgba(255, 77, 141, 0.16);
+  box-shadow: var(--vb-shadow);
+  overflow: hidden;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper .header-right {
+  background: linear-gradient(90deg, rgba(255, 77, 141, 0.08), rgba(124, 58, 237, 0.06));
+  border-bottom: 1px solid rgba(255, 77, 141, 0.12);
+}
+
+/* 表格：圆角 + 轻 zebra */
+html:not(.dark) .markdown-body table {
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+  border: 1px solid rgba(255, 77, 141, 0.18);
+  background: var(--vb-panel);
+}
+
+html:not(.dark) .markdown-body table tr:nth-child(2n) td {
+  background: rgba(255, 77, 141, 0.03);
+}
+
+/* 分割线：糖果点线 */
+html:not(.dark) .markdown-body hr {
+  border: 0;
+  height: 12px;
+  background:
+    radial-gradient(circle, rgba(255, 77, 141, 0.65) 0 2.5px, transparent 3px) center/24px 12px repeat-x,
+    radial-gradient(circle, rgba(124, 58, 237, 0.45) 0 1.5px, transparent 2px) center/12px 12px repeat-x;
+  opacity: 0.95;
+  filter: blur(0.3px);
+}
+
+

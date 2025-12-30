@@ -1,0 +1,19 @@
+/* 基于 Phycat Cherry Light Only 主题的配色变体：Phycat Sky（仅亮色生效） */
+@import url("./phycat-cherry-light-only.css");
+
+html:not(.dark) .markdown-body {
+  --head-title-color: #3498db;
+  --head-title-h2-color: #fff;
+  --head-title-h2-background: linear-gradient(to right, #85c1e9, #3498db, #85c1e9);
+
+  --element-color: #3498db;
+  --element-color-deep: #2980b9;
+  --element-color-shallow: #aed6f1;
+  --element-color-so-shallow: #eaf2f8;
+  --element-color-soo-shallow: #f4faff;
+
+  --element-color-linecode: #1a5276;
+  --element-color-linecode-background: #ebf5fb;
+}
+
+

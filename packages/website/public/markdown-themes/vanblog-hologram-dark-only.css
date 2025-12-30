@@ -1,0 +1,152 @@
+/* Vanblog Hologram（仅暗色生效）：视觉冲击——暗色全息虹彩 */
+html.dark .markdown-body {
+  --vb-text: rgba(226, 232, 240, 0.92);
+  --vb-muted: rgba(148, 163, 184, 0.85);
+  --vb-c1: #22d3ee;
+  --vb-c2: #a78bfa;
+  --vb-c3: #fb7185;
+  --vb-radius: 18px;
+  color: var(--vb-text);
+  position: relative;
+}
+
+html.dark .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: calc(var(--vb-radius) + 16px);
+  background:
+    radial-gradient(700px 280px at 20% 10%, rgba(34, 211, 238, 0.24), transparent 60%),
+    radial-gradient(700px 280px at 80% 15%, rgba(167, 139, 250, 0.20), transparent 60%),
+    radial-gradient(520px 240px at 55% 90%, rgba(251, 113, 133, 0.16), transparent 55%),
+    conic-gradient(from 220deg, rgba(34, 211, 238, 0.12), rgba(167, 139, 250, 0.12), rgba(251, 113, 133, 0.10), rgba(34, 211, 238, 0.12));
+  filter: saturate(1.2);
+  opacity: 0.95;
+}
+
+html.dark .markdown-body p { line-height: 2.05; }
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3 { border: 0; }
+
+html.dark .markdown-body h1 {
+  text-align: center;
+  padding: 18px 16px 20px;
+  border-radius: var(--vb-radius);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(167, 139, 250, 0.08), rgba(251, 113, 133, 0.06));
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 
+    0 22px 60px rgba(167, 139, 250, 0.22),
+    0 0 40px rgba(34, 211, 238, 0.12);
+  text-shadow: 
+    0 0 20px rgba(34, 211, 238, 0.35),
+    0 0 35px rgba(167, 139, 250, 0.25);
+  font-weight: 700;
+  position: relative;
+  overflow: hidden;
+}
+
+html.dark .markdown-body h1::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, 
+    rgba(34, 211, 238, 0.15), 
+    rgba(167, 139, 250, 0.15), 
+    rgba(251, 113, 133, 0.15));
+  transform: translateX(-100%);
+  transition: transform 0.8s ease;
+}
+
+html.dark .markdown-body h1:hover::before {
+  transform: translateX(100%);
+}
+
+html.dark .markdown-body h2 {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.20), rgba(167, 139, 250, 0.18), rgba(251, 113, 133, 0.16));
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  box-shadow: 
+    0 8px 24px rgba(167, 139, 250, 0.15),
+    0 0 20px rgba(34, 211, 238, 0.08);
+  transition: all 0.3s ease;
+  animation: hologram-shift 8s linear infinite;
+}
+
+@keyframes hologram-shift {
+  0%, 100% {
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.20), rgba(167, 139, 250, 0.18), rgba(251, 113, 133, 0.16));
+  }
+  33% {
+    background: linear-gradient(90deg, rgba(167, 139, 250, 0.20), rgba(251, 113, 133, 0.18), rgba(34, 211, 238, 0.16));
+  }
+  66% {
+    background: linear-gradient(90deg, rgba(251, 113, 133, 0.20), rgba(34, 211, 238, 0.18), rgba(167, 139, 250, 0.16));
+  }
+}
+
+html.dark .markdown-body blockquote {
+  border: 0;
+  border-radius: var(--vb-radius);
+  background: rgba(2, 6, 23, 0.52);
+  border: 1px solid rgba(34, 211, 238, 0.14);
+  box-shadow: 0 22px 60px rgba(34, 211, 238, 0.10);
+}
+
+html.dark .markdown-body a {
+  color: rgba(34, 211, 238, 0.95);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.35);
+}
+html.dark .markdown-body a:hover { border-bottom-color: rgba(251, 113, 133, 0.55); }
+
+html.dark .markdown-body :not(pre) > code {
+  background: rgba(167, 139, 250, 0.10);
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  border-radius: 10px;
+  padding: 0.15em 0.45em;
+}
+
+html.dark .markdown-body .code-block-wrapper {
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+  border: 1px solid rgba(34, 211, 238, 0.14);
+  box-shadow: 0 22px 60px rgba(167, 139, 250, 0.14);
+}
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.10), rgba(167, 139, 250, 0.08), rgba(251, 113, 133, 0.08));
+  border-bottom: 1px solid rgba(34, 211, 238, 0.10);
+}
+
+html.dark .markdown-body hr {
+  border: 0;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(34, 211, 238, 0.80), 
+    rgba(167, 139, 250, 0.80), 
+    rgba(251, 113, 133, 0.80), 
+    transparent);
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.3);
+  opacity: 0.95;
+  border-radius: 999px;
+  animation: hologram-pulse 3s ease-in-out infinite;
+}
+
+@keyframes hologram-pulse {
+  0%, 100% {
+    opacity: 0.95;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    filter: hue-rotate(10deg);
+  }
+}
+
+

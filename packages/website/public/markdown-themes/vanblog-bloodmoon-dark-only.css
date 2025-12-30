@@ -1,0 +1,125 @@
+/* Vanblog Blood Moon（仅暗色生效）：视觉冲击——深红月蚀（暗色） */
+html.dark .markdown-body {
+  --vb-text: rgba(226, 232, 240, 0.92);
+  --vb-muted: rgba(148, 163, 184, 0.85);
+  --vb-blood: #fb7185;
+  --vb-blood-2: #ef4444;
+  --vb-radius: 16px;
+  color: var(--vb-text);
+  position: relative;
+}
+
+html.dark .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: calc(var(--vb-radius) + 14px);
+  background:
+    radial-gradient(520px 260px at 80% 12%, rgba(239, 68, 68, 0.20), transparent 60%),
+    radial-gradient(520px 260px at 20% 22%, rgba(251, 113, 133, 0.14), transparent 60%),
+    radial-gradient(circle at 88% 12%, rgba(239, 68, 68, 0.18) 0 2px, transparent 2.5px) 0 0/22px 22px;
+  opacity: 0.92;
+}
+
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3 { border: 0; }
+
+html.dark .markdown-body h1 {
+  text-align: center;
+  padding: 18px 16px 20px;
+  border-radius: var(--vb-radius);
+  background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.10), rgba(2, 6, 23, 0.65));
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: 
+    0 22px 60px rgba(239, 68, 68, 0.20),
+    0 0 40px rgba(239, 68, 68, 0.15),
+    inset 0 0 30px rgba(239, 68, 68, 0.05);
+  text-shadow: 
+    0 0 20px rgba(239, 68, 68, 0.35),
+    0 0 35px rgba(251, 113, 133, 0.25);
+  font-weight: 700;
+  transition: all 0.3s ease;
+  animation: bloodmoon-glow 4s ease-in-out infinite;
+}
+
+@keyframes bloodmoon-glow {
+  0%, 100% {
+    box-shadow: 
+      0 22px 60px rgba(239, 68, 68, 0.20),
+      0 0 40px rgba(239, 68, 68, 0.15),
+      inset 0 0 30px rgba(239, 68, 68, 0.05);
+  }
+  50% {
+    box-shadow: 
+      0 24px 65px rgba(239, 68, 68, 0.28),
+      0 0 50px rgba(239, 68, 68, 0.22),
+      inset 0 0 35px rgba(239, 68, 68, 0.08);
+  }
+}
+
+html.dark .markdown-body h2 {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.20), rgba(251, 113, 133, 0.16));
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  box-shadow: 
+    0 8px 24px rgba(239, 68, 68, 0.15),
+    0 0 20px rgba(239, 68, 68, 0.10);
+  transition: all 0.3s ease;
+}
+
+html.dark .markdown-body h2:hover {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.28), rgba(251, 113, 133, 0.24));
+  box-shadow: 
+    0 10px 30px rgba(239, 68, 68, 0.25),
+    0 0 30px rgba(239, 68, 68, 0.18);
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+html.dark .markdown-body blockquote {
+  border: 0;
+  border-radius: var(--vb-radius);
+  background: rgba(2, 6, 23, 0.52);
+  border: 1px solid rgba(239, 68, 68, 0.16);
+  box-shadow: 0 22px 60px rgba(239, 68, 68, 0.10);
+}
+
+html.dark .markdown-body a {
+  color: rgba(251, 113, 133, 0.95);
+  text-decoration: none;
+  border-bottom: 2px solid rgba(239, 68, 68, 0.30);
+}
+html.dark .markdown-body a:hover { border-bottom-color: rgba(251, 113, 133, 0.60); }
+
+html.dark .markdown-body :not(pre) > code {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.20);
+  border-radius: 10px;
+  padding: 0.2em 0.5em;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.08);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+html.dark .markdown-body .code-block-wrapper {
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+  border: 1px solid rgba(239, 68, 68, 0.14);
+  box-shadow: 0 22px 60px rgba(239, 68, 68, 0.12);
+}
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.10), rgba(251, 113, 133, 0.08));
+  border-bottom: 1px solid rgba(239, 68, 68, 0.10);
+}
+
+html.dark .markdown-body hr {
+  border: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.70), rgba(251, 113, 133, 0.70), transparent);
+  opacity: 0.9;
+}
+
+

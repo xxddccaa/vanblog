@@ -1,0 +1,38 @@
+/* Vanblog Graphite（仅暗色生效）：基于 Phycat Dark Only 的排版，中性石墨灰 + 微蓝强调 */
+@import url("./phycat-dark-only.css");
+
+html.dark .markdown-body {
+  --head-title-color: #cbd5e1;
+  --head-title-h2-color: #0b1220;
+  --head-title-h2-background: linear-gradient(to right, #dbeafe, #94a3b8, #dbeafe);
+
+  --element-color: #94a3b8;
+  --element-color-deep: #e2e8f0;
+  --element-color-shallow: #dbeafe;
+
+  --element-color-linecode: #dbeafe;
+  --element-color-linecode-background: #1a2230;
+
+  --vb-panel-bg: #111827;
+  --vb-panel-bg-2: #0f172a;
+  --vb-hover-bg: #1a2230;
+  --vb-border: #273244;
+  --vb-mark-bg: #1b2a3a;
+}
+
+html.dark .markdown-body blockquote { background-color: var(--vb-panel-bg); }
+html.dark .markdown-body a { color: var(--element-color-shallow); }
+html.dark .markdown-body a:hover { background: var(--vb-hover-bg); color: var(--element-color-shallow); }
+html.dark .markdown-body mark { background-color: var(--vb-mark-bg); color: var(--element-color-shallow); }
+html.dark .markdown-body hr { border-top: 3px dashed var(--vb-border); }
+html.dark .markdown-body h4,
+html.dark .markdown-body h5,
+html.dark .markdown-body h6 { color: var(--element-color-shallow); }
+html.dark .markdown-body table { border: 1px solid var(--vb-border); }
+html.dark .markdown-body table th,
+html.dark .markdown-body table td { border-right: 1px solid var(--vb-hover-bg); border-bottom: 1px solid var(--vb-hover-bg); }
+html.dark .markdown-body table th { background-color: var(--vb-panel-bg-2); color: var(--element-color-shallow); }
+html.dark .markdown-body table tbody tr:hover td,
+html.dark .markdown-body table tbody td:hover { background-color: var(--vb-hover-bg); color: var(--element-color-shallow); }
+
+

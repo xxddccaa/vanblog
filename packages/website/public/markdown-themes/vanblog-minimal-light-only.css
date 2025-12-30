@@ -1,0 +1,121 @@
+/* Vanblog Minimal（仅亮色生效）：阅读舒适——极简留白、低噪点、轻强调 */
+html:not(.dark) .markdown-body {
+  --vb-text: #0f172a;
+  --vb-muted: rgba(15, 23, 42, 0.62);
+  --vb-accent: #2563eb;
+  --vb-accent-2: #0ea5e9;
+  --vb-line: rgba(15, 23, 42, 0.10);
+  --vb-soft: rgba(15, 23, 42, 0.04);
+
+  color: var(--vb-text);
+  line-height: 2.1;
+  letter-spacing: 0.3px;
+  font-size: 16px;
+}
+
+html:not(.dark) .markdown-body p,
+html:not(.dark) .markdown-body li {
+  color: var(--vb-text);
+}
+
+html:not(.dark) .markdown-body h1,
+html:not(.dark) .markdown-body h2,
+html:not(.dark) .markdown-body h3 {
+  border: 0;
+  letter-spacing: 0;
+}
+
+html:not(.dark) .markdown-body h1 {
+  text-align: center;
+  font-size: 2.1rem;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 1.2em;
+  color: rgba(15, 23, 42, 0.95);
+}
+
+html:not(.dark) .markdown-body h2 {
+  display: inline-block;
+  padding-bottom: 8px;
+  margin-top: 1.8em;
+  margin-bottom: 0.9em;
+  font-weight: 600;
+  border-bottom: 2.5px solid rgba(37, 99, 235, 0.25);
+  transition: border-color 0.2s ease;
+}
+html:not(.dark) .markdown-body h2:hover {
+  border-bottom-color: rgba(37, 99, 235, 0.45);
+}
+
+html:not(.dark) .markdown-body h3 {
+  position: relative;
+  padding-left: 12px;
+}
+html:not(.dark) .markdown-body h3::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.25em;
+  bottom: 0.25em;
+  width: 4px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.65), rgba(14, 165, 233, 0.55));
+}
+
+html:not(.dark) .markdown-body a {
+  color: var(--vb-accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.25);
+}
+html:not(.dark) .markdown-body a:hover {
+  border-bottom-color: rgba(37, 99, 235, 0.55);
+}
+
+html:not(.dark) .markdown-body blockquote {
+  border: 0;
+  border-radius: 16px;
+  background: rgba(37, 99, 235, 0.03);
+  border-left: 4px solid rgba(37, 99, 235, 0.25);
+  padding: 16px 20px;
+  margin: 1.5em 0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+html:not(.dark) .markdown-body :not(pre) > code {
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 6px;
+  padding: 0.2em 0.5em;
+  font-size: 0.92em;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--vb-line);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+html:not(.dark) .markdown-body .code-block-wrapper .header-right {
+  background: rgba(15, 23, 42, 0.03);
+  border-bottom: 1px solid var(--vb-line);
+}
+
+html:not(.dark) .markdown-body table {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--vb-line);
+  background: rgba(255, 255, 255, 0.60);
+}
+html:not(.dark) .markdown-body table tbody tr:hover td {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+html:not(.dark) .markdown-body hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(15, 23, 42, 0.18), transparent);
+  opacity: 0.9;
+}
+
+

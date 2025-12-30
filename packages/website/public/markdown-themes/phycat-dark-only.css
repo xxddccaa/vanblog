@@ -32,7 +32,7 @@ html.dark .markdown-body {
   text-align: left;
   position: relative;
   z-index: 0;
-  background-color: #1f2226;
+  background-color: transparent;
 }
 
 html.dark .markdown-body::before {

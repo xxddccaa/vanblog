@@ -188,6 +188,9 @@ export interface MetaProps {
     // Markdown 渲染主题 CSS（亮色 / 暗色）
     markdownLightThemeUrl?: string;
     markdownDarkThemeUrl?: string;
+    // Markdown 主题预设选择
+    markdownLightThemePreset?: string;
+    markdownDarkThemePreset?: string;
   };
 }
 export interface PublicMetaProp {

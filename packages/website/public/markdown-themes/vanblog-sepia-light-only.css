@@ -1,0 +1,88 @@
+/* Vanblog Sepia Book（仅亮色生效）：阅读舒适——暖纸张、柔和对比、书籍感 */
+html:not(.dark) .markdown-body {
+  --vb-paper: rgba(255, 250, 240, 0.86);
+  --vb-text: #1f2937;
+  --vb-muted: rgba(31, 41, 55, 0.68);
+  --vb-accent: #9a3412;
+  --vb-border: rgba(31, 41, 55, 0.14);
+  color: var(--vb-text);
+  line-height: 2.1;
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  position: relative;
+}
+
+html:not(.dark) .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(31, 41, 55, 0.04) 0 1px, transparent 1.5px) 0 0/20px 20px,
+    radial-gradient(680px 260px at 50% 0%, rgba(154, 52, 18, 0.08), transparent 60%);
+  opacity: 1;
+}
+
+html:not(.dark) .markdown-body p { text-align: justify; }
+
+html:not(.dark) .markdown-body h1,
+html:not(.dark) .markdown-body h2,
+html:not(.dark) .markdown-body h3 { border: 0; }
+
+html:not(.dark) .markdown-body h1 {
+  text-align: center;
+  font-variant: small-caps;
+  border-top: 2px solid var(--vb-border);
+  border-bottom: 2px solid var(--vb-border);
+  padding: 12px 0;
+}
+
+html:not(.dark) .markdown-body h2 {
+  display: inline-block;
+  padding-bottom: 6px;
+  border-bottom: 2px solid rgba(154, 52, 18, 0.25);
+}
+
+html:not(.dark) .markdown-body blockquote {
+  border: 0;
+  border-left: 3px solid rgba(154, 52, 18, 0.35);
+  background: var(--vb-paper);
+  padding: 12px 14px;
+}
+
+html:not(.dark) .markdown-body a {
+  color: var(--vb-text);
+  text-decoration: none;
+  background: linear-gradient(transparent 60%, rgba(154, 52, 18, 0.18) 0);
+}
+html:not(.dark) .markdown-body a:hover {
+  background: linear-gradient(transparent 60%, rgba(154, 52, 18, 0.30) 0);
+}
+
+html:not(.dark) .markdown-body :not(pre) > code {
+  background: rgba(31, 41, 55, 0.06);
+  border: 1px solid rgba(31, 41, 55, 0.14);
+  border-radius: 8px;
+  padding: 0.15em 0.45em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(31, 41, 55, 0.16);
+  box-shadow: 0 18px 40px rgba(31, 41, 55, 0.08);
+}
+html:not(.dark) .markdown-body .code-block-wrapper .header-right {
+  background: rgba(255, 250, 240, 0.85);
+  border-bottom: 1px dashed rgba(31, 41, 55, 0.18);
+}
+
+html:not(.dark) .markdown-body hr {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(31, 41, 55, 0.28), transparent);
+  opacity: 0.9;
+}
+
+

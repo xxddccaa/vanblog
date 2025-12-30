@@ -1,0 +1,38 @@
+/* Phycat Sakura Dark（仅暗色生效）：在 Phycat Dark Only 基础上替换为夜樱粉配色，并覆盖硬编码背景色 */
+@import url("./phycat-dark-only.css");
+
+html.dark .markdown-body {
+  --head-title-color: #ff9ab1;
+  --head-title-h2-color: #1b1116;
+  --head-title-h2-background: linear-gradient(to right, #ffd1df, #ff7096, #ffd1df);
+
+  --element-color: #ff7096;
+  --element-color-deep: #e91e63;
+  --element-color-shallow: #ffd1df;
+
+  --element-color-linecode: #ffd1df;
+  --element-color-linecode-background: #2a121c;
+
+  --vb-panel-bg: #1b1116;
+  --vb-panel-bg-2: #22131a;
+  --vb-hover-bg: #2a121c;
+  --vb-border: #4a2331;
+  --vb-mark-bg: #3a1a26;
+}
+
+html.dark .markdown-body blockquote { background-color: var(--vb-panel-bg); }
+html.dark .markdown-body a { color: var(--element-color-shallow); }
+html.dark .markdown-body a:hover { background: var(--vb-hover-bg); color: var(--element-color-shallow); }
+html.dark .markdown-body mark { background-color: var(--vb-mark-bg); color: var(--element-color-shallow); }
+html.dark .markdown-body hr { border-top: 3px dashed var(--vb-border); }
+html.dark .markdown-body h4,
+html.dark .markdown-body h5,
+html.dark .markdown-body h6 { color: var(--element-color-shallow); }
+html.dark .markdown-body table { border: 1px solid var(--vb-border); }
+html.dark .markdown-body table th,
+html.dark .markdown-body table td { border-right: 1px solid var(--vb-hover-bg); border-bottom: 1px solid var(--vb-hover-bg); }
+html.dark .markdown-body table th { background-color: var(--vb-panel-bg-2); color: var(--element-color-shallow); }
+html.dark .markdown-body table tbody tr:hover td,
+html.dark .markdown-body table tbody td:hover { background-color: var(--vb-hover-bg); color: var(--element-color-shallow); }
+
+

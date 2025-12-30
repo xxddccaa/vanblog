@@ -1,0 +1,121 @@
+/* Vanblog Pixel（仅亮色生效）：像素/8-bit 风格（像素边框、像素阴影、方块标题） */
+html:not(.dark) .markdown-body {
+  --vb-bg: rgba(255, 255, 255, 0.78);
+  --vb-text: #111827;
+  --vb-muted: rgba(17, 24, 39, 0.62);
+  --vb-ink: #111827;
+  --vb-accent: #3b82f6;
+  --vb-accent-2: #f97316;
+  --vb-border: rgba(17, 24, 39, 0.16);
+  --vb-px: 3px;
+  color: var(--vb-text);
+  position: relative;
+}
+
+html:not(.dark) .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(17, 24, 39, 0.05) 1px, transparent 1px) 0 0/18px 18px,
+    linear-gradient(180deg, rgba(17, 24, 39, 0.05) 1px, transparent 1px) 0 0/18px 18px;
+  opacity: 0.55;
+}
+
+html:not(.dark) .markdown-body {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* 像素边框工具 */
+html:not(.dark) .markdown-body .vb-pixel {
+  border: 1px solid var(--vb-border);
+  box-shadow:
+    var(--vb-px) var(--vb-px) 0 rgba(17, 24, 39, 0.18);
+}
+
+html:not(.dark) .markdown-body p { line-height: 1.95; }
+
+html:not(.dark) .markdown-body h1,
+html:not(.dark) .markdown-body h2,
+html:not(.dark) .markdown-body h3 {
+  border: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+html:not(.dark) .markdown-body h1 {
+  padding: 12px 14px;
+  background: rgba(59, 130, 246, 0.10);
+  border: 2px solid rgba(59, 130, 246, 0.35);
+  box-shadow: 6px 6px 0 rgba(249, 115, 22, 0.30);
+}
+
+html:not(.dark) .markdown-body h2 {
+  display: inline-block;
+  padding: 8px 10px;
+  background: rgba(249, 115, 22, 0.10);
+  border: 2px solid rgba(249, 115, 22, 0.35);
+  box-shadow: 5px 5px 0 rgba(59, 130, 246, 0.22);
+}
+
+html:not(.dark) .markdown-body blockquote {
+  border: 0;
+  padding: 12px 12px 12px 14px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 2px dashed rgba(17, 24, 39, 0.28);
+  box-shadow: 6px 6px 0 rgba(17, 24, 39, 0.12);
+}
+
+html:not(.dark) .markdown-body ul > li::marker { color: var(--vb-accent); }
+
+html:not(.dark) .markdown-body a {
+  color: var(--vb-ink);
+  text-decoration: none;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.45);
+}
+html:not(.dark) .markdown-body a:hover { border-bottom-color: rgba(249, 115, 22, 0.65); }
+
+html:not(.dark) .markdown-body :not(pre) > code {
+  background: rgba(59, 130, 246, 0.10);
+  border: 2px solid rgba(59, 130, 246, 0.25);
+  padding: 0.12em 0.4em;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper {
+  border: 2px solid rgba(17, 24, 39, 0.22);
+  box-shadow: 8px 8px 0 rgba(59, 130, 246, 0.20);
+  border-radius: 0;
+  overflow: hidden;
+}
+html:not(.dark) .markdown-body .code-block-wrapper .header-right {
+  background: rgba(249, 115, 22, 0.10);
+  border-bottom: 2px solid rgba(17, 24, 39, 0.16);
+}
+
+html:not(.dark) .markdown-body table {
+  border-radius: 0;
+  overflow: hidden;
+  border: 2px solid rgba(17, 24, 39, 0.22);
+  background: rgba(255, 255, 255, 0.65);
+}
+html:not(.dark) .markdown-body table th {
+  background: rgba(59, 130, 246, 0.10);
+}
+html:not(.dark) .markdown-body table tbody tr:hover td {
+  background: rgba(249, 115, 22, 0.08);
+}
+
+html:not(.dark) .markdown-body hr {
+  border: 0;
+  height: 10px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(17, 24, 39, 0.0) 0 10px,
+    rgba(17, 24, 39, 0.30) 10px 12px
+  );
+  opacity: 0.8;
+}
+
+

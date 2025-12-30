@@ -1,0 +1,19 @@
+/* Vanblog Latte（仅亮色生效）：基于 Phycat Cherry Light Only 的排版，替换为拿铁米黄色配色 */
+@import url("./phycat-cherry-light-only.css");
+
+html:not(.dark) .markdown-body {
+  --head-title-color: #b45309;
+  --head-title-h2-color: #ffffff;
+  --head-title-h2-background: linear-gradient(to right, #fde68a, #b45309, #fde68a);
+
+  --element-color: #b45309;
+  --element-color-deep: #92400e;
+  --element-color-shallow: #fcd34d;
+  --element-color-so-shallow: #fffbeb;
+  --element-color-soo-shallow: #fffdf7;
+
+  --element-color-linecode: #92400e;
+  --element-color-linecode-background: #fffbeb;
+}
+
+

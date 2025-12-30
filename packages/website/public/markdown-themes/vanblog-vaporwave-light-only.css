@@ -1,0 +1,134 @@
+/* Vanblog Vaporwave（仅亮色生效）：蒸汽波渐变（霓虹渐变标题、网格日落、玻璃引用） */
+html:not(.dark) .markdown-body {
+  --vb-text: #0b1020;
+  --vb-muted: rgba(11, 16, 32, 0.62);
+  --vb-cyan: #22d3ee;
+  --vb-pink: #fb7185;
+  --vb-purple: #a78bfa;
+  --vb-sun: #fbbf24;
+  --vb-radius: 18px;
+  color: var(--vb-text);
+  position: relative;
+}
+
+html:not(.dark) .markdown-body::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: calc(var(--vb-radius) + 16px);
+  background:
+    linear-gradient(180deg, rgba(251, 191, 36, 0.18), transparent 60%),
+    radial-gradient(700px 280px at 20% 10%, rgba(34, 211, 238, 0.20), transparent 60%),
+    radial-gradient(700px 280px at 80% 15%, rgba(251, 113, 133, 0.16), transparent 60%),
+    linear-gradient(90deg, rgba(167, 139, 250, 0.10) 1px, transparent 1px) 0 60%/24px 24px,
+    linear-gradient(180deg, rgba(167, 139, 250, 0.08) 1px, transparent 1px) 0 60%/24px 24px;
+  opacity: 0.95;
+}
+
+html:not(.dark) .markdown-body p { line-height: 2.05; }
+
+html:not(.dark) .markdown-body h1,
+html:not(.dark) .markdown-body h2,
+html:not(.dark) .markdown-body h3 { border: 0; }
+
+html:not(.dark) .markdown-body h1 {
+  text-align: center;
+  padding: 18px 16px 20px;
+  border-radius: var(--vb-radius);
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.65), 
+    rgba(34, 211, 238, 0.08), 
+    rgba(251, 113, 133, 0.08));
+  border: 1px solid rgba(167, 139, 250, 0.20);
+  box-shadow: 
+    0 18px 46px rgba(167, 139, 250, 0.20),
+    0 0 30px rgba(34, 211, 238, 0.12);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  position: relative;
+  overflow: hidden;
+}
+
+html:not(.dark) .markdown-body h1::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(251, 191, 36, 0.15), 
+    transparent);
+  transform: translateX(-100%);
+  animation: vaporwave-slide 3s ease-in-out infinite;
+}
+
+@keyframes vaporwave-slide {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+
+html:not(.dark) .markdown-body h2 {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.22), rgba(251, 113, 133, 0.20), rgba(167, 139, 250, 0.20));
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  box-shadow: 0 8px 24px rgba(167, 139, 250, 0.15);
+  transition: all 0.3s ease;
+}
+
+html:not(.dark) .markdown-body h2:hover {
+  box-shadow: 0 10px 30px rgba(167, 139, 250, 0.25);
+  transform: translateY(-2px);
+}
+
+html:not(.dark) .markdown-body a {
+  color: #0b1020;
+  text-decoration: none;
+  border-bottom: 2px solid rgba(34, 211, 238, 0.35);
+}
+html:not(.dark) .markdown-body a:hover { border-bottom-color: rgba(251, 113, 133, 0.55); }
+
+html:not(.dark) .markdown-body blockquote {
+  border: 0;
+  border-radius: var(--vb-radius);
+  background: rgba(255, 255, 255, 0.60);
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  box-shadow: 0 18px 46px rgba(34, 211, 238, 0.10);
+}
+
+html:not(.dark) .markdown-body :not(pre) > code {
+  background: rgba(34, 211, 238, 0.10);
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 10px;
+  padding: 0.15em 0.45em;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper {
+  border-radius: var(--vb-radius);
+  overflow: hidden;
+  border: 1px solid rgba(167, 139, 250, 0.16);
+  box-shadow: 0 18px 46px rgba(167, 139, 250, 0.14);
+}
+html:not(.dark) .markdown-body .code-block-wrapper .header-right {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.10), rgba(251, 113, 133, 0.08), rgba(167, 139, 250, 0.08));
+  border-bottom: 1px solid rgba(167, 139, 250, 0.12);
+}
+
+html:not(.dark) .markdown-body hr {
+  border: 0;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(34, 211, 238, 0.70), 
+    rgba(251, 113, 133, 0.70), 
+    rgba(167, 139, 250, 0.70), 
+    rgba(251, 191, 36, 0.65),
+    transparent);
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.2);
+  opacity: 0.95;
+  border-radius: 999px;
+}
+
+
