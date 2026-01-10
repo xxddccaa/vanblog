@@ -50,5 +50,7 @@ services:
       TZ: 'Asia/Shanghai'
     volumes:
       - /root/van/data/mongo:/data/db
-    ports:
-      - 27017:27017
+    # 不暴露端口到宿主机，只允许 Docker 内部网络访问（安全）
+    # 如需本地调试，取消注释下一行（仅绑定到 127.0.0.1）
+    # ports:
+    #   - 127.0.0.1:27017:27017
