@@ -6,11 +6,14 @@ README.md
 .next
 .git
 dist
+!mind-map/dist
+!mind-map/index.html
 staticFolder
 logs
 **/*/node_modules
 **/node_modules
 **/*/dist
+!mind-map/dist
 **/*/.umi
 **/*/.next
 **/*/.git

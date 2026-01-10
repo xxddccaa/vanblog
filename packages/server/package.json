@@ -5,6 +5,11 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "pnpm": {
+    "overrides": {
+      "giget": "^1.2.3"
+    }
+  },
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",

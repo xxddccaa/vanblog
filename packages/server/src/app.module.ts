@@ -50,7 +50,7 @@ import { StaticProvider } from './provider/static/static.provider';
 import { ImgController } from './controller/admin/img/img.controller';
 import { LocalProvider } from './provider/static/local.provider';
 import { SettingController } from './controller/admin/setting/setting.controller';
-import { PicgoProvider } from './provider/static/picgo.provider';
+// import { PicgoProvider } from './provider/static/picgo.provider'; // 临时禁用 PicGo
 import { ViewerTask } from './schedule/viewer.task';
 import { CaddyController } from './controller/admin/caddy/caddy.controller';
 import { CaddyProvider } from './provider/caddy/caddy.provider';
@@ -107,6 +107,9 @@ import { MusicController } from './controller/admin/music/music.controller';
 import { Document, DocumentSchema } from './scheme/document.schema';
 import { DocumentProvider } from './provider/document/document.provider';
 import { DocumentController } from './controller/admin/document/document.controller';
+import { MindMap, MindMapSchema } from './scheme/mindmap.schema';
+import { MindMapProvider } from './provider/mindmap/mindmap.provider';
+import { MindMapController } from './controller/admin/mindmap/mindmap.controller';
 
 @Module({
   imports: [
@@ -132,6 +135,7 @@ import { DocumentController } from './controller/admin/document/document.control
       { name: NavTool.name, schema: NavToolSchema },
       { name: NavCategory.name, schema: NavCategorySchema },
       { name: Document.name, schema: DocumentSchema },
+      { name: MindMap.name, schema: MindMapSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: async () => {
@@ -185,6 +189,7 @@ import { DocumentController } from './controller/admin/document/document.control
     AutoBackupController,
     MusicController,
     DocumentController,
+    MindMapController,
   ],
   providers: [
     AppService,
@@ -192,7 +197,7 @@ import { DocumentController } from './controller/admin/document/document.control
     CategoryProvider,
     MetaProvider,
     DraftProvider,
-    PicgoProvider,
+    // PicgoProvider, // 临时禁用 PicGo
     VisitProvider,
     TagProvider,
     UserProvider,
@@ -230,6 +235,7 @@ import { DocumentController } from './controller/admin/document/document.control
     AutoBackupTask,
     AliyunpanProvider,
     DocumentProvider,
+    MindMapProvider,
   ],
 })
 export class AppModule implements NestModule {

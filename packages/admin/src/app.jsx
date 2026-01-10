@@ -219,6 +219,7 @@ export const layout = ({ initialState, setInitialState }) => {
       else if (menu.path === '/nav') menuMapping.nav = menu;
       else if (menu.path === '/draft') menuMapping.draft = menu;
       else if (menu.path === '/document') menuMapping.document = menu;
+      else if (menu.path === '/mindmap') menuMapping.mindmap = menu;
       else if (menu.path === '/static/img') menuMapping.static = menu;
       else if (menu.path === '/site') menuMapping.site = menu;
     });

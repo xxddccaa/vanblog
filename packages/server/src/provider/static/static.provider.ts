@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, NotImplementedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, NotImplementedException, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SearchStaticOption, StaticType, StorageType } from 'src/types/setting.dto';
@@ -25,8 +25,9 @@ export class StaticProvider {
     private readonly settingProvider: SettingProvider,
     private readonly metaProvider: MetaProvider,
     private readonly localProvider: LocalProvider,
-    private readonly picgoProvider: PicgoProvider,
     private readonly articleProvder: ArticleProvider,
+    @Optional()
+    private readonly picgoProvider?: PicgoProvider,
   ) {}
   publicView = {
     _id: 0,
@@ -257,6 +258,10 @@ export class StaticProvider {
         }
         return realPath;
       case 'picgo':
+        // PicGo 可能被禁用
+        if (!this.picgoProvider || typeof this.picgoProvider.saveFile !== 'function') {
+          throw new NotImplementedException('PicGo 未启用或未配置');
+        }
         const picgoRes = await this.picgoProvider.saveFile(fileName, buffer, type);
         await this.createInDB({
           fileType: picgoRes.meta?.type || fileType,

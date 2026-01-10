@@ -850,3 +850,50 @@ export async function convertDraftToDocument(id, libraryId, parentId) {
     data: { libraryId, parentId },
   });
 }
+
+// MindMap API
+export async function getMindMaps(params) {
+  return request('/api/admin/mindmap', {
+    method: 'GET',
+    params,
+  });
+}
+
+export async function getMindMapById(id) {
+  return request(`/api/admin/mindmap/${id}`, {
+    method: 'GET',
+  });
+}
+
+export async function createMindMap(data) {
+  return request('/api/admin/mindmap', {
+    method: 'POST',
+    data,
+  });
+}
+
+export async function updateMindMap(id, data) {
+  return request(`/api/admin/mindmap/${id}`, {
+    method: 'PUT',
+    data,
+  });
+}
+
+export async function deleteMindMap(id) {
+  return request(`/api/admin/mindmap/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function searchMindMap(value) {
+  return request('/api/admin/mindmap/search', {
+    method: 'GET',
+    params: { value },
+  });
+}
+
+export async function incrementMindMapView(id) {
+  return request(`/api/admin/mindmap/${id}/view`, {
+    method: 'POST',
+  });
+}

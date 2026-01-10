@@ -1,5 +1,5 @@
 FROM node:18-alpine AS base
-ENV NODE_OPTIONS="--max_old_space_size=3072"
+ENV NODE_OPTIONS="--max_old_space_size=7168"
 WORKDIR /app
 
 # Install system dependencies (only for building)
@@ -8,13 +8,14 @@ RUN apk add --no-cache --update python3 make g++ tzdata \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata
 
-# Configure pnpm
+# Configure pnpm with parallel builds
 RUN corepack enable \
     && corepack prepare pnpm@9.15.3 --activate \
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \
-    && pnpm config set fetch-timeout 600000 -g
+    && pnpm config set fetch-timeout 600000 -g \
+    && pnpm config set jobs 6 -g
 
 # Copy package files for dependency installation
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
@@ -52,7 +53,7 @@ FROM base AS admin_builder
 WORKDIR /app
 COPY ./packages/admin/ ./packages/admin/
 WORKDIR /app/packages/admin
-ENV NODE_OPTIONS='--max_old_space_size=4096 --openssl-legacy-provider'
+ENV NODE_OPTIONS='--max_old_space_size=6144 --openssl-legacy-provider'
 ENV EEE=production
 RUN pnpm build
 
@@ -70,7 +71,8 @@ RUN apk add --no-cache --update tzdata caddy nss-tools libwebp-tools wget unzip 
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \
-    && pnpm config set fetch-timeout 600000 -g
+    && pnpm config set fetch-timeout 600000 -g \
+    && pnpm config set jobs 6 -g
 
 # Install aliyunpan (阿里云盘命令行工具)
 RUN ARCH=$(uname -m) \
@@ -112,6 +114,9 @@ COPY --from=website_builder /app/packages/website/.next/static ./packages/websit
 # Copy admin static files (no dependencies needed)
 WORKDIR /app/admin
 COPY --from=admin_builder /app/packages/admin/dist/ ./
+# Copy mindmap static files (after build to avoid webpack processing)
+COPY mind-map/dist ./mindmap/dist
+COPY mind-map/index.html ./mindmap/index.html
 
 # Copy configuration files
 WORKDIR /app

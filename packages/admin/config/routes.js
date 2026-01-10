@@ -44,6 +44,19 @@ export default [
   { name: '草稿管理', icon: 'container', path: '/draft', component: './Draft' },
   { name: '私密文档', icon: 'folder', path: '/document', component: './Document' },
   {
+    name: '思维导图编辑器',
+    icon: 'container',
+    path: '/mindmap/editor',
+    component: './MindMap/editor',
+    hideInMenu: true,
+  },
+  { 
+    name: '思维导图', 
+    icon: 'container', 
+    path: '/mindmap', 
+    component: './MindMap',
+  },
+  {
     name: '图片管理',
     icon: 'picture',
     path: '/static/img',

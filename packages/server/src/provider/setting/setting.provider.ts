@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
@@ -19,7 +19,6 @@ import {
   defaultMusicSetting,
 } from 'src/types/setting.dto';
 import { SettingDocument } from 'src/scheme/setting.schema';
-import { PicgoProvider } from '../static/picgo.provider';
 import { encode } from 'js-base64';
 import { defaultMenu, MenuItem } from 'src/types/menu.dto';
 import { MetaProvider } from '../meta/meta.provider';
@@ -30,7 +29,7 @@ export class SettingProvider {
   constructor(
     @InjectModel('Setting')
     private settingModel: Model<SettingDocument>,
-    private readonly picgoProvider: PicgoProvider,
+    @Optional()
     private readonly metaProvider: MetaProvider,
   ) {}
   async getStaticSetting(): Promise<Partial<StaticSetting>> {
@@ -1561,10 +1560,7 @@ if (typeof window !== 'undefined') {
         value: newValue,
       });
     }
-    const res = await this.settingModel.updateOne({ type: 'static' }, { value: newValue });
-
-    await this.picgoProvider.initDriver();
-    return res;
+    return await this.settingModel.updateOne({ type: 'static' }, { value: newValue });
   }
   async washDefaultMenu() {
     const r = await this.settingModel.findOne({ type: 'menu' });
