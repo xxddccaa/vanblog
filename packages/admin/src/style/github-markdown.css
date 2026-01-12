@@ -33,7 +33,7 @@
   --color-fg-default: rgb(158, 158, 158);
   --color-fg-muted: rgb(120, 120, 120);
   --color-fg-subtle: rgb(80, 80, 80);
-  --color-canvas-default: #1f2226;
+  --color-canvas-default: #212428;
   --color-canvas-subtle: rgb(30, 30, 30);
   --color-border-default: #30363d;
   --color-border-muted: #3e4145;
@@ -1302,7 +1302,7 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 .dark .markdown-body .code-toggle-btn {
   border-color: #3e4145 !important;
   color: #8b949e !important;
-  background-color: #1f2226 !important;
+  background-color: #212428 !important;
 }
 
 .dark .markdown-body .code-toggle-btn:hover {
@@ -1336,7 +1336,7 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 
 /* 暗色模式下的渐变遮罩 */
 .dark .markdown-body .code-content-wrapper.code-collapsed::after {
-  background: linear-gradient(transparent, #1f2226) !important;
+  background: linear-gradient(transparent, #212428) !important;
 }
 
 /* 确保代码块在折叠状态下正确显示 */
@@ -1434,8 +1434,8 @@ html body .bytemd-mermaid rect[data-darkreader-inline-stroke].actor {
 html.dark,
 html.dark body,
 .dark {
-  --color-canvas-default: #1f2226 !important;
-  --vb-bg-color: #1f2226 !important;
+  --color-canvas-default: #212428 !important;
+  --vb-bg-color: #212428 !important;
 }
 
 /* 预览区域背景 - 最高优先级 */
@@ -1446,8 +1446,8 @@ body.dark .bytemd-preview,
 .dark .bytemd-preview,
 body .dark .bytemd-preview,
 html body .dark .bytemd-preview {
-  background: #1f2226 !important;
-  background-color: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }
 
 /* markdown-body 背景 - 覆盖主题的 transparent 设置 */
@@ -1460,9 +1460,9 @@ body.dark .markdown-body,
 body .dark .markdown-body,
 html body .dark .markdown-body,
 html body .dark .bytemd-preview .markdown-body {
-  background: #1f2226 !important;
-  background-color: #1f2226 !important;
-  --color-canvas-default: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
+  --color-canvas-default: #212428 !important;
 }
 
 /* 编辑器整体容器背景 */
@@ -1473,8 +1473,8 @@ body.dark .bytemd,
 .dark .bytemd,
 body .dark .bytemd,
 html body .dark .bytemd {
-  background: #1f2226 !important;
-  background-color: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }
 
 /* 编辑器 body 区域背景 */
@@ -1484,13 +1484,13 @@ body.dark .bytemd-body,
 .dark .bytemd-body,
 body .dark .bytemd-body,
 html body .dark .bytemd-body {
-  background: #1f2226 !important;
-  background-color: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }
 
 /* 覆盖可能被主题设置为 transparent 的背景 */
 html.dark .markdown-body[style*="transparent"],
 .dark .markdown-body[style*="transparent"] {
-  background: #1f2226 !important;
-  background-color: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }

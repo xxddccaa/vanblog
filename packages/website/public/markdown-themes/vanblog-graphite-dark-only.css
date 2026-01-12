@@ -18,6 +18,16 @@ html.dark .markdown-body {
   --vb-hover-bg: #1a2230;
   --vb-border: #273244;
   --vb-mark-bg: #1b2a3a;
+
+  /* 背景色：覆盖基础主题的 transparent，确保与前台一致 */
+  background-color: #212428 !important;
+}
+
+/* 确保预览区域和编辑器容器背景色正确 */
+html.dark .bytemd-preview,
+html.dark .bytemd,
+html.dark .bytemd-body {
+  background-color: #212428 !important;
 }
 
 html.dark .markdown-body blockquote { background-color: var(--vb-panel-bg); }

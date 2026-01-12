@@ -30,35 +30,46 @@ body .bytemd-preview {
   background: #ffffff;
 }
 
-body .dark .bytemd-preview {
-  background: #1f2226;
-}
-
 /* 强制覆盖：确保暗色模式下预览区域背景色正确（优先级高于动态加载的主题CSS） */
-html.dark .bytemd-preview,
+/* 使用更高优先级的选择器: #212428 = rgb(33, 36, 40) */
+html.dark body .bytemd-preview.bytemd-preview,
 html.dark body .bytemd-preview,
+html.dark .editor-wrapper .bytemd-preview,
 body.dark .bytemd-preview,
+.dark .editor-wrapper .bytemd-preview,
 .dark .bytemd-preview {
-  background: #1f2226 !important;
-  background-color: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }
 
+html.dark body .bytemd-preview .markdown-body.markdown-body,
+html.dark body .markdown-body.markdown-body,
+html.dark .editor-wrapper .markdown-body,
 html.dark .bytemd-preview .markdown-body,
+.dark .editor-wrapper .markdown-body,
 .dark .bytemd-preview .markdown-body,
 html.dark .markdown-body,
 .dark .markdown-body {
-  background: #1f2226 !important;
-  background-color: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }
 
+html.dark body .bytemd.bytemd,
+html.dark .editor-wrapper .bytemd,
 html.dark .bytemd,
+.dark .editor-wrapper .bytemd,
 .dark .bytemd {
-  background: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }
 
+html.dark body .bytemd-body.bytemd-body,
+html.dark .editor-wrapper .bytemd-body,
 html.dark .bytemd-body,
+.dark .editor-wrapper .bytemd-body,
 .dark .bytemd-body {
-  background: #1f2226 !important;
+  background: #212428 !important;
+  background-color: #212428 !important;
 }
 
 .editor-wrapper {
@@ -168,6 +179,15 @@ html.dark .bytemd-body,
 
 /* 确保在暗色模式下滚动条样式一致 */
 .dark .editor-wrapper {
+  /* 强制覆盖所有背景色为统一的 #212428 */
+  .bytemd,
+  .bytemd-body,
+  .bytemd-preview,
+  .markdown-body {
+    background: #212428 !important;
+    background-color: #212428 !important;
+  }
+
   .bytemd-editor .CodeMirror .CodeMirror-scroll {
     &::-webkit-scrollbar-track {
       background: #2d2d2d;

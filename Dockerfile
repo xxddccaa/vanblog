@@ -117,6 +117,8 @@ COPY --from=admin_builder /app/packages/admin/dist/ ./
 # Copy mindmap static files (after build to avoid webpack processing)
 COPY mind-map/dist ./mindmap/dist
 COPY mind-map/index.html ./mindmap/index.html
+COPY mind-map/editor ./mindmap/editor
+COPY mind-map/nav ./mindmap/nav
 
 # Copy configuration files
 WORKDIR /app
