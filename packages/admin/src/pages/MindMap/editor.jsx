@@ -101,7 +101,25 @@ export default function MindMapEditor() {
     loadMindMapData();
   }, [loadMindMapData]);
 
-  // 更新 saveHandlerRef，使其始终指向最新的 handleSave
+  // 使用 ref 存储最新的 title 和 description，避免闭包问题
+  const titleRef = useRef(title);
+  const descriptionRef = useRef(description);
+  const mindMapDataRef = useRef(mindMapData);
+
+  // 同步更新 refs
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
+
+  useEffect(() => {
+    descriptionRef.current = description;
+  }, [description]);
+
+  useEffect(() => {
+    mindMapDataRef.current = mindMapData;
+  }, [mindMapData]);
+
+  // 更新 saveHandlerRef，使其指向 handleSave
   useEffect(() => {
     saveHandlerRef.current = handleSave;
   }, [handleSave]);
@@ -262,6 +280,9 @@ export default function MindMapEditor() {
     setTimeout(tryInitApp, 300);
   };
 
+  // 使用 ref 跟踪 saving 状态，避免闭包问题
+  const savingRef = useRef(false);
+
   // 保存思维导图
   const handleSave = useCallback(async () => {
     const id = getMindMapId();
@@ -270,19 +291,20 @@ export default function MindMapEditor() {
       return;
     }
 
-    // 防止重复保存
-    if (saving) {
+    // 防止重复保存（使用 ref 检查）
+    if (savingRef.current) {
       console.log('正在保存中，跳过本次保存请求');
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     try {
       // 尝试从 iframe 获取最新完整数据
       const iframe = iframeRef.current;
       const iframeWindow = iframe?.contentWindow;
       let currentData = mindMapContentRef.current;
-      
+
       // 如果 iframe 中有思维导图实例，尝试获取完整数据
       if (iframeWindow && iframeWindow.takeOverAppMethods) {
         // 先尝试从 iframe 获取完整数据
@@ -291,7 +313,7 @@ export default function MindMapEditor() {
           if (iframeData) {
             const iframeKeys = Object.keys(iframeData);
             const currentKeys = currentData ? Object.keys(currentData) : [];
-            
+
             // 如果 iframe 中的数据更完整（字段更多），使用 iframe 的数据
             if (iframeKeys.length >= currentKeys.length) {
               console.log('使用 iframe 中的完整数据');
@@ -301,53 +323,57 @@ export default function MindMapEditor() {
           }
         }
       }
-      
+
       if (!currentData) {
         message.error('无法获取思维导图数据');
+        savingRef.current = false;
         setSaving(false);
         return;
       }
-      
+
       // 检查数据是否完整（应该包含 root, layout, theme, view 等字段）
       const dataKeys = Object.keys(currentData);
       const requiredKeys = ['root', 'layout', 'theme'];
       const missingKeys = requiredKeys.filter(key => !dataKeys.includes(key));
-      
+
       if (missingKeys.length > 0) {
         console.warn('数据不完整，缺少字段:', missingKeys);
       }
-      
-      // 使用当前 title state，如果为空则使用原始数据中的标题
-      const currentTitle = title || mindMapData?.title || '未命名思维导图';
-      const currentDescription = description !== undefined ? description : (mindMapData?.description || '');
+
+      // 使用 ref 获取最新的 title 和 description，避免闭包问题
+      const currentTitle = titleRef.current || mindMapDataRef.current?.title || '未命名思维导图';
+      const currentDescription = descriptionRef.current !== undefined ? descriptionRef.current : (mindMapDataRef.current?.description || '');
 
       const payload = {
         title: currentTitle,
         description: currentDescription,
         content: JSON.stringify(currentData),
       };
-      
+
       await updateMindMap(id, payload);
-      
+
       // 更新本地 state
-      setMindMapData({
-        ...mindMapData,
+      const updatedMindMapData = {
+        ...mindMapDataRef.current,
         title: payload.title,
         description: payload.description,
         content: payload.content,
-      });
-      
+      };
+      setMindMapData(updatedMindMapData);
+      mindMapDataRef.current = updatedMindMapData;
+
       console.log('===== 保存操作完成 =====');
-      
+
       message.success('保存成功');
     } catch (error) {
       console.error('===== 保存失败 =====');
       console.error('错误信息:', error);
       message.error('保存失败: ' + (error.message || '未知错误'));
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
-  }, [mindMapData, title, description, saving]);
+  }, []); // 移除依赖，使用 ref 来获取最新值
 
   // 更新标题和描述
   const handleUpdateInfo = async () => {
