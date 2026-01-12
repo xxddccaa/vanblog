@@ -1,23 +1,23 @@
 .dark .markdown-navigation .title-level1 {
-  color: rgb(158, 158, 158);
+  color: rgb(230, 230, 230);
 }
 .dark .markdown-navigation .title-level2 {
-  color: rgb(148, 148, 148);
+  color: rgb(220, 220, 220);
 }
 .dark .markdown-navigation .title-level3 {
-  color: rgb(138, 138, 138);
+  color: rgb(210, 210, 210);
 }
 .dark .markdown-navigation .title-level4 {
-  color: rgb(128, 128, 128);
+  color: rgb(200, 200, 200);
 }
 .dark .markdown-navigation .title-level5 {
-  color: rgb(118, 118, 118);
+  color: rgb(190, 190, 190);
 }
 .dark .markdown-navigation .title-level6 {
-  color: rgb(108, 108, 108);
+  color: rgb(180, 180, 180);
 }
 .dark .markdown-navigation .title-anchor.active {
-  color: #d3d3d3;
+  color: #ffffff;
   font-weight: 550;
 }
 .dark .markdown-navigation .title-anchor:hover,

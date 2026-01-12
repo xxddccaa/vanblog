@@ -28,7 +28,6 @@
   /* 文档背景样式  none 无背景*/
   --bg-style: var(--bg-shape-none);
 
-
   /* 自动编号格式设置 无需自动编号可全部注释掉或部分注释掉*/
   --autonum-h1: counter(h1) ". ";
   --autonum-h2: counter(h1) "." counter(h2) ". ";
@@ -44,7 +43,6 @@
   --autonum-h4toc: counter(h1toc) "." counter(h2toc) "." counter(h3toc) "." counter(h4toc) ". ";
   --autonum-h5toc: counter(h1toc) "." counter(h2toc) "." counter(h3toc) "." counter(h4toc) "." counter(h5toc) ". ";
   --autonum-h6toc: counter(h1toc) "." counter(h2toc) "." counter(h3toc) "." counter(h4toc) "." counter(h5toc) "." counter(h6toc) ". "; */
-
 
 /* 标题主色：明亮的樱花粉 */
   --head-title-color: #ff7096;

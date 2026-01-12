@@ -96,7 +96,7 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: transparent;
+    background: transparent !important;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -369,7 +369,7 @@ code {
     border-radius: 3px;
     padding: 2px 0px 0px 4px;
     font-size: 0.9em;
-    color: inherit;
+    color: inherit !important;
 }
 
 .md-tag {

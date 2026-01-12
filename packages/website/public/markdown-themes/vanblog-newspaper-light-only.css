@@ -118,10 +118,10 @@ html:not(.dark) .markdown-body a:hover {
 }
 
 html:not(.dark) .markdown-body :not(pre) > code {
-  background: rgba(31, 41, 55, 0.06);
-  border: 1px solid rgba(31, 41, 55, 0.14);
-  border-radius: 8px;
-  padding: 0.15em 0.45em;
+  background: rgba(31, 41, 55, 0.04);
+  border: 1px solid rgba(31, 41, 55, 0.08);
+  border-radius: 5px;
+  padding: 0.15em 0.4em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
@@ -158,5 +158,3 @@ html:not(.dark) .markdown-body hr {
     radial-gradient(circle, rgba(124, 45, 18, 0.35) 0 2px, transparent 2.5px) center/28px 10px repeat-x;
   opacity: 0.85;
 }
-
-

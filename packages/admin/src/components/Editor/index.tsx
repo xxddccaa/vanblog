@@ -82,6 +82,37 @@ export default function EditorComponent(props: {
     let cancelled = false;
     const LINK_ID_LIGHT = 'vanblog-admin-markdown-theme-light';
     const LINK_ID_DARK = 'vanblog-admin-markdown-theme-dark';
+    const OVERRIDE_STYLE_ID = 'vanblog-admin-bg-override';
+
+    // 添加背景色覆盖样式（确保在主题CSS之后生效）
+    const ensureBgOverride = () => {
+      let overrideStyle = document.getElementById(OVERRIDE_STYLE_ID) as HTMLStyleElement | null;
+      if (!overrideStyle) {
+        overrideStyle = document.createElement('style');
+        overrideStyle.id = OVERRIDE_STYLE_ID;
+        overrideStyle.textContent = `
+          /* 强制覆盖：确保后台暗色模式背景色与前台一致 */
+          html.dark .bytemd-preview,
+          html.dark .bytemd-preview .markdown-body,
+          html.dark .markdown-body,
+          .dark .bytemd-preview,
+          .dark .bytemd-preview .markdown-body,
+          .dark .markdown-body {
+            background: #1f2226 !important;
+            background-color: #1f2226 !important;
+          }
+          html.dark .bytemd,
+          html.dark .bytemd-body,
+          .dark .bytemd,
+          .dark .bytemd-body {
+            background: #1f2226 !important;
+            background-color: #1f2226 !important;
+          }
+        `;
+      }
+      // 确保覆盖样式在最后
+      document.head.appendChild(overrideStyle);
+    };
 
     const upsertLink = (id: string, href?: string) => {
       const head = document.head;
@@ -94,12 +125,18 @@ export default function EditorComponent(props: {
         if (existed.href !== new URL(href, window.location.href).href) {
           existed.href = href;
         }
+        // 主题CSS已存在，确保覆盖样式在最后
+        ensureBgOverride();
         return;
       }
       const link = document.createElement('link');
       link.id = id;
       link.rel = 'stylesheet';
       link.href = href;
+      // 监听加载完成，然后添加覆盖样式
+      link.onload = () => {
+        ensureBgOverride();
+      };
       head.appendChild(link);
     };
 

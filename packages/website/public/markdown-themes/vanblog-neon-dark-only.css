@@ -144,11 +144,10 @@ html.dark .markdown-body a:hover {
 }
 
 html.dark .markdown-body :not(pre) > code {
-  background: rgba(34, 211, 238, 0.12);
-  border: 1px solid rgba(34, 211, 238, 0.28);
-  border-radius: 10px;
-  padding: 0.2em 0.5em;
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.08);
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
 }
 
@@ -181,4 +180,15 @@ html.dark .markdown-body hr {
   opacity: 0.9;
 }
 
-
+/* 移除代码块中所有元素的下划线和边框 */
+html.dark .markdown-body pre *,
+html.dark .markdown-body pre code *,
+html.dark .markdown-body .code-block-wrapper code *,
+html.dark .markdown-body .code-content-wrapper *,
+html.dark .markdown-body .hljs *,
+html.dark .markdown-body pre a,
+html.dark .markdown-body .code-block-wrapper a {
+  border-bottom: none !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}

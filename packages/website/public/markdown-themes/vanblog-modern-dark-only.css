@@ -1,0 +1,177 @@
+/* Vanblog Modern（仅暗色生效）：现代风格 - 清爽配色、圆角设计、舒适阅读 */
+html.dark .markdown-body {
+  --vb-text: rgba(244, 244, 245, 0.98);
+  --vb-text-muted: rgba(161, 161, 170, 0.95);
+  --vb-accent: #38bdf8;
+  --vb-accent-hover: #7dd3fc;
+  --vb-border: rgba(244, 244, 245, 0.10);
+  --vb-bg: rgba(39, 39, 42, 0.50);
+  --vb-code-bg: rgba(56, 189, 248, 0.08);
+  
+  color: var(--vb-text);
+  line-height: 1.7;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* 段落 */
+html.dark .markdown-body p {
+  color: var(--vb-text);
+  margin: 1.25em 0;
+  line-height: 1.7;
+}
+
+/* 标题 */
+html.dark .markdown-body h1,
+html.dark .markdown-body h2,
+html.dark .markdown-body h3 {
+  border: 0;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin-top: 2em;
+  margin-bottom: 0.9em;
+  color: rgba(255, 255, 255, 0.98);
+}
+
+html.dark .markdown-body h1 {
+  font-size: 2.5em;
+  line-height: 1.15;
+  margin-top: 0;
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+html.dark .markdown-body h2 {
+  font-size: 1.875em;
+  line-height: 1.25;
+  position: relative;
+  padding-left: 1em;
+}
+
+html.dark .markdown-body h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--vb-accent), #818cf8);
+}
+
+html.dark .markdown-body h3 {
+  font-size: 1.5em;
+  line-height: 1.35;
+}
+
+/* 链接 */
+html.dark .markdown-body a {
+  color: var(--vb-accent);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid transparent;
+}
+
+html.dark .markdown-body a:hover {
+  color: var(--vb-accent-hover);
+  border-bottom-color: var(--vb-accent-hover);
+}
+
+/* 引用块 */
+html.dark .markdown-body blockquote {
+  border: 0;
+  border-left: 4px solid var(--vb-accent);
+  background: var(--vb-bg);
+  padding: 1.25em 1.5em;
+  margin: 1.5em 0;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.30);
+}
+
+html.dark .markdown-body blockquote p {
+  margin: 0.5em 0;
+  color: var(--vb-text-muted);
+}
+
+/* 内联代码 */
+html.dark .markdown-body :not(pre) > code {
+  background: var(--vb-code-bg);
+  border: 1px solid rgba(56, 189, 248, 0.15);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--vb-accent);
+  font-weight: 500;
+}
+
+/* 代码块 */
+html.dark .markdown-body .code-block-wrapper {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--vb-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.40);
+  margin: 1.5em 0;
+}
+
+html.dark .markdown-body .code-block-wrapper .header-right {
+  background: var(--vb-bg);
+  border-bottom: 1px solid var(--vb-border);
+}
+
+/* 表格 */
+html.dark .markdown-body table {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--vb-border);
+  background: rgba(39, 39, 42, 0.30);
+  margin: 1.5em 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.30);
+}
+
+html.dark .markdown-body table th {
+  background: var(--vb-bg);
+  font-weight: 700;
+  padding: 0.875em 1.25em;
+}
+
+html.dark .markdown-body table td {
+  padding: 0.875em 1.25em;
+}
+
+html.dark .markdown-body table tbody tr {
+  border-bottom: 1px solid var(--vb-border);
+  transition: background 0.2s ease;
+}
+
+html.dark .markdown-body table tbody tr:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+/* 列表 */
+html.dark .markdown-body ul,
+html.dark .markdown-body ol {
+  padding-left: 1.75em;
+  margin: 1.25em 0;
+}
+
+html.dark .markdown-body li {
+  margin: 0.4em 0;
+  line-height: 1.7;
+}
+
+html.dark .markdown-body ul > li::marker {
+  color: var(--vb-accent);
+}
+
+/* 分割线 */
+html.dark .markdown-body hr {
+  border: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--vb-border), transparent);
+  margin: 2.5em 0;
+  border-radius: 999px;
+}

@@ -141,10 +141,10 @@ html:not(.dark) .markdown-body a:hover {
 
 /* 代码：像贴纸 */
 html:not(.dark) .markdown-body :not(pre) > code {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.22);
-  border-radius: 10px;
-  padding: 0.15em 0.45em;
+  background: rgba(239, 68, 68, 0.04);
+  border: 1px solid rgba(239, 68, 68, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
 }
 
 html:not(.dark) .markdown-body .code-block-wrapper {
@@ -163,5 +163,3 @@ html:not(.dark) .markdown-body hr {
   border-radius: 999px;
   opacity: 0.8;
 }
-
-

@@ -106,10 +106,10 @@ html.dark .markdown-body a {
 html.dark .markdown-body a:hover { border-bottom-color: rgba(251, 113, 133, 0.55); }
 
 html.dark .markdown-body :not(pre) > code {
-  background: rgba(167, 139, 250, 0.10);
-  border: 1px solid rgba(167, 139, 250, 0.16);
-  border-radius: 10px;
-  padding: 0.15em 0.45em;
+  background: rgba(167, 139, 250, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
 }
 
 html.dark .markdown-body .code-block-wrapper {
@@ -148,5 +148,3 @@ html.dark .markdown-body hr {
     filter: hue-rotate(10deg);
   }
 }
-
-

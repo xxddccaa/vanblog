@@ -99,10 +99,10 @@ html:not(.dark) .markdown-body blockquote {
 }
 
 html:not(.dark) .markdown-body :not(pre) > code {
-  background: rgba(34, 211, 238, 0.10);
-  border: 1px solid rgba(34, 211, 238, 0.18);
-  border-radius: 10px;
-  padding: 0.15em 0.45em;
+  background: rgba(34, 211, 238, 0.05);
+  border: 1px solid rgba(34, 211, 238, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
 }
 
 html:not(.dark) .markdown-body .code-block-wrapper {
@@ -130,5 +130,3 @@ html:not(.dark) .markdown-body hr {
   opacity: 0.95;
   border-radius: 999px;
 }
-
-

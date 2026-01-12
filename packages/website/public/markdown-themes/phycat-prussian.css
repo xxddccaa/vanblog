@@ -44,7 +44,6 @@
   --autonum-h5toc: counter(h1toc) "." counter(h2toc) "." counter(h3toc) "." counter(h4toc) "." counter(h5toc) ". ";
   --autonum-h6toc: counter(h1toc) "." counter(h2toc) "." counter(h3toc) "." counter(h4toc) "." counter(h5toc) "." counter(h6toc) ". "; */
 
-
   /* 标题主色：深邃的普鲁士蓝，沉稳大气 */
   --head-title-color: #1D4E89;
   

@@ -113,11 +113,10 @@ html:not(.dark) .markdown-body a {
 html:not(.dark) .markdown-body a:hover { background-size: 100% 2px; }
 
 html:not(.dark) .markdown-body :not(pre) > code {
-  background: rgba(167, 139, 250, 0.12);
-  border: 1px solid rgba(167, 139, 250, 0.22);
-  border-radius: 10px;
-  padding: 0.2em 0.5em;
-  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.10);
+  background: rgba(167, 139, 250, 0.05);
+  border: 1px solid rgba(167, 139, 250, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
 }
 
@@ -138,5 +137,3 @@ html:not(.dark) .markdown-body hr {
   background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.70), rgba(167, 139, 250, 0.70), rgba(251, 113, 133, 0.70), transparent);
   opacity: 0.9;
 }
-
-

@@ -1,0 +1,148 @@
+/* Vanblog Zen（仅亮色生效）：禅意风格 - 极简留白、专注内容 */
+html:not(.dark) .markdown-body {
+  --vb-text: #1a1a1a;
+  --vb-text-light: #666666;
+  --vb-accent: #2c5aa0;
+  --vb-border: rgba(0, 0, 0, 0.08);
+  --vb-bg: rgba(0, 0, 0, 0.02);
+  
+  color: var(--vb-text);
+  line-height: 1.8;
+  font-size: 17px;
+  max-width: 680px;
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+/* 段落 - 增加行高提升可读性 */
+html:not(.dark) .markdown-body p {
+  color: var(--vb-text);
+  margin: 1.5em 0;
+  line-height: 1.9;
+}
+
+/* 标题 - 简洁优雅 */
+html:not(.dark) .markdown-body h1,
+html:not(.dark) .markdown-body h2,
+html:not(.dark) .markdown-body h3 {
+  border: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 2.5em;
+  margin-bottom: 1em;
+  color: var(--vb-text);
+}
+
+html:not(.dark) .markdown-body h1 {
+  font-size: 2em;
+  line-height: 1.2;
+  margin-top: 0;
+  margin-bottom: 1.5em;
+}
+
+html:not(.dark) .markdown-body h2 {
+  font-size: 1.5em;
+  line-height: 1.3;
+  margin-top: 2em;
+}
+
+html:not(.dark) .markdown-body h3 {
+  font-size: 1.25em;
+  line-height: 1.4;
+}
+
+/* 链接 - 简约下划线 */
+html:not(.dark) .markdown-body a {
+  color: var(--vb-accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(44, 90, 160, 0.25);
+  transition: border-color 0.2s ease;
+}
+
+html:not(.dark) .markdown-body a:hover {
+  border-bottom-color: rgba(44, 90, 160, 0.50);
+}
+
+/* 引用块 - 极简侧边线 */
+html:not(.dark) .markdown-body blockquote {
+  border: 0;
+  border-left: 2px solid var(--vb-accent);
+  padding-left: 1.5em;
+  margin: 2em 0;
+  color: var(--vb-text-light);
+  font-style: italic;
+}
+
+html:not(.dark) .markdown-body blockquote p {
+  margin: 0.8em 0;
+}
+
+/* 内联代码 - 极简风格 */
+html:not(.dark) .markdown-body :not(pre) > code {
+  background: var(--vb-bg);
+  border: 1px solid var(--vb-border);
+  border-radius: 3px;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+  font-family: 'Menlo', 'Monaco', monospace;
+  color: var(--vb-text);
+}
+
+/* 代码块 - 简洁边框 */
+html:not(.dark) .markdown-body .code-block-wrapper {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--vb-border);
+  margin: 2em 0;
+}
+
+html:not(.dark) .markdown-body .code-block-wrapper .header-right {
+  background: var(--vb-bg);
+  border-bottom: 1px solid var(--vb-border);
+}
+
+/* 表格 - 简洁线条 */
+html:not(.dark) .markdown-body table {
+  border-collapse: collapse;
+  border: 1px solid var(--vb-border);
+  margin: 2em 0;
+}
+
+html:not(.dark) .markdown-body table th,
+html:not(.dark) .markdown-body table td {
+  border: 1px solid var(--vb-border);
+  padding: 0.6em 1em;
+}
+
+html:not(.dark) .markdown-body table th {
+  background: var(--vb-bg);
+  font-weight: 600;
+}
+
+/* 列表 - 增加间距 */
+html:not(.dark) .markdown-body ul,
+html:not(.dark) .markdown-body ol {
+  padding-left: 1.8em;
+  margin: 1.5em 0;
+}
+
+html:not(.dark) .markdown-body li {
+  margin: 0.5em 0;
+  line-height: 1.8;
+}
+
+/* 分割线 - 极简 */
+html:not(.dark) .markdown-body hr {
+  border: 0;
+  height: 1px;
+  background: var(--vb-border);
+  margin: 3em 0;
+}
+
+/* 图片 - 居中显示 */
+html:not(.dark) .markdown-body img {
+  display: block;
+  max-width: 100%;
+  margin: 2em auto;
+  border-radius: 4px;
+}

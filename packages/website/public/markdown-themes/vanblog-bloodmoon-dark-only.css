@@ -96,11 +96,10 @@ html.dark .markdown-body a {
 html.dark .markdown-body a:hover { border-bottom-color: rgba(251, 113, 133, 0.60); }
 
 html.dark .markdown-body :not(pre) > code {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.20);
-  border-radius: 10px;
-  padding: 0.2em 0.5em;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.08);
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
 }
 
@@ -121,5 +120,3 @@ html.dark .markdown-body hr {
   background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.70), rgba(251, 113, 133, 0.70), transparent);
   opacity: 0.9;
 }
-
-

@@ -33,7 +33,7 @@
   --color-fg-default: rgb(158, 158, 158);
   --color-fg-muted: rgb(120, 120, 120);
   --color-fg-subtle: rgb(80, 80, 80);
-  --color-canvas-default: #26282c;
+  --color-canvas-default: #1f2226;
   --color-canvas-subtle: rgb(30, 30, 30);
   --color-border-default: #30363d;
   --color-border-muted: #3e4145;
@@ -1302,7 +1302,7 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 .dark .markdown-body .code-toggle-btn {
   border-color: #3e4145 !important;
   color: #8b949e !important;
-  background-color: #1c1f23 !important;
+  background-color: #1f2226 !important;
 }
 
 .dark .markdown-body .code-toggle-btn:hover {
@@ -1336,7 +1336,7 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 
 /* 暗色模式下的渐变遮罩 */
 .dark .markdown-body .code-content-wrapper.code-collapsed::after {
-  background: linear-gradient(transparent, #1c1f23) !important;
+  background: linear-gradient(transparent, #1f2226) !important;
 }
 
 /* 确保代码块在折叠状态下正确显示 */
@@ -1425,4 +1425,72 @@ html body .bytemd-mermaid rect[data-darkreader-inline-fill].actor {
 html body .mermaid rect[data-darkreader-inline-stroke].actor,
 html body .bytemd-mermaid rect[data-darkreader-inline-stroke].actor {
   stroke: #1976d2 !important;
+}
+
+/* ========== 后台编辑器暗色背景强制覆盖（确保与前台一致）========== */
+/* 使用最高优先级选择器，确保覆盖所有动态加载的主题样式 */
+
+/* 基础背景色变量 - 放在最前面确保被正确继承 */
+html.dark,
+html.dark body,
+.dark {
+  --color-canvas-default: #1f2226 !important;
+  --vb-bg-color: #1f2226 !important;
+}
+
+/* 预览区域背景 - 最高优先级 */
+html.dark .bytemd-preview,
+html.dark body .bytemd-preview,
+html body.dark .bytemd-preview,
+body.dark .bytemd-preview,
+.dark .bytemd-preview,
+body .dark .bytemd-preview,
+html body .dark .bytemd-preview {
+  background: #1f2226 !important;
+  background-color: #1f2226 !important;
+}
+
+/* markdown-body 背景 - 覆盖主题的 transparent 设置 */
+html.dark .markdown-body,
+html.dark body .markdown-body,
+html.dark .bytemd-preview .markdown-body,
+html body.dark .markdown-body,
+body.dark .markdown-body,
+.dark .markdown-body,
+body .dark .markdown-body,
+html body .dark .markdown-body,
+html body .dark .bytemd-preview .markdown-body {
+  background: #1f2226 !important;
+  background-color: #1f2226 !important;
+  --color-canvas-default: #1f2226 !important;
+}
+
+/* 编辑器整体容器背景 */
+html.dark .bytemd,
+html.dark body .bytemd,
+html body.dark .bytemd,
+body.dark .bytemd,
+.dark .bytemd,
+body .dark .bytemd,
+html body .dark .bytemd {
+  background: #1f2226 !important;
+  background-color: #1f2226 !important;
+}
+
+/* 编辑器 body 区域背景 */
+html.dark .bytemd-body,
+html body.dark .bytemd-body,
+body.dark .bytemd-body,
+.dark .bytemd-body,
+body .dark .bytemd-body,
+html body .dark .bytemd-body {
+  background: #1f2226 !important;
+  background-color: #1f2226 !important;
+}
+
+/* 覆盖可能被主题设置为 transparent 的背景 */
+html.dark .markdown-body[style*="transparent"],
+.dark .markdown-body[style*="transparent"] {
+  background: #1f2226 !important;
+  background-color: #1f2226 !important;
 }

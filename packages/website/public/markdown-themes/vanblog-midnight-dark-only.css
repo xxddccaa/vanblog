@@ -116,10 +116,10 @@ html.dark .markdown-body a:hover {
 }
 
 html.dark .markdown-body :not(pre) > code {
-  background: rgba(147, 197, 253, 0.10);
-  border: 1px solid rgba(147, 197, 253, 0.18);
-  border-radius: 10px;
-  padding: 0.15em 0.45em;
+  background: rgba(147, 197, 253, 0.05);
+  border: 1px solid rgba(147, 197, 253, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
 }
 
 html.dark .markdown-body .code-block-wrapper {
@@ -152,5 +152,3 @@ html.dark .markdown-body hr {
   background: linear-gradient(90deg, transparent, rgba(147, 197, 253, 0.55), transparent);
   opacity: 0.9;
 }
-
-

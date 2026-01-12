@@ -11,8 +11,20 @@
 */
 
 .dark .hljs {
-  background: inherit;
+  background: transparent !important;
   color: #dcdcdc
+}
+
+/* 移除所有 hljs span 元素的背景色，避免代码看起来像被选中 */
+.dark .hljs span {
+  background: transparent !important;
+}
+
+.dark .markdown-body pre code,
+.dark .markdown-body pre code span,
+.dark .markdown-body .code-block-wrapper code,
+.dark .markdown-body .code-block-wrapper code span {
+  background: transparent !important;
 }
 
 .dark .hljs-keyword,
@@ -24,7 +36,79 @@
 
 .dark .hljs-link {
   color: #569cd6;
-  text-decoration: underline
+  text-decoration: none
+}
+
+/* 确保代码块中所有元素都没有下划线 */
+.dark .markdown-body pre code *,
+.dark .markdown-body .code-block-wrapper code * {
+  text-decoration: none !important;
+}
+
+/* 确保代码块中的链接没有下划线（覆盖主题中的 border-bottom 样式） */
+.dark .markdown-body pre a,
+.dark .markdown-body pre code a,
+.dark .markdown-body .code-block-wrapper a,
+.dark .markdown-body .code-block-wrapper code a,
+.dark .markdown-body .code-content-wrapper a,
+.dark .markdown-body .hljs a,
+html.dark .markdown-body pre a,
+html.dark .markdown-body pre code a,
+html.dark .markdown-body .code-block-wrapper a,
+html.dark .markdown-body .code-block-wrapper code a,
+html.dark .markdown-body .code-content-wrapper a,
+html.dark .markdown-body .hljs a {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  border-bottom-style: none !important;
+  border-bottom-width: 0 !important;
+  border-bottom-color: transparent !important;
+}
+
+/* 移除代码块容器的所有边框、阴影和轮廓 */
+.dark .markdown-body .code-block-wrapper,
+html.dark .markdown-body .code-block-wrapper {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 移除代码块头部的边框 */
+.dark .markdown-body .code-block-wrapper .header-right,
+html.dark .markdown-body .code-block-wrapper .header-right {
+  border: none !important;
+  border-bottom: none !important;
+}
+
+/* 移除 pre 元素的边框 */
+.dark .markdown-body pre,
+html.dark .markdown-body pre {
+  border: none !important;
+  border-width: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 移除代码块内所有元素的边框、下划线和轮廓 */
+.dark .markdown-body pre *,
+.dark .markdown-body .code-block-wrapper *,
+.dark .markdown-body .code-content-wrapper *,
+.dark .markdown-body .hljs,
+.dark .markdown-body .hljs *,
+html.dark .markdown-body pre *,
+html.dark .markdown-body .code-block-wrapper *,
+html.dark .markdown-body .code-content-wrapper *,
+html.dark .markdown-body .hljs,
+html.dark .markdown-body .hljs * {
+  text-decoration: none !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-bottom-style: none !important;
+  border-bottom-width: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .dark .hljs-built_in,

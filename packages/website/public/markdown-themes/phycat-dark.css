@@ -290,7 +290,7 @@
   padding: 2px 4px;
   margin: 0 -2px;
   border-radius: 4px;
-  background: transparent;
+  background: transparent !important;
   border-bottom: none;
   transition: all 0.2s ease;
 }
@@ -397,6 +397,3 @@
   background-color: #3e2723;
   color: #ffccbc;
 }
-
-
-

@@ -10,8 +10,20 @@
 */
 
 .light .hljs {
-  background: inherit;
+  background: transparent !important;
   color: #000
+}
+
+/* 移除所有 hljs span 元素的背景色，避免代码看起来像被选中 */
+.light .hljs span {
+  background: transparent !important;
+}
+
+.light .markdown-body pre code,
+.light .markdown-body pre code span,
+.light .markdown-body .code-block-wrapper code,
+.light .markdown-body .code-block-wrapper code span {
+  background: transparent !important;
 }
 
 .light .hljs-comment,
@@ -58,7 +70,14 @@
 .light .hljs-bullet,
 .light .hljs-link,
 .light .hljs-symbol {
-  color: #00b0e8
+  color: #00b0e8;
+  text-decoration: none
+}
+
+/* 确保代码块中所有元素都没有下划线 */
+.light .markdown-body pre code *,
+.light .markdown-body .code-block-wrapper code * {
+  text-decoration: none !important;
 }
 
 .light .hljs-emphasis {

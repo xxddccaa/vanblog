@@ -34,5 +34,3 @@ html.dark .markdown-body table td { border-right: 1px solid var(--vb-hover-bg); 
 html.dark .markdown-body table th { background-color: var(--vb-panel-bg-2); color: var(--element-color-shallow); }
 html.dark .markdown-body table tbody tr:hover td,
 html.dark .markdown-body table tbody td:hover { background-color: var(--vb-hover-bg); color: var(--element-color-shallow); }
-
-

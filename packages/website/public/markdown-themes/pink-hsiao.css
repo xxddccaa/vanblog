@@ -463,7 +463,7 @@ tt {
 
 .md-task-list-item.task-list-not-done {
     text-decoration: none;
-    color: inherit;
+    color: inherit !important;
 }
 
 @media print {
@@ -519,11 +519,11 @@ tt {
     font-family: var(--font-monospace);
     padding: 2px 0 0 4px;
     font-size: 0.9em;
-    color: inherit;
+    color: inherit !important;
 }
 
 .md-tag {
-    color: inherit;
+    color: inherit !important;
 }
 
 .md-toc {
@@ -576,7 +576,6 @@ header, .context-menu, .megamenu-content, footer {
     --item-hover-bg-color: #E6F0FE;
 }
 
-
 /* ========================== Highlight Style ========================== */
 /* Based on VSCode Light Modern theme */
 
@@ -587,7 +586,6 @@ header, .context-menu, .megamenu-content, footer {
 .ty-input:focus {
     border-color: #ff6b9d !important;
 }
-
 
 .CodeMirror {
   background-color: #FFFFFF;
@@ -628,7 +626,6 @@ header, .context-menu, .megamenu-content, footer {
 .CodeMirror-line>span>span::-moz-selection {
   background: #ADD6FF !important;
 }
-
 
 .cm-keyword {
   color: #0000FF !important;

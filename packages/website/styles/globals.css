@@ -251,3 +251,94 @@ body .ua-link::before {
 .dark .post-card-title a > div > span::selection {
   background-color: rgba(59, 130, 246, 0.4);
 }
+
+/* 强制移除代码块中所有可能的下划线效果 */
+.markdown-body pre,
+.markdown-body pre *,
+.markdown-body pre code,
+.markdown-body pre code *,
+.markdown-body pre code span,
+.markdown-body .code-block-wrapper,
+.markdown-body .code-block-wrapper *,
+.markdown-body .code-block-wrapper code,
+.markdown-body .code-block-wrapper code *,
+.markdown-body .code-block-wrapper code span,
+.markdown-body .code-content-wrapper,
+.markdown-body .code-content-wrapper *,
+.markdown-body .hljs,
+.markdown-body .hljs *,
+.markdown-body .hljs span {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  border-bottom-style: none !important;
+  border-bottom-width: 0 !important;
+  background-image: none !important;
+}
+
+/* 暗色模式下，确保代码块内链接没有下划线（覆盖主题样式） */
+html.dark .markdown-body pre a,
+html.dark .markdown-body pre code a,
+html.dark .markdown-body .code-block-wrapper a,
+html.dark .markdown-body .code-block-wrapper code a,
+html.dark .markdown-body .code-content-wrapper a,
+html.dark .markdown-body .hljs a,
+.dark .markdown-body pre a,
+.dark .markdown-body pre code a,
+.dark .markdown-body .code-block-wrapper a,
+.dark .markdown-body .code-block-wrapper code a,
+.dark .markdown-body .code-content-wrapper a,
+.dark .markdown-body .hljs a {
+  text-decoration: none !important;
+  border-bottom: none !important;
+  border-bottom-style: none !important;
+  border-bottom-width: 0 !important;
+  border-bottom-color: transparent !important;
+}
+
+/* 暗色模式下，移除代码块容器的所有边框、阴影和轮廓（覆盖主题样式） */
+html.dark .markdown-body .code-block-wrapper,
+.dark .markdown-body .code-block-wrapper {
+  border: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 暗色模式下，移除代码块头部的边框 */
+html.dark .markdown-body .code-block-wrapper .header-right,
+.dark .markdown-body .code-block-wrapper .header-right {
+  border: none !important;
+  border-bottom: none !important;
+}
+
+/* 暗色模式下，移除 pre 元素的边框 */
+html.dark .markdown-body pre,
+.dark .markdown-body pre {
+  border: none !important;
+  border-width: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* 暗色模式下，移除代码块内所有元素的边框、下划线和轮廓 */
+html.dark .markdown-body pre *,
+html.dark .markdown-body .code-block-wrapper *,
+html.dark .markdown-body .code-content-wrapper *,
+html.dark .markdown-body .hljs,
+html.dark .markdown-body .hljs *,
+.dark .markdown-body pre *,
+.dark .markdown-body .code-block-wrapper *,
+.dark .markdown-body .code-content-wrapper *,
+.dark .markdown-body .hljs,
+.dark .markdown-body .hljs * {
+  text-decoration: none !important;
+  border: none !important;
+  border-bottom: none !important;
+  border-bottom-style: none !important;
+  border-bottom-width: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}

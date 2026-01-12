@@ -291,7 +291,7 @@ html:not(.dark) .markdown-body a {
   padding: 2px 4px;
   margin: 0 -2px;
   border-radius: 4px;
-  background: transparent;
+  background: transparent !important;
   border-bottom: none;
   transition: all 0.2s ease;
 }
@@ -304,7 +304,7 @@ html:not(.dark) .markdown-body a:hover {
 /* 高亮 mark */
 html:not(.dark) .markdown-body mark {
   background-color: var(--element-color-so-shallow);
-  color: inherit;
+  color: inherit !important;
   padding: 2px 6px;
   border-radius: 6px;
   margin: 0 2px;
@@ -398,4 +398,3 @@ html:not(.dark) .markdown-body table tbody td:hover {
   background-color: var(--element-color-soo-shallow);
   color: var(--element-color-deep);
 }
-

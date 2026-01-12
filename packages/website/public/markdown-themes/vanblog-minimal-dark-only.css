@@ -82,10 +82,10 @@ html.dark .markdown-body blockquote {
 }
 
 html.dark .markdown-body :not(pre) > code {
-  background: rgba(96, 165, 250, 0.08);
-  border: 1px solid rgba(96, 165, 250, 0.14);
-  border-radius: 6px;
-  padding: 0.2em 0.5em;
+  background: rgba(96, 165, 250, 0.05);
+  border: 1px solid rgba(96, 165, 250, 0.10);
+  border-radius: 5px;
+  padding: 0.15em 0.4em;
   font-size: 0.92em;
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
 }
@@ -117,5 +117,3 @@ html.dark .markdown-body hr {
   background: linear-gradient(90deg, transparent, rgba(226, 232, 240, 0.22), transparent);
   opacity: 0.9;
 }
-
-

@@ -58,10 +58,10 @@ html:not(.dark) .markdown-body a {
 html:not(.dark) .markdown-body a:hover { border-bottom-color: rgba(239, 68, 68, 0.55); }
 
 html:not(.dark) .markdown-body :not(pre) > code {
-  background: rgba(185, 28, 28, 0.10);
-  border: 1px solid rgba(185, 28, 28, 0.16);
-  border-radius: 10px;
-  padding: 0.15em 0.45em;
+  background: rgba(185, 28, 28, 0.05);
+  border: 1px solid rgba(185, 28, 28, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
 }
 
 html:not(.dark) .markdown-body .code-block-wrapper {
@@ -81,6 +81,3 @@ html:not(.dark) .markdown-body hr {
   background: linear-gradient(90deg, transparent, rgba(185, 28, 28, 0.70), rgba(239, 68, 68, 0.70), transparent);
   opacity: 0.9;
 }
-
-
-

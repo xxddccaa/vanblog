@@ -165,13 +165,13 @@ html:not(.dark) .markdown-body a:hover {
   background-size: 100% 2px;
 }
 
-/* 代码：更统一的“糖果芯片” */
+/* 代码：更统一的"糖果芯片" */
 html:not(.dark) .markdown-body :not(pre) > code {
-  background: var(--vb-code-bg);
-  border: 1px solid var(--vb-code-border);
-  border-radius: 10px;
-  padding: 0.15em 0.45em;
-  margin: 0 0.15em;
+  background: rgba(255, 77, 141, 0.04);
+  border: 1px solid rgba(255, 77, 141, 0.10);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
+  margin: 0 0.1em;
 }
 
 html:not(.dark) .markdown-body .code-block-wrapper {
@@ -208,5 +208,3 @@ html:not(.dark) .markdown-body hr {
   opacity: 0.95;
   filter: blur(0.3px);
 }
-
-

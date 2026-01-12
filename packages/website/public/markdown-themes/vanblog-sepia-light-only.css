@@ -60,10 +60,10 @@ html:not(.dark) .markdown-body a:hover {
 }
 
 html:not(.dark) .markdown-body :not(pre) > code {
-  background: rgba(31, 41, 55, 0.06);
-  border: 1px solid rgba(31, 41, 55, 0.14);
-  border-radius: 8px;
-  padding: 0.15em 0.45em;
+  background: rgba(31, 41, 55, 0.04);
+  border: 1px solid rgba(31, 41, 55, 0.08);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
@@ -84,6 +84,3 @@ html:not(.dark) .markdown-body hr {
   background: linear-gradient(90deg, transparent, rgba(31, 41, 55, 0.28), transparent);
   opacity: 0.9;
 }
-
-
-
