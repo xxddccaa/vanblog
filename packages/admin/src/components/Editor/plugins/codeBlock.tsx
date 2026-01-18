@@ -3,7 +3,8 @@ import { visit } from 'unist-util-visit';
 import copy from 'copy-to-clipboard';
 import { message } from 'antd';
 // FIXME: Addd Types
-const codeBlockPlugin = () => (tree) => {
+// 工厂函数：根据是否禁用折叠来生成不同的 rehype 插件
+const createCodeBlockPlugin = (disableCollapse: boolean) => () => (tree) => {
   visit(tree, (node) => {
     if (node.type === 'element' && node.tagName === 'pre') {
       const oldChildren = JSON.parse(JSON.stringify(node.children));
@@ -18,7 +19,7 @@ const codeBlockPlugin = () => (tree) => {
         }
       }
       if (language === 'mermaid') return;
-      
+
       // 复制按钮
       const codeCopyBtn = {
         type: 'element',
@@ -28,23 +29,7 @@ const codeBlockPlugin = () => (tree) => {
         },
         children: [],
       };
-      
-      // 展开/收起按钮
-      const codeToggleBtn = {
-        type: 'element',
-        tagName: 'div',
-        properties: {
-          class: 'code-toggle-btn ml-1',
-          title: '展开/收起代码',
-        },
-        children: [
-          {
-            type: 'text',
-            value: '展开代码',
-          },
-        ],
-      };
-      
+
       const languageTag = {
         type: 'element',
         tagName: 'span',
@@ -59,7 +44,29 @@ const codeBlockPlugin = () => (tree) => {
           },
         ],
       };
-      
+
+      // 上方右侧 header 的子元素
+      const headerChildren = [languageTag, codeCopyBtn];
+
+      // 只有非编辑器模式才添加展开/收起按钮
+      if (!disableCollapse) {
+        const codeToggleBtn = {
+          type: 'element',
+          tagName: 'div',
+          properties: {
+            class: 'code-toggle-btn ml-1',
+            title: '展开/收起代码',
+          },
+          children: [
+            {
+              type: 'text',
+              value: '展开代码',
+            },
+          ],
+        };
+        headerChildren.push(codeToggleBtn);
+      }
+
       // 上方右侧 header
       const headerRight = {
         type: 'element',
@@ -68,9 +75,9 @@ const codeBlockPlugin = () => (tree) => {
           class: 'header-right flex',
           style: 'color: #6f7177',
         },
-        children: [languageTag, codeCopyBtn, codeToggleBtn],
+        children: headerChildren,
       };
-      
+
       // 代码内容包装器，用于控制展开/收起
       const codeContentWrapper = {
         type: 'element',
@@ -80,7 +87,7 @@ const codeBlockPlugin = () => (tree) => {
         },
         children: [...oldChildren],
       };
-      
+
       // 包裹的 div
       const wrapperDiv = {
         type: 'element',
@@ -138,22 +145,30 @@ const shouldCollapseCode = (codeElement: Element, maxLines: number = 15): boolea
 };
 
 export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
+  // 如果 maxLines 很大（编辑器模式），完全禁用折叠功能
+  const disableCollapse = maxLines >= 100000;
+
   return {
-    rehype: (processor) => processor.use(codeBlockPlugin),
+    rehype: (processor) => processor.use(createCodeBlockPlugin(disableCollapse)),
     viewerEffect: ({ markdownBody }) => {
       markdownBody.querySelectorAll('.code-block-wrapper').forEach((codeBlock) => {
         const copyBtn = codeBlock.querySelector('.code-copy-btn') as HTMLElement;
         const toggleBtn = codeBlock.querySelector('.code-toggle-btn') as HTMLElement;
         const codeContentWrapper = codeBlock.querySelector('.code-content-wrapper') as HTMLElement;
         const codeElement = codeBlock.querySelector('code');
-        
+
         // 移除之前的事件监听器
         copyBtn?.removeEventListener('click', onClickCopyCode);
         toggleBtn?.removeEventListener('click', onClickToggleCode);
-        
+
         // 添加复制按钮事件
         copyBtn?.addEventListener('click', onClickCopyCode);
-        
+
+        // 编辑器模式：不需要处理折叠相关逻辑，按钮已在 rehype 阶段被移除
+        if (disableCollapse) {
+          return;
+        }
+
         // 检查是否需要折叠，使用传入的maxLines参数
         if (codeElement && shouldCollapseCode(codeElement, maxLines)) {
           // 默认折叠状态
@@ -168,7 +183,7 @@ export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
             toggleBtn.style.display = 'block';
             toggleBtn.addEventListener('click', onClickToggleCode);
           }
-          
+
           // 动态设置折叠高度
           if (codeContentWrapper) {
             // 计算高度：每行约1.4em，加上一些padding
