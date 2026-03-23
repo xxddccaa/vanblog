@@ -213,8 +213,10 @@ docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BU
 
 不要proxy网络的打包推送指令：
 ```bash
-docker build -t kevinchina/deeplearning:vanblog-latest . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0'  && docker push kevinchina/deeplearning:vanblog-latest
+docker build -t kevinchina/deeplearning:vanblog-v1.0.0-dev . --build-arg VAN_BLOG_BUILD_SERVER='http://127.0.0.1:3000' --build-arg VAN_BLOG_VERSIONS='v1.0.0'  && docker push kevinchina/deeplearning:vanblog-v1.0.0-dev
 ```
+
+以后按版本推送。2026/03/23
 
 ## 其他细节提示
 

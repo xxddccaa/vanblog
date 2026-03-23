@@ -1,8 +1,8 @@
 import { getPublicMeta } from "../../api/getAllData";
 import AuthorCard, { AuthorCardProps } from "../../components/AuthorCard";
 import Layout from "../../components/Layout";
-import TimelinePageComponent from "../../components/TimelinePage";
 import ArticleList from "../../components/ArticleList";
+import PageNav from "../../components/PageNav";
 import { Article } from "../../types/article";
 import { LayoutProps } from "../../utils/getLayoutProps";
 import { getCategoryPagesProps } from "../../utils/getPageProps";
@@ -14,6 +14,7 @@ export interface CategoryPagesProps {
   sortedArticles: Record<string, Article[]>;
   curNum: number;
   wordTotal: number;
+  currPage: number;
 }
 const CategoryPages = (props: CategoryPagesProps) => {
   return (
@@ -38,6 +39,13 @@ const CategoryPages = (props: CategoryPagesProps) => {
           openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
           showTags={true}
         />
+        <PageNav
+          total={props.curNum}
+          current={props.currPage}
+          base={`/category/${props.curCategory}`}
+          more={`/category/${props.curCategory}/page`}
+          pageSize={props.layoutProps.homePageSize || 5}
+        />
       </div>
     </Layout>
   );
@@ -61,10 +69,9 @@ export async function getStaticPaths() {
 export async function getStaticProps({
   params,
 }: any): Promise<{ props: CategoryPagesProps; revalidate?: number }> {
-  // 解码URL参数中的分类名称
   const decodedCategory = decodeURIComponent(params.category);
   return {
-    props: await getCategoryPagesProps(decodedCategory),
+    props: await getCategoryPagesProps(decodedCategory, 1),
     ...revalidate,
   };
 }

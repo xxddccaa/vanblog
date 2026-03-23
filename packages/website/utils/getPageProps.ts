@@ -120,29 +120,28 @@ export async function getAboutPageProps(): Promise<AboutPageProps> {
   };
 }
 export async function getTagPagesProps(
-  currTag: string
+  currTag: string,
+  currPage: number = 1
 ): Promise<TagPagesProps> {
   const data = await getPublicMeta();
   const layoutProps = getLayoutProps(data);
   const authorCardProps = getAuthorCardProps(data);
+  const homePageSize = data?.meta?.siteInfo?.homePageSize || 5;
   const {
     articles: articlesInThisTag,
     total,
     totalWordCount,
   } = await getArticlesByOption({
-    page: 1,
-    pageSize: -1,
+    page: currPage,
+    pageSize: homePageSize,
     tags: currTag,
     withWordCount: true,
     toListView: true,
   });
   const wordTotal = totalWordCount || 0;
   const curNum = total;
-  // 仅一个卡片：使用标签名作为分组键
   const sortedArticles: Record<string, any[]> = {};
-  sortedArticles[currTag] = [...articlesInThisTag].sort(
-    (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  sortedArticles[currTag] = articlesInThisTag;
   return {
     layoutProps,
     authorCardProps,
@@ -150,6 +149,7 @@ export async function getTagPagesProps(
     sortedArticles,
     curNum,
     wordTotal,
+    currPage,
   };
 }
 
@@ -199,18 +199,20 @@ export async function getPagePagesProps(
   };
 }
 export async function getCategoryPagesProps(
-  curCategory: string
+  curCategory: string,
+  currPage: number = 1
 ): Promise<CategoryPagesProps> {
   const data = await getPublicMeta();
   const authorCardProps = getAuthorCardProps(data);
   const layoutProps = getLayoutProps(data);
+  const homePageSize = data?.meta?.siteInfo?.homePageSize || 5;
   const {
     articles: articlesInThisCategory,
     total,
     totalWordCount,
   } = await getArticlesByOption({
-    page: 1,
-    pageSize: -1,
+    page: currPage,
+    pageSize: homePageSize,
     category: curCategory,
     withWordCount: true,
     toListView: true,
@@ -218,11 +220,8 @@ export async function getCategoryPagesProps(
 
   const wordTotal = totalWordCount as number;
   const curNum = total;
-  // 仅一个卡片：使用分类名作为分组键
   const sortedArticles: Record<string, any[]> = {};
-  sortedArticles[curCategory] = [...articlesInThisCategory].sort(
-    (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  sortedArticles[curCategory] = articlesInThisCategory;
   return {
     layoutProps,
     curCategory,
@@ -230,5 +229,6 @@ export async function getCategoryPagesProps(
     authorCardProps,
     wordTotal,
     curNum,
+    currPage,
   };
 }

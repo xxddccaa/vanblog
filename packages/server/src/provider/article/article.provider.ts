@@ -469,7 +469,7 @@ export class ArticleProvider {
     // 清洗一下数据：按年分组
     const years = Array.from(
       new Set(articles.map((a) => a.createdAt.getFullYear()))
-    ).sort((a, b) => b - a);
+    ).sort((a: number, b: number) => b - a);
     const res: Record<string, Article[]> = {};
     years.forEach((year) => {
       res[String(year)] = articles.filter((a) => a.createdAt.getFullYear() === year);
@@ -584,56 +584,77 @@ export class ArticleProvider {
     if (option.withWordCount) {
       view = isPublic ? this.publicView : this.adminView;
     }
-    let articlesQuery = this.articleModel.find(query, view).sort(sort);
-    if (option.pageSize != -1 && !isPublic) {
-      articlesQuery = articlesQuery
-        .skip(option.pageSize * option.page - option.pageSize)
-        .limit(option.pageSize);
-    }
+    let articles: any[];
+    if (option.pageSize !== -1 && isPublic) {
+      // 公开分页：置顶文章始终显示在最前，其余用数据库级分页
+      const pageSize = option.pageSize;
+      const page = option.page;
+      const globalSkip = pageSize * (page - 1);
 
-    let articles = await articlesQuery.exec();
-    // public 下 包括所有的，
-    if (isPublic && option.pageSize != -1) {
-      // 把 top 的诺到前面去
-      const topArticles = articles.filter((a: any) => {
-        const top = a?._doc?.top || a?.top;
-        return Boolean(top) && top != '';
-      });
-      const notTopArticles = articles.filter((a: any) => {
-        const top = a?._doc?.top || a?.top;
-        return !Boolean(top) || top == '';
-      });
-      const sortedTopArticles = topArticles.sort((a: any, b: any) => {
-        const topA = a?._doc?.top || a?.top;
-        const topB = b?._doc?.top || b?.top;
-        if (topA > topB) {
-          return -1;
-        } else if (topB > topA) {
-          return 1;
-        } else {
-          return 0;
-        }
-      });
-      articles = [...sortedTopArticles, ...notTopArticles];
-      const skip = option.pageSize * option.page - option.pageSize;
-      const rawEnd = skip + option.pageSize;
-      const end = rawEnd > articles.length - 1 ? articles.length : rawEnd;
-      articles = articles.slice(skip, end);
+      // 先取出全部置顶文章（通常极少，个位数），按置顶权重降序
+      const pinnedArticles = await this.articleModel
+        .find({ $and: [...$and, { top: { $gt: 0 } }] }, view)
+        .sort({ top: -1 })
+        .exec();
+      const numPinned = pinnedArticles.length;
+
+      let result: any[] = [];
+      if (globalSkip < numPinned) {
+        result = pinnedArticles.slice(globalSkip, Math.min(numPinned, globalSkip + pageSize));
+      }
+
+      const nonPinnedNeeded = pageSize - result.length;
+      if (nonPinnedNeeded > 0) {
+        const nonPinnedSkip = Math.max(0, globalSkip - numPinned);
+        const nonPinnedArticles = await this.articleModel
+          .find({ $and: [...$and, { top: { $lte: 0 } }] }, view)
+          .sort(sort)
+          .skip(nonPinnedSkip)
+          .limit(nonPinnedNeeded)
+          .exec();
+        result = [...result, ...nonPinnedArticles];
+      }
+
+      articles = result;
+    } else if (option.pageSize !== -1 && !isPublic) {
+      // 管理端分页：直接数据库级 skip/limit
+      articles = await this.articleModel
+        .find(query, view)
+        .sort(sort)
+        .skip(option.pageSize * option.page - option.pageSize)
+        .limit(option.pageSize)
+        .exec();
+    } else {
+      // pageSize === -1：取全部
+      articles = await this.articleModel.find(query, view).sort(sort).exec();
     }
     // withWordCount 只会返回当前分页的文字数量
 
     const total = await this.articleModel.countDocuments(query).exec();
     // 过滤私有文章
     if (isPublic) {
+      // 批量查询分类，避免 N+1 问题
+      const categoryNames = [
+        ...new Set(
+          articles
+            .map((a: any) => a?._doc?.category || a?.category)
+            .filter(Boolean),
+        ),
+      ];
+      const categoriesDocs = await this.categoryModal
+        .find({ name: { $in: categoryNames } })
+        .exec();
+      const categoryPrivateMap = new Map(
+        categoriesDocs.map((c) => [c.name, c?.private || false]),
+      );
+
       const tmpArticles: any[] = [];
       for (const a of articles) {
         //@ts-ignore
         const isPrivateInArticle = a?._doc?.private || a?.private;
-        const category = await this.categoryModal.findOne({
-          //@ts-ignore
-          name: a?._doc?.category || a?.category,
-        });
-        const isPrivateInCategory = category?.private || false;
+        //@ts-ignore
+        const categoryName = a?._doc?.category || a?.category;
+        const isPrivateInCategory = categoryPrivateMap.get(categoryName) || false;
         const isPrivate = isPrivateInArticle || isPrivateInCategory;
         if (isPrivate) {
           tmpArticles.push({

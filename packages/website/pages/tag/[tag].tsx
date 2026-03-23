@@ -1,8 +1,8 @@
 import { getPublicMeta } from "../../api/getAllData";
 import AuthorCard, { AuthorCardProps } from "../../components/AuthorCard";
 import Layout from "../../components/Layout";
-import TimelinePageComponent from "../../components/TimelinePage";
 import ArticleList from "../../components/ArticleList";
+import PageNav from "../../components/PageNav";
 import { Article } from "../../types/article";
 import { LayoutProps } from "../../utils/getLayoutProps";
 import { getTagPagesProps } from "../../utils/getPageProps";
@@ -15,6 +15,7 @@ export interface TagPagesProps {
   sortedArticles: Record<string, Article[]>;
   curNum: number;
   wordTotal: number;
+  currPage: number;
 }
 const TagPages = (props: TagPagesProps) => {
   if (Object.keys(props.sortedArticles).length == 0) {
@@ -42,6 +43,13 @@ const TagPages = (props: TagPagesProps) => {
           openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
           showTags={true}
         />
+        <PageNav
+          total={props.curNum}
+          current={props.currPage}
+          base={`/tag/${props.currTag}`}
+          more={`/tag/${props.currTag}/page`}
+          pageSize={props.layoutProps.homePageSize || 5}
+        />
       </div>
     </Layout>
   );
@@ -63,10 +71,9 @@ export async function getStaticPaths() {
 export async function getStaticProps({
   params,
 }: any): Promise<{ props: TagPagesProps; revalidate?: number }> {
-  // 解码URL参数中的标签名称
   const decodedTag = decodeURIComponent(params.tag);
   return {
-    props: await getTagPagesProps(decodedTag),
+    props: await getTagPagesProps(decodedTag, 1),
     ...revalidate,
   };
 }
