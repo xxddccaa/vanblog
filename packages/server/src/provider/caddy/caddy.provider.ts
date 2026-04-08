@@ -1,29 +1,40 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs';
+import { withRetry } from 'src/utils/retry';
 import { SettingProvider } from '../setting/setting.provider';
 @Injectable()
 export class CaddyProvider {
   subjects: string[] = [];
   logger = new Logger(CaddyProvider.name);
-  constructor(private readonly settingProvider: SettingProvider) {
-    this.init();
-  }
+  private readonly apiBaseUrl = (
+    process.env['VANBLOG_CADDY_API_URL'] ||
+    (process.env.NODE_ENV === 'production' ? 'http://caddy:2019' : 'http://127.0.0.1:2019')
+  ).replace(/\/$/, '');
+  constructor(private readonly settingProvider: SettingProvider) {}
   async init() {
-    // this.subjects = await getDefaultSubjects();
-    // this.logger.log(`默认 subjects:`, this.subjects);
-    // await this.updateSubjects(this.subjects);
-    const configInDB = await this.settingProvider.getHttpsSetting();
-    let txt = '初始化 caddy 配置完成！';
-    if (configInDB?.redirect) {
-      await this.setRedirect(true);
-      txt = txt + 'https 自动重定向已开启';
-    } else {
-      await this.setRedirect(false);
-      txt = 'https 自动重定向已关闭';
+    try {
+      const configInDB = await this.settingProvider.getHttpsSetting();
+      await withRetry(
+        async () => {
+          const result = await this.setRedirect(!!configInDB?.redirect);
+          if (result === false) {
+            throw new Error('同步 Caddy HTTPS 重定向配置失败');
+          }
+        },
+        {
+          attempts: 20,
+          delayMs: 3000,
+          logger: this.logger,
+          description: '同步 Caddy 配置',
+        },
+      );
+      this.logger.log(
+        `初始化 caddy 配置完成！https 自动重定向已${configInDB?.redirect ? '开启' : '关闭'}`,
+      );
+    } catch (err) {
+      this.logger.error(`初始化 caddy 配置失败：${err?.message || err}`);
     }
-
-    this.logger.log(txt);
   }
   clearLog() {
     try {
@@ -40,7 +51,7 @@ export class CaddyProvider {
   async setRedirect(redirect: boolean) {
     if (!redirect) {
       try {
-        await axios.delete('http://127.0.0.1:2019/config/apps/http/servers/srv1/listener_wrappers');
+        await axios.delete(`${this.apiBaseUrl}/config/apps/http/servers/srv1/listener_wrappers`);
         this.logger.log('https 自动重定向已关闭');
         return '关闭成功！';
       } catch (err) {
@@ -50,12 +61,12 @@ export class CaddyProvider {
       }
     } else {
       try {
-        await axios.post('http://127.0.0.1:2019/config/apps/http/servers/srv1/listener_wrappers', [
+        await axios.post(`${this.apiBaseUrl}/config/apps/http/servers/srv1/listener_wrappers`, [
           {
             wrapper: 'http_redirect',
           },
         ]);
-        this.logger.log('https 自动重定向已关闭');
+        this.logger.log('https 自动重定向已开启');
         return '开启成功！';
       } catch (err) {
         // console.log(err);
@@ -67,9 +78,7 @@ export class CaddyProvider {
 
   async getSubjects() {
     try {
-      const res = await axios.get(
-        'http://127.0.0.1:2019/config/apps/tls/automation/policies/subjects',
-      );
+      const res = await axios.get(`${this.apiBaseUrl}/config/apps/tls/automation/policies/subjects`);
       return res?.data;
     } catch (err) {
       // console.log(err);
@@ -78,7 +87,7 @@ export class CaddyProvider {
   }
   async getAutomaticDomains() {
     try {
-      const res = await axios.get('http://127.0.0.1:2019/config/apps/tls/certificates/automate');
+      const res = await axios.get(`${this.apiBaseUrl}/config/apps/tls/certificates/automate`);
       return res?.data;
     } catch (err) {
       console.log(err);
@@ -88,7 +97,7 @@ export class CaddyProvider {
   async updateSubjects(domains: string[]) {
     try {
       const res = await axios.patch(
-        'http://127.0.0.1:2019/config/apps/tls/automation/policies/0/subjects',
+        `${this.apiBaseUrl}/config/apps/tls/automation/policies/0/subjects`,
         domains,
       );
       if (res.status == 200) {
@@ -106,7 +115,7 @@ export class CaddyProvider {
   async updateHttpsDomains(domains: string[]) {
     try {
       const res = await axios.patch(
-        'http://127.0.0.1:2019/config/apps/tls/certificates/automate',
+        `${this.apiBaseUrl}/config/apps/tls/certificates/automate`,
         domains,
       );
       if (res.status == 200) {
@@ -119,7 +128,7 @@ export class CaddyProvider {
   }
   async getConfig() {
     try {
-      const res = await axios.get('http://127.0.0.1:2019/config');
+      const res = await axios.get(`${this.apiBaseUrl}/config`);
       return res?.data;
     } catch (err) {
       console.log(err);

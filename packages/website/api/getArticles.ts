@@ -6,6 +6,7 @@ export interface GetArticleOption {
   page: number;
   pageSize: number;
   toListView?: boolean;
+  withPreviewContent?: boolean;
   category?: string;
   tags?: string;
   sortCreatedAt?: SortOrder;

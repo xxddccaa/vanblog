@@ -13,6 +13,7 @@ import TocMobile from "../TocMobile";
 import { hasToc } from "../../utils/hasToc";
 import Markdown from "../Markdown";
 import { encodeQuerystring } from "../../utils/encode";
+import { getOverviewPreview } from "../../utils/getOverviewPreview";
 
 export default function (props: {
   id: number | string;
@@ -68,12 +69,7 @@ export default function (props: {
       if (props.private) {
         return "该文章已加密，点击 `阅读全文` 并输入密码后方可查看。";
       }
-      const r = content.split("<!-- more -->");
-      if (r.length > 1) {
-        return r[0];
-      } else {
-        return content.substring(0, 50);
-      }
+      return getOverviewPreview(content);
     } else {
       return content.replace("<!-- more -->", "");
     }
@@ -146,7 +142,13 @@ export default function (props: {
           ) : (
             <>
               {showToc && <TocMobile content={calContent} />}
-              <Markdown content={calContent} codeMaxLines={props.codeMaxLines}></Markdown>
+              {props.type === "overview" ? (
+                <p className="leading-7 text-gray-600 dark:text-dark whitespace-pre-line break-words">
+                  {calContent}
+                </p>
+              ) : (
+                <Markdown content={calContent} codeMaxLines={props.codeMaxLines}></Markdown>
+              )}
             </>
           )}
         </div>

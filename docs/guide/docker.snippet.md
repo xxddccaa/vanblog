@@ -1,6 +1,6 @@
-### 1.安装依赖
+### 1. 安装依赖
 
-如果你没有安装 `docker` 和 `docker-compose`，可以通过以下命令一键安装：
+如果你没有安装 `docker`，可以通过以下命令安装：
 
 ```bash
 curl -sSL https://get.daocloud.io/docker | sh
@@ -9,64 +9,63 @@ systemctl enable --now docker
 
 ::: tip
 
-如果你没有接触过 `docker`，可以查看 [Docker 入门教程](https://www.ruanyifeng.com/blog/2018/02/docker-tutorial.html)。
+如果你没有接触过 `docker`，可以先看一下 [Docker 入门教程](https://www.ruanyifeng.com/blog/2018/02/docker-tutorial.html)。
 
 :::
 
-::: warning 环境要求
+### 2. 获取仓库并使用内置编排
 
-只需安装 **`docker` 和 `docker-compose`** 即可，**不需要手动安装 `mongoDB`**，因为编排中已经包含了数据库（数据库是通过 docker 容器化运行的，不需要手动安装）。
-
-:::
-
-### 2.新建编排文件
-
-在安装好了 `docker` 和 `docker-compose` 后，新建一个 `vanblog` 的目录，在这个目录下新建 `docker-compose.yaml`文件，内容如下：
-
-```yml
-version: '3'
-
-services:
-  vanblog:
-    # 阿里云镜像源
-    # image: registry.cn-beijing.aliyuncs.com/mereith/van-blog:latest
-    image: mereith/van-blog:latest
-    restart: always
-    environment:
-      TZ: 'Asia/Shanghai'
-      # 邮箱地址，用于自动申请 https 证书
-      EMAIL: 'someone@mereith.com'
-    volumes:
-      # 图床文件的存放地址，按需修改。
-      - ${PWD}/data/static:/app/static
-      # 日志文件
-      - ${PWD}/log:/var/log
-      # Caddy 配置存储
-      - ${PWD}/caddy/config:/root/.config/caddy
-      # Caddy 证书存储
-      - ${PWD}/caddy/data:/root/.local/share/caddy
-    ports:
-      # 前面的是映射到宿主机的端口号，改端口的话改前面的。
-      - 80:80
-      - 443:443
-  mongo:
-    # 某些机器不支持 avx 会报错，所以默认用 v4 版本。有的话用最新的。
-    image: mongo:4.4.16
-    restart: always
-    environment:
-      TZ: 'Asia/Shanghai'
-    volumes:
-      - ${PWD}/data/mongo:/data/db
-```
-
-> 所有可用的环境变量详见 [参考 → 环境变量](../reference/env.md)。
-
-### 3.启动项目
-
-按注释说明修改 `docker-compose.yaml` 的配置后运行：
+当前仓库已经自带 `docker-compose.yml`，不需要再手写单容器编排。推荐直接使用仓库根目录提供的多容器配置：
 
 ```bash
-docker-compose up -d
+git clone https://github.com/xxddccaa/vanblog.git
+cd vanblog
 ```
 
-启动完毕后，请 [完成初始化](./init.md)。
+当前默认会启动以下服务：
+
+- `caddy`: 对外统一入口，暴露 `80/443`
+- `server`: 后端 API 与静态资源服务
+- `website`: Next.js 前台
+- `admin`: 后台静态页面
+- `waline`: 评论服务
+- `mongo`: 数据库，仅内网访问
+
+::: warning 安全说明
+
+默认配置下：
+
+- `mongo` 不对外暴露端口
+- Caddy admin API `2019` 不对外暴露端口
+- 后台通过 `http://<你的域名>/admin` 访问，不需要单独暴露 `3002`
+
+:::
+
+### 3. 启动项目
+
+在仓库根目录执行：
+
+```bash
+docker compose up -d --build
+```
+
+查看日志：
+
+```bash
+docker compose logs -f caddy server website admin waline mongo
+```
+
+启动完成后，请继续 [完成初始化](./init.md)。
+
+### 4. 常用维护命令
+
+```bash
+# 停止服务
+docker compose down
+
+# 停止并删除匿名卷（谨慎使用）
+docker compose down -v
+
+# 更新后重新构建启动
+docker compose up -d --build
+```

@@ -2,20 +2,21 @@
   "name": "VanBlog",
   "short_name": "VanBlog",
   "display": "standalone",
-  "start_url": "/admin",
+  "start_url": "/admin/",
+  "scope": "/admin/",
   "theme_color": "#ff6b9d",
   "background_color": "#ffeef5",
   "icons": [
     {
-      "src": "logo.svg",
+      "src": "/admin/logo.svg",
       "sizes": "192x192"
     },
     {
-      "src": "logo.svg",
+      "src": "/admin/logo.svg",
       "sizes": "128x128"
     },
     {
-      "src": "logo.svg",
+      "src": "/admin/logo.svg",
       "sizes": "512x512"
     }
   ]

@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import { ChildProcess, spawn } from 'node:child_process';
 import { config } from 'src/config';
 import { WalineSetting } from 'src/types/setting.dto';
 import { makeSalt } from 'src/utils/crypto';
+import { withRetry } from 'src/utils/retry';
 import { MetaProvider } from '../meta/meta.provider';
 import { SettingProvider } from '../setting/setting.provider';
 @Injectable()
@@ -11,6 +13,7 @@ export class WalineProvider {
   ctx: ChildProcess = null;
   logger = new Logger(WalineProvider.name);
   env = {};
+  private readonly controlUrl = process.env['VANBLOG_WALINE_CONTROL_URL'];
   constructor(
     private metaProvider: MetaProvider,
     private readonly settingProvider: SettingProvider,
@@ -104,12 +107,24 @@ export class WalineProvider {
   }
   async restart(reason: string) {
     this.logger.log(`${reason}重启 waline`);
+    if (this.isExternalControlMode()) {
+      await this.run();
+      return;
+    }
     if (this.ctx) {
       await this.stop();
     }
     await this.run();
   }
   async stop() {
+    if (this.isExternalControlMode()) {
+      try {
+        await this.postToExternalControl('/stop');
+      } catch (err) {
+        this.logger.error(`停止外部 waline 失败: ${err?.message || err}`);
+      }
+      return;
+    }
     if (this.ctx) {
       this.ctx.unref();
       process.kill(-this.ctx.pid);
@@ -117,8 +132,38 @@ export class WalineProvider {
       this.logger.log('waline 停止成功！');
     }
   }
+  isExternalControlMode() {
+    return !!this.controlUrl;
+  }
+  private getControlBaseUrl() {
+    return this.controlUrl?.replace(/\/$/, '');
+  }
+  private async postToExternalControl(pathname: string, payload: Record<string, any> = {}) {
+    return await withRetry(
+      async () => {
+        await axios.post(`${this.getControlBaseUrl()}${pathname}`, payload);
+      },
+      {
+        attempts: 20,
+        delayMs: 3000,
+        logger: this.logger,
+        description: `同步外部 waline 控制器 ${pathname}`,
+      },
+    );
+  }
   async run(): Promise<any> {
     await this.loadEnv();
+    if (this.isExternalControlMode()) {
+      try {
+        await this.postToExternalControl('/restart', {
+          env: this.env,
+        });
+        this.logger.log('外部 waline 已完成配置同步');
+      } catch (err) {
+        this.logger.error(`同步外部 waline 配置失败: ${err?.message || err}`);
+      }
+      return;
+    }
     const base = '../waline/node_modules/@waline/vercel/vanilla.js';
     if (this.ctx == null) {
       this.ctx = spawn('node', [base], {

@@ -1,13 +1,21 @@
 # 后台管理面板
 
-基于 `umi.js`
+基于 `umi.js` + `Ant Design Pro`。
+
+## 本地开发
 
 ```bash
-cd packages/admin
-yarn
-yarn start
+pnpm install
+pnpm --filter @vanblog/admin dev
 ```
 
-端口号为: `3002`，默认开启了 `https`，因为某些功能需要。
+- 默认端口：`3002`
+- 当前开发配置默认使用 `http`，生产构建会以 `/admin/` 子路径部署
+- 如需联调后端，可直接通过仓库根目录运行 `pnpm dev` 或 `docker compose up -d --build`
 
-与后台的跨域代理已经做好了，浏览器打开即可。
+## 常用命令
+
+```bash
+pnpm --filter @vanblog/admin build
+pnpm --filter @vanblog/admin test
+```

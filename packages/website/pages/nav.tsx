@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { getPublicMeta } from '../api/getAllData';
 import { getLayoutProps, getAuthorCardProps, LayoutProps } from '../utils/getLayoutProps';
+import { getServerBaseUrl } from '../utils/loadConfig';
 import AuthorCard, { AuthorCardProps } from '../components/AuthorCard';
 import Head from 'next/head';
 import styles from '../styles/nav.module.css';
@@ -344,8 +345,7 @@ export const getStaticProps: GetStaticProps = async () => {
     let initialNavData: NavData = { categories: [], tools: [] };
     
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VAN_BLOG_SERVER_URL || 'http://localhost:3000';
-      const navResponse = await fetch(`${baseUrl}/api/public/nav/data`);
+      const navResponse = await fetch(`${getServerBaseUrl()}api/public/nav/data`);
       const navResult = await navResponse.json();
       if (navResult.statusCode === 200) {
         initialNavData = navResult.data;

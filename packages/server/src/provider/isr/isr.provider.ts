@@ -13,7 +13,11 @@ export interface ActiveConfig {
 @Injectable()
 export class ISRProvider {
   urlList = ['/', '/category', '/tag', '/timeline', '/about', '/link'];
-  base = 'http://127.0.0.1:3001/api/revalidate?path=';
+  base =
+    process.env['VANBLOG_WEBSITE_ISR_BASE'] ||
+    (process.env.NODE_ENV === 'production'
+      ? 'http://website:3001/api/revalidate?path='
+      : 'http://127.0.0.1:3001/api/revalidate?path=');
   logger = new Logger(ISRProvider.name);
   timer = null;
   constructor(

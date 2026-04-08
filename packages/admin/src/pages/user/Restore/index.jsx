@@ -4,13 +4,14 @@ import ProCard from '@ant-design/pro-card';
 import ProForm, { ProFormText } from '@ant-design/pro-form';
 import { Alert, message } from 'antd';
 import { history } from 'umi';
+import { getAdminAssetPath } from '@/utils/getAssetPath';
 export default function () {
   return (
     <div
       style={{
         height: '100%',
         display: 'flex',
-        backgroundImage: `url('/background.svg')`,
+        backgroundImage: `url('${getAdminAssetPath('background.svg')}')`,
         backgroundRepeat: 'no-repeat',
         backgroundSize: '100%',
         backgroundColor: '#f0f2f5',

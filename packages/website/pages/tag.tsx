@@ -1,12 +1,12 @@
 import Link from "next/link";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
+import { getTarget } from "../components/Link/tools";
 import { encodeQuerystring } from "../utils/encode";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getTagPageProps } from "../utils/getPageProps";
-import { revalidate } from "../utils/loadConfig";
-import { getTarget } from "../components/Link/tools";
+import { getServerBaseUrl, revalidate } from "../utils/loadConfig";
 
 interface TagWithCount {
   name: string;
@@ -20,140 +20,90 @@ export interface TagPageProps {
   hotTags?: TagWithCount[];
 }
 
+const PAGE_SIZE = 120;
+
 const TagPage = (props: TagPageProps) => {
-  const [allTags, setAllTags] = useState<TagWithCount[]>([]);
+  const [tags, setTags] = useState<TagWithCount[]>(props.hotTags || []);
   const [loading, setLoading] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [sortBy, setSortBy] = useState<'name' | 'articleCount'>('articleCount');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [loadProgress, setLoadProgress] = useState({ current: 0, total: 0 });
-  const [hasStartedLoading, setHasStartedLoading] = useState(false);
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "articleCount">("articleCount");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTags, setTotalTags] = useState(props.hotTags?.length || props.tags.length);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // 分批加载所有标签
-  const loadAllTags = useCallback(async () => {
-    if (hasStartedLoading) return;
-    
-    setHasStartedLoading(true);
-    setLoading(true);
-    setLoadProgress({ current: 0, total: 0 });
-
-    try {
-      let allLoadedTags: TagWithCount[] = [];
-      let currentPage = 1;
-      const pageSize = 1000; // 每页1000个标签
-      let hasMore = true;
-      let totalTags = 0;
-
-      while (hasMore) {
-        try {
-          const response = await fetch(`/api/public/tags/paginated?page=${currentPage}&pageSize=${pageSize}&sortBy=articleCount&sortOrder=desc`);
-          const result = await response.json();
-          
-          if (result.statusCode === 200 && result.data?.tags) {
-            const newTags = result.data.tags || [];
-            allLoadedTags = [...allLoadedTags, ...newTags];
-            
-            // 更新进度
-            if (result.data.total) {
-              totalTags = result.data.total;
-              setLoadProgress({ current: allLoadedTags.length, total: totalTags });
-            }
-            
-            // 如果返回的标签数量少于pageSize，说明已经是最后一页
-            hasMore = newTags.length === pageSize;
-            currentPage++;
-            
-            // 避免无限循环，最多加载100页
-            if (currentPage > 100) {
-              console.warn('已达到最大页数限制，停止加载');
-              break;
-            }
-          } else {
-            // API调用失败，使用备用数据
-            console.log('分页API调用失败，使用备用数据');
-            hasMore = false;
-            break;
-          }
-        } catch (error) {
-          console.error(`加载第${currentPage}页标签失败:`, error);
-          hasMore = false;
-          break;
+  const loadTags = useCallback(
+    async (
+      page: number,
+      nextSearch: string,
+      nextSortBy: "name" | "articleCount",
+      nextSortOrder: "asc" | "desc"
+    ) => {
+      setLoading(true);
+      try {
+        const search = nextSearch.trim();
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(PAGE_SIZE),
+          sortBy: nextSortBy,
+          sortOrder: nextSortOrder,
+        });
+        if (search) {
+          params.set("search", search);
         }
-      }
 
-      if (allLoadedTags.length > 0) {
-        setAllTags(allLoadedTags);
-      } else {
-        // 如果分页API完全失败，使用备用数据
-        if (props.hotTags && props.hotTags.length > 0) {
-          setAllTags(props.hotTags);
-        } else {
-          const tagsWithCount = props.tags.map(tag => ({ name: tag, articleCount: 0 }));
-          setAllTags(tagsWithCount);
+        const response = await fetch(`/api/public/tags/paginated?${params.toString()}`);
+        const result = await response.json();
+
+        if (result.statusCode === 200 && result.data) {
+          setTags(result.data.tags || []);
+          setCurrentPage(result.data.page || page);
+          setTotalTags(result.data.total || 0);
+          setTotalPages(result.data.totalPages || 1);
+          return;
         }
-      }
-    } catch (error) {
-      console.error('加载标签失败:', error);
-      // 使用备用数据
-      if (props.hotTags && props.hotTags.length > 0) {
-        setAllTags(props.hotTags);
-      } else {
-        const tagsWithCount = props.tags.map(tag => ({ name: tag, articleCount: 0 }));
-        setAllTags(tagsWithCount);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [props.hotTags, props.tags, hasStartedLoading]);
 
-  // 初始化加载
+        throw new Error("Failed to load tags");
+      } catch (error) {
+        console.error("加载标签失败:", error);
+        const fallback = props.hotTags || props.tags.map((tag) => ({ name: tag, articleCount: 0 }));
+        setTags(fallback.slice(0, PAGE_SIZE));
+        setCurrentPage(1);
+        setTotalTags(fallback.length);
+        setTotalPages(Math.max(1, Math.ceil(fallback.length / PAGE_SIZE)));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [props.hotTags, props.tags]
+  );
+
   useEffect(() => {
-    loadAllTags();
-  }, [loadAllTags]);
+    void loadTags(1, "", "articleCount", "desc");
+  }, [loadTags]);
 
-  // 搜索和排序处理
-  const filteredAndSortedTags = useMemo(() => {
-    let filtered = allTags;
-
-    // 搜索过滤
-    if (searchKeyword.trim()) {
-      filtered = allTags.filter(tag => 
-        tag.name.toLowerCase().includes(searchKeyword.toLowerCase())
-      );
-    }
-
-    // 排序
-    filtered.sort((a, b) => {
-      let compareValue = 0;
-      
-      if (sortBy === 'name') {
-        compareValue = a.name.localeCompare(b.name, 'zh-CN');
-      } else if (sortBy === 'articleCount') {
-        compareValue = a.articleCount - b.articleCount;
-      }
-      
-      return sortOrder === 'asc' ? compareValue : -compareValue;
-    });
-
-    return filtered;
-  }, [allTags, searchKeyword, sortBy, sortOrder]);
-
-  // 处理搜索
-  const handleSearch = () => {
-    // 搜索逻辑已经在 useMemo 中处理，这里不需要额外操作
+  const handleSearch = async () => {
+    const nextSearch = searchKeyword.trim();
+    setAppliedSearch(nextSearch);
+    await loadTags(1, nextSearch, sortBy, sortOrder);
   };
 
-  // 处理排序变化
-  const handleSortChange = (newSortBy: 'name' | 'articleCount', newSortOrder: 'asc' | 'desc') => {
-    setSortBy(newSortBy);
-    setSortOrder(newSortOrder);
+  const handleSortChange = async (
+    nextSortBy: "name" | "articleCount",
+    nextSortOrder: "asc" | "desc"
+  ) => {
+    setSortBy(nextSortBy);
+    setSortOrder(nextSortOrder);
+    await loadTags(1, appliedSearch, nextSortBy, nextSortOrder);
   };
 
-  // 重新加载标签
-  const handleReload = () => {
-    setHasStartedLoading(false);
-    setAllTags([]);
-    loadAllTags();
+  const handleReload = async () => {
+    await loadTags(currentPage, appliedSearch, sortBy, sortOrder);
+  };
+
+  const handlePageChange = async (page: number) => {
+    await loadTags(page, appliedSearch, sortBy, sortOrder);
   };
 
   return (
@@ -170,18 +120,17 @@ const TagPage = (props: TagPageProps) => {
         </div>
         <div className="flex items-center justify-between mb-4">
           <div className="text-lg md:text-xl text-gray-700 dark:text-dark">
-            所有标签
+            标签列表
           </div>
           <button
             onClick={handleReload}
             disabled={loading}
             className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
           >
-            {loading ? '加载中...' : '刷新'}
+            {loading ? "加载中..." : "刷新"}
           </button>
         </div>
-        
-        {/* 搜索和排序控件 */}
+
         <div className="mb-6 flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <input
@@ -190,9 +139,9 @@ const TagPage = (props: TagPageProps) => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearch();
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  void handleSearch();
                 }
               }}
             />
@@ -201,8 +150,11 @@ const TagPage = (props: TagPageProps) => {
             <select
               value={`${sortBy}-${sortOrder}`}
               onChange={(e) => {
-                const [newSortBy, newSortOrder] = e.target.value.split('-') as ['name' | 'articleCount', 'asc' | 'desc'];
-                handleSortChange(newSortBy, newSortOrder);
+                const [nextSortBy, nextSortOrder] = e.target.value.split("-") as [
+                  "name" | "articleCount",
+                  "asc" | "desc"
+                ];
+                void handleSortChange(nextSortBy, nextSortOrder);
               }}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
             >
@@ -212,7 +164,9 @@ const TagPage = (props: TagPageProps) => {
               <option value="name-desc" className="dark:bg-gray-800 dark:text-gray-100">按名称 (Z-A)</option>
             </select>
             <button
-              onClick={handleSearch}
+              onClick={() => {
+                void handleSearch();
+              }}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               搜索
@@ -220,38 +174,16 @@ const TagPage = (props: TagPageProps) => {
           </div>
         </div>
 
-        {/* 加载状态和进度 */}
         {loading && (
-          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-blue-600 dark:text-blue-400 font-medium">
-                正在加载标签数据...
-              </div>
-              {loadProgress.total > 0 && (
-                <div className="text-sm text-blue-500 dark:text-blue-300">
-                  {loadProgress.current} / {loadProgress.total}
-                </div>
-              )}
-            </div>
-            {loadProgress.total > 0 && (
-              <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(loadProgress.current / loadProgress.total) * 100}%` }}
-                ></div>
-              </div>
-            )}
-            <div className="text-xs text-blue-500 dark:text-blue-300 mt-1">
-              由于标签数量较多，初次加载可能需要一些时间，请耐心等待...
-            </div>
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+            正在加载标签数据...
           </div>
         )}
 
-        {/* 标签列表 */}
-        {!loading && (
+        {!loading && tags.length > 0 && (
           <>
             <div className="flex flex-wrap gap-3">
-              {filteredAndSortedTags.map((tag) => (
+              {tags.map((tag) => (
                 <Link
                   href={`/tag/${encodeQuerystring(tag.name)}`}
                   key={`tag-${tag.name}`}
@@ -273,49 +205,64 @@ const TagPage = (props: TagPageProps) => {
               ))}
             </div>
 
-            {/* 显示统计信息 */}
-            <div className="mt-6 text-center text-gray-500 dark:text-gray-400 text-sm">
-              {searchKeyword ? (
-                <>
-                  找到 {filteredAndSortedTags.length} 个标签
-                  <span className="ml-2">(搜索: "{searchKeyword}")</span>
-                  <span className="ml-2">• 总计 {allTags.length} 个标签</span>
-                </>
-              ) : (
-                <>共 {allTags.length} 个标签</>
+            <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between text-sm text-gray-500 dark:text-gray-400">
+              <div>
+                {appliedSearch ? (
+                  <>
+                    找到 {totalTags} 个标签
+                    <span className="ml-2">(搜索: "{appliedSearch}")</span>
+                  </>
+                ) : (
+                  <>共 {totalTags} 个标签</>
+                )}
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      void handlePageChange(currentPage - 1);
+                    }}
+                    disabled={currentPage <= 1}
+                    className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+                  >
+                    上一页
+                  </button>
+                  <span>
+                    第 {currentPage} / {totalPages} 页
+                  </span>
+                  <button
+                    onClick={() => {
+                      void handlePageChange(currentPage + 1);
+                    }}
+                    disabled={currentPage >= totalPages}
+                    className="px-3 py-1 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50"
+                  >
+                    下一页
+                  </button>
+                </div>
               )}
             </div>
-
-            {/* 如果没有找到标签 */}
-            {filteredAndSortedTags.length === 0 && searchKeyword && (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400 mb-2">
-                  没有找到包含 "{searchKeyword}" 的标签
-                </div>
-                <button
-                  onClick={() => setSearchKeyword("")}
-                  className="text-blue-500 hover:text-blue-600 transition-colors"
-                >
-                  清除搜索条件
-                </button>
-              </div>
-            )}
-
-            {/* 如果完全没有标签 */}
-            {allTags.length === 0 && !loading && (
-              <div className="text-center py-8">
-                <div className="text-gray-500 dark:text-gray-400 mb-2">
-                  暂无标签数据
-                </div>
-                <button
-                  onClick={handleReload}
-                  className="text-blue-500 hover:text-blue-600 transition-colors"
-                >
-                  重新加载
-                </button>
-              </div>
-            )}
           </>
+        )}
+
+        {!loading && tags.length === 0 && (
+          <div className="text-center py-8">
+            <div className="text-gray-500 dark:text-gray-400 mb-2">
+              {appliedSearch ? `没有找到包含 "${appliedSearch}" 的标签` : "暂无标签数据"}
+            </div>
+            {appliedSearch && (
+              <button
+                onClick={() => {
+                  setSearchKeyword("");
+                  setAppliedSearch("");
+                  void loadTags(1, "", sortBy, sortOrder);
+                }}
+                className="text-blue-500 hover:text-blue-600 transition-colors"
+              >
+                清除搜索条件
+              </button>
+            )}
+          </div>
         )}
       </div>
     </Layout>
@@ -329,17 +276,16 @@ export async function getStaticProps(): Promise<{
   revalidate?: number;
 }> {
   const baseProps = await getTagPageProps();
-  
-  // 尝试获取少量热门标签作为备用数据
+
   let hotTags: TagWithCount[] = [];
   try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/public/tags/hot?limit=100`);
+    const response = await fetch(`${getServerBaseUrl()}api/public/tags/hot?limit=100`);
     const result = await response.json();
     if (result.statusCode === 200) {
       hotTags = result.data || [];
     }
   } catch (error) {
-    console.log('获取热门标签失败，使用原有数据');
+    console.log("获取热门标签失败，使用原有数据");
   }
 
   return {

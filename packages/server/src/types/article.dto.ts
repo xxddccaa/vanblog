@@ -45,6 +45,7 @@ export class SearchArticleOption {
   endTime?: string;
   sortViewer?: SortOrder;
   toListView?: boolean;
+  withPreviewContent?: boolean;
   withWordCount?: boolean;
   author?: string;
 }

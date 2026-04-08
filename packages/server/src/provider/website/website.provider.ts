@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 import { ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
+import { withRetry } from 'src/utils/retry';
 import { MetaProvider } from '../meta/meta.provider';
 import { SettingProvider } from '../setting/setting.provider';
 
@@ -18,6 +20,7 @@ export class WebsiteProvider {
   // constructor() {}
   ctx: ChildProcess = null;
   logger = new Logger(WebsiteProvider.name);
+  private readonly controlUrl = process.env['VANBLOG_WEBSITE_CONTROL_URL'];
   constructor(
     private metaProvider: MetaProvider,
     private settingProvider: SettingProvider,
@@ -39,7 +42,7 @@ export class WebsiteProvider {
           };
     if (!meta?.siteInfo) return { ...isrEnv };
     const siteinfo = meta.siteInfo;
-    const socials = meta.socials;
+    const socials = meta.socials || [];
     const urls = [];
     const addEach = (u: string) => {
       if (!u) return null;
@@ -74,6 +77,10 @@ export class WebsiteProvider {
   }
   async restart(reason: string) {
     this.logger.log(`${reason}重启 website`);
+    if (this.isExternalControlMode()) {
+      await this.run();
+      return;
+    }
     if (this.ctx) {
       await this.stop();
     }
@@ -84,6 +91,14 @@ export class WebsiteProvider {
     await this.run();
   }
   async stop(noMessage?: boolean) {
+    if (this.isExternalControlMode()) {
+      try {
+        await this.postToExternalControl('/stop');
+      } catch (err) {
+        this.logger.error(`停止外部 website 失败: ${err?.message || err}`);
+      }
+      return;
+    }
     if (this.ctx) {
       this.ctx.unref();
       process.kill(-this.ctx.pid);
@@ -92,7 +107,38 @@ export class WebsiteProvider {
       this.logger.log('website 停止成功！');
     }
   }
+  isExternalControlMode() {
+    return !!this.controlUrl;
+  }
+  private getControlBaseUrl() {
+    return this.controlUrl?.replace(/\/$/, '');
+  }
+  private async postToExternalControl(pathname: string, payload: Record<string, any> = {}) {
+    return await withRetry(
+      async () => {
+        await axios.post(`${this.getControlBaseUrl()}${pathname}`, payload);
+      },
+      {
+        attempts: 20,
+        delayMs: 3000,
+        logger: this.logger,
+        description: `同步外部 website 控制器 ${pathname}`,
+      },
+    );
+  }
   async run(): Promise<any> {
+    if (this.isExternalControlMode()) {
+      const loadEnvs = await this.loadEnv();
+      try {
+        await this.postToExternalControl('/restart', {
+          env: loadEnvs,
+        });
+        this.logger.log('外部 website 已完成配置同步');
+      } catch (err) {
+        this.logger.error(`同步外部 website 配置失败: ${err?.message || err}`);
+      }
+      return;
+    }
     if (process.env['VANBLOG_DISABLE_WEBSITE'] === 'true') {
       this.logger.log('无 website 模式');
       return;

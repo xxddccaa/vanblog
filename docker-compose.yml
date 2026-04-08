@@ -1,56 +1,142 @@
 services:
-  vanblog:
+  caddy:
     build:
       context: .
-      dockerfile: Dockerfile
-      args:
-        VAN_BLOG_BUILD_SERVER: 'http://127.0.0.1:3000'
-        VAN_BLOG_VERSIONS: 'v1.0.0'
-        # http_proxy: 'http://192.168.3.2:10828'
-        # https_proxy: 'http://192.168.3.2:10828'
-      network: host
-    image: kevinchina/deeplearning:vanblog-latest
+      dockerfile: docker/caddy.Dockerfile
     restart: always
+    depends_on:
+      server:
+        condition: service_healthy
+      website:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+      waline:
+        condition: service_healthy
     environment:
-      TZ: 'Asia/Shanghai'
-      # 邮箱地址，用于自动申请 https 证书
-      EMAIL: '742971636@qq.com'
-      # 设置为生产环境
-      NODE_ENV: 'production'
-      # 设置版本号
-      VAN_BLOG_VERSION: 'v1.0.0'
+      TZ: ${TZ:-Asia/Shanghai}
+      EMAIL: ${EMAIL:-someone@example.com}
     volumes:
-      # 图床文件的存放地址，按需修改。
-      - /root/van/data/static:/app/static
-      # 日志文件
-      - /root/van/log:/var/log
-      # caddy 配置存储
-      - /root/van/caddy/config:/root/.config/caddy
-      # caddy 证书存储
-      - /root/van/caddy/data:/root/.local/share/caddy
-      # 阿里云盘配置存储
-      - /root/van/aliyunpan/config:/root/.config/aliyunpan
+      - ${VANBLOG_LOG_DIR:-./log}:/var/log
+      - ${VANBLOG_CADDY_CONFIG_DIR:-./caddy/config}:/root/.config/caddy
+      - ${VANBLOG_CADDY_DATA_DIR:-./caddy/data}:/root/.local/share/caddy
     ports:
-      # 直接映射各个服务的端口到宿主机
-      # 后端 API 服务
-      - 3000:3000
-      # 前台网站
-      - 3001:3001  
-      # 后台管理
-      - 3002:3002
-      # 保留原有的 Caddy 端口映射（如果以后要用）
-      - 18000:80
-      - 18001:443
-      - 18005:2019
+      - ${VANBLOG_HTTP_PORT:-80}:80
+      - ${VANBLOG_HTTPS_PORT:-443}:443
+
+  server:
+    build:
+      context: .
+      dockerfile: docker/server.Dockerfile
+      args:
+        INSTALL_ALIYUNPAN: ${INSTALL_ALIYUNPAN:-false}
+    restart: always
+    init: true
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      NODE_ENV: production
+      VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-mongodb://mongo:27017/vanBlog?authSource=admin}
+      VAN_BLOG_WALINE_DB: ${VAN_BLOG_WALINE_DB:-waline}
+      VANBLOG_CADDY_API_URL: http://caddy:2019
+      VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
+      VANBLOG_WALINE_CONTROL_URL: http://waline:8361
+      VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
+    volumes:
+      - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
+      - ${VANBLOG_LOG_DIR:-./log}:/var/log
+      - ${VANBLOG_ALIYUNPAN_CONFIG_DIR:-./aliyunpan/config}:/root/.config/aliyunpan
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  website:
+    build:
+      context: .
+      dockerfile: docker/website.Dockerfile
+      args:
+        VAN_BLOG_BUILD_SERVER: ${VAN_BLOG_BUILD_SERVER:-http://127.0.0.1:3000}
+        VAN_BLOG_VERSIONS: ${VAN_BLOG_VERSION:-v1.0.0}
+    restart: always
+    init: true
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      NODE_ENV: production
+      PORT: 3001
+      WEBSITE_CONTROL_PORT: 3011
+      VAN_BLOG_SERVER_URL: http://server:3000
+      VAN_BLOG_REVALIDATE: "false"
+      VAN_BLOG_ALLOW_DOMAINS: ${VAN_BLOG_ALLOW_DOMAINS:-pic.mereith.com}
+    expose:
+      - "3001"
+      - "3011"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  admin:
+    build:
+      context: .
+      dockerfile: docker/admin.Dockerfile
+    restart: always
+    expose:
+      - "3002"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  waline:
+    build:
+      context: .
+      dockerfile: docker/waline.Dockerfile
+    restart: always
+    init: true
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      NODE_ENV: production
+      PORT: 8360
+      WALINE_CONTROL_PORT: 8361
+      MONGO_HOST: ${WALINE_MONGO_HOST:-mongo}
+      MONGO_PORT: ${WALINE_MONGO_PORT:-27017}
+      MONGO_DB: ${VAN_BLOG_WALINE_DB:-waline}
+      MONGO_AUTHSOURCE: admin
+      JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
+    expose:
+      - "8360"
+      - "8361"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
   mongo:
-    # 某些机器不支持 avx 会报错，所以默认用 v4 版本。有的话用最新的。
     image: mongo:4.4.16
     restart: always
     environment:
-      TZ: 'Asia/Shanghai'
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
-      - /root/van/data/mongo:/data/db
-    # 不暴露端口到宿主机，只允许 Docker 内部网络访问（安全）
-    # 如需本地调试，取消注释下一行（仅绑定到 127.0.0.1）
-    # ports:
-    #   - 127.0.0.1:27017:27017
+      - ${VANBLOG_MONGO_DIR:-./data/mongo}:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongo --quiet --eval 'db.adminCommand(\"ping\").ok' | grep 1 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s

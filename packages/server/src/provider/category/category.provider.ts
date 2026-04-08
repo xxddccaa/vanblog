@@ -42,7 +42,7 @@ export class CategoryProvider {
   }
 
   async getAllCategories(all?: boolean) {
-    const d = await this.categoryModal.find({}).sort({ sort: 1, id: 1 });
+    const d = await this.categoryModal.find({}).sort({ sort: 1, id: 1 }).lean();
     if (!d || !d.length) {
       return [];
     }

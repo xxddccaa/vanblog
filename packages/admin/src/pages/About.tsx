@@ -3,6 +3,7 @@ import { PageContainer } from '@ant-design/pro-layout';
 import { Image, Space, Spin, Tag } from 'antd';
 import { useMemo } from 'react';
 import { useModel } from 'umi';
+import { getAdminAssetPath } from '@/utils/getAssetPath';
 export default function (props) {
   const { initialState } = useModel('@@initialState');
   const version = useMemo(() => {
@@ -22,7 +23,7 @@ export default function (props) {
               userSelect: 'none',
             }}
           >
-            <Image width={200} src="/logo.svg" alt="logo" preview={false} />
+            <Image width={200} src={getAdminAssetPath('logo.svg')} alt="logo" preview={false} />
             <div
               style={{
                 fontSize: 26,

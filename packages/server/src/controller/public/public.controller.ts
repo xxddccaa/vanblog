@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Request } from 'express';
 import { SortOrder } from 'src/types/sort';
@@ -14,10 +14,12 @@ import { encode } from 'js-base64';
 import { TokenProvider } from 'src/provider/token/token.provider';
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { StaticProvider } from 'src/provider/static/static.provider';
+import { CacheProvider } from 'src/provider/cache/cache.provider';
 
 @ApiTags('public')
 @Controller('/api/public/')
 export class PublicController {
+  private readonly logger = new Logger(PublicController.name);
   constructor(
     private readonly articleProvider: ArticleProvider,
     private readonly categoryProvider: CategoryProvider,
@@ -29,6 +31,7 @@ export class PublicController {
     private readonly tokenProvider: TokenProvider,
     private readonly iconProvider: IconProvider,
     private readonly staticProvider: StaticProvider,
+    private readonly cacheProvider: CacheProvider,
   ) {}
   @Get('/customPage/all')
   async getAll() {
@@ -130,16 +133,25 @@ export class PublicController {
     @Query('isNewByPath') isNewByPath: boolean,
     @Req() req: Request,
   ) {
-    const refer = req.headers.referer;
-    const url = new URL(refer);
-    if (!url.pathname || url.pathname == '') {
-      console.log('没找到 refer:', req.headers);
+    const refer = Array.isArray(req.headers.referer) ? req.headers.referer[0] : req.headers.referer;
+    if (!refer) {
+      this.logger.warn('viewer 统计缺少 referer，已跳过本次记录');
+      return {
+        statusCode: 200,
+        data: null,
+      };
     }
-    const data = await this.metaProvider.addViewer(
-      isNew,
-      decodeURIComponent(url.pathname),
-      isNewByPath,
-    );
+    let pathname = '/';
+    try {
+      pathname = decodeURIComponent(new URL(refer).pathname || '/');
+    } catch (err) {
+      this.logger.warn(`viewer 统计 referer 非法，已跳过本次记录: ${refer}`);
+      return {
+        statusCode: 200,
+        data: null,
+      };
+    }
+    const data = await this.metaProvider.addViewer(isNew, pathname, isNewByPath);
     return {
       statusCode: 200,
       data: data,
@@ -195,6 +207,7 @@ export class PublicController {
     @Query('page') page: number,
     @Query('pageSize') pageSize = 5,
     @Query('toListView') toListView = false,
+    @Query('withPreviewContent') withPreviewContent = false,
     @Query('regMatch') regMatch = false,
     @Query('withWordCount') withWordCount = false,
     @Query('category') category?: string,
@@ -208,6 +221,7 @@ export class PublicController {
       category,
       tags,
       toListView,
+      withPreviewContent,
       regMatch,
       sortTop,
       sortCreatedAt,
@@ -279,32 +293,53 @@ export class PublicController {
 
   @Get('/meta')
   async getBuildMeta() {
-    const tags = await this.tagProvider.getAllTags(false);
-    const meta = await this.metaProvider.getAll();
+    const cacheKey = 'public:meta';
+    const cached = this.cacheProvider.get(cacheKey);
+    if (cached) {
+      return {
+        statusCode: 200,
+        data: cached,
+      };
+    }
+
+    const [
+      tags,
+      meta,
+      categories,
+      menuSetting,
+      totalArticles,
+      totalWordCount,
+      layoutSetting,
+      socialsWithIcons,
+    ] = await Promise.all([
+      this.tagProvider.getAllTags(false),
+      this.metaProvider.getAll(),
+      this.categoryProvider.getAllCategories(false),
+      this.settingProvider.getMenuSetting(),
+      this.articleProvider.getTotalNum(false),
+      this.metaProvider.getTotalWords(),
+      this.settingProvider.getLayoutSetting(),
+      this.metaProvider.getSocials(),
+    ]);
     const metaDoc = (meta as any)?._doc || meta;
-    const categories = await this.categoryProvider.getAllCategories(false);
-    const { data: menus } = await this.settingProvider.getMenuSetting();
-    const totalArticles = await this.articleProvider.getTotalNum(false);
-    const totalWordCount = await this.metaProvider.getTotalWords();
-    const LayoutSetting = await this.settingProvider.getLayoutSetting();
-    const LayoutRes = this.settingProvider.encodeLayoutSetting(LayoutSetting);
-    
-    // 获取包含图标数据的社交信息
-    const socialsWithIcons = await this.metaProvider.getSocials();
-    
+    const layoutRes = layoutSetting
+      ? this.settingProvider.encodeLayoutSetting(layoutSetting)
+      : null;
+
     const data = {
       version: version,
       tags,
       meta: {
         ...metaDoc,
         categories,
-        socials: socialsWithIcons, // 使用包含图标数据的社交信息
+        socials: socialsWithIcons,
       },
-      menus,
+      menus: menuSetting?.data || [],
       totalArticles,
       totalWordCount,
-      ...(LayoutSetting ? { layout: LayoutRes } : {}),
+      ...(layoutRes ? { layout: layoutRes } : {}),
     };
+    this.cacheProvider.set(cacheKey, data, 30);
     return {
       statusCode: 200,
       data,

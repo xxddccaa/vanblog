@@ -14,6 +14,7 @@ import { json } from 'express';
 import { UserProvider } from './provider/user/user.provider';
 import { SettingProvider } from './provider/setting/setting.provider';
 import { WebsiteProvider } from './provider/website/website.provider';
+import { CaddyProvider } from './provider/caddy/caddy.provider';
 import { initJwt } from './utils/initJwt';
 
 async function bootstrap() {
@@ -58,9 +59,11 @@ async function bootstrap() {
   SwaggerModule.setup('swagger', app, document);
   await app.listen(3000);
 
+  const caddyProvider = app.get(CaddyProvider);
   const websiteProvider = app.get(WebsiteProvider);
 
-  websiteProvider.init();
+  void caddyProvider.init();
+  void websiteProvider.init();
 
   const initProvider = app.get(InitProvider);
   initProvider.initVersion();

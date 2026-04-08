@@ -1,13 +1,21 @@
 # 博客前台
 
-采用了 `nextjs`
+采用 `Next.js` 构建。
+
+## 本地开发
 
 ```bash
-cd packages/website
-yarn
-yarn dev
+pnpm install
+pnpm --filter @vanblog/theme-default dev
 ```
 
-端口号为: `3001`
+- 默认端口：`3001`
+- 容器运行期默认通过 `VAN_BLOG_SERVER_URL=http://server:3000` 访问后端
+- 浏览器端优先使用相对路径，避免拆分部署后跨域或错误跳转
 
-与后台的跨域代理已经做好了，浏览器打开即可。
+## 常用命令
+
+```bash
+pnpm --filter @vanblog/theme-default build
+pnpm --filter @vanblog/theme-default test -- --run
+```

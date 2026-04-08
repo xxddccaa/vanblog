@@ -1,0 +1,75 @@
+FROM node:18-alpine AS base
+ENV NODE_OPTIONS="--max_old_space_size=7168"
+ENV CI=1
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV npm_config_playwright_skip_browser_download=true
+ENV npm_config_devdir=/tmp/node-gyp
+WORKDIR /app
+
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
+    && apk add --no-cache --update python3 make g++ tzdata wget unzip curl nss-tools libwebp-tools \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone \
+    && apk del tzdata \
+    && corepack enable \
+    && corepack prepare pnpm@9.15.3 --activate \
+    && pnpm config set network-timeout 600000 -g \
+    && pnpm config set registry https://registry.npmmirror.com -g \
+    && pnpm config set fetch-retries 20 -g \
+    && pnpm config set fetch-timeout 600000 -g \
+    && pnpm config set child-concurrency 1 -g
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages/server/package.json ./packages/server/
+RUN pnpm install --filter @vanblog/server... --frozen-lockfile --child-concurrency=1
+
+FROM base AS builder
+COPY packages/server ./packages/server
+RUN pnpm --filter @vanblog/server build \
+    && pnpm deploy --filter @vanblog/server --prod /prod/server
+
+FROM node:18-alpine AS runner
+WORKDIR /app/server
+
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
+    && apk add --no-cache --update tzdata wget unzip curl nss-tools libwebp-tools \
+    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
+    && echo "Asia/Shanghai" > /etc/timezone \
+    && apk del tzdata \
+    && corepack enable \
+    && corepack prepare pnpm@9.15.3 --activate \
+    && pnpm config set network-timeout 600000 -g \
+    && pnpm config set registry https://registry.npmmirror.com -g \
+    && pnpm config set fetch-retries 20 -g \
+    && pnpm config set fetch-timeout 600000 -g
+
+ARG INSTALL_ALIYUNPAN=false
+RUN if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
+      ARCH=$(uname -m) \
+      && if [ "$ARCH" = "x86_64" ]; then ALIYUNPAN_ARCH="amd64"; elif [ "$ARCH" = "aarch64" ]; then ALIYUNPAN_ARCH="arm64"; else ALIYUNPAN_ARCH="amd64"; fi \
+      && ALIYUNPAN_VERSION="v0.3.7" \
+      && wget -O /tmp/aliyunpan.zip "https://github.com/tickstep/aliyunpan/releases/download/${ALIYUNPAN_VERSION}/aliyunpan-${ALIYUNPAN_VERSION}-linux-${ALIYUNPAN_ARCH}.zip" \
+      && unzip /tmp/aliyunpan.zip -d /tmp/ \
+      && mv /tmp/aliyunpan-${ALIYUNPAN_VERSION}-linux-${ALIYUNPAN_ARCH}/aliyunpan /usr/local/bin/ \
+      && chmod +x /usr/local/bin/aliyunpan \
+      && rm -rf /tmp/aliyunpan*; \
+    else \
+      echo "Skipping aliyunpan install; set INSTALL_ALIYUNPAN=true to enable it."; \
+    fi
+
+COPY --from=builder /prod/server/ ./
+
+ENV NODE_ENV=production
+ENV VAN_BLOG_DATABASE_URL="mongodb://mongo:27017/vanBlog?authSource=admin"
+ENV VAN_BLOG_WALINE_DB="waline"
+ENV VANBLOG_CADDY_API_URL="http://caddy:2019"
+ENV VANBLOG_WEBSITE_CONTROL_URL="http://website:3011"
+ENV VANBLOG_WALINE_CONTROL_URL="http://waline:8361"
+ENV VANBLOG_WEBSITE_ISR_BASE="http://website:3001/api/revalidate?path="
+
+VOLUME /app/static
+VOLUME /var/log
+VOLUME /root/.config/aliyunpan
+
+EXPOSE 3000
+CMD ["node", "dist/src/main.js"]

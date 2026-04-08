@@ -6,6 +6,7 @@ import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-form';
 import { message } from 'antd';
 import { history, useModel } from 'umi';
 import { useState, useEffect } from 'react';
+import { getAdminAssetPath } from '@/utils/getAssetPath';
 import styles from './index.less';
 
 const Login = () => {
@@ -142,11 +143,16 @@ const Login = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <div
+      className={styles.container}
+      style={{
+        '--login-background-image': `url(${getAdminAssetPath('background.svg')})`,
+      }}
+    >
       <div className={styles.content}>
         <LoginForm
           className={styles.loginForm}
-          logo={<img alt="logo" src="/logo.svg" />}
+          logo={<img alt="logo" src={getAdminAssetPath('logo.svg')} />}
           title="VanBlog"
           subTitle={'VanBlog 博客管理后台'}
           initialValues={{

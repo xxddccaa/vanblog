@@ -1,3 +1,5 @@
+const adminAssetBase = process.env.NODE_ENV === 'production' ? '/admin' : '';
+
 const Settings = {
   navTheme: 'light',
   // 明青色
@@ -13,8 +15,8 @@ const Settings = {
   headerHeight: 48,
   splitMenus: false,
   // headerRender: false,
-  pwa: true,
-  logo: '/logo.svg',
+  pwa: false,
+  logo: `${adminAssetBase}/logo.svg`,
   iconfontUrl: '',
 };
 export default Settings;

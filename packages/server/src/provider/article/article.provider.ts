@@ -9,6 +9,7 @@ import { MetaProvider } from '../meta/meta.provider';
 import { VisitProvider } from '../visit/visit.provider';
 import { sleep } from 'src/utils/sleep';
 import { CategoryDocument } from 'src/scheme/category.schema';
+import { buildArticlePreview } from 'src/utils/articlePreview';
 
 export type ArticleView = 'admin' | 'public' | 'list';
 
@@ -81,6 +82,11 @@ export class ArticleProvider {
     author: 1,
     copyright: 1,
     pathname: 1,
+  };
+
+  overviewView = {
+    ...this.listView,
+    content: 1,
   };
 
   toPublic(oldArticles: Article[]) {
@@ -430,8 +436,9 @@ export class ArticleProvider {
         thisView,
       )
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
-    return articles;
+    return articles as any;
   }
 
   async getTimeLineInfo() {
@@ -465,6 +472,7 @@ export class ArticleProvider {
         this.listView,
       )
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
     // 清洗一下数据：按年分组
     const years = Array.from(
@@ -581,6 +589,9 @@ export class ArticleProvider {
     if (option.toListView) {
       view = this.listView;
     }
+    if (option.withPreviewContent) {
+      view = this.overviewView;
+    }
     if (option.withWordCount) {
       view = isPublic ? this.publicView : this.adminView;
     }
@@ -595,6 +606,7 @@ export class ArticleProvider {
       const pinnedArticles = await this.articleModel
         .find({ $and: [...$and, { top: { $gt: 0 } }] }, view)
         .sort({ top: -1 })
+        .lean()
         .exec();
       const numPinned = pinnedArticles.length;
 
@@ -611,6 +623,7 @@ export class ArticleProvider {
           .sort(sort)
           .skip(nonPinnedSkip)
           .limit(nonPinnedNeeded)
+          .lean()
           .exec();
         result = [...result, ...nonPinnedArticles];
       }
@@ -623,10 +636,11 @@ export class ArticleProvider {
         .sort(sort)
         .skip(option.pageSize * option.page - option.pageSize)
         .limit(option.pageSize)
+        .lean()
         .exec();
     } else {
       // pageSize === -1：取全部
-      articles = await this.articleModel.find(query, view).sort(sort).exec();
+      articles = await this.articleModel.find(query, view).sort(sort).lean().exec();
     }
     // withWordCount 只会返回当前分页的文字数量
 
@@ -643,6 +657,7 @@ export class ArticleProvider {
       ];
       const categoriesDocs = await this.categoryModal
         .find({ name: { $in: categoryNames } })
+        .lean()
         .exec();
       const categoryPrivateMap = new Map(
         categoriesDocs.map((c) => [c.name, c?.private || false]),
@@ -672,6 +687,21 @@ export class ArticleProvider {
         }
       }
       articles = tmpArticles;
+    }
+    if (option.withPreviewContent && !option.withWordCount) {
+      articles = articles.map((article: any) => {
+        if (article.private) {
+          return {
+            ...article,
+            content: undefined,
+          };
+        }
+
+        return {
+          ...article,
+          content: buildArticlePreview(article.content || ''),
+        };
+      });
     }
     const resData: any = {};
     if (option.withWordCount) {
@@ -757,6 +787,7 @@ export class ArticleProvider {
         },
         this.getView(view),
       )
+      .lean()
       .exec();
   }
 
@@ -782,6 +813,7 @@ export class ArticleProvider {
         },
         this.getView(view),
       )
+      .lean()
       .exec();
   }
   async getByIdWithPassword(id: number | string, password: string): Promise<any> {

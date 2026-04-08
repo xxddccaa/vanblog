@@ -21,3 +21,9 @@ logs
 **/*/.DS_Store
 **/*/.env
 **/*/.umi-production
+!packages/admin/dist
+!packages/admin/dist/**
+!packages/website/.next/standalone
+!packages/website/.next/standalone/**
+!packages/website/.next/static
+!packages/website/.next/static/**

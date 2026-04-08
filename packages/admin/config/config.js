@@ -9,7 +9,10 @@ export default defineConfig({
   hash: true,
   base: '/admin/',
   devServer: { https: false, port: 3002 },
-  publicPath: process.env.EEE === 'production' ? '/admin/' : '/',
+  publicPath:
+    process.env.EEE === 'production' || process.env.NODE_ENV === 'production'
+      ? '/admin/'
+      : '/',
   antd: {},
   dva: {
     hmr: true,
@@ -43,7 +46,7 @@ export default defineConfig({
   ignoreMomentLocale: true,
   proxy: proxy[REACT_APP_ENV || 'dev'],
   manifest: {
-    basePath: '/',
+    basePath: '/admin/',
   },
   // Fast Refresh 热更新
   fastRefresh: {},
