@@ -38,6 +38,7 @@ pnpm release:images:push
 ```
 
 发布规范、镜像命名和手工发版步骤统一以 `RELEASE.md` 为准。
+生产环境变量模板和服务器部署步骤统一以 `DEPLOY.md` 与 `.env.release.example` 为准。
 
 ## 访问地址
 

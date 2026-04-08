@@ -80,7 +80,7 @@ docker compose down -v
 
 ```bash
 export VANBLOG_DOCKER_REPO=kevinchina/deeplearning
-export VANBLOG_RELEASE_SUFFIX=v0.54.0-feec99a1
+export VANBLOG_RELEASE_SUFFIX=v1.0.0-feec99a1
 
 docker compose -f docker-compose.image.yml up -d
 ```
@@ -147,11 +147,11 @@ pnpm test:blog-flow
 每个服务都会产出类似下面的标签：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-server-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-website-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-admin-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-waline-v0.54.0-feec99a1
+kevinchina/deeplearning:vanblog-caddy-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-server-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-website-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-admin-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-waline-v1.0.0-feec99a1
 ```
 
 仓库内已经提供：
@@ -159,6 +159,8 @@ kevinchina/deeplearning:vanblog-waline-v0.54.0-feec99a1
 - `scripts/release-images.sh`：统一构建 / 打 tag / 推送镜像
 - `docker-compose.image.yml`：基于已发布镜像部署
 - `RELEASE.md`：完整的人工 + AI 发版指南
+- `DEPLOY.md`：生产环境拉镜像部署与回滚指南
+- `.env.release.example`：生产环境变量模板
 
 常用发版命令：
 
@@ -172,12 +174,15 @@ pnpm release:images:push
 
 详细说明请看：[`RELEASE.md`](RELEASE.md)
 
+生产部署说明请看：[`DEPLOY.md`](DEPLOY.md)
+
 ## 文档给 AI 的入口
 
 如果后续让 AI 帮你维护这个仓库，优先让它先读：
 
 - [`README.md`](README.md)
 - [`RELEASE.md`](RELEASE.md)
+- [`DEPLOY.md`](DEPLOY.md)
 - [`AGENTS.md`](AGENTS.md)
 - [`CLAUDE.md`](CLAUDE.md)
 

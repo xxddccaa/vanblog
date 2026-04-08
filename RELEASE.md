@@ -18,7 +18,7 @@
 
 1. 在 `master` 上整理代码并提交。
 2. 运行完整测试，至少通过 `pnpm test:blog-flow`。
-3. 确认根目录 `package.json` 的版本号正确，例如 `0.54.0`。
+3. 确认根目录 `package.json` 的版本号正确，例如 `1.0.0`。
 4. 使用 `scripts/release-images.sh` 构建并推送 5 个镜像。
 5. 记录本次版本号和镜像 id（默认用 Git 短 SHA）。
 6. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。
@@ -55,11 +55,11 @@ kevinchina/deeplearning:vanblog-<service>-latest
 示例：
 
 ```bash
-kevinchina/deeplearning:vanblog-caddy-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-server-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-website-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-admin-v0.54.0-feec99a1
-kevinchina/deeplearning:vanblog-waline-v0.54.0-feec99a1
+kevinchina/deeplearning:vanblog-caddy-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-server-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-website-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-admin-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-waline-v1.0.0-feec99a1
 ```
 
 建议引用优先级：
@@ -128,7 +128,7 @@ bash scripts/release-images.sh
 
 默认行为：
 
-- 自动读取 `package.json` 版本，例如 `0.54.0`，并规范成 `v0.54.0`
+- 自动读取 `package.json` 版本，例如 `1.0.0`，并规范成 `v1.0.0`
 - 自动读取当前 Git 短 SHA 作为 `image-id`
 - 自动执行 `pnpm test:blog-flow`
 - 为 5 个服务构建镜像
@@ -150,7 +150,7 @@ bash scripts/release-images.sh --push
 
 ```bash
 bash scripts/release-images.sh \
-  --version v0.54.0 \
+  --version v1.0.0 \
   --image-id feec99a1 \
   --repo kevinchina/deeplearning \
   --push
@@ -205,25 +205,25 @@ docker-compose.image.yml
 
 ```bash
 export VANBLOG_DOCKER_REPO=kevinchina/deeplearning
-export VANBLOG_RELEASE_SUFFIX=v0.54.0-feec99a1
+export VANBLOG_RELEASE_SUFFIX=v1.0.0-feec99a1
 
 docker compose -f docker-compose.image.yml up -d
 ```
 
 此时各服务会自动解析为：
 
-- `vanblog-caddy-v0.54.0-feec99a1`
-- `vanblog-server-v0.54.0-feec99a1`
-- `vanblog-website-v0.54.0-feec99a1`
-- `vanblog-admin-v0.54.0-feec99a1`
-- `vanblog-waline-v0.54.0-feec99a1`
+- `vanblog-caddy-v1.0.0-feec99a1`
+- `vanblog-server-v1.0.0-feec99a1`
+- `vanblog-website-v1.0.0-feec99a1`
+- `vanblog-admin-v1.0.0-feec99a1`
+- `vanblog-waline-v1.0.0-feec99a1`
 
 ### 6.2 使用版本别名或 latest
 
 如果你想改成别名模式，可以直接调整 `VANBLOG_RELEASE_SUFFIX`：
 
 ```bash
-export VANBLOG_RELEASE_SUFFIX=v0.54.0
+export VANBLOG_RELEASE_SUFFIX=v1.0.0
 ```
 
 如果你坚持使用 latest：
@@ -307,6 +307,6 @@ pnpm release:images:help
 
 # 用发布镜像部署
 VANBLOG_DOCKER_REPO=kevinchina/deeplearning \
-VANBLOG_RELEASE_SUFFIX=v0.54.0-feec99a1 \
+VANBLOG_RELEASE_SUFFIX=v1.0.0-feec99a1 \
 docker compose -f docker-compose.image.yml up -d
 ```

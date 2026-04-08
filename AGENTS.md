@@ -12,6 +12,8 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `docker-compose.yml`: local and production-like multi-container orchestration entrypoint.
 - `docker-compose.image.yml`: deployment entrypoint that pulls already-published split images.
 - `RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
+- `DEPLOY.md`: production deployment guide for pulling published images with `.env.release.example`.
+- `.env.release.example`: server-side environment template for image deployments.
 - `tests/`: deployment and blog-flow integration tests for the compose stack.
 - `docs/`: Markdown documentation.
 - `mind-map/`: auxiliary mind-map tooling; treat it as a separate subproject unless your change targets it directly.
