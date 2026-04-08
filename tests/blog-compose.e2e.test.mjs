@@ -203,6 +203,9 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
   const [httpPort, httpsPort] = await Promise.all([getFreePort(), getFreePort()]);
   const composeEnv = createComposeEnv(httpPort, httpsPort);
   const baseUrl = `http://127.0.0.1:${httpPort}`;
+  // Keep one ref'ed timer alive so Node's test runner does not tear down the event loop
+  // while the compose stack is still starting or fetch retries are pending.
+  const keepAlive = setInterval(() => {}, 1000);
   const articlePathname = `flow-${Date.now().toString(36)}`;
   const articleTitle = `Compose flow ${articlePathname}`;
   const draftContent = `This article proves the split compose stack works for ${articlePathname}.`;
@@ -455,6 +458,7 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
       'Caddy admin API must stay internal-only and must not publish a host port',
     );
   } finally {
+    clearInterval(keepAlive);
     runCommand(['-f', 'docker-compose.yml', 'down', '-v', '--remove-orphans'], {
       env: composeEnv,
       allowFailure: true,

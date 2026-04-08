@@ -14,7 +14,7 @@
     "dev:website": "pnpm --filter @vanblog/theme-default dev",
     "dev:admin": "pnpm --filter @vanblog/admin dev",
     "test:deploy": "node --test tests/deployment-config.test.mjs",
-    "test:blog-flow": "pnpm build:website && pnpm build:admin && node --test tests/deployment-config.test.mjs tests/blog-compose.e2e.test.mjs",
+    "test:blog-flow": "pnpm build:website && pnpm build:admin && node --test tests/deployment-config.test.mjs && node --test tests/blog-compose.e2e.test.mjs",
     "docs:build": "pnpm run -r docs:build",
     "docs:dev": "pnpm run -r docs:dev",
     "kill": "sudo bash scripts/kill-all.sh",
