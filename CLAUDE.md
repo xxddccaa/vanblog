@@ -29,7 +29,15 @@ docker compose down -v
 
 # 运行部署与博客流程测试
 pnpm test:blog-flow
+
+# 构建多镜像发布标签
+pnpm release:images
+
+# 构建并推送多镜像
+pnpm release:images:push
 ```
+
+发布规范、镜像命名和手工发版步骤统一以 `RELEASE.md` 为准。
 
 ## 访问地址
 

@@ -1,69 +1,72 @@
-name: local-build
+name: manual-release-images
 
 on:
   workflow_dispatch:
     inputs:
-      NAME:
-        description: 'A random input name for the workflow'
+      version:
+        description: 'Release version, for example v0.54.0. Leave empty to use package.json version.'
+        required: false
         type: string
+      image_id:
+        description: 'Optional release image id. Leave empty to use the current commit short SHA.'
+        required: false
+        type: string
+      push:
+        description: 'Push images to Docker Hub'
+        required: true
+        default: true
+        type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  local-build:
+  docker-release:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_REPO: kevinchina/deeplearning
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get version
-        id: get_version
-        run: |
-          PACKAGE_VERSION=$(cat package.json | grep version | head -1 | awk -F: '{ print $2 }'| sed 's/[",]//g' | sed 's/ //g')
-          echo ::set-output name=VERSION::${PACKAGE_VERSION}
-
-      - name: 展示版本
-        run: echo ${{ steps.get_version.outputs.VERSION }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: 打包镜像并推送
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./Dockerfile
-          build-args: |
-            VAN_BLOG_BUILD_SERVER=http://localhost:3000
-            VAN_BLOG_VERSIONS=${{ steps.get_version.outputs.VERSION }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            "docker.io/mereith/van-blog:latest"
-            "docker.io/mereith/van-blog:${{ steps.get_version.outputs.VERSION }}"
-
-      - name: 设置 Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
-      - name: generateReleaseNote
-        run: node scripts/releaseNote.js
-      - name: Release
-        uses: softprops/action-gh-release@v1
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
         with:
-          body_path: CHANGE.md
+          version: 9.15.3
+          run_install: true
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build split images
+        shell: bash
+        run: |
+          args=(--repo "${IMAGE_REPO}")
+          if [[ -n "${{ inputs.version }}" ]]; then
+            args+=(--version "${{ inputs.version }}")
+          fi
+          if [[ -n "${{ inputs.image_id }}" ]]; then
+            args+=(--image-id "${{ inputs.image_id }}")
+          fi
+          if [[ "${{ inputs.push }}" == 'true' ]]; then
+            args+=(--push)
+          fi
+          bash scripts/release-images.sh "${args[@]}"

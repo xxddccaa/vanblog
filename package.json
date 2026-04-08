@@ -26,7 +26,10 @@
     "release-minor": "standard-version --release-as minor",
     "release-patch": "standard-version --release-as patch",
     "sync-aliyun": "bash scripts/sync-aliyuncs.sh",
-    "webhook": "node scripts/webhook.js"
+    "webhook": "node scripts/webhook.js",
+    "release:images": "bash scripts/release-images.sh",
+    "release:images:push": "bash scripts/release-images.sh --push",
+    "release:images:help": "bash scripts/release-images.sh --help"
   },
   "packageManager": "pnpm@9.15.3",
   "devDependencies": {

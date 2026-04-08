@@ -30,6 +30,15 @@ RUN pnpm --filter @vanblog/server build \
 
 FROM node:18-alpine AS runner
 WORKDIR /app/server
+ARG VANBLOG_IMAGE_NAME="vanblog-server"
+ARG VANBLOG_IMAGE_VERSION="dev"
+ARG VANBLOG_IMAGE_ID="local"
+LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
+      org.opencontainers.image.version="${VANBLOG_IMAGE_VERSION}" \
+      org.opencontainers.image.revision="${VANBLOG_IMAGE_ID}" \
+      io.vanblog.image.name="${VANBLOG_IMAGE_NAME}" \
+      io.vanblog.image.version="${VANBLOG_IMAGE_VERSION}" \
+      io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
     && apk add --no-cache --update tzdata wget unzip curl nss-tools libwebp-tools \

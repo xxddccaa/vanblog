@@ -10,6 +10,8 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
 - `docker-compose.yml`: local and production-like multi-container orchestration entrypoint.
+- `docker-compose.image.yml`: deployment entrypoint that pulls already-published split images.
+- `RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
 - `tests/`: deployment and blog-flow integration tests for the compose stack.
 - `docs/`: Markdown documentation.
 - `mind-map/`: auxiliary mind-map tooling; treat it as a separate subproject unless your change targets it directly.
@@ -27,7 +29,10 @@ Use `pnpm` at the repo root.
 - `pnpm --filter @vanblog/theme-default test -- --run`: run website Vitest tests.
 - `pnpm test:deploy`: validate deployment config and routing assertions.
 - `pnpm test:blog-flow`: build the split stack and run the full compose smoke flow.
+- `pnpm release:images`: build all split release images with versioned tags locally.
+- `pnpm release:images:push`: build and push all split release images.
 - `docker compose up -d --build`: start the split runtime locally.
+- `docker compose -f docker-compose.image.yml up -d`: start from already-published images.
 - `docker compose logs -f caddy server website admin waline mongo`: inspect container logs by service.
 
 ## Coding Style & Naming Conventions
