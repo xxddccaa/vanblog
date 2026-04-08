@@ -1,41 +1,132 @@
 services:
-  vanblog:
-    image: kevinchina/deeplearning:vanblog-latest
+  caddy:
+    image: kevinchina/deeplearning:vanblog-caddy-latest
     restart: always
-    environment:
-      TZ: 'Asia/Shanghai'
-      # 邮箱地址，用于通知（可选）
-      EMAIL: 'your-email@example.com'
-      # 设置为生产环境
-      NODE_ENV: 'production'
-      # 设置版本号
-      VAN_BLOG_VERSION: 'v1.0.0'
-    volumes:
-      # 图床文件的存放地址，按需修改
-      - ${PWD}/data/static:/app/static
-      # 日志文件
-      - ${PWD}/log:/var/log
-      # Caddy 配置存储
-      - ${PWD}/caddy/config:/root/.config/caddy
-      # Caddy 证书存储
-      - ${PWD}/caddy/data:/root/.local/share/caddy
-      # 阿里云盘配置存储
-      - ${PWD}/aliyunpan/config:/root/.config/aliyunpan
-    ports:
-      # 前面的是映射到宿主机的端口号，可以修改
-      - 801:80
     depends_on:
-      - mongo
+      server:
+        condition: service_healthy
+      website:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+      waline:
+        condition: service_healthy
+    environment:
+      TZ: "Asia/Shanghai"
+      # 邮箱地址，用于自动申请 https 证书
+      EMAIL: "your-email@example.com"
+    volumes:
+      - ./log:/var/log
+      - ./caddy/config:/root/.config/caddy
+      - ./caddy/data:/root/.local/share/caddy
+    ports:
+      # 前面的是映射到宿主机的端口号，改端口的话改前面的。
+      - "8019:80"
+      - "4431:443"
+
+  server:
+    image: kevinchina/deeplearning:vanblog-server-latest
+    restart: always
+    init: true
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      TZ: "Asia/Shanghai"
+      NODE_ENV: production
+      VAN_BLOG_DATABASE_URL: mongodb://mongo:27017/vanBlog?authSource=admin
+      VAN_BLOG_WALINE_DB: waline
+      VANBLOG_CADDY_API_URL: http://caddy:2019
+      VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
+      VANBLOG_WALINE_CONTROL_URL: http://waline:8361
+      VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
+    volumes:
+      - ./data/static:/app/static
+      - ./log:/var/log
+      - ./aliyunpan/config:/root/.config/aliyunpan
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  website:
+    image: kevinchina/deeplearning:vanblog-website-latest
+    restart: always
+    init: true
+    environment:
+      TZ: "Asia/Shanghai"
+      NODE_ENV: production
+      PORT: 3001
+      WEBSITE_CONTROL_PORT: 3011
+      VAN_BLOG_SERVER_URL: http://server:3000
+      VAN_BLOG_REVALIDATE: "false"
+      VAN_BLOG_ALLOW_DOMAINS: pic.mereith.com
+    expose:
+      - "3001"
+      - "3011"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  admin:
+    image: kevinchina/deeplearning:vanblog-admin-latest
+    restart: always
+    expose:
+      - "3002"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  waline:
+    image: kevinchina/deeplearning:vanblog-waline-latest
+    restart: always
+    init: true
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      TZ: "Asia/Shanghai"
+      NODE_ENV: production
+      PORT: 8360
+      WALINE_CONTROL_PORT: 8361
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_DB: waline
+      MONGO_AUTHSOURCE: admin
+      JWT_TOKEN: vanblog-change-me
+    expose:
+      - "8360"
+      - "8361"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   mongo:
-    # 某些机器不支持AVX指令集会报错，所以可选择使用v4版本
-    # image: mongo:4.4.16
+    # 如果你的旧部署一直使用 mongo:latest，并且沿用原有 ./data/mongo 数据目录，
+    # 这里也继续保持 latest，避免因为降级到旧版本导致数据目录无法启动。
     image: mongo:latest
     restart: always
     environment:
-      TZ: 'Asia/Shanghai'
+      TZ: "Asia/Shanghai"
     volumes:
-      - ${PWD}/data/mongo:/data/db
-    # MongoDB默认端口，通常不需要对外暴露
-    # ports:
-    #   - 27017:27017
+      - ./data/mongo:/data/db
+    healthcheck:
+      # mongo:latest（当前常见为 8.x）默认提供 mongosh；老版本镜像仍可能只有 mongo。
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' | grep 1 >/dev/null || mongo --quiet --eval 'db.adminCommand(\"ping\").ok' | grep 1 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s

@@ -1,0 +1,16 @@
+**
+!docker/
+!docker/website/
+!docker/website/runner.cjs
+!packages/
+!packages/website/
+!packages/website/package.json
+!packages/website/next.config.js
+!packages/website/public/
+!packages/website/public/**
+!packages/website/.next/
+!packages/website/.next/standalone/
+!packages/website/.next/standalone/**
+!packages/website/.next/static/
+!packages/website/.next/static/**
+

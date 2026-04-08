@@ -1,0 +1,7 @@
+**
+!packages/
+!packages/admin/
+!packages/admin/default.conf
+!packages/admin/dist/
+!packages/admin/dist/**
+

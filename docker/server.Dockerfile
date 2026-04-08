@@ -28,7 +28,7 @@ COPY packages/server ./packages/server
 RUN pnpm --filter @vanblog/server build \
     && pnpm deploy --filter @vanblog/server --prod /prod/server
 
-FROM node:18-alpine AS runner
+FROM base AS runner
 WORKDIR /app/server
 ARG VANBLOG_IMAGE_NAME="vanblog-server"
 ARG VANBLOG_IMAGE_VERSION="dev"
@@ -39,18 +39,6 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.name="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.version="${VANBLOG_IMAGE_VERSION}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
-
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
-    && apk add --no-cache --update tzdata wget unzip curl nss-tools libwebp-tools \
-    && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
-    && echo "Asia/Shanghai" > /etc/timezone \
-    && apk del tzdata \
-    && corepack enable \
-    && corepack prepare pnpm@9.15.3 --activate \
-    && pnpm config set network-timeout 600000 -g \
-    && pnpm config set registry https://registry.npmmirror.com -g \
-    && pnpm config set fetch-retries 20 -g \
-    && pnpm config set fetch-timeout 600000 -g
 
 ARG INSTALL_ALIYUNPAN=false
 RUN if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
@@ -67,6 +55,7 @@ RUN if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
     fi
 
 COPY --from=builder /prod/server/ ./
+COPY --from=builder /app/packages/server/dist ./dist
 
 ENV NODE_ENV=production
 ENV VAN_BLOG_DATABASE_URL="mongodb://mongo:27017/vanBlog?authSource=admin"

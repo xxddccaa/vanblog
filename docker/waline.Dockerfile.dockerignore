@@ -1,0 +1,9 @@
+**
+!docker/
+!docker/waline/
+!docker/waline/runner.cjs
+!scripts/
+!scripts/fix-waline-dashboard.js
+!packages/
+!packages/waline/
+!packages/waline/package.json
