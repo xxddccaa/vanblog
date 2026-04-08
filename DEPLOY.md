@@ -44,7 +44,7 @@ cp .env.release.example .env
 然后至少修改这些内容：
 
 - `EMAIL`：你的邮箱，用于证书相关场景
-- `VANBLOG_RELEASE_SUFFIX`：本次要部署的镜像版本，例如 `v1.0.0-feec99a1`
+- `VANBLOG_RELEASE_SUFFIX`：本次要部署的镜像版本，例如 `v1.0.0-<image-id>`
 - `WALINE_JWT_TOKEN`：替换成高强度随机字符串
 - 目录挂载项：按你的服务器实际目录调整
 
@@ -88,7 +88,7 @@ http://<你的域名或 IP>/admin/init
 假设你已经发布了新镜像，只需要更新 `.env` 里的：
 
 ```env
-VANBLOG_RELEASE_SUFFIX=v1.0.0-feec99a1
+VANBLOG_RELEASE_SUFFIX=v1.0.0-<image-id>
 ```
 
 然后执行：

@@ -50,16 +50,16 @@ kevinchina/deeplearning:vanblog-<service>-latest
 
 - `<service>`：服务名，固定为 `caddy`、`server`、`website`、`admin`、`waline`
 - `<version>`：来自根目录 `package.json`，格式建议统一成 `vX.Y.Z`
-- `<image-id>`：镜像唯一 id，默认使用 Git 短 SHA，例如 `feec99a1`
+- `<image-id>`：镜像唯一 id，默认使用 Git 短 SHA，例如 `git rev-parse --short=8 HEAD` 的结果
 
 示例：
 
 ```bash
-kevinchina/deeplearning:vanblog-caddy-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-server-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-website-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-admin-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-waline-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-caddy-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.0.0-<image-id>
 ```
 
 建议引用优先级：
@@ -151,7 +151,7 @@ bash scripts/release-images.sh --push
 ```bash
 bash scripts/release-images.sh \
   --version v1.0.0 \
-  --image-id feec99a1 \
+  --image-id <image-id> \
   --repo kevinchina/deeplearning \
   --push
 ```
@@ -205,18 +205,18 @@ docker-compose.image.yml
 
 ```bash
 export VANBLOG_DOCKER_REPO=kevinchina/deeplearning
-export VANBLOG_RELEASE_SUFFIX=v1.0.0-feec99a1
+export VANBLOG_RELEASE_SUFFIX=v1.0.0-<image-id>
 
 docker compose -f docker-compose.image.yml up -d
 ```
 
 此时各服务会自动解析为：
 
-- `vanblog-caddy-v1.0.0-feec99a1`
-- `vanblog-server-v1.0.0-feec99a1`
-- `vanblog-website-v1.0.0-feec99a1`
-- `vanblog-admin-v1.0.0-feec99a1`
-- `vanblog-waline-v1.0.0-feec99a1`
+- `vanblog-caddy-v1.0.0-<image-id>`
+- `vanblog-server-v1.0.0-<image-id>`
+- `vanblog-website-v1.0.0-<image-id>`
+- `vanblog-admin-v1.0.0-<image-id>`
+- `vanblog-waline-v1.0.0-<image-id>`
 
 ### 6.2 使用版本别名或 latest
 
@@ -307,6 +307,6 @@ pnpm release:images:help
 
 # 用发布镜像部署
 VANBLOG_DOCKER_REPO=kevinchina/deeplearning \
-VANBLOG_RELEASE_SUFFIX=v1.0.0-feec99a1 \
+VANBLOG_RELEASE_SUFFIX=v1.0.0-<image-id> \
 docker compose -f docker-compose.image.yml up -d
 ```

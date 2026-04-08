@@ -80,7 +80,7 @@ docker compose down -v
 
 ```bash
 export VANBLOG_DOCKER_REPO=kevinchina/deeplearning
-export VANBLOG_RELEASE_SUFFIX=v1.0.0-feec99a1
+export VANBLOG_RELEASE_SUFFIX=v1.0.0-<image-id>
 
 docker compose -f docker-compose.image.yml up -d
 ```
@@ -147,11 +147,11 @@ pnpm test:blog-flow
 每个服务都会产出类似下面的标签：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-server-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-website-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-admin-v1.0.0-feec99a1
-kevinchina/deeplearning:vanblog-waline-v1.0.0-feec99a1
+kevinchina/deeplearning:vanblog-caddy-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.0.0-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.0.0-<image-id>
 ```
 
 仓库内已经提供：
