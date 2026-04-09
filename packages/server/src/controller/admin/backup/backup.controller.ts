@@ -257,6 +257,7 @@ export class BackupController {
 
       const json = file.buffer.toString();
       const data = this.normalizeBackupPayload(JSON.parse(json));
+      const currentAdmin = await this.userProvider.getUser();
 
       const backupVersion = data.backupInfo?.version || '1.0.0';
       this.logger.log(`检测到备份版本: ${backupVersion}`);
@@ -334,47 +335,34 @@ export class BackupController {
       };
 
       const canRestoreProtectedData = await this.canRestoreProtectedData();
+      const usersToImport = this.buildUsersForRestore(users || (user ? [user] : []), currentAdmin);
       this.logger.log(
         canRestoreProtectedData
-          ? '检测到目标站点为空，启用完整迁移导入模式'
-          : '检测到目标站点已有数据，启用安全导入模式',
+          ? '检测到目标站点为空，直接执行整站恢复'
+          : '检测到目标站点已有数据，先清空现有站点数据，仅保留当前登录名与密码后再恢复',
       );
 
-      if (canRestoreProtectedData) {
-        const usersToImport = users || (user ? [user] : []);
-        if (usersToImport?.length) {
-          await this.userProvider.importUsers(usersToImport);
-          importResults.users = usersToImport.length;
-          this.logger.log(`用户数据导入完成: ${importResults.users} 条`);
-        }
-      } else if (user || users?.length) {
-        this.logger.log('跳过用户数据导入（避免覆盖登录信息）');
+      if (!canRestoreProtectedData) {
+        await this.prepareForFullRestore(currentAdmin);
+      }
+
+      if (usersToImport?.length) {
+        await this.userProvider.importUsers(usersToImport);
+        importResults.users = usersToImport.length;
+        this.logger.log(`用户数据导入完成: ${importResults.users} 条（已保留当前登录名与密码）`);
+      } else if (currentAdmin?.id !== undefined) {
+        this.logger.log('备份文件中未发现用户数据，保留当前管理员账号');
       }
 
       if (meta) {
-        if (canRestoreProtectedData) {
-          await this.metaProvider.update(meta);
-          this.logger.log('元数据导入完成（完整模式，包含站点信息）');
-        } else {
-          const { siteInfo, ...metaWithoutSiteInfo } = meta;
-          if (Object.keys(metaWithoutSiteInfo).length > 0) {
-            await this.metaProvider.update(metaWithoutSiteInfo);
-            this.logger.log('元数据导入完成（已排除站点信息）');
-          }
-          if (siteInfo) {
-            this.logger.log('跳过站点信息导入（避免覆盖站点配置）');
-          }
-        }
+        await this.restoreMeta(meta);
+        this.logger.log('元数据导入完成（包含站点信息）');
       }
 
       if (settings?.length) {
-        await this.settingProvider.importAllSettings(settings, canRestoreProtectedData);
+        await this.settingProvider.importAllSettings(settings, true);
         importResults.settings = settings.length;
-        this.logger.log(
-          `完整设置导入完成: ${importResults.settings} 条（${
-            canRestoreProtectedData ? '覆盖' : '合并'
-          }模式）`,
-        );
+        this.logger.log(`完整设置导入完成: ${importResults.settings} 条（覆盖模式）`);
       } else if (setting) {
         await this.settingProvider.importSetting(setting);
         this.logger.log('设置数据导入完成');
@@ -563,6 +551,7 @@ export class BackupController {
         articles: 0,
         drafts: 0,
         moments: 0,
+        mindMaps: 0,
         categories: 0,
         tags: 0,
         customPages: 0,
@@ -700,6 +689,15 @@ export class BackupController {
         this.logger.log(`清空私密文档库完成: ${clearResults.documents} 条`);
       } catch (error) {
         this.logger.error('清空私密文档库失败:', error.message);
+      }
+
+      try {
+        const { total } = await this.mindMapProvider.getByOption({ page: 1, pageSize: 1 });
+        await this.mindMapProvider['mindMapModel'].deleteMany({});
+        clearResults.mindMaps = total || 0;
+        this.logger.log(`清空脑图数据完成: ${clearResults.mindMaps} 条`);
+      } catch (error) {
+        this.logger.error('清空脑图数据失败:', error.message);
       }
 
       // 6. 清空分类和标签（在文章清空后）
@@ -1163,6 +1161,90 @@ export class BackupController {
     );
   }
 
+  private async prepareForFullRestore(currentAdmin?: any) {
+    const keepAdminId = currentAdmin?.id;
+
+    await Promise.all([
+      this.articleProvider['articleModel']?.deleteMany?.({}),
+      this.draftProvider['draftModel']?.deleteMany?.({}),
+      this.momentProvider['momentModel']?.deleteMany?.({}),
+      this.categoryProvider['categoryModal']?.deleteMany?.({}),
+      this.tagProvider['tagModel']?.deleteMany?.({}),
+      this.customPageProvider['customPageModal']?.deleteMany?.({}),
+      this.pipelineProvider['pipelineModel']?.deleteMany?.({}),
+      this.navToolProvider['navToolModel']?.deleteMany?.({}),
+      this.navCategoryProvider['navCategoryModel']?.deleteMany?.({}),
+      this.iconProvider['iconModel']?.deleteMany?.({}),
+      this.staticProvider['staticModel']?.deleteMany?.({}),
+      this.viewerProvider['viewerModel']?.deleteMany?.({}),
+      this.visitProvider['visitModel']?.deleteMany?.({}),
+      this.tokenProvider['tokenModel']?.deleteMany?.({}),
+      this.documentProvider['documentModel']?.deleteMany?.({}),
+      this.mindMapProvider['mindMapModel']?.deleteMany?.({}),
+      this.settingProvider['settingModel']?.deleteMany?.({}),
+      this.metaProvider['metaModel']?.deleteMany?.({}),
+      keepAdminId === undefined
+        ? this.userProvider['userModel']?.deleteMany?.({})
+        : this.userProvider['userModel']?.deleteMany?.({ id: { $ne: keepAdminId } }),
+    ]);
+  }
+
+  private buildUsersForRestore(users: any[], currentAdmin?: any) {
+    const normalizedUsers = Array.isArray(users)
+      ? users
+          .filter((item) => item?.name)
+          .map((item) => {
+            const { _id, __v, ...rest } = item;
+            return rest;
+          })
+      : [];
+
+    if (!currentAdmin?.name || !currentAdmin?.password || !currentAdmin?.salt) {
+      return normalizedUsers;
+    }
+
+    const { _id, __v, ...currentAdminPayload } = currentAdmin?.toObject
+      ? currentAdmin.toObject()
+      : currentAdmin;
+
+    let adminMerged = false;
+    const mergedUsers = normalizedUsers.map((item) => {
+      const isAdminRecord =
+        item?.id === currentAdminPayload.id || item?.id === 0 || item?.type === 'admin';
+
+      if (!isAdminRecord || adminMerged) {
+        return item;
+      }
+
+      adminMerged = true;
+      return {
+        ...item,
+        id: currentAdminPayload.id ?? item.id ?? 0,
+        type: currentAdminPayload.type || item.type || 'admin',
+        name: currentAdminPayload.name,
+        password: currentAdminPayload.password,
+        salt: currentAdminPayload.salt,
+      };
+    });
+
+    if (!adminMerged) {
+      mergedUsers.unshift({
+        ...currentAdminPayload,
+        id: currentAdminPayload.id ?? 0,
+        type: currentAdminPayload.type || 'admin',
+      });
+    }
+
+    return mergedUsers;
+  }
+
+  private async restoreMeta(meta: any) {
+    const payload = { ...meta };
+    delete payload._id;
+    delete payload.__v;
+    await this.metaProvider['metaModel'].updateOne({}, payload, { upsert: true });
+  }
+
   private async importArticlesEnhanced(articles: any[]) {
     if (!articles || articles.length === 0) return;
 
@@ -1331,54 +1413,87 @@ export class BackupController {
 
     try {
       this.logger.log(`开始增量导入 ${documents.length} 个私密文档...`);
+      const orderedDocuments = [...documents].sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type === 'library' ? -1 : 1;
+        }
+        const aDepth = Array.isArray(a.path) ? a.path.length : 0;
+        const bDepth = Array.isArray(b.path) ? b.path.length : 0;
+        if (aDepth !== bDepth) {
+          return aDepth - bDepth;
+        }
+        if ((a.sort_order || 0) !== (b.sort_order || 0)) {
+          return (a.sort_order || 0) - (b.sort_order || 0);
+        }
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      });
+
+      const idMap = new Map<number, number>();
+      const usedIds = new Set<number>();
       let newIdCount = 0;
       let updatedCount = 0;
       let createdCount = 0;
 
-      for (const document of documents) {
+      for (const document of orderedDocuments) {
         let targetId = document.id;
 
-        // 检查ID是否冲突（包括软删除的记录）
-        if (targetId) {
-          const existingDocument = await this.documentProvider['documentModel'].findOne({
-            id: targetId,
-          });
-          if (existingDocument) {
-            // ID冲突，分配新ID
-            targetId = await this.documentProvider.getNewId();
-            newIdCount++;
+        if (
+          !targetId ||
+          usedIds.has(targetId) ||
+          (await this.documentProvider['documentModel'].findOne({ id: targetId }))
+        ) {
+          targetId = await this.documentProvider.getNewId();
+          newIdCount++;
+          if (document.id) {
             this.logger.log(`文档ID冲突 (${document.id} -> ${targetId}): ${document.title}`);
           }
         } else {
-          // 没有ID，分配新ID
-          targetId = await this.documentProvider.getNewId();
-          newIdCount++;
+          usedIds.add(targetId);
         }
 
+        if (typeof document.id === 'number') {
+          idMap.set(document.id, targetId);
+        }
+        usedIds.add(targetId);
+      }
+
+      for (const document of orderedDocuments) {
+        const targetId = typeof document.id === 'number' ? idMap.get(document.id) : document.id;
         const { id, _id, __v, ...createDto } = document;
+        const mappedParentId =
+          createDto.parent_id === null || createDto.parent_id === undefined
+            ? createDto.parent_id
+            : idMap.get(createDto.parent_id) ?? createDto.parent_id;
+        const mappedLibraryId =
+          createDto.library_id === null || createDto.library_id === undefined
+            ? createDto.library_id
+            : idMap.get(createDto.library_id) ?? createDto.library_id;
+        const mappedPath = Array.isArray(createDto.path)
+          ? createDto.path.map((pathId: number) => idMap.get(pathId) ?? pathId)
+          : [];
 
         try {
-          // 先尝试根据标题查找是否已存在相同文档（只查未删除的）
-          const existingByTitle = await this.documentProvider['documentModel'].findOne({
-            title: document.title,
+          const payload = {
+            ...createDto,
+            id: targetId,
+            parent_id: mappedParentId,
+            library_id: mappedLibraryId,
+            path: mappedPath,
             deleted: false,
+            createdAt: createDto.createdAt || new Date(),
+            updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
+          };
+          const existingById = await this.documentProvider['documentModel'].findOne({
+            id: targetId,
           });
-          if (existingByTitle) {
-            // 更新现有文档
-            await this.documentProvider.updateById(existingByTitle.id, {
-              ...createDto,
-              deleted: false,
-              updatedAt: new Date(),
-            });
+
+          if (existingById) {
+            await this.documentProvider['documentModel'].updateOne({ id: targetId }, payload);
             updatedCount++;
             this.logger.log(`更新文档: ${document.title}`);
           } else {
-            // 创建新文档
-            await this.documentProvider.create({
-              ...createDto,
-              id: targetId,
-              updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
-            });
+            const newDocument = new this.documentProvider['documentModel'](payload);
+            await newDocument.save();
             createdCount++;
           }
         } catch (error) {

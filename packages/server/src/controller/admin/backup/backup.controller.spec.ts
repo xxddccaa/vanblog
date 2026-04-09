@@ -3,43 +3,94 @@ import { BackupController } from './backup.controller';
 
 describe('BackupController import mode', () => {
   const createController = (overrides: Record<string, any> = {}) => {
+    const momentModel = Object.assign(
+      jest.fn(() => ({
+        save: jest.fn().mockResolvedValue(undefined),
+      })),
+      {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        findOne: jest.fn().mockResolvedValue(null),
+      },
+    );
+    const documentModel = Object.assign(
+      jest.fn(() => ({
+        save: jest.fn().mockResolvedValue(undefined),
+      })),
+      {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        findOne: jest.fn().mockResolvedValue(null),
+        updateOne: jest.fn().mockResolvedValue(undefined),
+      },
+    );
+
     const articleProvider = {
       getTotalNum: jest.fn().mockResolvedValue(0),
       getAll: jest.fn().mockResolvedValue([]),
+      articleModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.articleProvider,
     };
     const categoryProvider = {
       getAllCategories: jest.fn().mockResolvedValue([]),
+      categoryModal: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.categoryProvider,
     };
     const tagProvider = {
       getAllTagRecords: jest.fn().mockResolvedValue([]),
       syncTagsFromArticles: jest.fn().mockResolvedValue(undefined),
+      tagModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.tagProvider,
     };
     const metaProvider = {
       getAll: jest.fn().mockResolvedValue({}),
       update: jest.fn().mockResolvedValue(undefined),
+      metaModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        updateOne: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.metaProvider,
     };
     const draftProvider = {
       getAll: jest.fn().mockResolvedValue([]),
+      draftModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.draftProvider,
     };
     const userProvider = {
-      getUser: jest.fn().mockResolvedValue({ id: 0, name: 'admin' }),
+      getUser: jest.fn().mockResolvedValue({
+        id: 0,
+        name: 'admin',
+        password: 'current-hash',
+        salt: 'current-salt',
+        type: 'admin',
+      }),
       getAllUsers: jest.fn().mockResolvedValue([{ id: 0, name: 'admin' }]),
       importUsers: jest.fn().mockResolvedValue(undefined),
+      userModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.userProvider,
     };
     const viewerProvider = {
       getAll: jest.fn().mockResolvedValue([]),
       import: jest.fn().mockResolvedValue(undefined),
+      viewerModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.viewerProvider,
     };
     const visitProvider = {
       getAll: jest.fn().mockResolvedValue([]),
       import: jest.fn().mockResolvedValue(undefined),
+      visitModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.visitProvider,
     };
     const settingProvider = {
@@ -49,40 +100,66 @@ describe('BackupController import mode', () => {
       importAllSettings: jest.fn().mockResolvedValue(undefined),
       importSetting: jest.fn().mockResolvedValue(undefined),
       updateLayoutSetting: jest.fn().mockResolvedValue(undefined),
+      settingModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.settingProvider,
     };
     const staticProvider = {
       exportAll: jest.fn().mockResolvedValue([]),
       importItems: jest.fn().mockResolvedValue(undefined),
+      staticModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.staticProvider,
     };
     const momentProvider = {
       getByOption: jest.fn().mockResolvedValue({ total: 0, moments: [] }),
+      momentModel,
+      getNewId: jest.fn().mockResolvedValue(1),
       ...overrides.momentProvider,
     };
     const customPageProvider = {
       getAll: jest.fn().mockResolvedValue([]),
+      customPageModal: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.customPageProvider,
     };
     const pipelineProvider = {
       getAll: jest.fn().mockResolvedValue([]),
+      pipelineModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.pipelineProvider,
     };
     const tokenProvider = {
       getAllTokens: jest.fn().mockResolvedValue([]),
       importTokens: jest.fn().mockResolvedValue(undefined),
+      tokenModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.tokenProvider,
     };
     const navToolProvider = {
       getAllTools: jest.fn().mockResolvedValue([]),
+      navToolModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.navToolProvider,
     };
     const navCategoryProvider = {
       getAllCategories: jest.fn().mockResolvedValue([]),
+      navCategoryModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.navCategoryProvider,
     };
     const iconProvider = {
       getAllIcons: jest.fn().mockResolvedValue([]),
+      iconModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.iconProvider,
     };
     const isrProvider = {
@@ -98,12 +175,16 @@ describe('BackupController import mode', () => {
     };
     const documentProvider = {
       getByOption: jest.fn().mockResolvedValue({ total: 0, documents: [] }),
+      documentModel,
       ...overrides.documentProvider,
     };
     const mindMapProvider = {
       getByOption: jest.fn().mockResolvedValue({ total: 0, mindMaps: [] }),
       getAllForBackup: jest.fn().mockResolvedValue([]),
       importMindMaps: jest.fn().mockResolvedValue(undefined),
+      mindMapModel: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+      },
       ...overrides.mindMapProvider,
     };
     const mongoBackupProvider = {
@@ -233,10 +314,17 @@ describe('BackupController import mode', () => {
 
     expect(result.statusCode).toBe(200);
     expect(userProvider.importUsers).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 0, name: 'admin' }),
+      expect.objectContaining({
+        id: 0,
+        name: 'admin',
+        password: 'current-hash',
+        salt: 'current-salt',
+      }),
     ]);
-    expect(metaProvider.update).toHaveBeenCalledWith(
+    expect(metaProvider.metaModel.updateOne).toHaveBeenCalledWith(
+      {},
       expect.objectContaining({ siteInfo: { siteName: 'Migrated Blog' } }),
+      { upsert: true },
     );
     expect(settingProvider.importAllSettings).toHaveBeenCalledWith(
       [{ type: 'menu', value: { data: [] } }],
@@ -244,8 +332,9 @@ describe('BackupController import mode', () => {
     );
   });
 
-  it('keeps the current user and site info when importing into a non-empty instance', async () => {
-    const { controller, userProvider, metaProvider, settingProvider } = createController({
+  it('keeps only the current login credentials when importing into a non-empty instance', async () => {
+    const { controller, userProvider, metaProvider, settingProvider, articleProvider } =
+      createController({
       articleProvider: {
         getTotalNum: jest.fn().mockResolvedValue(1),
       },
@@ -266,13 +355,27 @@ describe('BackupController import mode', () => {
     } as any);
 
     expect(result.statusCode).toBe(200);
-    expect(userProvider.importUsers).not.toHaveBeenCalled();
-    expect(metaProvider.update).toHaveBeenCalledWith({
-      links: [{ name: 'demo', url: 'https://example.com' }],
-    });
+    expect(articleProvider.articleModel.deleteMany).toHaveBeenCalled();
+    expect(userProvider.userModel.deleteMany).toHaveBeenCalledWith({ id: { $ne: 0 } });
+    expect(userProvider.importUsers).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 0,
+        name: 'admin',
+        password: 'current-hash',
+        salt: 'current-salt',
+      }),
+    ]);
+    expect(metaProvider.metaModel.updateOne).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        siteInfo: { siteName: 'Should Keep Current Site' },
+        links: [{ name: 'demo', url: 'https://example.com' }],
+      }),
+      { upsert: true },
+    );
     expect(settingProvider.importAllSettings).toHaveBeenCalledWith(
       [{ type: 'menu', value: { data: [] } }],
-      false,
+      true,
     );
   });
 
@@ -301,8 +404,10 @@ describe('BackupController import mode', () => {
     expect(userProvider.importUsers).toHaveBeenCalledWith([
       expect.objectContaining({ id: 0, name: 'admin' }),
     ]);
-    expect(metaProvider.update).toHaveBeenCalledWith(
+    expect(metaProvider.metaModel.updateOne).toHaveBeenCalledWith(
+      {},
       expect.objectContaining({ siteInfo: { siteName: 'Migrated From Raw Snapshot' } }),
+      { upsert: true },
     );
     expect(settingProvider.importAllSettings).toHaveBeenCalledWith(
       expect.arrayContaining([{ type: 'menu', value: { data: [] } }]),
@@ -310,6 +415,71 @@ describe('BackupController import mode', () => {
     );
     expect(tokenProvider.importTokens).toHaveBeenCalledWith([
       expect.objectContaining({ token: 'login-token', userId: 0 }),
+    ]);
+  });
+
+  it('clears existing content and restores moments, documents and mind maps for a full-site import', async () => {
+    const saveMock = jest.fn().mockResolvedValue(undefined);
+    const documentModel = Object.assign(
+      jest.fn(() => ({
+        save: saveMock,
+      })),
+      {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        findOne: jest.fn().mockResolvedValue(null),
+        updateOne: jest.fn().mockResolvedValue(undefined),
+      },
+    );
+
+    const { controller, momentProvider, documentProvider, mindMapProvider, userProvider } =
+      createController({
+        articleProvider: {
+          getTotalNum: jest.fn().mockResolvedValue(2),
+        },
+        documentProvider: {
+          getNewId: jest.fn().mockResolvedValue(999),
+          documentModel,
+        },
+        mindMapProvider: {
+          mindMapModel: {
+            deleteMany: jest.fn().mockResolvedValue(undefined),
+          },
+          importMindMaps: jest.fn().mockResolvedValue(undefined),
+        },
+      });
+
+    const result = await controller.importAll({
+      buffer: Buffer.from(
+        JSON.stringify({
+          backupInfo: { version: '3.0.0' },
+          moments: [{ id: 1, content: 'moment-1', createdAt: '2026-04-01T00:00:00.000Z' }],
+          documents: [
+            { id: 10, type: 'library', title: 'Docs', path: [], library_id: null, parent_id: null },
+            {
+              id: 11,
+              type: 'document',
+              title: 'Secret',
+              path: [10],
+              library_id: 10,
+              parent_id: null,
+              content: 'top-secret',
+            },
+          ],
+          mindMaps: [{ _id: 'mind-1', title: 'Mind', content: '{}' }],
+        }),
+      ),
+    } as any);
+
+    expect(result.statusCode).toBe(200);
+    expect(momentProvider.momentModel.deleteMany).toHaveBeenCalled();
+    expect(documentProvider.documentModel.deleteMany).toHaveBeenCalled();
+    expect(mindMapProvider.mindMapModel.deleteMany).toHaveBeenCalled();
+    expect(saveMock).toHaveBeenCalledTimes(2);
+    expect(mindMapProvider.importMindMaps).toHaveBeenCalledWith([
+      expect.objectContaining({ _id: 'mind-1', title: 'Mind' }),
+    ]);
+    expect(userProvider.importUsers).toHaveBeenCalledWith([
+      expect.objectContaining({ name: 'admin', password: 'current-hash', salt: 'current-salt' }),
     ]);
   });
 });
