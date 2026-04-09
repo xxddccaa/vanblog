@@ -9,23 +9,66 @@ import { spawnSync } from 'node:child_process';
 const repoRoot = process.cwd();
 const projectName = `vanblog-e2e-${Date.now().toString(36)}`;
 const tempRoot = path.join(repoRoot, 'tests', '.tmp', projectName);
+const dockerComposeCommand = detectDockerComposeCommand();
+
+function detectDockerComposeCommand() {
+  const legacy = spawnSync('docker-compose', ['version'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  if (!legacy.error && (legacy.status ?? 1) === 0) {
+    return { command: 'docker-compose', baseArgs: [] };
+  }
+
+  const plugin = spawnSync('docker', ['compose', 'version'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  if (!plugin.error && (plugin.status ?? 1) === 0) {
+    return { command: 'docker', baseArgs: ['compose'] };
+  }
+
+  throw new Error('Neither docker-compose nor docker compose is available in PATH');
+}
 
 function runCommand(args, options = {}) {
   const composeArgs = args.includes('-p') ? args : ['-p', projectName, ...args];
-  const result = spawnSync('docker-compose', composeArgs, {
+  const fullArgs = [...dockerComposeCommand.baseArgs, ...composeArgs];
+  const result = spawnSync(dockerComposeCommand.command, fullArgs, {
     cwd: repoRoot,
     encoding: 'utf8',
     env: options.env,
     timeout: options.timeoutMs,
+    maxBuffer: 20 * 1024 * 1024,
   });
 
   if ((result.status ?? 1) !== 0 && !options.allowFailure) {
-    const command = ['docker-compose', ...composeArgs].join(' ');
+    const command = [dockerComposeCommand.command, ...fullArgs].join(' ');
     const details = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
-    throw new Error(`${command} failed with exit code ${result.status ?? 'unknown'}\n${details}`);
+    const reason = result.error ? `\n${result.error.message}` : '';
+    throw new Error(
+      `${command} failed with exit code ${result.status ?? 'unknown'}\n${details}${reason}`,
+    );
   }
 
   return result;
+}
+
+function parseComposePsOutput(raw) {
+  const text = raw.trim();
+  if (!text) {
+    return [];
+  }
+
+  if (text.startsWith('[')) {
+    return JSON.parse(text);
+  }
+
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
 }
 
 async function getFreePort() {
@@ -74,10 +117,15 @@ async function waitFor(fn, { timeoutMs, intervalMs = 2000, label }) {
 }
 
 async function fetchText(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    signal: AbortSignal.timeout(options.timeoutMs ?? 15000),
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: AbortSignal.timeout(options.timeoutMs ?? 30000),
+    });
+  } catch (error) {
+    throw new Error(`Request failed for ${url}: ${error.message}`);
+  }
   return {
     status: response.status,
     text: await response.text(),
@@ -86,14 +134,19 @@ async function fetchText(url, options = {}) {
 }
 
 async function fetchJson(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    signal: AbortSignal.timeout(options.timeoutMs ?? 15000),
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: AbortSignal.timeout(options.timeoutMs ?? 30000),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+  } catch (error) {
+    throw new Error(`Request failed for ${url}: ${error.message}`);
+  }
 
   const raw = await response.text();
   let body = null;
@@ -158,7 +211,7 @@ async function waitForHealthyStack(composeEnv) {
       return false;
     }
 
-    const services = JSON.parse(result.stdout);
+    const services = parseComposePsOutput(result.stdout);
     const byService = Object.fromEntries(services.map((service) => [service.Service, service]));
     const requiredHealthy = ['mongo', 'server', 'website', 'admin', 'waline'];
     if (!requiredHealthy.every((name) => byService[name]?.Health === 'healthy')) {
@@ -439,7 +492,7 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     const psResult = runCommand(['-f', 'docker-compose.yml', 'ps', '--format', 'json'], {
       env: composeEnv,
     });
-    const services = JSON.parse(psResult.stdout);
+    const services = parseComposePsOutput(psResult.stdout);
     const mongoService = services.find((service) => service.Service === 'mongo');
     assert.ok(mongoService, 'Mongo service should exist in the compose stack');
     assert.equal(

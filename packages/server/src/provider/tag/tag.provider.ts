@@ -78,8 +78,8 @@ export class TagProvider {
    * 更新单个标签的文章关联
    */
   async updateTagForArticle(articleId: number, oldTags: string[], newTags: string[]) {
-    const removedTags = oldTags.filter(tag => !newTags.includes(tag));
-    const addedTags = newTags.filter(tag => !oldTags.includes(tag));
+    const removedTags = oldTags.filter((tag) => !newTags.includes(tag));
+    const addedTags = newTags.filter((tag) => !oldTags.includes(tag));
 
     const bulkOps = [];
 
@@ -135,9 +135,11 @@ export class TagProvider {
     pageSize: number = 50,
     sortBy: 'name' | 'articleCount' | 'createdAt' | 'updatedAt' = 'articleCount',
     sortOrder: 'asc' | 'desc' = 'desc',
-    search?: string
+    search?: string,
   ) {
-    const cacheKey = `${this.CACHE_PREFIX}paginated:${page}:${pageSize}:${sortBy}:${sortOrder}:${search || ''}`;
+    const cacheKey = `${this.CACHE_PREFIX}paginated:${page}:${pageSize}:${sortBy}:${sortOrder}:${
+      search || ''
+    }`;
     const cached = this.cacheProvider.get(cacheKey);
     if (cached) {
       return cached;
@@ -152,7 +154,7 @@ export class TagProvider {
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
     const skip = (page - 1) * pageSize;
-    
+
     const [tags, total] = await Promise.all([
       this.tagModel
         .find(query)
@@ -186,21 +188,26 @@ export class TagProvider {
       return cached;
     }
 
-    const tags = await this.tagModel
-      .find({})
-      .sort({ name: 1 })
-      .select('name')
-      .lean();
+    const tags = await this.tagModel.find({}).sort({ name: 1 }).select('name').lean();
 
-    const result = tags.map(tag => tag.name);
+    const result = tags.map((tag) => tag.name);
     this.cacheProvider.set(cacheKey, result, this.CACHE_TTL);
     return result;
+  }
+
+  async getAllTagRecords() {
+    return await this.tagModel.find({}).sort({ name: 1 }).lean().exec();
   }
 
   /**
    * 根据标签名获取文章列表
    */
-  async getArticlesByTag(tagName: string, includeHidden: boolean = false, page?: number, pageSize?: number) {
+  async getArticlesByTag(
+    tagName: string,
+    includeHidden: boolean = false,
+    page?: number,
+    pageSize?: number,
+  ) {
     const tag = await this.tagModel.findOne({ name: tagName }).lean();
     if (!tag || !tag.articleIds.length) {
       return [];
@@ -209,19 +216,15 @@ export class TagProvider {
     // 构建查询条件
     const query: any = {
       id: { $in: tag.articleIds },
-      $or: [
-        { deleted: false },
-        { deleted: { $exists: false } },
-      ],
+      $or: [{ deleted: false }, { deleted: { $exists: false } }],
     };
 
     if (!includeHidden) {
-      query.$and = [{
-        $or: [
-          { hidden: false },
-          { hidden: { $exists: false } },
-        ],
-      }];
+      query.$and = [
+        {
+          $or: [{ hidden: false }, { hidden: { $exists: false } }],
+        },
+      ];
     }
 
     // 直接使用ArticleProvider的方法来查询文章
@@ -253,7 +256,7 @@ export class TagProvider {
       .select('name articleCount')
       .lean();
 
-    const result = tags.map(tag => ({
+    const result = tags.map((tag) => ({
       type: tag.name,
       value: tag.articleCount,
     }));
@@ -280,18 +283,18 @@ export class TagProvider {
     // 更新文章中的标签
     await this.articleProvider['articleModel'].updateMany(
       { tags: oldName },
-      { $set: { 'tags.$': newName } }
+      { $set: { 'tags.$': newName } },
     );
 
     // 更新标签表
     await this.tagModel.updateOne(
       { name: oldName },
-      { 
-        $set: { 
+      {
+        $set: {
           name: newName,
           updatedAt: new Date(),
-        }
-      }
+        },
+      },
     );
 
     await this.clearTagCache();
@@ -310,7 +313,7 @@ export class TagProvider {
     // 从所有文章中移除该标签
     await this.articleProvider['articleModel'].updateMany(
       { tags: name },
-      { $pull: { tags: name } }
+      { $pull: { tags: name } },
     );
 
     // 删除标签记录
@@ -346,7 +349,7 @@ export class TagProvider {
    */
   async searchTags(keyword: string, limit: number = 20) {
     const query = {
-      name: { $regex: keyword, $options: 'i' }
+      name: { $regex: keyword, $options: 'i' },
     };
 
     return await this.tagModel

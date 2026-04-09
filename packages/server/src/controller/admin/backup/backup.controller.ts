@@ -20,7 +20,7 @@ import { MetaProvider } from 'src/provider/meta/meta.provider';
 import { TagProvider } from 'src/provider/tag/tag.provider';
 import { UserProvider } from 'src/provider/user/user.provider';
 import * as fs from 'fs';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { removeID } from 'src/utils/removeId';
 import { ViewerProvider } from 'src/provider/viewer/viewer.provider';
@@ -39,6 +39,8 @@ import { IconProvider } from 'src/provider/icon/icon.provider';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { AITaggingProvider } from 'src/provider/ai-tagging/ai-tagging.provider';
 import { DocumentProvider } from 'src/provider/document/document.provider';
+import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
+import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
 
 @ApiTags('backup')
 @UseGuards(...AdminGuard)
@@ -67,13 +69,15 @@ export class BackupController {
     private readonly isrProvider: ISRProvider,
     private readonly aiTaggingProvider: AITaggingProvider,
     private readonly documentProvider: DocumentProvider,
+    private readonly mindMapProvider: MindMapProvider,
+    private readonly mongoBackupProvider: MongoBackupProvider,
   ) {}
 
   @Get('export')
   async getAll(@Res() res: Response) {
     try {
       this.logger.log('开始导出全部数据...');
-      
+
       const [
         articles,
         categories,
@@ -81,9 +85,11 @@ export class BackupController {
         meta,
         drafts,
         user,
+        users,
         viewer,
         visit,
         staticSetting,
+        allSettings,
         staticItems,
         moments,
         customPages,
@@ -95,40 +101,56 @@ export class BackupController {
         layoutSetting,
         aiTaggingConfig,
         documents,
+        mindMaps,
+        mongoCollections,
       ] = await Promise.all([
         this.articleProvider.getAll('admin', true),
-        this.categoryProvider.getAllCategories(),
-        this.tagProvider.getAllTags(true),
+        this.categoryProvider.getAllCategories(true),
+        this.tagProvider.getAllTagRecords(),
         this.metaProvider.getAll(),
         this.draftProvider.getAll(),
         this.userProvider.getUser(),
+        this.userProvider.getAllUsers(),
         this.viewerProvider.getAll(),
         this.visitProvider.getAll(),
         this.settingProvider.getStaticSetting(),
+        this.settingProvider.exportAllSettings(),
         this.staticProvider.exportAll(),
-        this.momentProvider.getByOption({ page: 1, pageSize: -1 }, false).then(result => result.moments),
+        this.momentProvider
+          .getByOption({ page: 1, pageSize: -1 }, false)
+          .then((result) => result.moments),
         this.customPageProvider.getAll(),
         this.pipelineProvider.getAll(),
-        this.tokenProvider.getAllAPIToken(),
+        this.tokenProvider.getAllTokens(),
         this.navToolProvider.getAllTools(),
         this.navCategoryProvider.getAllCategories(),
         this.iconProvider.getAllIcons(),
         this.settingProvider.getLayoutSetting(),
         this.aiTaggingProvider.getConfig(),
-        this.documentProvider.getByOption({ page: 1, pageSize: -1 }).then(result => result.documents),
+        this.documentProvider
+          .getByOption({ page: 1, pageSize: -1 })
+          .then((result) => result.documents),
+        this.mindMapProvider.getAllForBackup(),
+        this.mongoBackupProvider.exportAllCollections(),
       ]);
 
-    const data = {
-      articles,
-      tags,
-      meta,
-      drafts,
-      categories,
-      user,
-      viewer,
-      visit,
-      static: staticItems,
-      setting: { static: staticSetting },
+      const mongoCollectionCounts = Object.fromEntries(
+        Object.entries(mongoCollections).map(([name, docs]) => [name, docs?.length || 0]),
+      );
+
+      const data = {
+        articles,
+        tags,
+        meta,
+        drafts,
+        categories,
+        user,
+        users,
+        viewer,
+        visit,
+        static: staticItems,
+        setting: { static: staticSetting },
+        settings: allSettings,
         moments,
         customPages,
         pipelines,
@@ -139,14 +161,38 @@ export class BackupController {
         layoutSetting,
         aiTaggingConfig,
         documents,
+        mindMaps,
+        mongoCollections,
         backupInfo: {
-          version: '2.0.0',
+          version: '3.0.0',
           timestamp: new Date().toISOString(),
+          scope: 'full-system-migration',
+          sourceDatabase: 'mongodb',
           dataTypes: [
-            'articles', 'tags', 'meta', 'drafts', 'categories', 'user',
-            'viewer', 'visit', 'static', 'setting', 'moments', 'customPages',
-            'pipelines', 'tokens', 'navTools', 'navCategories', 'icons',
-            'layoutSetting', 'aiTaggingConfig', 'documents'
+            'articles',
+            'tags',
+            'meta',
+            'drafts',
+            'categories',
+            'user',
+            'users',
+            'viewer',
+            'visit',
+            'static',
+            'setting',
+            'settings',
+            'moments',
+            'customPages',
+            'pipelines',
+            'tokens',
+            'navTools',
+            'navCategories',
+            'icons',
+            'layoutSetting',
+            'aiTaggingConfig',
+            'documents',
+            'mindMaps',
+            'mongoCollections',
           ],
           counts: {
             articles: articles?.length || 0,
@@ -161,25 +207,32 @@ export class BackupController {
             navCategories: navCategories?.length || 0,
             icons: icons?.length || 0,
             staticItems: staticItems?.length || 0,
+            settings: allSettings?.length || 0,
+            users: users?.length || 0,
             layoutSetting: layoutSetting ? 1 : 0,
             aiTaggingConfig: aiTaggingConfig ? 1 : 0,
             documents: documents?.length || 0,
-          }
-        }
+            mindMaps: mindMaps?.length || 0,
+          },
+          mongoCollectionCounts,
+        },
       };
 
-      this.logger.log(`数据导出完成，共包含 ${Object.keys(data.backupInfo.counts).length} 种数据类型`);
+      this.logger.log(
+        `数据导出完成，共包含 ${Object.keys(data.backupInfo.counts).length} 种数据类型`,
+      );
 
-    const name = `temp.json`;
-    fs.writeFileSync(name, JSON.stringify(data, null, 2));
-    res.download(name, (err) => {
-      if (!err) {
+      const name = `vanblog-backup-${dayjs().format('YYYY-MM-DD-HHmmss')}.json`;
+      fs.writeFileSync(name, JSON.stringify(data, null, 2));
+      res.download(name, (err) => {
+        if (!err) {
           this.logger.log('备份文件下载成功');
-        return;
-      }
+          fs.rmSync(name, { force: true });
+          return;
+        }
         this.logger.error('备份文件下载失败', err.stack);
-      fs.rmSync(name);
-    });
+        fs.rmSync(name, { force: true });
+      });
     } catch (error) {
       this.logger.error('导出数据时发生错误', error.stack);
       res.status(500).json({
@@ -201,15 +254,30 @@ export class BackupController {
 
     try {
       this.logger.log('开始导入数据...');
-      
-    const json = file.buffer.toString();
-    const data = JSON.parse(json);
-      
+
+      const json = file.buffer.toString();
+      const data = this.normalizeBackupPayload(JSON.parse(json));
+
       const backupVersion = data.backupInfo?.version || '1.0.0';
       this.logger.log(`检测到备份版本: ${backupVersion}`);
 
-          const { meta, user, setting, layoutSetting, aiTaggingConfig } = data;
-      let { articles, drafts, viewer, visit, static: staticItems, moments, customPages, pipelines, tokens, navTools, navCategories, icons, documents } = data;
+      const { meta, user, users, setting, settings, layoutSetting, aiTaggingConfig } = data;
+      let {
+        articles,
+        drafts,
+        viewer,
+        visit,
+        static: staticItems,
+        moments,
+        customPages,
+        pipelines,
+        tokens,
+        navTools,
+        navCategories,
+        icons,
+        documents,
+        mindMaps,
+      } = data;
 
       if (articles) articles = removeID(articles);
       if (drafts) drafts = removeID(drafts);
@@ -224,16 +292,23 @@ export class BackupController {
       if (navCategories) navCategories = removeID(navCategories);
       if (icons) icons = removeID(icons);
       if (documents) documents = removeID(documents);
+      if (mindMaps) {
+        mindMaps = mindMaps.map((item: any) => {
+          const payload = { ...item };
+          delete payload.__v;
+          return payload;
+        });
+      }
 
-    if (setting && setting.static) {
-      setting.static = { ...setting.static, _id: undefined, __v: undefined };
-    }
+      if (setting && setting.static) {
+        setting.static = { ...setting.static, _id: undefined, __v: undefined };
+      }
       if (user) {
-    delete user._id;
-    delete user.__v;
+        delete user._id;
+        delete user.__v;
       }
       if (meta) {
-    delete meta._id;
+        delete meta._id;
       }
 
       const importResults = {
@@ -252,28 +327,56 @@ export class BackupController {
         layoutSetting: 0,
         aiTaggingConfig: 0,
         documents: 0,
+        users: 0,
+        settings: 0,
+        mindMaps: 0,
         other: 0,
       };
 
-      // 跳过用户数据导入，避免覆盖登录信息
-      if (user) {
+      const canRestoreProtectedData = await this.canRestoreProtectedData();
+      this.logger.log(
+        canRestoreProtectedData
+          ? '检测到目标站点为空，启用完整迁移导入模式'
+          : '检测到目标站点已有数据，启用安全导入模式',
+      );
+
+      if (canRestoreProtectedData) {
+        const usersToImport = users || (user ? [user] : []);
+        if (usersToImport?.length) {
+          await this.userProvider.importUsers(usersToImport);
+          importResults.users = usersToImport.length;
+          this.logger.log(`用户数据导入完成: ${importResults.users} 条`);
+        }
+      } else if (user || users?.length) {
         this.logger.log('跳过用户数据导入（避免覆盖登录信息）');
       }
 
-      // 导入元数据，但排除 siteInfo
       if (meta) {
-        const { siteInfo, ...metaWithoutSiteInfo } = meta;
-        if (Object.keys(metaWithoutSiteInfo).length > 0) {
-          await this.metaProvider.update(metaWithoutSiteInfo);
-          this.logger.log('元数据导入完成（已排除站点信息）');
-        }
-        if (siteInfo) {
-          this.logger.log('跳过站点信息导入（避免覆盖站点配置）');
+        if (canRestoreProtectedData) {
+          await this.metaProvider.update(meta);
+          this.logger.log('元数据导入完成（完整模式，包含站点信息）');
+        } else {
+          const { siteInfo, ...metaWithoutSiteInfo } = meta;
+          if (Object.keys(metaWithoutSiteInfo).length > 0) {
+            await this.metaProvider.update(metaWithoutSiteInfo);
+            this.logger.log('元数据导入完成（已排除站点信息）');
+          }
+          if (siteInfo) {
+            this.logger.log('跳过站点信息导入（避免覆盖站点配置）');
+          }
         }
       }
 
-      if (setting) {
-    await this.settingProvider.importSetting(setting);
+      if (settings?.length) {
+        await this.settingProvider.importAllSettings(settings, canRestoreProtectedData);
+        importResults.settings = settings.length;
+        this.logger.log(
+          `完整设置导入完成: ${importResults.settings} 条（${
+            canRestoreProtectedData ? '覆盖' : '合并'
+          }模式）`,
+        );
+      } else if (setting) {
+        await this.settingProvider.importSetting(setting);
         this.logger.log('设置数据导入完成');
       }
 
@@ -291,7 +394,7 @@ export class BackupController {
       if (articles) {
         // 先自动创建文章分类
         await this.autoCreateCategoriesFromContent(articles, 'articles');
-        
+
         await this.importArticlesEnhanced(articles);
         importResults.articles = articles.length;
         this.logger.log(`文章数据增量导入完成: ${importResults.articles} 条`);
@@ -300,7 +403,7 @@ export class BackupController {
       if (drafts) {
         // 先自动创建草稿分类
         await this.autoCreateCategoriesFromContent(drafts, 'drafts');
-        
+
         await this.importDraftsEnhanced(drafts);
         importResults.drafts = drafts.length;
         this.logger.log(`草稿数据增量导入完成: ${importResults.drafts} 条`);
@@ -327,7 +430,7 @@ export class BackupController {
       if (navTools) {
         // 先确保所有需要的导航分类都存在
         await this.autoCreateNavCategoriesFromTools(navTools);
-        
+
         await this.importNavToolsEnhanced(navTools);
         importResults.navTools = navTools.length;
         this.logger.log(`导航工具导入完成: ${importResults.navTools} 条`);
@@ -358,15 +461,15 @@ export class BackupController {
         this.logger.log(`静态文件记录导入完成: ${importResults.staticItems} 条`);
       }
 
-    if (visit) {
-      await this.visitProvider.import(visit);
+      if (visit) {
+        await this.visitProvider.import(visit);
         this.logger.log('访问记录导入完成');
-    }
+      }
 
-    if (viewer) {
-      await this.viewerProvider.import(viewer);
+      if (viewer) {
+        await this.viewerProvider.import(viewer);
         this.logger.log('访客记录导入完成');
-    }
+      }
 
       // 导入定制化设置（增量导入）
       if (layoutSetting && Object.keys(layoutSetting).length > 0) {
@@ -409,12 +512,18 @@ export class BackupController {
         this.logger.log('备份文件中未发现私密文档库数据或数据为空');
       }
 
+      if (mindMaps && mindMaps.length > 0) {
+        await this.mindMapProvider.importMindMaps(mindMaps);
+        importResults.mindMaps = mindMaps.length;
+        this.logger.log(`脑图数据导入完成: ${importResults.mindMaps} 条`);
+      }
+
       // 自动同步标签数据
       try {
         this.logger.log('开始同步标签数据...');
         await this.tagProvider.syncTagsFromArticles();
         this.logger.log('标签数据同步完成');
-        
+
         // 触发标签相关页面的ISR更新
         this.isrProvider.activeUrl('/tag', false);
         this.isrProvider.activePath('tag');
@@ -424,9 +533,9 @@ export class BackupController {
 
       this.logger.log('所有数据导入完成！', importResults);
 
-    return {
-      statusCode: 200,
-      data: '导入成功！',
+      return {
+        statusCode: 200,
+        data: '导入成功！',
         importResults,
       };
     } catch (error) {
@@ -449,7 +558,7 @@ export class BackupController {
 
     try {
       this.logger.warn('开始清空所有数据...');
-      
+
       const clearResults = {
         articles: 0,
         drafts: 0,
@@ -473,13 +582,13 @@ export class BackupController {
         // 直接删除数据库中的所有文章记录，而不是软删除
         const articles = await this.articleProvider.findAll();
         const articleCount = articles.length;
-        
+
         // 使用MongoDB的deleteMany进行批量物理删除
         await this.articleProvider['articleModel'].deleteMany({});
-        
+
         clearResults.articles = articleCount;
         this.logger.log(`清空文章数据完成: ${clearResults.articles} 条`);
-        
+
         // 清空文章后立即同步标签数据，这会自动删除所有标签
         try {
           await this.tagProvider.syncTagsFromArticles();
@@ -499,10 +608,10 @@ export class BackupController {
       try {
         const drafts = await this.draftProvider.getAll();
         const draftCount = drafts.length;
-        
+
         // 使用MongoDB的deleteMany进行批量物理删除
         await this.draftProvider['draftModel'].deleteMany({});
-        
+
         clearResults.drafts = draftCount;
         this.logger.log(`清空草稿数据完成: ${clearResults.drafts} 条`);
       } catch (error) {
@@ -510,12 +619,15 @@ export class BackupController {
       }
 
       try {
-        const momentsResult = await this.momentProvider.getByOption({ page: 1, pageSize: -1 }, false);
+        const momentsResult = await this.momentProvider.getByOption(
+          { page: 1, pageSize: -1 },
+          false,
+        );
         const momentCount = momentsResult.moments.length;
-        
+
         // 使用MongoDB的deleteMany进行批量物理删除
         await this.momentProvider['momentModel'].deleteMany({});
-        
+
         clearResults.moments = momentCount;
         this.logger.log(`清空动态数据完成: ${clearResults.moments} 条`);
       } catch (error) {
@@ -580,10 +692,10 @@ export class BackupController {
       // 6. 清空私密文档库
       try {
         const documents = await this.documentProvider.getByOption({ page: 1, pageSize: -1 });
-        
+
         // 使用MongoDB的deleteMany进行批量物理删除
         await this.documentProvider['documentModel'].deleteMany({});
-        
+
         clearResults.documents = documents.documents.length;
         this.logger.log(`清空私密文档库完成: ${clearResults.documents} 条`);
       } catch (error) {
@@ -592,7 +704,7 @@ export class BackupController {
 
       // 6. 清空分类和标签（在文章清空后）
       try {
-        const categories = await this.categoryProvider.getAllCategories(true) as any[];
+        const categories = (await this.categoryProvider.getAllCategories(true)) as any[];
         for (const category of categories) {
           try {
             await this.categoryProvider.deleteOne(category.name);
@@ -605,8 +717,6 @@ export class BackupController {
       } catch (error) {
         this.logger.error('清空分类数据失败:', error.message);
       }
-
-
 
       // 7. 清空统计数据
       try {
@@ -653,11 +763,11 @@ export class BackupController {
         // 使用MongoDB的deleteMany完全删除meta记录
         await this.metaProvider['metaModel'].deleteMany({});
         this.logger.log('清空网站元数据完成');
-        
+
         // 清空用户表，让系统回到未初始化状态
         await this.userProvider['userModel'].deleteMany({});
         this.logger.log('清空用户数据完成');
-        
+
         // 清空settings表
         await this.settingProvider['settingModel'].deleteMany({});
         this.logger.log('清空网站设置完成，网站已重置为未初始化状态');
@@ -695,7 +805,7 @@ export class BackupController {
         // 处理分类数据，支持字符串和对象两种格式
         let categoryName: string;
         let categoryData: any = {};
-        
+
         if (typeof category === 'string') {
           // 旧格式：字符串数组
           categoryName = category;
@@ -715,9 +825,9 @@ export class BackupController {
         }
 
         // 获取所有现有分类
-        const allCategories = await this.categoryProvider.getAllCategories(true) as any[];
+        const allCategories = (await this.categoryProvider.getAllCategories(true)) as any[];
         const existingCategory = allCategories.find((c: any) => c.name === categoryName);
-        
+
         if (existingCategory) {
           // 更新现有分类，保留新导入的数据
           await this.categoryProvider.updateCategoryByName(categoryName, {
@@ -753,7 +863,7 @@ export class BackupController {
       for (const draft of drafts) {
         try {
           let targetId = draft.id;
-          
+
           // 检查ID是否冲突（包括软删除的记录）
           if (targetId) {
             const existingDraft = await this.draftProvider['draftModel'].findOne({ id: targetId });
@@ -770,13 +880,13 @@ export class BackupController {
           }
 
           const { id, _id, __v, ...createDto } = draft;
-          
+
           // 先尝试根据标题查找是否已存在相同草稿（只查未删除的）
           const existingByTitle = await this.draftProvider.findOneByTitle(draft.title);
           if (existingByTitle && !existingByTitle.deleted) {
             // 更新现有草稿
-            await this.draftProvider.updateById(existingByTitle.id, { 
-              ...createDto, 
+            await this.draftProvider.updateById(existingByTitle.id, {
+              ...createDto,
               deleted: false,
               updatedAt: new Date(),
             });
@@ -786,7 +896,7 @@ export class BackupController {
             // 创建新草稿，手动设置ID
             const newDraft = new this.draftProvider['draftModel']({
               ...createDto,
-              id: targetId,  
+              id: targetId,
               updatedAt: createDto.updatedAt || new Date(),
             });
             await newDraft.save();
@@ -797,7 +907,9 @@ export class BackupController {
         }
       }
 
-      this.logger.log(`草稿增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`);
+      this.logger.log(
+        `草稿增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`,
+      );
     } catch (error) {
       this.logger.error('批量导入草稿失败:', error.message);
       throw error;
@@ -816,10 +928,12 @@ export class BackupController {
       for (const moment of moments) {
         try {
           let targetId = moment.id;
-          
+
           // 检查ID是否冲突（包括软删除的记录）
           if (targetId) {
-            const existingMoment = await this.momentProvider['momentModel'].findOne({ id: targetId });
+            const existingMoment = await this.momentProvider['momentModel'].findOne({
+              id: targetId,
+            });
             if (existingMoment) {
               // ID冲突，分配新ID
               targetId = await this.momentProvider.getNewId();
@@ -833,17 +947,14 @@ export class BackupController {
           }
 
           const { id, _id, __v, ...createDto } = moment;
-          
+
           // 尝试根据内容和时间查找是否已存在相同动态（只查未删除的）
           let existingByContent = null;
           if (moment.content && moment.createdAt) {
             existingByContent = await this.momentProvider['momentModel'].findOne({
               content: moment.content,
               createdAt: moment.createdAt,
-              $or: [
-                { deleted: false },
-                { deleted: { $exists: false } }
-              ]
+              $or: [{ deleted: false }, { deleted: { $exists: false } }],
             });
           }
 
@@ -872,7 +983,9 @@ export class BackupController {
         }
       }
 
-      this.logger.log(`动态增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`);
+      this.logger.log(
+        `动态增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`,
+      );
     } catch (error) {
       this.logger.error('批量导入动态失败:', error.message);
       throw error;
@@ -899,8 +1012,8 @@ export class BackupController {
       try {
         // 获取所有导航分类
         const allCategories = await this.navCategoryProvider.getAllCategories();
-        const existing = allCategories.find(c => c.name === category.name);
-        
+        const existing = allCategories.find((c) => c.name === category.name);
+
         if (existing) {
           await this.navCategoryProvider.updateCategory(existing._id, {
             ...category,
@@ -924,8 +1037,8 @@ export class BackupController {
       try {
         // 根据 categoryName 查找分类，而不是 categoryId
         const allCategories = await this.navCategoryProvider.getAllCategories();
-        const category = allCategories.find(c => c.name === tool.categoryName);
-        
+        const category = allCategories.find((c) => c.name === tool.categoryName);
+
         if (!category) {
           this.logger.warn(`导航工具 ${tool.name} 的分类 ${tool.categoryName} 不存在，跳过导入`);
           continue;
@@ -933,14 +1046,14 @@ export class BackupController {
 
         // 获取所有导航工具
         const allTools = await this.navToolProvider.getAllTools();
-        const existing = allTools.find(t => t.name === tool.name);
-        
+        const existing = allTools.find((t) => t.name === tool.name);
+
         const toolData = {
           ...tool,
           categoryId: category._id, // 使用新的分类ID
           updatedAt: new Date(),
         };
-        
+
         if (existing) {
           await this.navToolProvider.updateTool(existing._id, toolData);
         } else {
@@ -982,7 +1095,7 @@ export class BackupController {
       try {
         const { id, ...createDto } = pipeline;
         let existing = null;
-        
+
         if (id) {
           existing = await this.pipelineProvider.getPipelineById(id);
         }
@@ -1006,9 +1119,48 @@ export class BackupController {
   }
 
   private async importTokensEnhanced(tokens: any[]) {
-    // TokenProvider 缺少完整的CRUD方法，暂时跳过Token导入
-    // TODO: 在TokenProvider中添加完整的CRUD方法后再实现
-    this.logger.warn(`Token导入功能暂未完全实现，跳过 ${tokens?.length || 0} 个Token的导入`);
+    if (!tokens || tokens.length === 0) {
+      return;
+    }
+    await this.tokenProvider.importTokens(tokens);
+  }
+
+  private async canRestoreProtectedData() {
+    const [
+      articles,
+      drafts,
+      categories,
+      customPages,
+      moments,
+      navTools,
+      navCategories,
+      documents,
+      mindMaps,
+    ] = await Promise.all([
+      this.articleProvider.getTotalNum(true),
+      this.draftProvider.getAll().then((items) => items.length),
+      this.categoryProvider.getAllCategories(),
+      this.customPageProvider.getAll(),
+      this.momentProvider
+        .getByOption({ page: 1, pageSize: 1 }, false)
+        .then((result) => result.total),
+      this.navToolProvider.getAllTools(),
+      this.navCategoryProvider.getAllCategories(),
+      this.documentProvider.getByOption({ page: 1, pageSize: 1 }).then((result) => result.total),
+      this.mindMapProvider.getByOption({ page: 1, pageSize: 1 }).then((result) => result.total),
+    ]);
+
+    return (
+      (articles || 0) === 0 &&
+      (drafts || 0) === 0 &&
+      (categories?.length || 0) === 0 &&
+      (customPages?.length || 0) === 0 &&
+      (moments || 0) === 0 &&
+      (navTools?.length || 0) === 0 &&
+      (navCategories?.length || 0) === 0 &&
+      (documents || 0) === 0 &&
+      (mindMaps || 0) === 0
+    );
   }
 
   private async importArticlesEnhanced(articles: any[]) {
@@ -1022,10 +1174,12 @@ export class BackupController {
 
       for (const article of articles) {
         let targetId = article.id;
-        
+
         // 检查ID是否冲突（包括软删除的记录）
         if (targetId) {
-          const existingArticle = await this.articleProvider['articleModel'].findOne({ id: targetId });
+          const existingArticle = await this.articleProvider['articleModel'].findOne({
+            id: targetId,
+          });
           if (existingArticle) {
             // ID冲突，分配新ID
             targetId = await this.articleProvider.getNewId();
@@ -1039,7 +1193,7 @@ export class BackupController {
         }
 
         const { id, _id, __v, ...createDto } = article;
-        
+
         try {
           // 先尝试根据标题查找是否已存在相同文章（只查未删除的）
           const existingByTitle = await this.articleProvider.findOneByTitle(article.title);
@@ -1052,7 +1206,7 @@ export class BackupController {
                 deleted: false,
                 updatedAt: new Date(),
               },
-              true
+              true,
             );
             updatedCount++;
             this.logger.log(`更新文章: ${article.title}`);
@@ -1064,7 +1218,7 @@ export class BackupController {
                 updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
               },
               true,
-              targetId
+              targetId,
             );
             createdCount++;
           }
@@ -1073,7 +1227,9 @@ export class BackupController {
         }
       }
 
-      this.logger.log(`文章增量导入完成: 创建 ${createdCount} 篇, 更新 ${updatedCount} 篇, 重新分配ID ${newIdCount} 篇`);
+      this.logger.log(
+        `文章增量导入完成: 创建 ${createdCount} 篇, 更新 ${updatedCount} 篇, 重新分配ID ${newIdCount} 篇`,
+      );
       await this.metaProvider.updateTotalWords('增量导入文章');
     } catch (error) {
       this.logger.error('批量导入文章失败:', error.message);
@@ -1087,7 +1243,7 @@ export class BackupController {
     try {
       // 收集所有分类名称
       const categoryNames = new Set<string>();
-      content.forEach(item => {
+      content.forEach((item) => {
         if (item.category && typeof item.category === 'string' && item.category.trim()) {
           categoryNames.add(item.category.trim());
         }
@@ -1099,7 +1255,7 @@ export class BackupController {
       }
 
       // 获取现有分类（明确指定返回字符串数组）
-      const existingCategories = await this.categoryProvider.getAllCategories(false) as string[];
+      const existingCategories = (await this.categoryProvider.getAllCategories(false)) as string[];
       const existingCategoryNames = new Set(existingCategories);
 
       let createdCount = 0;
@@ -1127,8 +1283,12 @@ export class BackupController {
     try {
       // 收集所有需要的导航分类名称
       const categoryNames = new Set<string>();
-      navTools.forEach(tool => {
-        if (tool.categoryName && typeof tool.categoryName === 'string' && tool.categoryName.trim()) {
+      navTools.forEach((tool) => {
+        if (
+          tool.categoryName &&
+          typeof tool.categoryName === 'string' &&
+          tool.categoryName.trim()
+        ) {
           categoryNames.add(tool.categoryName.trim());
         }
       });
@@ -1140,7 +1300,7 @@ export class BackupController {
 
       // 获取现有导航分类
       const existingCategories = await this.navCategoryProvider.getAllCategories();
-      const existingCategoryNames = new Set(existingCategories.map(c => c.name));
+      const existingCategoryNames = new Set(existingCategories.map((c) => c.name));
 
       let createdCount = 0;
       for (const categoryName of categoryNames) {
@@ -1177,10 +1337,12 @@ export class BackupController {
 
       for (const document of documents) {
         let targetId = document.id;
-        
+
         // 检查ID是否冲突（包括软删除的记录）
         if (targetId) {
-          const existingDocument = await this.documentProvider['documentModel'].findOne({ id: targetId });
+          const existingDocument = await this.documentProvider['documentModel'].findOne({
+            id: targetId,
+          });
           if (existingDocument) {
             // ID冲突，分配新ID
             targetId = await this.documentProvider.getNewId();
@@ -1194,23 +1356,20 @@ export class BackupController {
         }
 
         const { id, _id, __v, ...createDto } = document;
-        
+
         try {
           // 先尝试根据标题查找是否已存在相同文档（只查未删除的）
-          const existingByTitle = await this.documentProvider['documentModel'].findOne({ 
-            title: document.title, 
-            deleted: false 
+          const existingByTitle = await this.documentProvider['documentModel'].findOne({
+            title: document.title,
+            deleted: false,
           });
           if (existingByTitle) {
             // 更新现有文档
-            await this.documentProvider.updateById(
-              existingByTitle.id,
-              {
-                ...createDto,
-                deleted: false,
-                updatedAt: new Date(),
-              }
-            );
+            await this.documentProvider.updateById(existingByTitle.id, {
+              ...createDto,
+              deleted: false,
+              updatedAt: new Date(),
+            });
             updatedCount++;
             this.logger.log(`更新文档: ${document.title}`);
           } else {
@@ -1227,10 +1386,94 @@ export class BackupController {
         }
       }
 
-      this.logger.log(`私密文档增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`);
+      this.logger.log(
+        `私密文档增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`,
+      );
     } catch (error) {
       this.logger.error('批量导入私密文档失败:', error.message);
       throw error;
     }
+  }
+
+  private normalizeBackupPayload(data: any) {
+    const mongoCollections = data?.mongoCollections || data?.rawCollections || {};
+    const settings = data?.settings || this.getCollection(mongoCollections, ['settings']);
+
+    return {
+      ...data,
+      articles: data?.articles ?? this.getCollection(mongoCollections, ['articles']),
+      drafts: data?.drafts ?? this.getCollection(mongoCollections, ['drafts']),
+      meta: data?.meta ?? this.getFirstDocument(mongoCollections, ['metas', 'meta']),
+      categories: data?.categories ?? this.getCollection(mongoCollections, ['categories']),
+      tags: data?.tags ?? this.getCollection(mongoCollections, ['tags']),
+      user:
+        data?.user ??
+        (Array.isArray(data?.users)
+          ? data.users.find((item: any) => item?.id === 0)
+          : this.getAdminUserFromCollection(mongoCollections)),
+      users: data?.users ?? this.getCollection(mongoCollections, ['users']),
+      viewer: data?.viewer ?? this.getCollection(mongoCollections, ['viewers']),
+      visit: data?.visit ?? this.getCollection(mongoCollections, ['visits']),
+      static: data?.static ?? this.getCollection(mongoCollections, ['statics', 'static']),
+      setting: data?.setting ?? this.buildLegacySettingPayload(settings),
+      settings,
+      moments: data?.moments ?? this.getCollection(mongoCollections, ['moments']),
+      customPages:
+        data?.customPages ?? this.getCollection(mongoCollections, ['custompages', 'customPages']),
+      pipelines: data?.pipelines ?? this.getCollection(mongoCollections, ['pipelines']),
+      tokens: data?.tokens ?? this.getCollection(mongoCollections, ['tokens']),
+      navTools: data?.navTools ?? this.getCollection(mongoCollections, ['navtools', 'navTools']),
+      navCategories:
+        data?.navCategories ??
+        this.getCollection(mongoCollections, ['navcategories', 'navCategories']),
+      icons: data?.icons ?? this.getCollection(mongoCollections, ['icons']),
+      layoutSetting: data?.layoutSetting ?? this.findSettingValue(settings, 'layout'),
+      aiTaggingConfig: data?.aiTaggingConfig ?? this.findSettingValue(settings, 'aiTagging'),
+      documents: data?.documents ?? this.getCollection(mongoCollections, ['documents']),
+      mindMaps: data?.mindMaps ?? this.getCollection(mongoCollections, ['mindmaps', 'mindMaps']),
+    };
+  }
+
+  private getCollection(collections: Record<string, any[]>, names: string[]) {
+    for (const name of names) {
+      if (Array.isArray(collections?.[name])) {
+        return collections[name];
+      }
+    }
+    return undefined;
+  }
+
+  private getFirstDocument(collections: Record<string, any[]>, names: string[]) {
+    const docs = this.getCollection(collections, names);
+    if (!Array.isArray(docs) || docs.length === 0) {
+      return undefined;
+    }
+    return docs[0];
+  }
+
+  private getAdminUserFromCollection(collections: Record<string, any[]>) {
+    const users = this.getCollection(collections, ['users']);
+    if (!Array.isArray(users)) {
+      return undefined;
+    }
+    return users.find((item: any) => item?.id === 0);
+  }
+
+  private buildLegacySettingPayload(settings: any[] | undefined) {
+    const staticSetting = this.findSettingValue(settings, 'static');
+    if (!staticSetting) {
+      return undefined;
+    }
+    return {
+      static: staticSetting,
+    };
+  }
+
+  private findSettingValue(settings: any[] | undefined, type: string) {
+    if (!Array.isArray(settings)) {
+      return undefined;
+    }
+    const item = settings.find((setting) => setting?.type === type);
+    return item?.value;
   }
 }

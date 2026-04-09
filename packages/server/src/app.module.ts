@@ -110,6 +110,9 @@ import { DocumentController } from './controller/admin/document/document.control
 import { MindMap, MindMapSchema } from './scheme/mindmap.schema';
 import { MindMapProvider } from './provider/mindmap/mindmap.provider';
 import { MindMapController } from './controller/admin/mindmap/mindmap.controller';
+import { SearchIndexProvider } from './provider/search-index/search-index.provider';
+import { PublicCacheMiddleware } from './provider/public-cache/public-cache.middleware';
+import { MongoBackupProvider } from './provider/mongo-backup/mongo-backup.provider';
 
 @Module({
   imports: [
@@ -236,16 +239,23 @@ import { MindMapController } from './controller/admin/mindmap/mindmap.controller
     AliyunpanProvider,
     DocumentProvider,
     MindMapProvider,
+    SearchIndexProvider,
+    MongoBackupProvider,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(PublicCacheMiddleware).forRoutes({
+      path: '/api/public/(.*)',
+      method: RequestMethod.ALL,
+    });
+
     consumer
       .apply(InitMiddleware)
       .exclude(
         { path: '/api/admin/init/check', method: RequestMethod.GET },
         { path: '/api/admin/init', method: RequestMethod.POST },
-        { path: '/api/admin/init/upload', method: RequestMethod.POST }
+        { path: '/api/admin/init/upload', method: RequestMethod.POST },
       )
       .forRoutes('*');
   }

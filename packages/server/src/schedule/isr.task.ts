@@ -1,14 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { ISRProvider } from 'src/provider/isr/isr.provider';
+import { RssProvider } from 'src/provider/rss/rss.provider';
+import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
+import { SiteMapProvider } from 'src/provider/sitemap/sitemap.provider';
 @Injectable()
 export class ISRTask {
-  constructor(private readonly isrProvider: ISRProvider) {}
+  constructor(
+    private readonly rssProvider: RssProvider,
+    private readonly sitemapProvider: SiteMapProvider,
+    private readonly searchIndexProvider: SearchIndexProvider,
+  ) {}
 
   @Cron('0 0 2 * * *')
   async handleCron() {
-    // 每天凌晨2点触发一次 ISR，减少频繁的全量渲染
-    // 这样可以预防某些情况下，服务端渲染了默认黑色主题，可是客户端是白天导致的闪屏问题。
-    this.isrProvider.activeAll('定时触发 ISR');
+    // 保持 feed / sitemap / 搜索索引新鲜，但不再主动让整个公开站点重新渲染。
+    this.rssProvider.generateRssFeed('定时刷新 RSS');
+    this.sitemapProvider.generateSiteMap('定时刷新 SiteMap');
+    this.searchIndexProvider.generateSearchIndex('定时刷新搜索索引');
   }
 }

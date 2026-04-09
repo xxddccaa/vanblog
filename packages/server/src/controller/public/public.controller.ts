@@ -60,6 +60,15 @@ export class PublicController {
       data: data,
     };
   }
+
+  @Get('/article/:id/nav')
+  async getArticleNavByIdOrPathname(@Param('id') id: string) {
+    const data = await this.articleProvider.getArticleNavByIdOrPathname(id, 'public');
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
   @Post('/article/:id')
   async getArticleByIdOrPathnameWithPassword(
     @Param('id') id: number | string,
@@ -234,6 +243,24 @@ export class PublicController {
       data,
     };
   }
+  @Get('timeline/summary')
+  async getTimeLineSummary() {
+    const data = await this.articleProvider.getTimeLineSummary();
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
+  @Get('timeline/:year/articles')
+  async getTimeLineArticlesByYear(@Param('year') year: string) {
+    const data = await this.articleProvider.getTimeLineArticlesByYear(year);
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
   @Get('timeline')
   async getTimeLineInfo() {
     const data = await this.articleProvider.getTimeLineInfo();
@@ -242,6 +269,25 @@ export class PublicController {
       data,
     };
   }
+
+  @Get('category/summary')
+  async getCategorySummary() {
+    const data = await this.categoryProvider.getCategorySummaries(false);
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
+  @Get('category/:name/articles')
+  async getArticlesByCategoryName(@Param('name') name: string) {
+    const data = await this.categoryProvider.getArticlesByCategory(decodeURIComponent(name), false);
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
   @Get('category')
   async getArticlesByCategory() {
     const data = await this.categoryProvider.getCategoriesWithArticle(false);

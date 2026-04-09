@@ -1,14 +1,14 @@
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
+import { TimelineSummaryItem } from "../api/getArticles";
 import Layout from "../components/Layout";
 import TimelinePageComponent from "../components/TimelinePage";
-import { Article } from "../types/article";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getTimeLinePageProps } from "../utils/getPageProps";
 import { revalidate } from "../utils/loadConfig";
 export interface TimeLinePageProps {
   layoutProps: LayoutProps;
   authorCardProps: AuthorCardProps;
-  sortedArticles: Record<string, Article[]>;
+  summaries: TimelineSummaryItem[];
   wordTotal: number;
 }
 const TimeLine = (props: TimeLinePageProps) => {
@@ -19,7 +19,7 @@ const TimeLine = (props: TimeLinePageProps) => {
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
       <TimelinePageComponent
-        sortedArticles={props.sortedArticles}
+        summaries={props.summaries}
         authorCardProps={props.authorCardProps}
         wordTotal={props.wordTotal}
         openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}

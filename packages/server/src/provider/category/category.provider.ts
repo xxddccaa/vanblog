@@ -25,6 +25,28 @@ export class CategoryProvider {
     });
     return data;
   }
+
+  async getCategorySummaries(includeHidden: boolean) {
+    const allArticles = await this.articleProvider.getAll('list', includeHidden);
+    const categories = await this.getAllCategories();
+    const countMap = new Map<string, number>();
+
+    categories.forEach((category) => {
+      countMap.set(category, 0);
+    });
+
+    allArticles.forEach((article) => {
+      if (!article.category) {
+        return;
+      }
+      countMap.set(article.category, (countMap.get(article.category) || 0) + 1);
+    });
+
+    return categories.map((name) => ({
+      name,
+      articleCount: countMap.get(name) || 0,
+    }));
+  }
   async getPieData() {
     const oldData = await this.getCategoriesWithArticle(true);
     const categories = Object.keys(oldData);

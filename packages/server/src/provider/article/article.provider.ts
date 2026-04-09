@@ -484,6 +484,101 @@ export class ArticleProvider {
     });
     return res;
   }
+
+  async getTimeLineSummary() {
+    const articles = await this.articleModel
+      .find(
+        {
+          $and: [
+            {
+              $or: [
+                {
+                  deleted: false,
+                },
+                {
+                  deleted: { $exists: false },
+                },
+              ],
+            },
+            {
+              $or: [
+                {
+                  hidden: false,
+                },
+                {
+                  hidden: { $exists: false },
+                },
+              ],
+            },
+          ],
+        },
+        this.listView,
+      )
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    const yearMap = new Map<number, number>();
+    articles.forEach((article) => {
+      const year = article.createdAt.getFullYear();
+      yearMap.set(year, (yearMap.get(year) || 0) + 1);
+    });
+
+    return Array.from(yearMap.entries())
+      .map(([year, articleCount]) => ({
+        year: String(year),
+        articleCount,
+      }))
+      .sort((a, b) => parseInt(b.year, 10) - parseInt(a.year, 10));
+  }
+
+  async getTimeLineArticlesByYear(year: string) {
+    const numericYear = parseInt(year, 10);
+    if (isNaN(numericYear)) {
+      return [];
+    }
+
+    const start = new Date(numericYear, 0, 1);
+    const end = new Date(numericYear + 1, 0, 1);
+
+    return await this.articleModel
+      .find(
+        {
+          $and: [
+            {
+              $or: [
+                {
+                  deleted: false,
+                },
+                {
+                  deleted: { $exists: false },
+                },
+              ],
+            },
+            {
+              $or: [
+                {
+                  hidden: false,
+                },
+                {
+                  hidden: { $exists: false },
+                },
+              ],
+            },
+            {
+              createdAt: {
+                $gte: start,
+                $lt: end,
+              },
+            },
+          ],
+        },
+        this.listView,
+      )
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+  }
   async getByOption(
     option: SearchArticleOption,
     isPublic: boolean,
@@ -876,6 +971,21 @@ export class ArticleProvider {
       res.next = nextArticle;
     }
     return res;
+  }
+
+  async getArticleNavByIdOrPathname(id: string | number, view: ArticleView) {
+    const curArticle = await this.getByIdOrPathname(id, view);
+    if (!curArticle) {
+      throw new NotFoundException('找不到文章');
+    }
+
+    const preArticle = await this.getPreArticleByArticle(curArticle, 'list');
+    const nextArticle = await this.getNextArticleByArticle(curArticle, 'list');
+
+    return {
+      pre: preArticle || null,
+      next: nextArticle || null,
+    };
   }
   async getPreArticleByArticle(article: Article, view: ArticleView, includeHidden?: boolean) {
     const $and: any = [

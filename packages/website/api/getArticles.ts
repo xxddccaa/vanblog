@@ -13,6 +13,22 @@ export interface GetArticleOption {
   sortTop?: SortOrder;
   withWordCount?: boolean;
 }
+
+export interface CategorySummaryItem {
+  name: string;
+  articleCount: number;
+}
+
+export interface TimelineSummaryItem {
+  year: string;
+  articleCount: number;
+}
+
+export interface ArticleNavItem {
+  id: number;
+  title: string;
+  pathname?: string;
+}
 export const getArticlesByOption = async (
   option: GetArticleOption
 ): Promise<{ articles: Article[]; total: number; totalWordCount?: number }> => {
@@ -57,6 +73,36 @@ export const getArticlesByTimeLine = async () => {
     }
   }
 };
+export const getTimelineSummary = async (): Promise<TimelineSummaryItem[]> => {
+  try {
+    const url = `${config.baseUrl}api/public/timeline/summary`;
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return data || [];
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+      return [];
+    } else {
+      throw err;
+    }
+  }
+};
+export const getTimelineArticlesByYear = async (year: string): Promise<Article[]> => {
+  try {
+    const url = `${config.baseUrl}api/public/timeline/${encodeQuerystring(year)}/articles`;
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return data || [];
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+      return [];
+    } else {
+      throw err;
+    }
+  }
+};
 export const getArticlesByCategory = async () => {
   try {
     const url = `${config.baseUrl}api/public/category`;
@@ -67,6 +113,38 @@ export const getArticlesByCategory = async () => {
     if (process.env.isBuild == "t") {
       console.log("Failed to connect, using default values");
       return {};
+    } else {
+      throw err;
+    }
+  }
+};
+export const getCategorySummary = async (): Promise<CategorySummaryItem[]> => {
+  try {
+    const url = `${config.baseUrl}api/public/category/summary`;
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return data || [];
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+      return [];
+    } else {
+      throw err;
+    }
+  }
+};
+export const getCategoryArticles = async (
+  category: string
+): Promise<Article[]> => {
+  try {
+    const url = `${config.baseUrl}api/public/category/${encodeQuerystring(category)}/articles`;
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return data || [];
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+      return [];
     } else {
       throw err;
     }
@@ -92,21 +170,45 @@ export const getArticleByIdOrPathname = async (id: string) => {
     const url = `${config.baseUrl}api/public/article/${id}`;
     const res = await fetch(url);
     const { data } = await res.json();
-    const { article, pre, next } = data;
-    const r: any = { article };
-    if (pre) {
-      r.pre = { title: pre.title, id: pre.id, pathname: pre.pathname };
-    }
-    if (next) {
-      r.next = { title: next.title, id: next.id, pathname: next.pathname };
-    }
-    return r;
+    return { article: data.article };
   } catch (err) {
     if (process.env.isBuild == "t") {
       console.log("Failed to connect, using default values");
       return {};
     } else {
       // console.log(err);
+      return {};
+    }
+  }
+};
+export const getArticleNavByIdOrPathname = async (
+  id: string
+): Promise<{ pre?: ArticleNavItem; next?: ArticleNavItem }> => {
+  try {
+    const url = `${config.baseUrl}api/public/article/${id}/nav`;
+    const res = await fetch(url);
+    const { data } = await res.json();
+    const result: { pre?: ArticleNavItem; next?: ArticleNavItem } = {};
+    if (data?.pre) {
+      result.pre = {
+        title: data.pre.title,
+        id: data.pre.id,
+        pathname: data.pre.pathname,
+      };
+    }
+    if (data?.next) {
+      result.next = {
+        title: data.next.title,
+        id: data.next.id,
+        pathname: data.next.pathname,
+      };
+    }
+    return result;
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+      return {};
+    } else {
       return {};
     }
   }

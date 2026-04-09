@@ -6,6 +6,8 @@ import { ArticleProvider } from '../article/article.provider';
 import { RssProvider } from '../rss/rss.provider';
 import { SettingProvider } from '../setting/setting.provider';
 import { SiteMapProvider } from '../sitemap/sitemap.provider';
+import { SearchIndexProvider } from '../search-index/search-index.provider';
+import { encodeQuerystring } from 'src/utils/washUrl';
 export interface ActiveConfig {
   postId?: number;
   forceActice?: boolean;
@@ -25,6 +27,7 @@ export class ISRProvider {
     private readonly rssProvider: RssProvider,
     private readonly sitemapProvider: SiteMapProvider,
     private readonly settingProvider: SettingProvider,
+    private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
   async activeAllFn(info?: string, activeConfig?: ActiveConfig) {
     const isrConfig = await this.settingProvider.getISRSetting();
@@ -61,6 +64,7 @@ export class ISRProvider {
     this.timer = setTimeout(() => {
       this.rssProvider.generateRssFeed(info || '', delay);
       this.sitemapProvider.generateSiteMap(info || '', delay);
+      this.searchIndexProvider.generateSearchIndex(info || '', delay);
       this.activeWithRetry(() => {
         this.activeAllFn(info, activeConfig);
       });
@@ -106,7 +110,8 @@ export class ISRProvider {
     switch (type) {
       case 'category':
         const categoryUrls = await this.sitemapProvider.getCategoryUrls();
-        await this.activeUrls(categoryUrls, false);
+        const categoryPageUrls = await this.sitemapProvider.getCategoryPageUrls();
+        await this.activeUrls([...categoryUrls, ...categoryPageUrls], false);
         break;
       case 'page':
         const pageUrls = await this.sitemapProvider.getPageUrls();
@@ -114,7 +119,8 @@ export class ISRProvider {
         break;
       case 'tag':
         const tagUrls = await this.sitemapProvider.getTagUrls();
-        await this.activeUrls(tagUrls, false);
+        const tagPageUrls = await this.sitemapProvider.getTagPageUrls();
+        await this.activeUrls([...tagUrls, ...tagPageUrls], false);
         break;
       case 'post':
         const articleUrls = await this.getArticleUrls();
@@ -130,20 +136,15 @@ export class ISRProvider {
 
   // 修改文章牵扯太多，暂时不用这个方法。
   async activeArticleById(id: number, event: 'create' | 'delete' | 'update', beforeObj?: Article) {
-    let article, pre, next;
+    let article;
     
     if (event === 'delete' && beforeObj) {
       // 删除事件时使用删除前的文章信息，避免查询已删除的文章
       article = beforeObj;
-      // 对于删除操作，我们不需要获取前后文章，只需要触发相关页面更新
-      pre = null;
-      next = null;
     } else {
       // 创建和更新事件正常查询
       const result = await this.articleProvider.getByIdOrPathnameWithPreNext(id, 'list');
       article = result.article;
-      pre = result.pre;
-      next = result.next;
     }
     
     // 无论是什么事件都先触发文章本身、标签和分类。
@@ -168,35 +169,27 @@ export class ISRProvider {
       const tags = beforeObj.tags;
       if (tags && tags.length > 0) {
         for (const each of tags) {
-          this.activeUrl(`/tag/${each}`, true);
+          this.activeUrl(`/tag/${encodeQuerystring(each)}`, true);
         }
       }
       const category = beforeObj.category;
-      this.activeUrl(`/category/${category}`, true);
+      this.activeUrl(`/category/${encodeQuerystring(category)}`, true);
     }
     
-    if (pre) {
-      this.activeUrl(`/post/${pre?.id}`, true);
-      // 如果前一篇有 pathname，也触发
-      if (pre?.pathname) {
-        this.activeUrl(`/post/${pre.pathname}`, true);
-      }
-    }
-    if (next) {
-      this.activeUrl(`/post/${next?.id}`, true);
-      // 如果后一篇有 pathname，也触发
-      if (next?.pathname) {
-        this.activeUrl(`/post/${next.pathname}`, true);
-      }
-    }
     const tags = article.tags;
     if (tags && tags.length > 0) {
       for (const each of tags) {
-        this.activeUrl(`/tag/${each}`, true);
+        this.activeUrl(`/tag/${encodeQuerystring(each)}`, true);
+        const tagPageUrls = await this.sitemapProvider.getTagPageUrls(each);
+        await this.activeUrls(tagPageUrls, false);
       }
     }
     const category = article.category;
-    this.activeUrl(`/category/${category}`, true);
+    this.activeUrl(`/category/${encodeQuerystring(category)}`, true);
+    const categoryPageUrls = await this.sitemapProvider.getCategoryPageUrls(category);
+    await this.activeUrls(categoryPageUrls, false);
+
+    this.searchIndexProvider.generateSearchIndex(`文章 ${event} 触发搜索索引更新`, 1000);
 
     // 时间线、首页、标签页、tag 页
 

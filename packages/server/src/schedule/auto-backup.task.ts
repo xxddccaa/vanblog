@@ -23,12 +23,14 @@ import { IconProvider } from 'src/provider/icon/icon.provider';
 import { AITaggingProvider } from 'src/provider/ai-tagging/ai-tagging.provider';
 import { AliyunpanProvider } from 'src/provider/aliyunpan/aliyunpan.provider';
 import { DocumentProvider } from 'src/provider/document/document.provider';
+import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
+import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
 
 @Injectable()
 export class AutoBackupTask {
   private readonly logger = new Logger(AutoBackupTask.name);
   private readonly backupDir = '/app/static/blog-json';
-  
+
   // 添加执行状态控制
   private isBackupRunning = false;
   private readonly lockFile = '/tmp/vanblog-backup.lock';
@@ -55,6 +57,8 @@ export class AutoBackupTask {
     private readonly aiTaggingProvider: AITaggingProvider,
     private readonly aliyunpanProvider: AliyunpanProvider,
     private readonly documentProvider: DocumentProvider,
+    private readonly mindMapProvider: MindMapProvider,
+    private readonly mongoBackupProvider: MongoBackupProvider,
   ) {
     this.logger.log(`初始化自动备份任务实例: ${this.instanceId}`);
     this.ensureBackupDirectoryExists();
@@ -72,19 +76,21 @@ export class AutoBackupTask {
   async initializeDynamicTasks() {
     try {
       this.logger.log(`实例 ${this.instanceId} 开始初始化动态任务`);
-      
+
       // 添加随机延迟，避免多个实例同时初始化
       const delay = Math.random() * 5000; // 0-5秒随机延迟
-      await new Promise(resolve => setTimeout(resolve, delay));
-      
+      await new Promise((resolve) => setTimeout(resolve, delay));
+
       const backupSetting = await this.getAutoBackupSetting();
-      
+
       // 检查是否有其他实例已经在运行定时任务
       if (fs.existsSync(this.lockFile)) {
-        this.logger.warn(`实例 ${this.instanceId} - 检测到锁文件，可能有其他实例正在管理定时任务，跳过初始化`);
+        this.logger.warn(
+          `实例 ${this.instanceId} - 检测到锁文件，可能有其他实例正在管理定时任务，跳过初始化`,
+        );
         return;
       }
-      
+
       await this.updateBackupSchedule(backupSetting);
       await this.updateAliyunpanSchedule(backupSetting);
     } catch (error) {
@@ -107,7 +113,9 @@ export class AutoBackupTask {
     // 如果启用备份，创建新任务
     if (setting.enabled) {
       this.scheduleNextBackup(setting.backupTime);
-      this.logger.log(`实例 ${this.instanceId} - 创建备份定时任务: 每天 ${setting.backupTime} 执行`);
+      this.logger.log(
+        `实例 ${this.instanceId} - 创建备份定时任务: 每天 ${setting.backupTime} 执行`,
+      );
     }
   }
 
@@ -116,21 +124,25 @@ export class AutoBackupTask {
     const [hour, minute] = backupTime.split(':').map(Number);
     const now = dayjs();
     let nextRun = now.hour(hour).minute(minute).second(0).millisecond(0);
-    
+
     // 如果今天的时间已过，设置为明天
     if (nextRun.isBefore(now)) {
       nextRun = nextRun.add(1, 'day');
     }
 
     const delay = nextRun.diff(now);
-    this.logger.log(`实例 ${this.instanceId} - 下次备份时间: ${nextRun.format('YYYY-MM-DD HH:mm:ss')}, 距离现在: ${Math.round(delay / 1000 / 60)} 分钟`);
+    this.logger.log(
+      `实例 ${this.instanceId} - 下次备份时间: ${nextRun.format(
+        'YYYY-MM-DD HH:mm:ss',
+      )}, 距离现在: ${Math.round(delay / 1000 / 60)} 分钟`,
+    );
 
     this.backupTimer = setTimeout(async () => {
       this.logger.log(`实例 ${this.instanceId} - 执行定时备份...`);
       await this.executeBackup();
       await this.cleanupOldBackups();
       this.logger.log(`实例 ${this.instanceId} - 定时备份完成`);
-      
+
       // 设置下一次备份（24小时后）
       this.scheduleNextBackup(backupTime);
     }, delay);
@@ -160,20 +172,24 @@ export class AutoBackupTask {
     const [hour, minute] = syncTime.split(':').map(Number);
     const now = dayjs();
     let nextRun = now.hour(hour).minute(minute).second(0).millisecond(0);
-    
+
     // 如果今天的时间已过，设置为明天
     if (nextRun.isBefore(now)) {
       nextRun = nextRun.add(1, 'day');
     }
 
     const delay = nextRun.diff(now);
-    this.logger.log(`下次阿里云盘同步时间: ${nextRun.format('YYYY-MM-DD HH:mm:ss')}, 距离现在: ${Math.round(delay / 1000 / 60)} 分钟`);
+    this.logger.log(
+      `下次阿里云盘同步时间: ${nextRun.format('YYYY-MM-DD HH:mm:ss')}, 距离现在: ${Math.round(
+        delay / 1000 / 60,
+      )} 分钟`,
+    );
 
     this.aliyunpanTimer = setTimeout(async () => {
       this.logger.log('执行定时阿里云盘同步...');
       await this.executeAliyunpanSync();
       this.logger.log('定时阿里云盘同步完成');
-      
+
       // 设置下一次同步（24小时后）
       this.scheduleNextAliyunpanSync(syncTime);
     }, delay);
@@ -210,10 +226,12 @@ export class AutoBackupTask {
       const lockTime = fs.statSync(this.lockFile).mtime;
       const now = new Date();
       const timeDiff = now.getTime() - lockTime.getTime();
-      
+
       // 如果锁文件存在且创建时间在10分钟内，认为有其他备份正在执行
       if (timeDiff < 10 * 60 * 1000) {
-        this.logger.warn(`实例 ${this.instanceId} - 检测到备份锁文件，可能有其他备份任务正在执行，跳过此次备份`);
+        this.logger.warn(
+          `实例 ${this.instanceId} - 检测到备份锁文件，可能有其他备份任务正在执行，跳过此次备份`,
+        );
         return;
       } else {
         // 锁文件过期，删除它
@@ -225,13 +243,16 @@ export class AutoBackupTask {
     try {
       // 设置执行状态和文件锁
       this.isBackupRunning = true;
-      fs.writeFileSync(this.lockFile, JSON.stringify({
-        instanceId: this.instanceId,
-        startTime: new Date().toISOString()
-      }));
-      
+      fs.writeFileSync(
+        this.lockFile,
+        JSON.stringify({
+          instanceId: this.instanceId,
+          startTime: new Date().toISOString(),
+        }),
+      );
+
       this.logger.log(`实例 ${this.instanceId} - 开始执行备份任务`);
-      
+
       // 获取所有数据
       const [
         articles,
@@ -240,9 +261,11 @@ export class AutoBackupTask {
         meta,
         drafts,
         user,
+        users,
         viewer,
         visit,
         staticSetting,
+        allSettings,
         staticItems,
         moments,
         customPages,
@@ -254,28 +277,42 @@ export class AutoBackupTask {
         layoutSetting,
         aiTaggingConfig,
         documents,
+        mindMaps,
+        mongoCollections,
       ] = await Promise.all([
         this.articleProvider.getAll('admin', true),
-        this.categoryProvider.getAllCategories(),
-        this.tagProvider.getAllTags(true),
+        this.categoryProvider.getAllCategories(true),
+        this.tagProvider.getAllTagRecords(),
         this.metaProvider.getAll(),
         this.draftProvider.getAll(),
         this.userProvider.getUser(),
+        this.userProvider.getAllUsers(),
         this.viewerProvider.getAll(),
         this.visitProvider.getAll(),
         this.settingProvider.getStaticSetting(),
+        this.settingProvider.exportAllSettings(),
         this.staticProvider.exportAll(),
-        this.momentProvider.getByOption({ page: 1, pageSize: -1 }, false).then(result => result.moments),
+        this.momentProvider
+          .getByOption({ page: 1, pageSize: -1 }, false)
+          .then((result) => result.moments),
         this.customPageProvider.getAll(),
         this.pipelineProvider.getAll(),
-        this.tokenProvider.getAllAPIToken(),
+        this.tokenProvider.getAllTokens(),
         this.navToolProvider.getAllTools(),
         this.navCategoryProvider.getAllCategories(),
         this.iconProvider.getAllIcons(),
         this.settingProvider.getLayoutSetting(),
         this.aiTaggingProvider.getConfig(),
-        this.documentProvider.getByOption({ page: 1, pageSize: -1 }).then(result => result.documents),
+        this.documentProvider
+          .getByOption({ page: 1, pageSize: -1 })
+          .then((result) => result.documents),
+        this.mindMapProvider.getAllForBackup(),
+        this.mongoBackupProvider.exportAllCollections(),
       ]);
+
+      const mongoCollectionCounts = Object.fromEntries(
+        Object.entries(mongoCollections).map(([name, docs]) => [name, docs?.length || 0]),
+      );
 
       const data = {
         articles,
@@ -284,10 +321,12 @@ export class AutoBackupTask {
         drafts,
         categories,
         user,
+        users,
         viewer,
         visit,
         static: staticItems,
         setting: { static: staticSetting },
+        settings: allSettings,
         moments,
         customPages,
         pipelines,
@@ -298,15 +337,39 @@ export class AutoBackupTask {
         layoutSetting,
         aiTaggingConfig,
         documents,
+        mindMaps,
+        mongoCollections,
         backupInfo: {
-          version: '2.0.0',
+          version: '3.0.0',
           timestamp: new Date().toISOString(),
           instanceId: this.instanceId,
+          scope: 'full-system-migration',
+          sourceDatabase: 'mongodb',
           dataTypes: [
-            'articles', 'tags', 'meta', 'drafts', 'categories', 'user',
-            'viewer', 'visit', 'static', 'setting', 'moments', 'customPages',
-            'pipelines', 'tokens', 'navTools', 'navCategories', 'icons',
-            'layoutSetting', 'aiTaggingConfig', 'documents'
+            'articles',
+            'tags',
+            'meta',
+            'drafts',
+            'categories',
+            'user',
+            'users',
+            'viewer',
+            'visit',
+            'static',
+            'setting',
+            'settings',
+            'moments',
+            'customPages',
+            'pipelines',
+            'tokens',
+            'navTools',
+            'navCategories',
+            'icons',
+            'layoutSetting',
+            'aiTaggingConfig',
+            'documents',
+            'mindMaps',
+            'mongoCollections',
           ],
           counts: {
             articles: articles?.length || 0,
@@ -321,11 +384,15 @@ export class AutoBackupTask {
             navCategories: navCategories?.length || 0,
             icons: icons?.length || 0,
             staticItems: staticItems?.length || 0,
+            settings: allSettings?.length || 0,
+            users: users?.length || 0,
             layoutSetting: layoutSetting ? 1 : 0,
             aiTaggingConfig: aiTaggingConfig ? 1 : 0,
             documents: documents?.length || 0,
-          }
-        }
+            mindMaps: mindMaps?.length || 0,
+          },
+          mongoCollectionCounts,
+        },
       };
 
       // 生成文件名 (和导出功能保持一致的命名格式)
@@ -352,25 +419,28 @@ export class AutoBackupTask {
   private async cleanupOldBackups() {
     try {
       const backupSetting = await this.getAutoBackupSetting();
-      const files = fs.readdirSync(this.backupDir)
-        .filter(file => file.startsWith('vanblog-backup-') && file.endsWith('.json'))
-        .map(file => ({
+      const files = fs
+        .readdirSync(this.backupDir)
+        .filter((file) => file.startsWith('vanblog-backup-') && file.endsWith('.json'))
+        .map((file) => ({
           name: file,
           path: path.join(this.backupDir, file),
-          mtime: fs.statSync(path.join(this.backupDir, file)).mtime
+          mtime: fs.statSync(path.join(this.backupDir, file)).mtime,
         }))
         .sort((a, b) => b.mtime.getTime() - a.mtime.getTime()); // 按修改时间降序排列
 
       // 保留最新的 retentionCount 个文件
       const filesToDelete = files.slice(backupSetting.retentionCount);
-      
+
       for (const file of filesToDelete) {
         fs.unlinkSync(file.path);
         this.logger.log(`删除过期备份: ${file.name}`);
       }
 
       if (filesToDelete.length > 0) {
-        this.logger.log(`清理了 ${filesToDelete.length} 个过期备份文件，保留最新的 ${backupSetting.retentionCount} 个文件`);
+        this.logger.log(
+          `清理了 ${filesToDelete.length} 个过期备份文件，保留最新的 ${backupSetting.retentionCount} 个文件`,
+        );
       }
     } catch (error) {
       this.logger.error('清理过期备份失败:', error.message);
@@ -381,22 +451,24 @@ export class AutoBackupTask {
   async executeAliyunpanSync() {
     try {
       const backupSetting = await this.getAutoBackupSetting();
-      
-      this.logger.log(`开始执行阿里云盘同步 - 本地路径: ${backupSetting.aliyunpan.localPath}, 云盘路径: ${backupSetting.aliyunpan.panPath}`);
-      
+
+      this.logger.log(
+        `开始执行阿里云盘同步 - 本地路径: ${backupSetting.aliyunpan.localPath}, 云盘路径: ${backupSetting.aliyunpan.panPath}`,
+      );
+
       // 检查登录状态
       const loginStatus = await this.aliyunpanProvider.getLoginStatus();
       if (!loginStatus.isLoggedIn) {
         this.logger.error('阿里云盘未登录，无法执行同步');
         return;
       }
-      
+
       this.logger.log('阿里云盘登录状态正常，开始上传文件...');
 
       // 执行同步
       const result = await this.aliyunpanProvider.executeSync(
         backupSetting.aliyunpan.localPath,
-        backupSetting.aliyunpan.panPath
+        backupSetting.aliyunpan.panPath,
       );
 
       if (result.success) {
@@ -412,7 +484,7 @@ export class AutoBackupTask {
   // 手动触发备份（用于测试或立即备份）
   async triggerManualBackup() {
     this.logger.log(`实例 ${this.instanceId} - 触发手动备份`);
-    
+
     // 检查是否已经有备份正在执行
     if (this.isBackupRunning) {
       this.logger.warn(`实例 ${this.instanceId} - 备份任务正在执行中，无法执行手动备份`);
@@ -432,9 +504,10 @@ export class AutoBackupTask {
   // 获取备份文件列表
   getBackupFiles() {
     try {
-      const files = fs.readdirSync(this.backupDir)
-        .filter(file => file.startsWith('vanblog-backup-') && file.endsWith('.json'))
-        .map(file => {
+      const files = fs
+        .readdirSync(this.backupDir)
+        .filter((file) => file.startsWith('vanblog-backup-') && file.endsWith('.json'))
+        .map((file) => {
           const filePath = path.join(this.backupDir, file);
           const stats = fs.statSync(filePath);
           return {
@@ -452,4 +525,4 @@ export class AutoBackupTask {
       return [];
     }
   }
-} 
+}

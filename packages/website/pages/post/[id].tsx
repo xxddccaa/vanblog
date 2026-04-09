@@ -19,16 +19,6 @@ export interface PostPagesProps {
   pay: string[];
   payDark: string[];
   author: string;
-  pre: {
-    id: number;
-    title: string;
-    pathname?: string;
-  };
-  next: {
-    id: number;
-    title: string;
-    pathname?: string;
-  };
   showSubMenu: "true" | "false";
 }
 const PostPages = (props: PostPagesProps) => {
@@ -81,8 +71,6 @@ const PostPages = (props: PostPagesProps) => {
         private={props.article.private}
         author={props.author}
         tags={props.article.tags}
-        pre={props.pre}
-        next={props.next}
         enableComment={props.layoutProps.enableComment}
         hideDonate={props.layoutProps.showDonateButton == "false"}
         hideCopyRight={props.layoutProps.showCopyRight == "false"}

@@ -16,6 +16,22 @@ export class UserProvider {
     }
     return await this.userModel.findOne({ id: 0 }).exec();
   }
+  async getAllUsers() {
+    return await this.userModel.find({}).lean().exec();
+  }
+  async importUsers(users: User[]) {
+    for (const user of users || []) {
+      if (user?.id === undefined || !user?.name) {
+        continue;
+      }
+
+      const payload: any = { ...user };
+      delete payload._id;
+      delete payload.__v;
+
+      await this.userModel.updateOne({ id: user.id }, payload, { upsert: true });
+    }
+  }
   async washUserWithSalt() {
     // 如果没加盐的老版本，给改成带加盐的。
     const users = await this.userModel.find({

@@ -12,9 +12,9 @@ import { PagePagesProps } from "../pages/page/[p]";
 import { CategoryPagesProps } from "../pages/category/[category]";
 import {
   getArticleByIdOrPathname,
-  getArticlesByCategory,
   getArticlesByOption,
-  getArticlesByTimeLine,
+  getCategorySummary,
+  getTimelineSummary,
 } from "../api/getArticles";
 import { LinkPageProps } from "../pages/link";
 
@@ -40,12 +40,12 @@ export async function getTimeLinePageProps(): Promise<TimeLinePageProps> {
   const data = await getPublicMeta();
   const layoutProps = getLayoutProps(data);
   const authorCardProps = getAuthorCardProps(data);
-  const sortedArticles = await getArticlesByTimeLine();
+  const summaries = await getTimelineSummary();
   const wordTotal = data.totalWordCount;
   return {
     layoutProps,
     authorCardProps,
-    sortedArticles,
+    summaries,
     wordTotal,
   };
 }
@@ -65,12 +65,12 @@ export async function getCategoryPageProps(): Promise<CategoryPageProps> {
   const layoutProps = getLayoutProps(data);
   const authorCardProps = getAuthorCardProps(data);
   const wordTotal = data.totalWordCount;
-  const sortedArticles = await getArticlesByCategory();
+  const summaries = await getCategorySummary();
   return {
     layoutProps,
     authorCardProps,
     wordTotal,
-    sortedArticles,
+    summaries,
   };
 }
 export async function getLinkPageProps(): Promise<LinkPageProps> {
@@ -174,7 +174,7 @@ export async function getPostPagesProps(
   const author = article?.author || data.meta.siteInfo.author;
   return {
     layoutProps,
-    ...currArticleProps,
+    article: currArticleProps.article,
     ...payProps,
     author,
     showSubMenu: layoutProps.showSubMenu,

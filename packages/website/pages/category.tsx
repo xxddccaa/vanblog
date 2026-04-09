@@ -1,7 +1,7 @@
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
 import CategoryPageComponent from "../components/CategoryPage";
-import { Article } from "../types/article";
+import { CategorySummaryItem } from "../api/getArticles";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getCategoryPageProps } from "../utils/getPageProps";
 import { revalidate } from "../utils/loadConfig";
@@ -9,7 +9,7 @@ import { revalidate } from "../utils/loadConfig";
 export interface CategoryPageProps {
   layoutProps: LayoutProps;
   authorCardProps: AuthorCardProps;
-  sortedArticles: Record<string, Article[]>;
+  summaries: CategorySummaryItem[];
   wordTotal: number;
 }
 const CategoryPage = (props: CategoryPageProps) => {
@@ -20,7 +20,7 @@ const CategoryPage = (props: CategoryPageProps) => {
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
       <CategoryPageComponent
-        sortedArticles={props.sortedArticles}
+        summaries={props.summaries}
         authorCardProps={props.authorCardProps}
         wordTotal={props.wordTotal}
         openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}

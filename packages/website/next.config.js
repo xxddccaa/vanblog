@@ -46,9 +46,43 @@ const getCdnUrl = () => {
 };
 module.exports = withBundleAnalyzer({
   reactStrictMode: true,
+  generateEtags: true,
   output: "standalone",
   experimental: {
     largePageDataBytes: 1024 * 1024 * 10,
+  },
+  async headers() {
+    return [
+      {
+        source: "/post/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          {
+            key: "Surrogate-Control",
+            value: "max-age=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/((?!api|admin|_next/static).*)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          {
+            key: "Surrogate-Control",
+            value: "max-age=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
   },
   images: {
     domains: getAllowDomains(),

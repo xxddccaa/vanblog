@@ -28,8 +28,6 @@ export default function (props: {
   payDark?: string[];
   author?: string;
   tags?: string[];
-  next?: { id: number; title: string; pathname?: string };
-  pre?: { id: number; title: string; pathname?: string };
   enableComment: "true" | "false";
   top: number;
   private: boolean;
@@ -186,11 +184,10 @@ export default function (props: {
         )}
 
         <PostBottom
+          id={props.id}
           type={props.type}
           lock={lock}
           tags={props.tags}
-          next={props.next}
-          pre={props.pre}
           openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
         />
         <div

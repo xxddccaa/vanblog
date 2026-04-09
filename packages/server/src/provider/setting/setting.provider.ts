@@ -110,6 +110,40 @@ export class SettingProvider {
   async importStaticSetting(dto: StaticSetting) {
     await this.updateStaticSetting(dto);
   }
+  async exportAllSettings() {
+    return await this.settingModel.find({}).lean().exec();
+  }
+  async importAllSettings(
+    settings: Array<{ type: string; value: any }>,
+    overwrite = false,
+  ) {
+    for (const setting of settings || []) {
+      if (!setting?.type) {
+        continue;
+      }
+
+      const payload = {
+        type: setting.type,
+        value: setting.value,
+        updatedAt: new Date(),
+      };
+
+      if (overwrite) {
+        await this.settingModel.updateOne({ type: setting.type }, payload, { upsert: true });
+        continue;
+      }
+
+      const existing = await this.settingModel.findOne({ type: setting.type }).lean().exec();
+      if (!existing) {
+        await this.settingModel.create(payload);
+      } else {
+        await this.settingModel.updateOne(
+          { type: setting.type },
+          { value: { ...(existing.value || {}), ...(setting.value || {}) }, updatedAt: new Date() },
+        );
+      }
+    }
+  }
   async getHttpsSetting(): Promise<HttpsSetting> {
     const res = await this.settingModel.findOne({ type: 'https' }).exec();
     if (res) {

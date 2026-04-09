@@ -16,6 +16,31 @@ import { SettingProvider } from './provider/setting/setting.provider';
 import { WebsiteProvider } from './provider/website/website.provider';
 import { CaddyProvider } from './provider/caddy/caddy.provider';
 import { initJwt } from './utils/initJwt';
+import { SearchIndexProvider } from './provider/search-index/search-index.provider';
+
+const setStaticCacheHeaders = (
+  kind: 'asset' | 'feed' | 'sitemap' | 'searchIndex',
+  res: any,
+  filePath: string,
+) => {
+  const basename = path.basename(filePath);
+
+  if (kind === 'asset') {
+    if (basename === 'search-index.json') {
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+      res.setHeader('Surrogate-Control', 'max-age=3600, stale-while-revalidate=86400');
+      return;
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return;
+  }
+
+  if (kind === 'feed' || kind === 'sitemap' || kind === 'searchIndex') {
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=86400');
+    res.setHeader('Surrogate-Control', 'max-age=86400, stale-while-revalidate=86400');
+  }
+};
 
 async function bootstrap() {
   const jwtSecret = await initJwt();
@@ -26,6 +51,7 @@ async function bootstrap() {
 
   app.useStaticAssets(globalConfig.staticPath, {
     prefix: '/static/',
+    setHeaders: (res, filePath) => setStaticCacheHeaders('asset', res, filePath),
   });
 
   // 查看文件夹是否存在 并创建.
@@ -42,12 +68,14 @@ async function bootstrap() {
   checkOrCreate(path.join(globalConfig.staticPath, 'rss'));
   app.useStaticAssets(path.join(globalConfig.staticPath, 'rss'), {
     prefix: '/rss/',
+    setHeaders: (res, filePath) => setStaticCacheHeaders('feed', res, filePath),
   });
 
   // sitemap
   checkOrCreate(path.join(globalConfig.staticPath, 'sitemap'));
   app.useStaticAssets(path.join(globalConfig.staticPath, 'sitemap'), {
     prefix: '/sitemap/',
+    setHeaders: (res, filePath) => setStaticCacheHeaders('sitemap', res, filePath),
   });
 
   const config = new DocumentBuilder()
@@ -93,9 +121,11 @@ async function bootstrap() {
     });
     // 触发增量渲染生成静态页面，防止升级后内容为空
     const isrProvider = app.get(ISRProvider);
+    const searchIndexProvider = app.get(SearchIndexProvider);
     isrProvider.activeAll('首次启动触发全量渲染！', 1000, {
       forceActice: true,
     });
+    searchIndexProvider.generateSearchIndex('首次启动生成搜索索引！', 1000);
   }
   setTimeout(() => {
     console.log('应用已启动，端口: 3000');

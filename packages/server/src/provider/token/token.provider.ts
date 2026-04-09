@@ -20,6 +20,22 @@ export class TokenProvider {
     this.logger.log(`获取所有 API Token`);
     return await this.tokenModel.find({ userId: 666666, disabled: false }).exec();
   }
+  async getAllTokens() {
+    return await this.tokenModel.find({}).lean().exec();
+  }
+  async importTokens(tokens: any[]) {
+    for (const token of tokens || []) {
+      if (!token?.token) {
+        continue;
+      }
+
+      const payload = { ...token };
+      delete payload._id;
+      delete payload.__v;
+
+      await this.tokenModel.updateOne({ token: token.token }, payload, { upsert: true });
+    }
+  }
 
   async disableAPIToken(token: string) {
     return await this.tokenModel.updateOne({ token }, { disabled: true });

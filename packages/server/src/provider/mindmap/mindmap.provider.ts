@@ -190,5 +190,21 @@ export class MindMapProvider {
   async incrementViewer(id: string): Promise<void> {
     await this.mindMapModel.findByIdAndUpdate(id, { $inc: { viewer: 1 } });
   }
-}
 
+  async getAllForBackup() {
+    return await this.mindMapModel.find({}).lean().exec();
+  }
+
+  async importMindMaps(mindMaps: MindMap[]) {
+    for (const mindMap of (mindMaps || []) as any[]) {
+      if (!mindMap?._id && !mindMap?.title) {
+        continue;
+      }
+
+      const payload: any = { ...mindMap };
+      delete payload.__v;
+      const query = mindMap._id ? { _id: mindMap._id } : { title: mindMap.title };
+      await this.mindMapModel.updateOne(query, payload, { upsert: true });
+    }
+  }
+}
