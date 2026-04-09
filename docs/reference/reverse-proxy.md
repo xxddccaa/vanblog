@@ -6,7 +6,7 @@ order: 4
 
 ::: info 注意
 
-当前仓库默认已经通过 `docker-compose.yml` 启动一个对外网关 `caddy`，统一接收 `80/443` 流量并路由到 `server`、`website`、`admin`、`waline`。
+当前仓库默认已经通过 compose 编排（`docker-compose.yml` 或 `docker-compose.image.yml`）启动一个对外网关 `caddy`，统一接收 `80/443` 流量并路由到 `server`、`website`、`admin`、`waline`。
 
 如果你还要在外面再套一层反向代理，请直接代理到 **宿主机暴露的 Caddy 端口**，而不是分别去代理 `server` / `website` / `admin`。通常你只需要：
 
@@ -20,7 +20,7 @@ order: 4
 
 ### nginx-proxy-manager
 
-强烈推荐 [nginx-proxy-manager](https://nginxproxymanager.com/) 这个项目，它可以自动管理反代配置并申请 `https` 证书。
+推荐使用 [nginx-proxy-manager](https://nginxproxymanager.com/) 之类的图形化代理工具统一管理外层域名与证书。
 
 ### Caddy
 
@@ -97,8 +97,8 @@ server {
 
 ::: warning 注意
 
-- 如果外层已经处理证书，可以按需关闭或调整内层 Caddy 的 HTTPS 行为。
-- `/admin` 必须保持走同一个入口域名，不要把后台单独改成 `:3002` 直连。
-- 如果出现页面不更新、跳转异常，优先检查外层反代是否错误改写了 `Location`、`Host`、缓存策略或子路径资源。
+- 如果外层已经处理证书，可以按需关闭或调整内层 Caddy 的 HTTPS 行为
+- `/admin` 必须保持走同一个入口域名，不要把后台单独改成 `:3002` 直连
+- 如果出现页面不更新、跳转异常，优先检查外层反代是否错误改写了 `Location`、`Host`、缓存策略或子路径资源
 
 :::

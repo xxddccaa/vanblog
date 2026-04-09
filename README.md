@@ -1,13 +1,13 @@
-# VanBlog 二次开发版
+# VanBlog
 
-这是一个基于 [VanBlog](https://github.com/Mereithhh/vanblog) 的二次开发仓库，当前已经从“单容器内混合 Caddy + 前后端”的部署方式，重构为 **Docker Compose 多容器架构**。
+这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续更新。当前部署方式已经完全切换为 **Docker Compose 多容器架构**，文档、脚本和发布流程都以本仓库为准。
 
 现在仓库默认提供两种使用方式：
 
 - **源码部署**：用 `docker-compose.yml` 从当前仓库直接构建并启动
 - **镜像部署**：用 `docker-compose.image.yml` 拉取已经发布的多镜像版本启动
 
-原项目协议：GPL-3.0
+项目沿用 `GPL-3.0`；保留对上游 VanBlog 的致谢，但使用、部署与更新请以当前仓库为准。
 
 我的博客地址：<https://www.dong-blog.fun/>
 
@@ -193,7 +193,7 @@ pnpm release:images:push
 - 生产部署推荐使用 `docker-compose.image.yml`
 - 发版默认使用 `scripts/release-images.sh`
 
-## 我的二次开发方向
+## 当前维护方向
 
 这份仓库是基于自己的使用习惯持续修改的，主要方向包括：
 

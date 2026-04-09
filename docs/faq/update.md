@@ -6,40 +6,62 @@ order: 3
 
 ## 如何回滚
 
-您可以通过指定镜像的版本号来实现，比如您想回滚到 `v0.29.0`，那您可以修改编排中的：
+### 镜像部署
 
-`mereith/van-blog:latest` 为 `mereith/van-blog:v0.29.0` ，然后运行：
+把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后执行：
 
 ```bash
-docker-compose down -v && docker-compose up -d
+docker compose -f docker-compose.image.yml pull
+docker compose -f docker-compose.image.yml up -d
+```
+
+### 源码部署
+
+切回旧的 tag 或提交，再重新构建：
+
+```bash
+git checkout <tag-or-commit>
+docker compose up -d --build
 ```
 
 ## docker 镜像拉取慢
 
-您可以 [设置 docker 镜像加速器](https://www.runoob.com/docker/docker-mirror-acceleration.html)。
+可以提前拉取镜像，或为 Docker 配置镜像加速器。
 
-## 升级后访问文章地址时出现 404 错误
+## 升级后访问文章地址出现 404
 
-由于本质上 VanBlog 基于静态页面，升级后容器内不存在按照新版本生成的静态页面。
+VanBlog 的前台存在静态生成与重建过程。升级后如果某些页面尚未被重新生成，短时间内可能出现 404 或旧内容。
 
-容器每次启动时都会自动触发增量渲染，等待容器选软完成后，即可正常访问。
+通常可以这样排查：
 
-## 升级后后台报错或持续加载
+- 先访问首页、分类页、标签页，观察是否触发正常更新
+- 再查看 `website` 和 `server` 日志是否有重建错误
+- 如果是镜像升级，确认新镜像是否真的已经拉取成功
 
-请清空浏览器缓存再重新加载。大部分浏览器可以使用 <kbd>Ctrl</kbd> + <kbd>F5</kbd> 强制刷新以忽略缓存。
+## 升级后后台持续加载或静态资源错乱
 
-::: details 其他方案
+优先尝试强制刷新浏览器缓存：
 
-如果是 `Chrome` 浏览器，您可以按 `F12` 打开开发者工具。在网络选项卡中勾选`停用缓存`，然后再刷新页面即可（刷新时开发者工具窗口不要关），正常后记得取消勾选`停用缓存`。
+- Windows / Linux：<kbd>Ctrl</kbd> + <kbd>F5</kbd>
+- macOS：<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd>
 
-其他浏览器可以自行百度。
+如果仍有问题，再查看：
 
-![Chrome 停用缓存](https://www.mereith.com/static/img/5efb32214a31c1003df5eeba217a5586.clipboard-2022-09-03.png)
-
-:::
+```bash
+docker compose logs -f admin caddy
+```
 
 ## 容器无限重启
 
-有时由于作者疏忽，新版本可能由于存在 Bug 引发致命错误导致无限重启，此时可以优先考虑版本回滚。
+先看日志定位是哪一个服务反复退出：
 
-有能力的同学可以记录一下无限重启的容器日志，提一个 [issue](https://github.com/Mereithhh/van-blog/issues/new/choose) 或者直接联系作者，十分感谢！
+```bash
+docker compose ps
+docker compose logs -f caddy server website admin waline mongo
+```
+
+如果你已经确定是升级引入的问题，优先回滚到上一个可用版本。
+
+如果需要反馈问题，请附上关键日志并到当前仓库提 Issue：
+
+- <https://github.com/xxddccaa/vanblog/issues/new/choose>

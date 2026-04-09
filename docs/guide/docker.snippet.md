@@ -1,35 +1,34 @@
-### 1. 安装依赖
+### 1. 安装 Docker 与 Compose
 
-如果你没有安装 `docker`，可以通过以下命令安装：
+如果服务器还没有 Docker，可以先安装：
 
 ```bash
-curl -sSL https://get.daocloud.io/docker | sh
+curl -fsSL https://get.docker.com | sh
 systemctl enable --now docker
 ```
 
-::: tip
+安装完成后确认版本：
 
-如果你没有接触过 `docker`，可以先看一下 [Docker 入门教程](https://www.ruanyifeng.com/blog/2018/02/docker-tutorial.html)。
+```bash
+docker --version
+docker compose version
+```
 
-:::
-
-### 2. 获取仓库并使用内置编排
-
-当前仓库已经自带 `docker-compose.yml`，不需要再手写单容器编排。推荐直接使用仓库根目录提供的多容器配置：
+### 2. 获取仓库
 
 ```bash
 git clone https://github.com/xxddccaa/vanblog.git
 cd vanblog
 ```
 
-当前默认会启动以下服务：
+当前仓库自带 `docker-compose.yml`，默认会启动以下服务：
 
-- `caddy`: 对外统一入口，暴露 `80/443`
-- `server`: 后端 API 与静态资源服务
-- `website`: Next.js 前台
-- `admin`: 后台静态页面
-- `waline`: 评论服务
-- `mongo`: 数据库，仅内网访问
+- `caddy`：对外统一入口，暴露 `80/443`
+- `server`：后端 API 与静态资源服务
+- `website`：Next.js 前台
+- `admin`：后台静态页面
+- `waline`：评论服务
+- `mongo`：数据库，仅内网访问
 
 ::: warning 安全说明
 

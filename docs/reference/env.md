@@ -4,27 +4,31 @@ icon: leaf
 order: 2
 ---
 
-VanBlog 启动时，会读取一些环境变量以配置自身。
+VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。下面列出最常见、最需要关心的几个变量。
 
-| 名称 | 必填 | 说明 | 默认值 |
+| 名称 | 常见位置 | 说明 | 默认值 |
 | --- | --- | --- | --- |
-| `VAN_BLOG_DATABASE_URL` | 否 | mongoDB URL | `mongodb://mongo:27017/vanBlog?authSource=admin` |
-| `VAN_BLOG_CDN_URL` | 否 | CDN 部署的地址，在开启之前请不要设置此项。此项会导致公共资源从此 URL 获取。 | `""` |
-| `VAN_BLOG_WALINE_DB` | 否 | 内嵌评论系统的数据库名，默认为 waline | `""` |
-| `EMAIL` | 否 | 用于自动申请 https 证书的邮箱 | `""` |
+| `EMAIL` | `caddy` | 自动申请 HTTPS 证书时使用的邮箱 | `someone@example.com` |
+| `VAN_BLOG_DATABASE_URL` | `server` | MongoDB 连接串 | `mongodb://mongo:27017/vanBlog?authSource=admin` |
+| `VAN_BLOG_WALINE_DB` | `server` / `waline` | 评论系统数据库名 | `waline` |
+| `VAN_BLOG_ALLOW_DOMAINS` | `website` | Next.js 允许加载的外部图片域名，多个用逗号分隔 | `pic.mereith.com` |
+| `WALINE_JWT_TOKEN` | `waline` | Waline 使用的 JWT 密钥 | `vanblog-change-me` |
+| `VANBLOG_HTTP_PORT` | `caddy` | 宿主机暴露的 HTTP 端口 | `80` |
+| `VANBLOG_HTTPS_PORT` | `caddy` | 宿主机暴露的 HTTPS 端口 | `443` |
+| `VANBLOG_STATIC_DIR` | `server` | 本地图床宿主机目录 | `./data/static` |
+| `VANBLOG_MONGO_DIR` | `mongo` | MongoDB 宿主机目录 | `./data/mongo` |
+| `VANBLOG_LOG_DIR` | `caddy` / `server` | 日志宿主机目录 | `./log` |
+
+## 修改后如何生效
+
+- 修改 compose 文件后，重新执行 `docker compose up -d`
+- 如果是镜像部署，则使用 `docker compose -f docker-compose.image.yml up -d`
+- 某些前台资源相关配置（例如 `VAN_BLOG_ALLOW_DOMAINS`）通常至少需要重启 `website` 服务
 
 ## 注意事项
 
-::: tip
+::: warning
 
-每次修改后，需要重启 VanBlog 服务 或重启 VanBlog Docker 容器方能生效。
-
-:::
-
-::: warning 警示
-
-为避免特殊字符对 bash 的干扰，请务必将环境变量的值用双引号围起来!
-
-如 `"https://example.com"`
+为避免特殊字符对 shell 造成影响，建议在 `.env` 中把包含 URL、密码、Token 的值都用引号或纯文本形式妥善保存，并避免多余空格。
 
 :::

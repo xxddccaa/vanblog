@@ -6,90 +6,113 @@ order: 1
 
 ## 如何部署到 CDN
 
-在编排文件 `docker-compose.yaml` 中设置 `vanblog` 容器的 `VAN_BLOG_CDN_URL` 这个环境变量后，按部就班增加 CDN 即可。
+当前仓库的前台静态资源主要来自 Next.js 的 `/_next/static`。如果你要接入 CDN，建议只优先缓存这一类静态资源。
 
-![image](https://user-images.githubusercontent.com/95157017/204312649-8d02dfd6-bb2a-4646-921c-d59f07221854.png)
+如果你确实需要给前台资源加前缀，可以在 `website` 服务中增加 `VAN_BLOG_CDN_URL` 环境变量，例如：
 
-原则上 CDN 只缓存 `/_next/static` 这个目录就够了。
+```yaml
+environment:
+  VAN_BLOG_CDN_URL: https://cdn.example.com
+```
 
-## 如何安装 docker ?
+修改后重新启动 `website` 服务即可生效。
 
-可以用这个一键安装脚本:
+## 如何安装 Docker
+
+可以先安装 Docker：
 
 ```bash
-curl -sSL https://get.daocloud.io/docker | sh
+curl -fsSL https://get.docker.com | sh
+```
+
+安装完成后再确认：
+
+```bash
+docker --version
+docker compose version
 ```
 
 ## 如何在外部访问数据库
 
-默认的数据库是不会暴漏在外面的，只在容器内可访问，是相对安全的。
+默认情况下，`mongo` 只在 compose 内部网络开放，这样更安全。
 
-如果你看不懂下面的描述，我建议你先学一下相关的知识。如果不想学的话，建议还是放弃在外部访问数据库的打算，不然安全问题堪忧。
+如果你只是临时排查数据，优先推荐直接进入容器：
 
-为了安全考虑默认的 docker-compose.yaml 编排中的 mongoDB 是仅容器内访问的（换句话说不会对外保留端口）。
+```bash
+docker compose exec mongo mongo vanBlog
+```
 
-如果你想连接的话，首先需要修改编排中 mongoDB 的账密（对外暴漏端口有安全风险，一定要设置强密码！）
+如果你一定要让宿主机外部访问 MongoDB，请自行评估安全风险，并在 `mongo` 服务里显式增加端口映射，例如：
 
-![修改账号密码](https://www.mereith.com/static/img/06f19fe68043cd4e8780e1e2484b70d9.clipboard-2022-09-02.png)
+```yaml
+ports:
+  - "27017:27017"
+```
 
-注意画红圈的地方要同步改，然后加上下图画红线的语句：
+然后重新启动服务：
 
-![添加端口](https://www.mereith.com/static/img/e2bc119c1408d50f73a2da526dec96c8.clipboard-2022-09-02.png)
-
-然后运行 `docker-compose down -v && docker-compose up -d` 重启容器，就可以通过 27017 端口访问 mongoDB 了。
-
-具体访问方式可以自行查阅资料，我一般都是用 [mongoDBCompass](https://www.mongodb.com/try/download/compass) 这个工具。
+```bash
+docker compose up -d
+```
 
 ## 部署后无法访问后台
 
-可以按照下面的步骤进行排查：
+可以按下面顺序排查：
 
-1. 检查编排端口映射、配置是否正确。
-1. 浏览容器日志，确认是否成功启动。
-1. 检查访问网址、端口是否正确。
-1. 检查服务器防火墙、云服务厂商防火墙是否放行。
-1. 检查本地服务器能不能访问。用 curl 简单测一下。
+1. 后台入口是否访问了 `http://<域名>/admin`，而不是直连 `:3002`
+2. `caddy`、`server`、`website`、`admin` 是否都已健康启动
+3. 宿主机的 `80/443` 端口是否真的放行
+4. 是否错误地把外层反代直接指向了 `server` 或 `admin`
+5. 用 `docker compose logs -f caddy server website admin waline mongo` 查看报错
 
 ## docker 镜像拉取慢
 
-您可以 [设置 docker 镜像加速器](https://www.runoob.com/docker/docker-mirror-acceleration.html)。
+可以为 Docker 配置镜像加速器，或在网络条件允许时提前拉取所需镜像。
 
 ## 端口被占用
 
-改一下编排里的端口映射到非常用端口就好了。
+如果宿主机的 `80` 或 `443` 已被其他服务占用，可以调整 compose 中 `caddy` 的宿主机端口映射，例如：
 
-![端口修改](https://pic.mereith.com/img/47a03229d46e9120ad1e7bf1abf4b504.clipboard-2022-09-14.png)
+```yaml
+ports:
+  - "8080:80"
+  - "8443:443"
+```
 
-## 部署后 http error
+同时也别忘了同步调整外层防火墙和访问地址。
 
-![错误案例](https://pic.mereith.com/img/ae28e582a7dce7be4816c1bf82dd77de.clipboard-2022-08-28.png)
+## 部署后出现数据库连接错误
 
-请检查一下 docker-compose 编排文件，如果修改了下面的数据库账号密码，上面的也要同步修改。
+请优先检查 `server` 服务里的 `VAN_BLOG_DATABASE_URL` 是否和 `mongo` 服务保持一致。
 
-![检查位置](https://pic.mereith.com/img/eb46eabfff8856c84ccd54a97d7f333c.clipboard-2022-08-28.png)
+默认值应类似：
 
-这两个地方的账号密码是对应的，实际上数据库是不会暴露到外面的（因为没有映射端口），所以无需更改默认账号与密码。
+```text
+mongodb://mongo:27017/vanBlog?authSource=admin
+```
 
-如需求该，需要同步修改两处，比如数据库账号密码改成了 `admin` 与 `xxxx`，那对应的数据库链接地址也要改成: `mongodb://admin:xxxx@mongo:27017`。
+如果你改过数据库服务名、端口或鉴权参数，需要一起改这里。
 
-如果还是没能解决可以去 [QQ 交流群](https://jq.qq.com/?_wv=1027&k=5NRyK2Sw) 寻求帮助。
+## 外层反向代理后页面跳转或静态资源异常
 
-## 无法通过 Https + IP 访问网址
+请确保外层代理的是 VanBlog 的统一入口 `caddy`，而不是内部服务端口。
 
-很遗憾，目前不支持通过 `https + ip` 访问，请通过 `https + 域名` 或者 `http + ip` 访问。用 `http + ip` 访问前请在后台设置中关闭 `https 自动重定向`。
+推荐继续参考：[反代](../reference/reverse-proxy.md)
 
-## 宝塔 nginx 反代后前台显示错误
+## 无法通过 HTTPS + IP 访问
 
-使用宝塔内置的 nginx 反代后可能会出现一些问题：比如文章不更新等。
+当前不支持通过 `HTTPS + IP` 的方式直接访问站点。请使用：
 
-之前有朋友也和我反馈了类似的问题。经过排查是因为宝塔 nginx 本身的问题，他卸载了宝塔自带的 nginx ，然后手动安装了新版 nginx（通过系统的包管理器）后，解决了此问题。
+- `HTTPS + 域名`
+- 或 `HTTP + IP`（且关闭 HTTPS 自动重定向）
 
-::: note
+## 还没定位到问题怎么办
 
-宝塔 nginx 本身会在配置文件外自动添加一些配置，或者是有一些专门为了宝塔面板做的定制化改造，导致了这个问题。
+请整理以下信息后提交 Issue：
 
-:::
+- 使用的是 `docker-compose.yml` 还是 `docker-compose.image.yml`
+- `docker compose ps` 的结果
+- `docker compose logs -f caddy server website admin waline mongo` 中的关键错误
+- 你是否额外套了 Nginx / Caddy / CDN
 
-## https 反代前台点击按钮跳转后页面不更新
-
-参考其他人的经验，用 宝塔 + Nginx 可能会出现这个问题，这时可以尝试升级一下 Nginx 版本应该能得到解决。
+Issue 地址：<https://github.com/xxddccaa/vanblog/issues/new/choose>

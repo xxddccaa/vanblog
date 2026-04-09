@@ -4,74 +4,70 @@ icon: certificate
 order: 1
 ---
 
-VanBlog 镜像内采用了 Caddy 作为反向代理，并支持全自动按需 HTTPS 证书申请配置。
+VanBlog 当前由独立的 `caddy` 服务负责统一入口，并支持自动 HTTPS 证书申请与 HTTP -> HTTPS 重定向配置。
 
 <!-- more -->
 
 ::: info Caddy
 
-[Caddy](https://caddyserver.com/) 是一款默认开启并支持自动 HTTPS 、证书申请续期的 Web 服务器。
+[Caddy](https://caddyserver.com/) 是一款默认支持自动 HTTPS 与证书续期的 Web 服务器。
 
 :::
 
-## 开启 HTTPS
+## 开启 HTTPS 的前提
 
-VanBlog 首次运行默认关闭 HTTPS，请通过 HTTP 协议访问。无需多余设置，首次通过 “HTTPS + 域名” 访问时，会自动申请 HTTPS 证书并应用。
+请先确认：
 
-::: info 自动 HTTPS 要求
+- 部署时已经为 `caddy` 设置了 `EMAIL` 环境变量
+- 对外开放了 `80/443` 端口
+- 域名已经正确解析到当前服务器
+- 当前访问使用的是域名而不是裸 IP
 
-- 在部署时设置了 `EMAIL` 环境变量
-- 对外映射了 `80/443` 端口，确保公网可访问
-- 正在通过要申请证书的域名访问该服务器（已经设置了 DNS 解析）
+## 使用方式
 
-:::
+VanBlog 首次运行默认通过 HTTP 访问即可。初始化完成后，使用 `https://<你的域名>` 访问站点时，Caddy 会按需申请证书。
 
-你可以点击 `使用当前访问域名触发按需申请` 按钮手动触发一下证书申请。
-
-触发请后稍等一会（申请时间取决于网络环境）。若成功，页面将通过 HTTPS 正常加载。
+如果你想主动触发一次检查，可以在后台的 HTTPS 设置页面中操作。
 
 ![申请证书](https://pic.mereith.com/img/8383fb4f32144be26cb134c2390d6d10.clipboard-2022-08-23.png)
 
 ::: tip
 
-1. 如果超过 5 分钟还是不生效，请检查日志。
-1. 只有域名可以触发证书申请，通过 IP 访问不会触发。
+1. 如果超过几分钟仍未生效，请优先检查 DNS、端口和日志
+2. 只有域名可以申请证书，IP 地址不能用于自动签发公网证书
 
 :::
 
 ## HTTPS 自动重定向
 
-当你确保可以通过自动申请的证书正常访问的时候，可以选择开启 `https 自动重定向` 功能，开启后所有的 `http` 访问将自动重定向到 HTTPS。
+确认 HTTPS 已经可以正常访问后，再考虑开启 `https 自动重定向`。这样所有 `http` 请求都会跳转到 `https`。
 
-在初始化后，进入后台确认 HTTPS 证书已自动生成，之后可手动开启 https 自动重定请在初始化后进入后台的 `站点管理/系统设置/ HTTPS` 中设置确认 HTTPS 状态后再按需开启 HTTPS 自动重定向。
+这个配置会保存在数据库中，并在 `server` 启动时同步到 `caddy`。
 
 ![开启 https 自动重定向](https://pic.mereith.com/img/d1e7b502279f0bd8225dfaedf89a5140.clipboard-2022-08-23.png)
 
-这个配置将会保存到数据库，每次容器启动的时候都会初始化到 Caddy 中。
-
 ::: note
 
-1. 开启后，不能通过 `http + ip` 访问站点
-1. 无论 HTTPS 自动重定向是否开启，均不支持通过 `HTTPS + IP 地址` 来访问。需要 IP 访问请用 HTTP 协议并关闭 HTTPS 自动重定向。
+- 开启后，不能再通过 `http + ip` 的方式访问站点
+- 无论是否开启重定向，都不支持 `https + IP` 的访问方式
 
 :::
 
-## FAQ
+## 排查方式
 
-::: info 原理
+### 1. 查看 compose 日志
 
-VanBlog 通过 Caddy 的 API 在运行时动态修改配置来开关 HTTPS 自动重定向。
+```bash
+docker compose logs -f caddy server
+```
 
-全自动按需申请证书可以参考 [on-demand-tls](https://caddyserver.com/docs/automatic-https#on-demand-tls)
+### 2. 查看宿主机日志目录
 
-:::
+默认日志文件在 `./log` 中，包括：
 
-::: tip 问题排查
+- `vanblog-access.log`
+- `caddy.log`
 
-如果你熟悉 Caddy ，或者想自己排查，可以点击 `查看日志` 或者 `查看配置` 按钮自行排查。
+### 3. 检查外层反代
 
-- VanBlog 访问日志在容器中的 `/var/log/vanblog-access.log`
-
-- Caddy 的运行日志储存在 `/var/log/caddy.log`中，除了可以在后台查看外，也可以自行进入容器中或挂载目录查看。
-
-:::
+如果你额外套了 Nginx / Caddy / CDN，请先确认它没有拦截证书申请流程，也没有错误改写回源协议与 Host。

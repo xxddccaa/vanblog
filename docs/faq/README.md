@@ -7,20 +7,18 @@ dir:
 
 ::: info VanBlog
 
-VanBlog 目前处于快速迭代期，您可以先尝试参考升级指南进行升级，可能会解决一些问题：
+如果你刚完成升级或迁移，建议优先参考：
 
 - [升级指南](../guide/update.md)
+- [部署常见问题](./deploy.md)
+- [使用常见问题](./usage.md)
 
 :::
 
 ## 问题反馈
 
-如果你在使用过程中遇到问题，请 [开一个 Issue](https://github.com/Mereithhh/van-blog/issues/new/choose)，无特殊情况会在一天内解决。
+如果你在使用过程中遇到问题，请优先到当前仓库提交 Issue：
+
+- <https://github.com/xxddccaa/vanblog/issues/new/choose>
 
 <AutoCatalog />
-
-<!-- ### 什么是 SSG / SSR
-
-### 能解释一下增量渲染吗？
-
-next.js 的 ISR 了解一下？开箱即用。 -->
