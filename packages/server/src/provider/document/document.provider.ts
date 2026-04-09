@@ -144,12 +144,16 @@ export class DocumentProvider {
     query.$and = $and;
     const view = option.toListView ? this.listView : this.adminView;
 
-    const documents = await this.documentModel
-      .find(query, view)
-      .sort(sort)
-      .skip(option.pageSize * option.page - option.pageSize)
-      .limit(option.pageSize)
-      .exec();
+    const documentQuery = this.documentModel.find(query, view).sort(sort);
+    const shouldPaginate = typeof option.pageSize === 'number' ? option.pageSize > 0 : true;
+
+    if (shouldPaginate) {
+      const page = option.page && option.page > 0 ? option.page : 1;
+      const pageSize = option.pageSize as number;
+      documentQuery.skip(pageSize * page - pageSize).limit(pageSize);
+    }
+
+    const documents = await documentQuery.exec();
 
     const total = await this.documentModel.countDocuments(query).exec();
 

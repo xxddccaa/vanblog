@@ -73,12 +73,16 @@ export class MomentProvider {
     }
 
     const total = await this.momentModel.countDocuments(filter);
-    
-    const moments = await this.momentModel
-      .find(filter, view)
-      .sort(sort)
-      .skip((page - 1) * pageSize)
-      .limit(pageSize);
+
+    const query = this.momentModel.find(filter, view).sort(sort);
+    const shouldPaginate = typeof pageSize === 'number' ? pageSize > 0 : true;
+
+    if (shouldPaginate) {
+      const safePage = page > 0 ? page : 1;
+      query.skip((safePage - 1) * pageSize).limit(pageSize);
+    }
+
+    const moments = await query;
 
     return { moments, total };
   }
