@@ -1,6 +1,6 @@
 import { Inject, Injectable, forwardRef, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { CreateArticleDto, SearchArticleOption, UpdateArticleDto } from 'src/types/article.dto';
 import { Article, ArticleDocument } from 'src/scheme/article.schema';
 import { parseImgLinksOfMarkdown } from 'src/utils/parseImgOfMarkdown';
@@ -10,6 +10,7 @@ import { VisitProvider } from '../visit/visit.provider';
 import { sleep } from 'src/utils/sleep';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { buildArticlePreview } from 'src/utils/articlePreview';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 export type ArticleView = 'admin' | 'public' | 'list';
 
@@ -23,6 +24,7 @@ export class ArticleProvider {
     @Inject(forwardRef(() => MetaProvider))
     private readonly metaProvider: MetaProvider,
     private readonly visitProvider: VisitProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
   publicView = {
     title: 1,
@@ -103,6 +105,21 @@ export class ArticleProvider {
       };
     });
   }
+
+  private projectArticleForView(article: any, view: ArticleView) {
+    if (!article) {
+      return article;
+    }
+    const payload = { ...(article?._doc || article) };
+    if (view === 'list') {
+      delete payload.content;
+      delete payload.password;
+    }
+    if (view === 'public') {
+      delete payload.password;
+    }
+    return payload;
+  }
   async create(
     createArticleDto: CreateArticleDto,
     skipUpdateWordCount?: boolean,
@@ -114,7 +131,8 @@ export class ArticleProvider {
     if (!skipUpdateWordCount) {
       this.metaProvider.updateTotalWords('新建文章');
     }
-    const res = createdData.save();
+    const res = await createdData.save();
+    await this.structuredDataService.upsertArticle(res.toObject());
     return res;
   }
   async searchArticlesByLink(link: string) {
@@ -158,12 +176,12 @@ export class ArticleProvider {
   }
 
   async updateViewerByPathname(pathname: string, isNew: boolean) {
-    let article = await this.getByPathName(pathname, 'list');
+    let article = await this.getByPathName(pathname, 'admin');
     if (!article) {
       // 这是通过 id 的吧，检查是否为有效数字
       const numericId = Number(pathname);
       if (!isNaN(numericId)) {
-        article = await this.getById(numericId, 'list');
+        article = await this.getById(numericId, 'admin');
       }
       if (!article) {
         return;
@@ -178,10 +196,16 @@ export class ArticleProvider {
       { id: article.id },
       { visited: newVisited, viewer: newViewer, lastVisitedTime: nowTime },
     );
+    await this.structuredDataService.upsertArticle({
+      ...(article?._doc || article),
+      visited: newVisited,
+      viewer: newViewer,
+      lastVisitedTime: nowTime,
+    });
   }
 
   async updateViewer(id: number, isNew: boolean) {
-    const article = await this.getById(id, 'list');
+    const article = await this.getById(id, 'admin');
     if (!article) {
       return;
     }
@@ -194,9 +218,19 @@ export class ArticleProvider {
       { id: id },
       { visited: newVisited, viewer: newViewer, lastVisitedTime: nowTime },
     );
+    await this.structuredDataService.upsertArticle({
+      ...(article?._doc || article),
+      visited: newVisited,
+      viewer: newViewer,
+      lastVisitedTime: nowTime,
+    });
   }
 
   async getRecentVisitedArticles(num: number, view: ArticleView) {
+    const articles = await this.structuredDataService.getRecentVisitedArticles(num);
+    if (articles.length) {
+      return articles.map((article) => this.projectArticleForView(article, view));
+    }
     return await this.articleModel
       .find(
         {
@@ -217,6 +251,10 @@ export class ArticleProvider {
   }
 
   async getTopViewer(view: ArticleView, num: number) {
+    const articles = await this.structuredDataService.getTopViewerArticles(num);
+    if (articles.length) {
+      return articles.map((article) => this.projectArticleForView(article, view));
+    }
     return await this.articleModel
       .find(
         {
@@ -236,6 +274,10 @@ export class ArticleProvider {
       .limit(num);
   }
   async getTopVisited(view: ArticleView, num: number) {
+    const articles = await this.structuredDataService.getTopVisitedArticles(num);
+    if (articles.length) {
+      return articles.map((article) => this.projectArticleForView(article, view));
+    }
     return await this.articleModel
       .find(
         {
@@ -349,6 +391,10 @@ export class ArticleProvider {
     return total;
   }
   async getTotalNum(includeHidden: boolean) {
+    const total = await this.structuredDataService.getTotalArticles(includeHidden);
+    if (total || this.structuredDataService.isInitialized()) {
+      return total;
+    }
     const $and: any = [
       {
         $or: [
@@ -399,6 +445,13 @@ export class ArticleProvider {
     includeHidden: boolean,
     includeDelete?: boolean,
   ): Promise<Article[]> {
+    const pgArticles = await this.structuredDataService.listArticles({
+      includeHidden,
+      includeDelete,
+    });
+    if (pgArticles.length || this.structuredDataService.isInitialized()) {
+      return pgArticles.map((article) => this.projectArticleForView(article, view)) as any;
+    }
     const thisView: any = this.getView(view);
     const $and: any = [];
     if (!includeDelete) {
@@ -442,42 +495,20 @@ export class ArticleProvider {
   }
 
   async getTimeLineInfo() {
-    // 肯定是不需要具体内容的，一个列表就好了
-    const articles = await this.articleModel
-      .find(
-        {
-          $and: [
-            {
-              $or: [
-                {
-                  deleted: false,
-                },
-                {
-                  deleted: { $exists: false },
-                },
-              ],
-            },
-            {
-              $or: [
-                {
-                  hidden: false,
-                },
-                {
-                  hidden: { $exists: false },
-                },
-              ],
-            },
-          ],
-        },
-        this.listView,
-      )
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
-    // 清洗一下数据：按年分组
-    const years = Array.from(
-      new Set(articles.map((a) => a.createdAt.getFullYear()))
-    ).sort((a: number, b: number) => b - a);
+    const grouped = await this.structuredDataService.getTimelineArticlesGrouped(false);
+    if (Object.keys(grouped).length || this.structuredDataService.isInitialized()) {
+      return Object.fromEntries(
+        Object.entries(grouped).map(([year, articles]) => [
+          year,
+          ((articles as Article[]) || []).map((article) => this.projectArticleForView(article, 'list')),
+        ]),
+      );
+    }
+
+    const articles = await this.getAll('list', false);
+    const years = Array.from(new Set(articles.map((a) => a.createdAt.getFullYear()))).sort(
+      (a: number, b: number) => b - a,
+    );
     const res: Record<string, Article[]> = {};
     years.forEach((year) => {
       res[String(year)] = articles.filter((a) => a.createdAt.getFullYear() === year);
@@ -486,38 +517,12 @@ export class ArticleProvider {
   }
 
   async getTimeLineSummary() {
-    const articles = await this.articleModel
-      .find(
-        {
-          $and: [
-            {
-              $or: [
-                {
-                  deleted: false,
-                },
-                {
-                  deleted: { $exists: false },
-                },
-              ],
-            },
-            {
-              $or: [
-                {
-                  hidden: false,
-                },
-                {
-                  hidden: { $exists: false },
-                },
-              ],
-            },
-          ],
-        },
-        this.listView,
-      )
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+    const summary = await this.structuredDataService.getTimelineSummary(false);
+    if (summary.length || this.structuredDataService.isInitialized()) {
+      return summary;
+    }
 
+    const articles = await this.getAll('list', false);
     const yearMap = new Map<number, number>();
     articles.forEach((article) => {
       const year = article.createdAt.getFullYear();
@@ -541,6 +546,20 @@ export class ArticleProvider {
     const start = new Date(numericYear, 0, 1);
     const end = new Date(numericYear + 1, 0, 1);
 
+    const result = await this.structuredDataService.queryArticles(
+      {
+        page: 1,
+        pageSize: -1,
+        regMatch: false,
+        startTime: start.toISOString(),
+        endTime: new Date(end.getTime() - 1).toISOString(),
+        toListView: true,
+      },
+      true,
+    );
+    if (result.articles.length || this.structuredDataService.isInitialized()) {
+      return result.articles.map((article) => this.projectArticleForView(article, 'list')) as any;
+    }
     return await this.articleModel
       .find(
         {
@@ -583,163 +602,13 @@ export class ArticleProvider {
     option: SearchArticleOption,
     isPublic: boolean,
   ): Promise<{ articles: Article[]; total: number; totalWordCount?: number }> {
-    const query: any = {};
-    const $and: any = [
-      {
-        $or: [
-          {
-            deleted: false,
-          },
-          {
-            deleted: { $exists: false },
-          },
-        ],
-      },
-    ];
-    const and = [];
-    let sort: any = { createdAt: -1 };
-    if (isPublic) {
-      $and.push({
-        $or: [
-          {
-            hidden: false,
-          },
-          {
-            hidden: { $exists: false },
-          },
-        ],
-      });
-    }
+    const pgResult = await this.structuredDataService.queryArticles(option, isPublic);
+    let articles: any[] = pgResult.articles;
+    const total = pgResult.total;
 
-    if (option.sortTop) {
-      if (option.sortTop == 'asc') {
-        sort = { top: 1 };
-      } else {
-        sort = { top: -1 };
-      }
+    if (!articles.length && !total && !this.structuredDataService.isInitialized()) {
+      return await this.getByOptionFallback(option, isPublic);
     }
-    if (option.sortViewer) {
-      if (option.sortViewer == 'asc') {
-        sort = { viewer: 1 };
-      } else {
-        sort = { viewer: -1 };
-      }
-    }
-    if (option.sortCreatedAt) {
-      if (option.sortCreatedAt == 'asc') {
-        sort = { createdAt: 1 };
-      }
-    }
-    if (option.tags) {
-      const tags = option.tags.split(',');
-      const or: any = [];
-      tags.forEach((t) => {
-        if (option.regMatch) {
-          or.push({
-            tags: { $regex: `${t}`, $options: 'i' },
-          });
-        } else {
-          or.push({
-            tags: t,
-          });
-        }
-      });
-      and.push({ $or: or });
-    }
-    if (option.category) {
-      if (option.regMatch) {
-        and.push({
-          category: { $regex: `${option.category}`, $options: 'i' },
-        });
-      } else {
-        and.push({
-          category: option.category,
-        });
-      }
-    }
-    if (option.title) {
-      and.push({
-        title: { $regex: `${option.title}`, $options: 'i' },
-      });
-    }
-    if (option.startTime || option.endTime) {
-      const obj: any = {};
-      if (option.startTime) {
-        obj['$gte'] = new Date(option.startTime);
-      }
-      if (option.endTime) {
-        obj['$lte'] = new Date(option.endTime);
-      }
-      $and.push({ createdAt: obj });
-    }
-
-    if (and.length) {
-      $and.push({ $and: and });
-    }
-
-    query.$and = $and;
-    // console.log(JSON.stringify(query, null, 2));
-    // console.log(JSON.stringify(sort, null, 2));
-    let view: any = isPublic ? this.publicView : this.adminView;
-    if (option.toListView) {
-      view = this.listView;
-    }
-    if (option.withPreviewContent) {
-      view = this.overviewView;
-    }
-    if (option.withWordCount) {
-      view = isPublic ? this.publicView : this.adminView;
-    }
-    let articles: any[];
-    if (option.pageSize !== -1 && isPublic) {
-      // 公开分页：置顶文章始终显示在最前，其余用数据库级分页
-      const pageSize = option.pageSize;
-      const page = option.page;
-      const globalSkip = pageSize * (page - 1);
-
-      // 先取出全部置顶文章（通常极少，个位数），按置顶权重降序
-      const pinnedArticles = await this.articleModel
-        .find({ $and: [...$and, { top: { $gt: 0 } }] }, view)
-        .sort({ top: -1 })
-        .lean()
-        .exec();
-      const numPinned = pinnedArticles.length;
-
-      let result: any[] = [];
-      if (globalSkip < numPinned) {
-        result = pinnedArticles.slice(globalSkip, Math.min(numPinned, globalSkip + pageSize));
-      }
-
-      const nonPinnedNeeded = pageSize - result.length;
-      if (nonPinnedNeeded > 0) {
-        const nonPinnedSkip = Math.max(0, globalSkip - numPinned);
-        const nonPinnedArticles = await this.articleModel
-          .find({ $and: [...$and, { top: { $lte: 0 } }] }, view)
-          .sort(sort)
-          .skip(nonPinnedSkip)
-          .limit(nonPinnedNeeded)
-          .lean()
-          .exec();
-        result = [...result, ...nonPinnedArticles];
-      }
-
-      articles = result;
-    } else if (option.pageSize !== -1 && !isPublic) {
-      // 管理端分页：直接数据库级 skip/limit
-      articles = await this.articleModel
-        .find(query, view)
-        .sort(sort)
-        .skip(option.pageSize * option.page - option.pageSize)
-        .limit(option.pageSize)
-        .lean()
-        .exec();
-    } else {
-      // pageSize === -1：取全部
-      articles = await this.articleModel.find(query, view).sort(sort).lean().exec();
-    }
-    // withWordCount 只会返回当前分页的文字数量
-
-    const total = await this.articleModel.countDocuments(query).exec();
     // 过滤私有文章
     if (isPublic) {
       // 批量查询分类，避免 N+1 问题
@@ -813,10 +682,189 @@ export class ArticleProvider {
         content: undefined,
         password: undefined,
       }));
+    } else if (option.toListView && !option.withPreviewContent) {
+      resData.articles = articles.map((article: any) => this.projectArticleForView(article, 'list'));
+    } else if (isPublic) {
+      resData.articles = articles.map((article: any) => this.projectArticleForView(article, 'public'));
     } else {
       resData.articles = articles;
     }
 
+    resData.total = total;
+    return resData;
+  }
+
+  private async getByOptionFallback(
+    option: SearchArticleOption,
+    isPublic: boolean,
+  ): Promise<{ articles: Article[]; total: number; totalWordCount?: number }> {
+    const query: any = {};
+    const $and: any = [
+      {
+        $or: [
+          {
+            deleted: false,
+          },
+          {
+            deleted: { $exists: false },
+          },
+        ],
+      },
+    ];
+    const and = [];
+    let sort: any = { createdAt: -1 };
+    if (isPublic) {
+      $and.push({
+        $or: [
+          {
+            hidden: false,
+          },
+          {
+            hidden: { $exists: false },
+          },
+        ],
+      });
+    }
+
+    if (option.sortTop) {
+      sort = { top: option.sortTop == 'asc' ? 1 : -1 };
+    }
+    if (option.sortViewer) {
+      sort = { viewer: option.sortViewer == 'asc' ? 1 : -1 };
+    }
+    if (option.sortCreatedAt) {
+      if (option.sortCreatedAt == 'asc') {
+        sort = { createdAt: 1 };
+      }
+    }
+    if (option.tags) {
+      const tags = option.tags.split(',');
+      const or: any = [];
+      tags.forEach((t) => {
+        if (option.regMatch) {
+          or.push({
+            tags: { $regex: `${t}`, $options: 'i' },
+          });
+        } else {
+          or.push({
+            tags: t,
+          });
+        }
+      });
+      and.push({ $or: or });
+    }
+    if (option.category) {
+      if (option.regMatch) {
+        and.push({
+          category: { $regex: `${option.category}`, $options: 'i' },
+        });
+      } else {
+        and.push({
+          category: option.category,
+        });
+      }
+    }
+    if (option.title) {
+      and.push({
+        title: { $regex: `${option.title}`, $options: 'i' },
+      });
+    }
+    if (option.startTime || option.endTime) {
+      const obj: any = {};
+      if (option.startTime) {
+        obj['$gte'] = new Date(option.startTime);
+      }
+      if (option.endTime) {
+        obj['$lte'] = new Date(option.endTime);
+      }
+      $and.push({ createdAt: obj });
+    }
+    if (and.length) {
+      $and.push({ $and: and });
+    }
+    query.$and = $and;
+    let view: any = isPublic ? this.publicView : this.adminView;
+    if (option.toListView) {
+      view = this.listView;
+    }
+    if (option.withPreviewContent) {
+      view = this.overviewView;
+    }
+    if (option.withWordCount) {
+      view = isPublic ? this.publicView : this.adminView;
+    }
+
+    let articles: any[];
+    if (option.pageSize !== -1 && isPublic) {
+      const pageSize = option.pageSize;
+      const page = option.page;
+      const globalSkip = pageSize * (page - 1);
+      const pinnedArticles = await this.articleModel
+        .find({ $and: [...$and, { top: { $gt: 0 } }] }, view)
+        .sort({ top: -1 })
+        .lean()
+        .exec();
+      const numPinned = pinnedArticles.length;
+      let result: any[] = [];
+      if (globalSkip < numPinned) {
+        result = pinnedArticles.slice(globalSkip, Math.min(numPinned, globalSkip + pageSize));
+      }
+      const nonPinnedNeeded = pageSize - result.length;
+      if (nonPinnedNeeded > 0) {
+        const nonPinnedSkip = Math.max(0, globalSkip - numPinned);
+        const nonPinnedArticles = await this.articleModel
+          .find({ $and: [...$and, { top: { $lte: 0 } }] }, view)
+          .sort(sort)
+          .skip(nonPinnedSkip)
+          .limit(nonPinnedNeeded)
+          .lean()
+          .exec();
+        result = [...result, ...nonPinnedArticles];
+      }
+      articles = result;
+    } else if (option.pageSize !== -1 && !isPublic) {
+      articles = await this.articleModel
+        .find(query, view)
+        .sort(sort)
+        .skip(option.pageSize * option.page - option.pageSize)
+        .limit(option.pageSize)
+        .lean()
+        .exec();
+    } else {
+      articles = await this.articleModel.find(query, view).sort(sort).lean().exec();
+    }
+    const total = await this.articleModel.countDocuments(query).exec();
+    if (option.withPreviewContent && !option.withWordCount) {
+      articles = articles.map((article: any) => {
+        if (article.private) {
+          return {
+            ...article,
+            content: undefined,
+          };
+        }
+        return {
+          ...article,
+          content: buildArticlePreview(article.content || ''),
+        };
+      });
+    }
+    const resData: any = {};
+    if (option.withWordCount) {
+      let totalWordCount = 0;
+      articles.forEach((a) => {
+        totalWordCount = totalWordCount + wordCount(a?.content || '');
+      });
+      resData.totalWordCount = totalWordCount;
+    }
+    if (option.withWordCount && option.toListView) {
+      resData.articles = articles.map((a: any) => ({
+        ...(a?._doc || a),
+        content: undefined,
+        password: undefined,
+      }));
+    } else {
+      resData.articles = articles;
+    }
     resData.total = total;
     return resData;
   }
@@ -861,6 +909,10 @@ export class ArticleProvider {
   }
 
   async getByPathName(pathname: string, view: ArticleView): Promise<Article> {
+    const article = await this.structuredDataService.getArticleByPathname(pathname);
+    if (article) {
+      return this.projectArticleForView(article, view);
+    }
     const $and: any = [
       {
         $or: [
@@ -887,6 +939,10 @@ export class ArticleProvider {
   }
 
   async getById(id: number, view: ArticleView): Promise<Article> {
+    const article = await this.structuredDataService.getArticleById(id);
+    if (article) {
+      return this.projectArticleForView(article, view);
+    }
     const $and: any = [
       {
         $or: [
@@ -1069,6 +1125,10 @@ export class ArticleProvider {
   }
 
   async findOneByTitle(title: string): Promise<Article> {
+    const article = await this.structuredDataService.getArticleByTitle(title);
+    if (article) {
+      return article as any;
+    }
     return this.articleModel.findOne({ title }).exec();
   }
 
@@ -1084,6 +1144,10 @@ export class ArticleProvider {
   }
 
   async searchByString(str: string, includeHidden: boolean): Promise<Article[]> {
+    const pgResults = await this.structuredDataService.searchArticles(str, includeHidden);
+    if (pgResults.length || this.structuredDataService.isInitialized()) {
+      return pgResults as any;
+    }
     const $and: any = [
       {
         $or: [
@@ -1142,7 +1206,15 @@ export class ArticleProvider {
     return this.articleModel.find({}).exec();
   }
   async deleteById(id: number) {
-    const res = await this.articleModel.updateOne({ id }, { deleted: true }).exec();
+    const originalArticle = await this.getById(id, 'admin');
+    const res = await this.articleModel.updateOne({ id }, { deleted: true });
+    if (originalArticle) {
+      await this.structuredDataService.upsertArticle({
+        ...(originalArticle?._doc || originalArticle),
+        deleted: true,
+        updatedAt: new Date(),
+      });
+    }
     this.metaProvider.updateTotalWords('删除文章');
     return res;
   }
@@ -1157,6 +1229,12 @@ export class ArticleProvider {
     }
     
     const result = await this.articleModel.updateOne({ id }, updateData);
+    if (originalArticle) {
+      await this.structuredDataService.upsertArticle({
+        ...(originalArticle?._doc || originalArticle),
+        ...updateData,
+      });
+    }
     
     // 如果标签发生变化，更新Tag表
     if (updateArticleDto.tags !== undefined && originalArticle) {
@@ -1176,18 +1254,7 @@ export class ArticleProvider {
   }
 
   async getNewId() {
-    while (this.idLock) {
-      await sleep(10);
-    }
-    this.idLock = true;
-    // 只考虑正常范围的ID，忽略临时ID（50000+, 100000+等）
-    const maxObj = await this.articleModel.find({ id: { $lt: 50000 } }).sort({ id: -1 }).limit(1);
-    let res = 1;
-    if (maxObj.length) {
-      res = maxObj[0].id + 1;
-    }
-    this.idLock = false;
-    return res;
+    return await this.structuredDataService.nextArticleId();
   }
 
     /**

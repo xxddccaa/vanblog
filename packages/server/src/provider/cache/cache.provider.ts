@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import Redis from 'ioredis';
+import { config } from 'src/config';
 
 interface CacheItem {
   value: any;
@@ -7,71 +9,135 @@ interface CacheItem {
 
 @Injectable()
 export class CacheProvider {
-  private data: Record<string, CacheItem> = {};
+  private readonly logger = new Logger(CacheProvider.name);
+  private readonly memory = new Map<string, CacheItem>();
+  private redis: Redis | null = null;
+  private redisReady = false;
+  private redisFailed = false;
 
-  get(key: string) {
-    const item = this.data[key];
-    if (!item) {
+  private async getRedis() {
+    if (this.redisFailed || !config.redisUrl) {
       return null;
     }
-
-    // 检查是否过期
-    if (item.expireTime && Date.now() > item.expireTime) {
-      delete this.data[key];
-      return null;
+    if (!this.redis) {
+      this.redis = new Redis(config.redisUrl, {
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+      });
     }
-
-    return item.value;
-  }
-
-  set(key: string, value: any, ttlSeconds?: number) {
-    const item: CacheItem = { value };
-    
-    if (ttlSeconds) {
-      item.expireTime = Date.now() + ttlSeconds * 1000;
-    }
-
-    this.data[key] = item;
-  }
-
-  del(key: string) {
-    delete this.data[key];
-  }
-
-  // 支持模式匹配删除（简单的通配符匹配）
-  delPattern(pattern: string) {
-    const regex = new RegExp(pattern.replace(/\*/g, '.*'));
-    const keysToDelete = Object.keys(this.data).filter(key => regex.test(key));
-    keysToDelete.forEach(key => delete this.data[key]);
-  }
-
-  // 清理过期的缓存项
-  cleanup() {
-    const now = Date.now();
-    Object.keys(this.data).forEach(key => {
-      const item = this.data[key];
-      if (item.expireTime && now > item.expireTime) {
-        delete this.data[key];
+    if (!this.redisReady) {
+      try {
+        await this.redis.connect();
+        this.redisReady = true;
+      } catch (error) {
+        this.redisFailed = true;
+        this.logger.warn(`Redis 不可用，回退到内存缓存: ${error?.message || error}`);
+        return null;
       }
+    }
+    return this.redis;
+  }
+
+  private storeInMemory(key: string, value: any, ttlSeconds?: number) {
+    this.memory.set(key, {
+      value,
+      expireTime: ttlSeconds ? Date.now() + ttlSeconds * 1000 : undefined,
     });
   }
 
-  // 获取缓存统计信息
-  getStats() {
-    const total = Object.keys(this.data).length;
-    const expired = Object.values(this.data).filter(
-      item => item.expireTime && Date.now() > item.expireTime
-    ).length;
-    
+  private readFromMemory(key: string) {
+    const item = this.memory.get(key);
+    if (!item) {
+      return null;
+    }
+    if (item.expireTime && Date.now() > item.expireTime) {
+      this.memory.delete(key);
+      return null;
+    }
+    return item.value;
+  }
+
+  async get(key: string) {
+    const redis = await this.getRedis();
+    if (redis) {
+      const raw = await redis.get(key);
+      if (!raw) {
+        return null;
+      }
+      return JSON.parse(raw);
+    }
+    return this.readFromMemory(key);
+  }
+
+  async set(key: string, value: any, ttlSeconds?: number) {
+    this.storeInMemory(key, value, ttlSeconds);
+    const redis = await this.getRedis();
+    if (!redis) {
+      return;
+    }
+    const payload = JSON.stringify(value);
+    if (ttlSeconds) {
+      await redis.set(key, payload, 'EX', ttlSeconds);
+      return;
+    }
+    await redis.set(key, payload);
+  }
+
+  async del(key: string) {
+    this.memory.delete(key);
+    const redis = await this.getRedis();
+    if (redis) {
+      await redis.del(key);
+    }
+  }
+
+  async delPattern(pattern: string) {
+    const regex = new RegExp(`^${pattern.replace(/\*/g, '.*')}$`);
+    for (const key of this.memory.keys()) {
+      if (regex.test(key)) {
+        this.memory.delete(key);
+      }
+    }
+
+    const redis = await this.getRedis();
+    if (!redis) {
+      return;
+    }
+
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+      cursor = nextCursor;
+      if (keys.length) {
+        await redis.del(...keys);
+      }
+    } while (cursor !== '0');
+  }
+
+  cleanup() {
+    const now = Date.now();
+    for (const [key, item] of this.memory.entries()) {
+      if (item.expireTime && now > item.expireTime) {
+        this.memory.delete(key);
+      }
+    }
+  }
+
+  async getStats() {
+    this.cleanup();
     return {
-      total,
-      active: total - expired,
-      expired,
+      total: this.memory.size,
+      active: this.memory.size,
+      expired: 0,
+      backend: this.redisFailed || !config.redisUrl ? 'memory' : 'redis',
     };
   }
 
-  // 清空所有缓存
-  clear() {
-    this.data = {};
+  async clear() {
+    this.memory.clear();
+    const redis = await this.getRedis();
+    if (redis) {
+      await redis.flushdb();
+    }
   }
 }

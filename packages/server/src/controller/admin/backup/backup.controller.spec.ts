@@ -191,6 +191,17 @@ describe('BackupController import mode', () => {
       exportAllCollections: jest.fn().mockResolvedValue({}),
       ...overrides.mongoBackupProvider,
     };
+    const structuredDataService = {
+      refreshAllFromRecordStore: jest.fn().mockResolvedValue(undefined),
+      clearStructuredDataForRestore: jest.fn().mockResolvedValue(undefined),
+      deleteAllSettings: jest.fn().mockResolvedValue(undefined),
+      deleteUsersExcept: jest.fn().mockResolvedValue(undefined),
+      upsertMeta: jest.fn().mockResolvedValue(undefined),
+      upsertDraft: jest.fn().mockResolvedValue(undefined),
+      upsertMoment: jest.fn().mockResolvedValue(undefined),
+      upsertDocument: jest.fn().mockResolvedValue(undefined),
+      ...overrides.structuredDataService,
+    };
 
     const controller = new BackupController(
       articleProvider as any,
@@ -215,6 +226,7 @@ describe('BackupController import mode', () => {
       documentProvider as any,
       mindMapProvider as any,
       mongoBackupProvider as any,
+      structuredDataService as any,
     );
 
     return {
@@ -239,10 +251,11 @@ describe('BackupController import mode', () => {
       documentProvider,
       mindMapProvider,
       mongoBackupProvider,
+      structuredDataService,
     };
   };
 
-  it('exports full-system migration data including all tokens and raw mongo collections', async () => {
+  it('exports full-site backup data including compatibility raw collections', async () => {
     let downloadCallback: (() => void) | undefined;
     const download = jest.fn((name, cb) => {
       downloadCallback = cb;
@@ -282,14 +295,18 @@ describe('BackupController import mode', () => {
       expect.objectContaining({ token: 'api-token', userId: 666666 }),
       expect.objectContaining({ token: 'login-token', userId: 0 }),
     ]);
-    expect(exportedJson.mongoCollections).toEqual({
+    expect(exportedJson.rawCollections).toEqual({
       articles: [{ id: 1, title: 'post' }],
       tokens: [{ token: 'login-token', userId: 0 }],
     });
-    expect(exportedJson.backupInfo.mongoCollectionCounts).toEqual({
+    expect(exportedJson.mongoCollections).toEqual(exportedJson.rawCollections);
+    expect(exportedJson.backupInfo.rawCollectionCounts).toEqual({
       articles: 1,
       tokens: 1,
     });
+    expect(exportedJson.backupInfo.mongoCollectionCounts).toEqual(
+      exportedJson.backupInfo.rawCollectionCounts,
+    );
     expect(download).toHaveBeenCalledWith(
       expect.stringMatching(/^vanblog-backup-\d{4}-\d{2}-\d{2}-\d{6}\.json$/),
       expect.any(Function),
@@ -299,12 +316,13 @@ describe('BackupController import mode', () => {
   });
 
   it('restores users and site info when importing into a fresh instance', async () => {
-    const { controller, userProvider, metaProvider, settingProvider } = createController();
+    const { controller, userProvider, metaProvider, settingProvider, structuredDataService } =
+      createController();
 
     const result = await controller.importAll({
       buffer: Buffer.from(
         JSON.stringify({
-          backupInfo: { version: '3.0.0' },
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
           users: [{ id: 0, name: 'admin', password: 'hash', salt: 'salt' }],
           meta: { siteInfo: { siteName: 'Migrated Blog' }, links: [] },
           settings: [{ type: 'menu', value: { data: [] } }],
@@ -330,10 +348,18 @@ describe('BackupController import mode', () => {
       [{ type: 'menu', value: { data: [] } }],
       true,
     );
+    expect(structuredDataService.refreshAllFromRecordStore).toHaveBeenCalledWith('backup-import');
   });
 
   it('keeps only the current login credentials when importing into a non-empty instance', async () => {
-    const { controller, userProvider, metaProvider, settingProvider, articleProvider } =
+    const {
+      controller,
+      userProvider,
+      metaProvider,
+      settingProvider,
+      articleProvider,
+      structuredDataService,
+    } =
       createController({
       articleProvider: {
         getTotalNum: jest.fn().mockResolvedValue(1),
@@ -343,7 +369,7 @@ describe('BackupController import mode', () => {
     const result = await controller.importAll({
       buffer: Buffer.from(
         JSON.stringify({
-          backupInfo: { version: '3.0.0' },
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
           users: [{ id: 0, name: 'admin', password: 'hash', salt: 'salt' }],
           meta: {
             siteInfo: { siteName: 'Should Keep Current Site' },
@@ -357,6 +383,7 @@ describe('BackupController import mode', () => {
     expect(result.statusCode).toBe(200);
     expect(articleProvider.articleModel.deleteMany).toHaveBeenCalled();
     expect(userProvider.userModel.deleteMany).toHaveBeenCalledWith({ id: { $ne: 0 } });
+    expect(structuredDataService.clearStructuredDataForRestore).toHaveBeenCalledWith([0]);
     expect(userProvider.importUsers).toHaveBeenCalledWith([
       expect.objectContaining({
         id: 0,
@@ -377,6 +404,7 @@ describe('BackupController import mode', () => {
       [{ type: 'menu', value: { data: [] } }],
       true,
     );
+    expect(structuredDataService.refreshAllFromRecordStore).toHaveBeenCalledWith('backup-import');
   });
 
   it('can hydrate import data from raw mongo collections when logical fields are absent', async () => {
@@ -386,7 +414,7 @@ describe('BackupController import mode', () => {
     const result = await controller.importAll({
       buffer: Buffer.from(
         JSON.stringify({
-          backupInfo: { version: '3.0.0' },
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
           mongoCollections: {
             users: [{ id: 0, name: 'admin', password: 'hash', salt: 'salt' }],
             metas: [{ siteInfo: { siteName: 'Migrated From Raw Snapshot' } }],
@@ -451,7 +479,7 @@ describe('BackupController import mode', () => {
     const result = await controller.importAll({
       buffer: Buffer.from(
         JSON.stringify({
-          backupInfo: { version: '3.0.0' },
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
           moments: [{ id: 1, content: 'moment-1', createdAt: '2026-04-01T00:00:00.000Z' }],
           documents: [
             { id: 10, type: 'library', title: 'Docs', path: [], library_id: null, parent_id: null },

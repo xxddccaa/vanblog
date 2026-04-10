@@ -17,7 +17,7 @@ actions:
 features:
   - title: 多容器架构
     icon: cubes
-    details: 默认拆分为 caddy、server、website、admin、waline、mongo 六个服务，部署与排障更清晰
+    details: 默认拆分为 caddy、server、website、admin、postgres、redis 六个服务，部署与排障更清晰
 
   - title: 前后台一体
     icon: window-maximize

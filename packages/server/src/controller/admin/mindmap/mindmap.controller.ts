@@ -17,6 +17,7 @@ import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
 import { config } from 'src/config';
 import { ApiToken } from 'src/provider/swagger/token';
+import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 
 @ApiTags('mindmap')
 @UseGuards(...AdminGuard)
@@ -25,6 +26,7 @@ import { ApiToken } from 'src/provider/swagger/token';
 export class MindMapController {
   constructor(
     private readonly mindMapProvider: MindMapProvider,
+    private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
 
   @Get('/')
@@ -77,6 +79,7 @@ export class MindMapController {
   @Put('/:id')
   async update(@Param('id') id: string, @Body() updateDto: UpdateMindMapDto) {
     const data = await this.mindMapProvider.updateById(id, updateDto);
+    this.searchIndexProvider.generateSearchIndex('更新思维导图触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -90,6 +93,7 @@ export class MindMapController {
       createDto.author = author;
     }
     const data = await this.mindMapProvider.create(createDto);
+    this.searchIndexProvider.generateSearchIndex('创建思维导图触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -105,6 +109,7 @@ export class MindMapController {
       };
     }
     const data = await this.mindMapProvider.deleteById(id);
+    this.searchIndexProvider.generateSearchIndex('删除思维导图触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -120,4 +125,3 @@ export class MindMapController {
     };
   }
 }
-

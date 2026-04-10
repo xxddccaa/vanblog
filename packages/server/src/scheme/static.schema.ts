@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, SchemaTypes } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from 'src/storage/mongoose-compat';
+import { Document, SchemaTypes } from 'src/storage/mongoose-compat';
 import { StaticType, StorageType } from 'src/types/setting.dto';
 
 export type StaticDocument = Static & Document;

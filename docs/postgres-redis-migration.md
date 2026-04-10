@@ -58,8 +58,8 @@ This migration must be staged. Existing users already have production content in
 
 Current repository status:
 
-- the admin "导出全部数据" flow now exports both logical blog entities and a `mongoCollections` raw snapshot of every MongoDB collection
-- the admin import flow can restore from the logical payload and can also hydrate from the raw `mongoCollections` snapshot when needed
+- the admin "导出站点 JSON" flow now exports both logical blog entities and a compatibility `rawCollections` payload (with `mongoCollections` kept as a legacy alias)
+- the admin import flow can restore from the logical payload and can also hydrate from legacy raw collections when needed
 - images are still treated as file-path metadata only; binary files must be migrated separately
 
 ### Phase 3: dual-read verification in non-production

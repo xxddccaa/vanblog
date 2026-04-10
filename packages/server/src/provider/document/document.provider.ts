@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { Document, DocumentDocument } from 'src/scheme/document.schema';
 import { CreateDocumentDto, UpdateDocumentDto, SearchDocumentOption, MoveDocumentDto } from 'src/types/document.dto';
 import { DraftProvider } from '../draft/draft.provider';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 export type DocumentView = 'admin' | 'public' | 'list';
 
@@ -13,6 +14,7 @@ export class DocumentProvider {
     @InjectModel(Document.name)
     private documentModel: Model<DocumentDocument>,
     private readonly draftProvider: DraftProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   publicView = {
@@ -74,6 +76,17 @@ export class DocumentProvider {
     return thisView;
   }
 
+  private projectDocumentForView(document: any, view: DocumentView) {
+    if (!document) {
+      return document;
+    }
+    const payload = { ...(document?._doc || document) };
+    if (view === 'list') {
+      delete payload.content;
+    }
+    return payload;
+  }
+
   async create(createDocumentDto: CreateDocumentDto): Promise<Document> {
     const newId = await this.getNewId();
     const path = await this.calculatePath(createDocumentDto.parent_id, createDocumentDto.library_id);
@@ -84,10 +97,21 @@ export class DocumentProvider {
       path: path,
     });
     
-    return createdData.save();
+    const saved = await createdData.save();
+    await this.structuredDataService.upsertDocument(saved.toObject());
+    return saved;
   }
 
   async getByOption(option: SearchDocumentOption): Promise<{ documents: Document[]; total: number }> {
+    const pgResult = await this.structuredDataService.queryDocuments(option);
+    if (pgResult.documents.length || pgResult.total || this.structuredDataService.isInitialized()) {
+      return {
+        total: pgResult.total,
+        documents: pgResult.documents.map((doc: any) =>
+          this.projectDocumentForView(doc, option.toListView ? 'list' : 'admin'),
+        ),
+      } as any;
+    }
     const query: any = {};
     const $and: any = [
       {
@@ -164,6 +188,10 @@ export class DocumentProvider {
   }
 
   async getById(id: number): Promise<Document> {
+    const document = await this.structuredDataService.getDocumentById(id);
+    if (document) {
+      return this.projectDocumentForView(document, 'admin') as any;
+    }
     return this.documentModel.findOne({ id, deleted: false }).exec();
   }
 
@@ -182,10 +210,15 @@ export class DocumentProvider {
       updateDocumentDto.path = newPath;
     }
 
-    return this.documentModel.updateOne(
+    const result = await this.documentModel.updateOne(
       { id },
       { ...updateDocumentDto, updatedAt: new Date() }
     );
+    const latest = await this.documentModel.findOne({ id }).lean().exec();
+    if (latest) {
+      await this.structuredDataService.upsertDocument(latest);
+    }
+    return result;
   }
 
   async deleteById(id: number) {
@@ -193,6 +226,7 @@ export class DocumentProvider {
     const doc = await this.getById(id);
     if (doc) {
       await this.deleteDocumentAndChildren(id);
+      await this.structuredDataService.refreshDocumentsFromRecordStore();
     }
     return true;
   }
@@ -217,24 +251,36 @@ export class DocumentProvider {
       updateData.sort_order = moveDto.sort_order;
     }
 
-    return this.documentModel.updateOne({ id }, updateData);
+    const result = await this.documentModel.updateOne({ id }, updateData);
+    await this.structuredDataService.refreshDocumentsFromRecordStore();
+    return result;
   }
 
   async getDocumentTree(libraryId?: number): Promise<Document[]> {
-    const query: any = { deleted: false };
-    if (libraryId) {
-      query.library_id = libraryId;
-    }
-    
-    const documents = await this.documentModel
-      .find(query, this.listView)
-      .sort({ sort_order: 1, createdAt: -1 })
-      .exec();
+    const documents = await this.structuredDataService.listDocuments({
+      libraryId,
+    });
 
-    return this.buildTree(documents);
+    if (!documents.length && !this.structuredDataService.isInitialized()) {
+      const query: any = { deleted: false };
+      if (libraryId) {
+        query.library_id = libraryId;
+      }
+      const fallbackDocuments = await this.documentModel
+        .find(query, this.listView)
+        .sort({ sort_order: 1, createdAt: -1 })
+        .exec();
+      return this.buildTree(fallbackDocuments);
+    }
+
+    return this.buildTree(documents.map((doc: any) => this.projectDocumentForView(doc, 'list')) as any);
   }
 
   async getLibraries(): Promise<Document[]> {
+    const libraries = await this.structuredDataService.listDocuments({ type: 'library' });
+    if (libraries.length || this.structuredDataService.isInitialized()) {
+      return libraries.map((doc: any) => this.projectDocumentForView(doc, 'list')) as any;
+    }
     return this.documentModel
       .find({ type: 'library', deleted: false }, this.listView)
       .sort({ sort_order: 1, createdAt: -1 })
@@ -242,6 +288,14 @@ export class DocumentProvider {
   }
 
   async getDocumentsByLibrary(libraryId: number): Promise<Document[]> {
+    const result = await this.structuredDataService.queryDocuments({
+      page: 1,
+      pageSize: -1,
+      library_id: libraryId,
+    });
+    if (result.documents.length || this.structuredDataService.isInitialized()) {
+      return result.documents.map((doc: any) => this.projectDocumentForView(doc, 'list')) as any;
+    }
     return this.documentModel
       .find({ library_id: libraryId, deleted: false }, this.listView)
       .sort({ sort_order: 1, createdAt: -1 })
@@ -400,8 +454,7 @@ export class DocumentProvider {
   }
 
   async getNewId(): Promise<number> {
-    const maxDoc = await this.documentModel.findOne().sort({ id: -1 }).exec();
-    return maxDoc ? maxDoc.id + 1 : 1;
+    return await this.structuredDataService.nextDocumentId();
   }
 
   async convertToDraft(id: number, category: string): Promise<any> {
@@ -435,6 +488,24 @@ export class DocumentProvider {
   }
 
   async searchByString(str: string): Promise<Document[]> {
+    const pgDocuments = await this.structuredDataService.searchDocuments(str);
+    if (pgDocuments.length || this.structuredDataService.isInitialized()) {
+      const relatedIds = new Set<number>();
+      pgDocuments.forEach((doc: any) => {
+        relatedIds.add(doc.id);
+        if (doc.library_id) relatedIds.add(doc.library_id);
+        if (doc.parent_id) relatedIds.add(doc.parent_id);
+        if (doc.path && doc.path.length > 0) {
+          doc.path.forEach((id: number) => relatedIds.add(id));
+        }
+      });
+      const allRelatedDocs = await this.structuredDataService.getDocumentsByIds(Array.from(relatedIds));
+      const searchResultIds = new Set(pgDocuments.map((doc: any) => doc.id));
+      return allRelatedDocs.map((doc: any) => ({
+        ...JSON.parse(JSON.stringify(doc)),
+        isSearchResult: searchResultIds.has(doc.id),
+      })) as any;
+    }
     const $and: any = [
       {
         $or: [

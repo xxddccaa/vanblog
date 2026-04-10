@@ -250,6 +250,9 @@ export class ArticleController {
     
     try {
       const data = await this.articleProvider.fixNegativeIds();
+      this.isrProvider.activeAll('修复负数文章 ID 触发增量渲染！', undefined, {
+        forceActice: true,
+      });
       
       return {
         statusCode: 200,
@@ -274,6 +277,9 @@ export class ArticleController {
     
     try {
       const data = await this.articleProvider.cleanupTempIds();
+      this.isrProvider.activeAll('清理临时文章 ID 触发增量渲染！', undefined, {
+        forceActice: true,
+      });
       
       return {
         statusCode: 200,
@@ -298,6 +304,9 @@ export class ArticleController {
     
     try {
       const data = await this.articleProvider.cleanupDuplicatePathnames();
+      this.isrProvider.activeAll('清理重复路径名触发增量渲染！', undefined, {
+        forceActice: true,
+      });
       
       return {
         statusCode: 200,

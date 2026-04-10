@@ -7,8 +7,8 @@ import { imageSize } from 'image-size';
 import { formatBytes } from 'src/utils/size';
 import { PicGo } from 'picgo';
 import { ImgMeta } from 'src/types/img';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { SettingDocument } from 'src/scheme/setting.schema';
 @Injectable()
 export class PicgoProvider {

@@ -78,7 +78,12 @@ export class WalineProvider {
     return result;
   }
   async loadEnv() {
-    const url = new URL(config.mongoUrl);
+    if (!config.walineDatabaseUrl) {
+      this.logger.warn('未配置 Waline 数据库地址，跳过 Waline 内置控制');
+      this.env = {};
+      return;
+    }
+    const url = new URL(config.walineDatabaseUrl);
     const mongoEnv = {
       MONGO_HOST: url.hostname,
       MONGO_PORT: url.port,
@@ -153,6 +158,9 @@ export class WalineProvider {
   }
   async run(): Promise<any> {
     await this.loadEnv();
+    if (!config.walineDatabaseUrl && !this.isExternalControlMode()) {
+      return;
+    }
     if (this.isExternalControlMode()) {
       try {
         await this.postToExternalControl('/restart', {

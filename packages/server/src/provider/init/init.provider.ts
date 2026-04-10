@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { InitDto } from 'src/types/init.dto';
 import { MetaDocument } from 'src/scheme/meta.schema';
 import { UserDocument } from 'src/scheme/user.schema';
@@ -16,6 +16,7 @@ import { WebsiteProvider } from '../website/website.provider';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { CustomPageDocument } from 'src/scheme/customPage.schema';
 import e from 'express';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 @Injectable()
 export class InitProvider {
   logger = new Logger(InitProvider.name);
@@ -29,6 +30,7 @@ export class InitProvider {
     private readonly settingProvider: SettingProvider,
     private readonly cacheProvider: CacheProvider,
     private readonly websiteProvider: WebsiteProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   async init(initDto: InitDto) {
@@ -39,7 +41,7 @@ export class InitProvider {
     }
     try {
       const salt = makeSalt();
-      await this.userModel.create({
+      const admin = await this.userModel.create({
         id: 0,
         name: user.username,
         password: encryptPassword(user.username, user.password, salt),
@@ -47,7 +49,8 @@ export class InitProvider {
         type: 'admin',
         salt,
       });
-      await this.metaModel.create({
+      await this.structuredDataService.upsertUser(admin.toObject());
+      const meta = await this.metaModel.create({
         siteInfo: toUpdateDto,
         links: [],
         socials: [],
@@ -58,6 +61,7 @@ export class InitProvider {
         },
         categories: [],
       });
+      await this.structuredDataService.upsertMeta(meta.toObject());
       await this.settingProvider.updateMenuSetting({ data: defaultMenu });
       // 运行 waline
       this.walineProvider.init();

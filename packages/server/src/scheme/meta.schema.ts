@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from 'src/storage/mongoose-compat';
+import { Document } from 'src/storage/mongoose-compat';
 import { AboutDto } from 'src/types/about.dto';
 import { LinkItem } from 'src/types/link.dto';
 import { MenuItem } from 'src/types/menu.dto';

@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, SchemaTypes } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from 'src/storage/mongoose-compat';
+import { Document, SchemaTypes } from 'src/storage/mongoose-compat';
 import { CategoryType } from 'src/types/category.dto';
 
 export type CategoryDocument = Category & Document;

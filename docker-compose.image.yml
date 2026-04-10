@@ -9,8 +9,6 @@ services:
         condition: service_healthy
       admin:
         condition: service_healthy
-      waline:
-        condition: service_healthy
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       EMAIL: ${EMAIL:-someone@example.com}
@@ -27,16 +25,18 @@ services:
     restart: always
     init: true
     depends_on:
-      mongo:
+      postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
-      VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-mongodb://mongo:27017/vanBlog?authSource=admin}
+      VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-vanblog}}
+      VAN_BLOG_REDIS_URL: ${VAN_BLOG_REDIS_URL:-redis://redis:6379}
       VAN_BLOG_WALINE_DB: ${VAN_BLOG_WALINE_DB:-waline}
       VANBLOG_CADDY_API_URL: http://caddy:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
-      VANBLOG_WALINE_CONTROL_URL: http://waline:8361
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
     volumes:
       - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
@@ -85,43 +85,32 @@ services:
       retries: 10
       start_period: 20s
 
-  waline:
-    image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-waline-${VANBLOG_RELEASE_SUFFIX:-latest}
+  postgres:
+    image: postgres:16-alpine
     restart: always
-    init: true
-    depends_on:
-      mongo:
-        condition: service_healthy
     environment:
       TZ: ${TZ:-Asia/Shanghai}
-      NODE_ENV: production
-      PORT: 8360
-      WALINE_CONTROL_PORT: 8361
-      MONGO_HOST: ${WALINE_MONGO_HOST:-mongo}
-      MONGO_PORT: ${WALINE_MONGO_PORT:-27017}
-      MONGO_DB: ${VAN_BLOG_WALINE_DB:-waline}
-      MONGO_AUTHSOURCE: admin
-      JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
-    expose:
-      - "8360"
-      - "8361"
+      POSTGRES_DB: ${POSTGRES_DB:-vanblog}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ${VANBLOG_POSTGRES_DIR:-./data/postgres}:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vanblog}"]
       interval: 15s
       timeout: 10s
       retries: 10
       start_period: 20s
 
-  mongo:
-    image: mongo:4.4.16
+  redis:
+    image: redis:7-alpine
     restart: always
-    environment:
-      TZ: ${TZ:-Asia/Shanghai}
     volumes:
-      - ${VANBLOG_MONGO_DIR:-./data/mongo}:/data/db
+      - ${VANBLOG_REDIS_DIR:-./data/redis}:/data
+    command: ["redis-server", "--appendonly", "yes"]
     healthcheck:
-      test: ["CMD-SHELL", "mongo --quiet --eval 'db.adminCommand(\"ping\").ok' | grep 1 >/dev/null || exit 1"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 20s
+      start_period: 10s

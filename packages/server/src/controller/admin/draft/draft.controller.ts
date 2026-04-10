@@ -22,6 +22,7 @@ import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 import { TagProvider } from 'src/provider/tag/tag.provider';
 import { DocumentProvider } from 'src/provider/document/document.provider';
+import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 
 @ApiTags('draft')
 @UseGuards(...AdminGuard)
@@ -35,6 +36,7 @@ export class DraftController {
     private readonly pipelineProvider: PipelineProvider,
     private readonly tagProvider: TagProvider,
     private readonly documentProvider: DocumentProvider,
+    private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
 
   @Get('/')
@@ -108,6 +110,7 @@ export class DraftController {
     const data = await this.draftProvider.updateById(id, updateDto);
     const updated = await this.draftProvider.findById(id);
     this.pipelineProvider.dispatchEvent('afterUpdateDraft', updated);
+    this.searchIndexProvider.generateSearchIndex('更新草稿触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -130,6 +133,7 @@ export class DraftController {
     }
     const data = await this.draftProvider.create(createDto);
     this.pipelineProvider.dispatchEvent('afterUpdateDraft', data);
+    this.searchIndexProvider.generateSearchIndex('创建草稿触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -189,6 +193,7 @@ export class DraftController {
     const toDeleteDraft = await this.draftProvider.findById(id);
     const data = await this.draftProvider.deleteById(id);
     this.pipelineProvider.dispatchEvent('deleteDraft', toDeleteDraft);
+    this.searchIndexProvider.generateSearchIndex('删除草稿触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -247,6 +252,7 @@ export class DraftController {
 
     // 删除原草稿
     await this.draftProvider.deleteById(id);
+    this.searchIndexProvider.generateSearchIndex('草稿转文档触发搜索索引同步', 500);
 
     return {
       statusCode: 200,

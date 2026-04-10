@@ -8,6 +8,7 @@ import { SettingProvider } from '../setting/setting.provider';
 import { SiteMapProvider } from '../sitemap/sitemap.provider';
 import { SearchIndexProvider } from '../search-index/search-index.provider';
 import { encodeQuerystring } from 'src/utils/washUrl';
+import { PublicDataCacheProvider } from '../public-data-cache/public-data-cache.provider';
 export interface ActiveConfig {
   postId?: number;
   forceActice?: boolean;
@@ -28,6 +29,7 @@ export class ISRProvider {
     private readonly sitemapProvider: SiteMapProvider,
     private readonly settingProvider: SettingProvider,
     private readonly searchIndexProvider: SearchIndexProvider,
+    private readonly publicDataCacheProvider: PublicDataCacheProvider,
   ) {}
   async activeAllFn(info?: string, activeConfig?: ActiveConfig) {
     const isrConfig = await this.settingProvider.getISRSetting();
@@ -55,7 +57,11 @@ export class ISRProvider {
     this.logger.log('触发全量渲染完成！');
   }
   async activeAll(info?: string, delay?: number, activeConfig?: ActiveConfig) {
+    await this.publicDataCacheProvider.clearAllPublicData();
     if (process.env['VANBLOG_DISABLE_WEBSITE'] === 'true') {
+      this.rssProvider.generateRssFeed(info || '', delay);
+      this.sitemapProvider.generateSiteMap(info || '', delay);
+      this.searchIndexProvider.generateSearchIndex(info || '', delay);
       return;
     }
     if (this.timer) {
@@ -136,6 +142,7 @@ export class ISRProvider {
 
   // 修改文章牵扯太多，暂时不用这个方法。
   async activeArticleById(id: number, event: 'create' | 'delete' | 'update', beforeObj?: Article) {
+    await this.publicDataCacheProvider.clearArticleRelatedData();
     let article;
     
     if (event === 'delete' && beforeObj) {
@@ -207,12 +214,14 @@ export class ISRProvider {
   }
 
   async activeAbout(info: string) {
+    await this.publicDataCacheProvider.clearMetaData();
     this.activeWithRetry(() => {
       this.logger.log(info);
       this.activeUrl(`/about`, false);
     }, info);
   }
   async activeLink(info: string) {
+    await this.publicDataCacheProvider.clearMetaData();
     this.activeWithRetry(() => {
       this.logger.log(info);
       this.activeUrl(`/link`, false);

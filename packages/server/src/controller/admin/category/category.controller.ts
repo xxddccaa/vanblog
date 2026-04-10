@@ -108,6 +108,7 @@ export class CategoryController {
       };
     }
     const data = await this.categoryProvider.initializeCategoriesSort();
+    this.isrProvider.activeAll('初始化分类排序触发增量渲染！');
     return {
       statusCode: 200,
       data,

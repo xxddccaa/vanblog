@@ -1,38 +1,60 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { createViewerDto } from 'src/types/viewer.dto';
 import { Viewer, ViewerDocument } from 'src/scheme/viewer.schema';
 import dayjs from 'dayjs';
+import { StructuredDataService } from 'src/storage/structured-data.service';
+
 @Injectable()
 export class ViewerProvider {
-  constructor(@InjectModel('Viewer') private viewerModel: Model<ViewerDocument>) {}
+  constructor(
+    @InjectModel('Viewer') private viewerModel: Model<ViewerDocument>,
+    private readonly structuredDataService: StructuredDataService,
+  ) {}
 
   async create(createViewerDto: createViewerDto): Promise<Viewer> {
     const createdData = new this.viewerModel(createViewerDto);
-    return createdData.save();
+    const saved = await createdData.save();
+    await this.structuredDataService.upsertViewer(saved.toObject());
+    return saved;
   }
 
   async createOrUpdate(createViewerDto: createViewerDto) {
     const { date } = createViewerDto;
-    const oldData = await this.viewerModel.findOne({ date });
+    const oldData = await this.findByDate(date);
     if (!oldData) {
       const createdData = new this.viewerModel(createViewerDto);
-      return createdData.save();
+      const saved = await createdData.save();
+      await this.structuredDataService.upsertViewer(saved.toObject());
+      return saved;
     } else {
-      return this.viewerModel.updateOne({ date }, createViewerDto);
+      const payload = {
+        ...(oldData?._doc || oldData),
+        ...createViewerDto,
+        _id: oldData?._id,
+      };
+      const result = await this.viewerModel.updateOne({ date }, createViewerDto);
+      await this.structuredDataService.upsertViewer(payload);
+      return result;
     }
   }
 
   async getViewerGrid(num: number) {
     const curDate = dayjs();
+    const startDate = curDate.add(-1 * num, 'day').format('YYYY-MM-DD');
+    const endDate = curDate.format('YYYY-MM-DD');
+    const pgViewers = await this.structuredDataService.getViewerSeries(startDate, endDate);
+    const viewerMap = new Map(pgViewers.map((item: any) => [item.date, item]));
     const gridTotal = [];
     const tmpArr = [];
     const today = { viewer: 0, visited: 0 };
     const lastDay = { viewer: 0, visited: 0 };
     for (let i = num; i >= 0; i--) {
       const last = curDate.add(-1 * i, 'day').format('YYYY-MM-DD');
-      const lastDayData = await this.findByDate(last);
+      const lastDayData: any =
+        viewerMap.get(last) ||
+        (!this.structuredDataService.isInitialized() ? await this.findByDate(last) : null);
       if (i == 0) {
         if (lastDayData) {
           today.viewer = lastDayData.viewer;
@@ -104,12 +126,21 @@ export class ViewerProvider {
   }
 
   async getAll(): Promise<Viewer[]> {
+    const viewers = await this.structuredDataService.listViewers();
+    if (viewers.length || this.structuredDataService.isInitialized()) {
+      return viewers as any;
+    }
     return this.viewerModel.find({}).exec();
   }
 
   async findByDate(date: string): Promise<Viewer> {
+    const viewer = await this.structuredDataService.getViewerByDate(date);
+    if (viewer || this.structuredDataService.isInitialized()) {
+      return viewer as any;
+    }
     return this.viewerModel.findOne({ date }).exec();
   }
+
   async import(data: Viewer[]) {
     for (const each of data) {
       const oldData = await this.viewerModel.findOne({
@@ -122,5 +153,6 @@ export class ViewerProvider {
         await newData.save();
       }
     }
+    await this.structuredDataService.refreshViewersFromRecordStore();
   }
 }

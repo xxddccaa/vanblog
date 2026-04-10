@@ -62,6 +62,19 @@ const Viewer = () => {
     return getRecentTimeDes(data?.siteLastVisitedTime);
   }, [data]);
 
+  const formatPathLabel = useCallback((pathname) => {
+    if (!pathname) {
+      return '未知路径';
+    }
+    if (pathname === '/') {
+      return '首页 /';
+    }
+    if (pathname.length <= 36) {
+      return pathname;
+    }
+    return `${pathname.slice(0, 33)}...`;
+  }, []);
+
   // 计算访客分析指标
   const visitorAnalytics = useMemo(() => {
     if (!data) return null;
@@ -419,6 +432,96 @@ const Viewer = () => {
                                 <span className="meta-item">
                                   <UserOutlined className="meta-icon" />
                                   {article.visited}位访客
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={24}>
+                  <div className={style['chart-container']}>
+                    <div className={style['chart-header']}>
+                      <div className={style['chart-title']}>
+                        <LinkOutlined className={style['chart-icon']} />
+                        热门访问路径
+                      </div>
+                    </div>
+                    <div className={style['article-list-modern']}>
+                      {(data?.topVisitedPaths || []).slice(0, num).map((item, index) => (
+                        <div key={`${item.pathname}-${index}`} className="article-item">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              background: index < 3 ? 'linear-gradient(45deg, #43e97b, #38f9d7)' : '#f0f0f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: index < 3 ? 'white' : '#999',
+                              fontSize: 12,
+                              fontWeight: 'bold'
+                            }}>
+                              {index + 1}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div className="article-title" title={item.pathname}>
+                                {formatPathLabel(item.pathname)}
+                              </div>
+                              <div className="article-meta">
+                                <span className="meta-item">
+                                  <EyeOutlined className="meta-icon" />
+                                  {item.viewer}次访问
+                                </span>
+                                <span className="meta-item">
+                                  <UserOutlined className="meta-icon" />
+                                  {item.visited}位访客
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={24}>
+                  <div className={style['chart-container']}>
+                    <div className={style['chart-header']}>
+                      <div className={style['chart-title']}>
+                        <ClockCircleOutlined className={style['chart-icon']} />
+                        最近活跃路径
+                      </div>
+                    </div>
+                    <div className={style['article-list-modern']}>
+                      {(data?.recentVisitedPaths || []).slice(0, num).map((item, index) => (
+                        <div key={`${item.pathname}-recent-${index}`} className="article-item">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              background: index < 3 ? 'linear-gradient(45deg, #667eea, #764ba2)' : '#f0f0f0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: index < 3 ? 'white' : '#999',
+                              fontSize: 12,
+                              fontWeight: 'bold'
+                            }}>
+                              {index + 1}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div className="article-title" title={item.pathname}>
+                                {formatPathLabel(item.pathname)}
+                              </div>
+                              <div className="article-meta">
+                                <span className="meta-item">
+                                  <ClockCircleOutlined className="meta-icon" />
+                                  {item.lastVisitedTime ? getRecentTimeDes(item.lastVisitedTime) : '暂无访问时间'}
                                 </span>
                               </div>
                             </div>

@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { NavCategory } from 'src/scheme/nav-category.schema';
 import { NavTool } from 'src/scheme/nav-tool.schema';
 import { CreateNavCategoryDto, UpdateNavCategoryDto, NavCategoryItem } from 'src/types/nav.dto';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 @Injectable()
 export class NavCategoryProvider {
@@ -12,9 +13,14 @@ export class NavCategoryProvider {
     private navCategoryModel: Model<NavCategory>,
     @InjectModel(NavTool.name)
     private navToolModel: Model<NavTool>,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   async getAllCategories(): Promise<NavCategoryItem[]> {
+    const pgCategories = await this.structuredDataService.listNavCategories();
+    if (pgCategories.length || this.structuredDataService.isInitialized()) {
+      return pgCategories as any;
+    }
     const categories = await this.navCategoryModel.find().sort({ sort: 1, createdAt: -1 }).exec();
     
     // 计算每个分类下的工具数量
@@ -43,6 +49,19 @@ export class NavCategoryProvider {
     page: number;
     pageSize: number;
   }> {
+    const pgResult = await this.structuredDataService.getNavCategoriesPaginated(page, pageSize);
+    if (
+      pgResult.categories.length ||
+      pgResult.total ||
+      this.structuredDataService.isInitialized()
+    ) {
+      return {
+        categories: pgResult.categories as any,
+        total: pgResult.total,
+        page,
+        pageSize,
+      };
+    }
     const skip = (page - 1) * pageSize;
     const [categories, total] = await Promise.all([
       this.navCategoryModel.find().sort({ sort: 1, createdAt: -1 }).skip(skip).limit(pageSize).exec(),
@@ -74,10 +93,16 @@ export class NavCategoryProvider {
   }
 
   async getCategoryById(id: string): Promise<NavCategoryItem | null> {
+    const pgCategory = await this.structuredDataService.getNavCategoryById(id);
+    if (pgCategory || this.structuredDataService.isInitialized()) {
+      return pgCategory as any;
+    }
     const category = await this.navCategoryModel.findById(id).exec();
     if (!category) return null;
 
-    const toolCount = await this.navToolModel.countDocuments({ categoryId: id }).exec();
+    const toolCount = this.structuredDataService.isInitialized()
+      ? await this.structuredDataService.countNavToolsByCategory(id)
+      : await this.navToolModel.countDocuments({ categoryId: id }).exec();
 
     return {
       _id: category._id.toString(),
@@ -105,6 +130,7 @@ export class NavCategoryProvider {
     });
 
     const savedCategory = await category.save();
+    await this.structuredDataService.upsertNavCategory(savedCategory.toObject());
     return {
       _id: savedCategory._id.toString(),
       name: savedCategory.name,
@@ -133,11 +159,14 @@ export class NavCategoryProvider {
       id,
       { ...categoryDto, updatedAt: new Date() },
       { new: true }
-    ).exec();
+    );
 
     if (!updatedCategory) {
       throw new Error(`分类 "${id}" 未找到`);
     }
+    await this.structuredDataService.upsertNavCategory(
+      updatedCategory.toObject ? updatedCategory.toObject() : updatedCategory,
+    );
 
     const toolCount = await this.navToolModel.countDocuments({ categoryId: id }).exec();
 
@@ -155,15 +184,18 @@ export class NavCategoryProvider {
 
   async deleteCategory(id: string): Promise<void> {
     // 检查分类下是否有工具
-    const toolCount = await this.navToolModel.countDocuments({ categoryId: id }).exec();
+    const toolCount = this.structuredDataService.isInitialized()
+      ? await this.structuredDataService.countNavToolsByCategory(id)
+      : await this.navToolModel.countDocuments({ categoryId: id }).exec();
     if (toolCount > 0) {
       throw new Error(`无法删除分类，该分类下还有 ${toolCount} 个工具`);
     }
 
-    const result = await this.navCategoryModel.deleteOne({ _id: id }).exec();
+    const result = await this.navCategoryModel.deleteOne({ _id: id });
     if (result.deletedCount === 0) {
       throw new Error(`分类 "${id}" 未找到`);
     }
+    await this.structuredDataService.deleteNavCategoryById(id);
   }
 
   async updateCategoriesSort(categories: Array<{ id: string; sort: number }>): Promise<void> {
@@ -175,5 +207,6 @@ export class NavCategoryProvider {
     }));
 
     await this.navCategoryModel.bulkWrite(bulkOps);
+    await this.structuredDataService.refreshNavCategoriesFromRecordStore();
   }
 } 

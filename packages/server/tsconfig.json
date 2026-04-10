@@ -20,8 +20,6 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": false,
     "composite": true,
-    "paths": {
-      "mongoose": ["./node_modules/mongoose"]
-    }
+    "paths": {}
   }
 }

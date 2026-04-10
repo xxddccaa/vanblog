@@ -1,6 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { Meta, MetaDocument } from 'src/scheme/meta.schema';
 import { UpdateSiteInfoDto } from 'src/types/site.dto';
 import { RewardItem } from 'src/types/reward.dto';
@@ -13,6 +13,7 @@ import { IconProvider } from '../icon/icon.provider';
 import dayjs from 'dayjs';
 import { isTrue } from 'src/utils/isTrue';
 import { ViewerProvider } from '../viewer/viewer.provider';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 @Injectable()
 export class MetaProvider {
   logger = new Logger(MetaProvider.name);
@@ -26,6 +27,7 @@ export class MetaProvider {
     @Inject(forwardRef(() => ArticleProvider))
     private readonly articleProvider: ArticleProvider,
     private readonly iconProvider: IconProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   async updateTotalWords(reason: string) {
@@ -87,6 +89,10 @@ export class MetaProvider {
   }
 
   async getAll() {
+    const meta = await this.structuredDataService.getMeta();
+    if (meta) {
+      return meta as any;
+    }
     return this.metaModel.findOne().exec();
   }
 
@@ -243,11 +249,14 @@ export class MetaProvider {
     ];
   }
   async getTotalWords() {
-    return (await this.getAll()).totalWordCount || 0;
+    return ((await this.getAll()) as any)?.totalWordCount || 0;
   }
 
   async update(updateMetaDto: Partial<Meta>) {
-    return this.metaModel.updateOne({}, updateMetaDto);
+    const result = await this.metaModel.updateOne({}, updateMetaDto);
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
   async getAbout() {
     return (await this.getAll())?.about;
@@ -289,7 +298,7 @@ export class MetaProvider {
   }
 
   async updateAbout(newContent: string) {
-    return this.metaModel.updateOne(
+    const result = await this.metaModel.updateOne(
       {},
       {
         about: {
@@ -298,13 +307,19 @@ export class MetaProvider {
         },
       },
     );
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
 
   async updateSiteInfo(updateSiteInfoDto: UpdateSiteInfoDto) {
     // @ts-ignore eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const { name, password, ...updateDto } = updateSiteInfoDto;
     const oldSiteInfo = await this.getSiteInfo();
-    return this.metaModel.updateOne({}, { siteInfo: { ...oldSiteInfo, ...updateDto } });
+    const result = await this.metaModel.updateOne({}, { siteInfo: { ...oldSiteInfo, ...updateDto } });
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
 
   async addOrUpdateReward(addReward: Partial<RewardItem>) {
@@ -329,7 +344,10 @@ export class MetaProvider {
       newRewards.push(toAdd);
     }
 
-    return this.metaModel.updateOne({}, { rewards: newRewards });
+    const result = await this.metaModel.updateOne({}, { rewards: newRewards });
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
 
   async deleteReward(name: string) {
@@ -340,7 +358,10 @@ export class MetaProvider {
         newRewards.push(r);
       }
     });
-    return this.metaModel.updateOne({}, { rewards: newRewards });
+    const result = await this.metaModel.updateOne({}, { rewards: newRewards });
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
 
   async deleteSocial(type: SocialType) {
@@ -353,7 +374,10 @@ export class MetaProvider {
         newSocials.push(r);
       }
     });
-    return this.metaModel.updateOne({}, { socials: newSocials });
+    const result = await this.metaModel.updateOne({}, { socials: newSocials });
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
 
   async addOrUpdateSocial(addSocial: Partial<SocialItem>) {
@@ -389,7 +413,10 @@ export class MetaProvider {
       newSocials.push(toAdd);
     }
 
-    return this.metaModel.updateOne({}, { socials: newSocials });
+    const result = await this.metaModel.updateOne({}, { socials: newSocials });
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
   async addOrUpdateLink(addLinkDto: Partial<LinkItem>) {
     const meta = await this.getAll();
@@ -415,7 +442,10 @@ export class MetaProvider {
       newLinks.push(toAdd);
     }
 
-    return this.metaModel.updateOne({}, { links: newLinks });
+    const result = await this.metaModel.updateOne({}, { links: newLinks });
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
 
   async deleteLink(name: string) {
@@ -426,6 +456,9 @@ export class MetaProvider {
         newLinks.push(r);
       }
     });
-    return this.metaModel.updateOne({}, { links: newLinks });
+    const result = await this.metaModel.updateOne({}, { links: newLinks });
+    const latest = await this.metaModel.findOne().lean().exec();
+    await this.structuredDataService.upsertMeta(latest);
+    return result;
   }
 }

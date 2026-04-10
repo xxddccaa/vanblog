@@ -15,6 +15,7 @@ import { TokenProvider } from 'src/provider/token/token.provider';
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { StaticProvider } from 'src/provider/static/static.provider';
 import { CacheProvider } from 'src/provider/cache/cache.provider';
+import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -32,17 +33,33 @@ export class PublicController {
     private readonly iconProvider: IconProvider,
     private readonly staticProvider: StaticProvider,
     private readonly cacheProvider: CacheProvider,
+    private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
+
+  private async getCachedPublicPayload<T>(key: string, ttlSeconds: number, loader: () => Promise<T>) {
+    const cached = await this.cacheProvider.get(key);
+    if (cached) {
+      return cached as T;
+    }
+    const data = await loader();
+    await this.cacheProvider.set(key, data, ttlSeconds);
+    return data;
+  }
   @Get('/customPage/all')
   async getAll() {
+    const data = await this.getCachedPublicPayload('public:customPage:all', 300, async () =>
+      this.customPageProvider.getAll(),
+    );
     return {
       statusCode: 200,
-      data: await this.customPageProvider.getAll(),
+      data,
     };
   }
   @Get('/customPage')
   async getOneByPath(@Query('path') path: string) {
-    const data = await this.customPageProvider.getCustomPageByPath(path);
+    const data = await this.getCachedPublicPayload(`public:customPage:${path}`, 300, async () =>
+      this.customPageProvider.getCustomPageByPath(path),
+    );
 
     return {
       statusCode: 200,
@@ -136,6 +153,20 @@ export class PublicController {
       },
     };
   }
+
+  @Get('/search/all')
+  async searchAllContent(@Query('value') search: string, @Query('limit') limit: string = '20') {
+    const size = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
+    const data = await this.searchIndexProvider.searchContent(search, size);
+
+    return {
+      statusCode: 200,
+      data: {
+        total: data.length,
+        data,
+      },
+    };
+  }
   @Post('/viewer')
   async addViewer(
     @Query('isNew') isNew: boolean,
@@ -178,7 +209,9 @@ export class PublicController {
 
   @Get('/music/setting')
   async getMusicSetting() {
-    const data = await this.settingProvider.getMusicSetting();
+    const data = await this.getCachedPublicPayload('public:music:setting', 300, async () =>
+      this.settingProvider.getMusicSetting(),
+    );
     return {
       statusCode: 200,
       data: data,
@@ -187,7 +220,9 @@ export class PublicController {
 
   @Get('/music/list')
   async getMusicList() {
-    const data = await this.staticProvider.getAll('music', 'public');
+    const data = await this.getCachedPublicPayload('public:music:list', 300, async () =>
+      this.staticProvider.getAll('music', 'public'),
+    );
     return {
       statusCode: 200,
       data: data,
@@ -245,7 +280,9 @@ export class PublicController {
   }
   @Get('timeline/summary')
   async getTimeLineSummary() {
-    const data = await this.articleProvider.getTimeLineSummary();
+    const data = await this.getCachedPublicPayload('public:timeline:summary', 300, async () =>
+      this.articleProvider.getTimeLineSummary(),
+    );
     return {
       statusCode: 200,
       data,
@@ -254,7 +291,9 @@ export class PublicController {
 
   @Get('timeline/:year/articles')
   async getTimeLineArticlesByYear(@Param('year') year: string) {
-    const data = await this.articleProvider.getTimeLineArticlesByYear(year);
+    const data = await this.getCachedPublicPayload(`public:timeline:${year}`, 300, async () =>
+      this.articleProvider.getTimeLineArticlesByYear(year),
+    );
     return {
       statusCode: 200,
       data,
@@ -263,7 +302,9 @@ export class PublicController {
 
   @Get('timeline')
   async getTimeLineInfo() {
-    const data = await this.articleProvider.getTimeLineInfo();
+    const data = await this.getCachedPublicPayload('public:timeline', 300, async () =>
+      this.articleProvider.getTimeLineInfo(),
+    );
     return {
       statusCode: 200,
       data,
@@ -272,7 +313,9 @@ export class PublicController {
 
   @Get('category/summary')
   async getCategorySummary() {
-    const data = await this.categoryProvider.getCategorySummaries(false);
+    const data = await this.getCachedPublicPayload('public:category:summary', 300, async () =>
+      this.categoryProvider.getCategorySummaries(false),
+    );
     return {
       statusCode: 200,
       data,
@@ -340,7 +383,7 @@ export class PublicController {
   @Get('/meta')
   async getBuildMeta() {
     const cacheKey = 'public:meta';
-    const cached = this.cacheProvider.get(cacheKey);
+    const cached = await this.cacheProvider.get(cacheKey);
     if (cached) {
       return {
         statusCode: 200,
@@ -385,7 +428,7 @@ export class PublicController {
       totalWordCount,
       ...(layoutRes ? { layout: layoutRes } : {}),
     };
-    this.cacheProvider.set(cacheKey, data, 30);
+    await this.cacheProvider.set(cacheKey, data, 30);
     return {
       statusCode: 200,
       data,
@@ -394,7 +437,9 @@ export class PublicController {
 
   @Get('/icon')
   async getAllIcons() {
-    const icons = await this.iconProvider.getAllIcons();
+    const icons = await this.getCachedPublicPayload('public:icon:all', 300, async () =>
+      this.iconProvider.getAllIcons(),
+    );
     return {
       statusCode: 200,
       data: icons,
@@ -404,7 +449,9 @@ export class PublicController {
   @Get('/icon/:name')
   async getIconByName(@Param('name') name: string) {
     try {
-      const icon = await this.iconProvider.getIconByName(name);
+      const icon = await this.getCachedPublicPayload(`public:icon:${name}`, 300, async () =>
+        this.iconProvider.getIconByName(name),
+      );
       if (!icon) {
         return {
           statusCode: 404,
@@ -425,25 +472,23 @@ export class PublicController {
 
   @Get('/site-info')
   async getBasicSiteInfo() {
-    // 获取站点基本信息，不需要登录权限
-    // 主要用于显示备案信息等公开信息
-    const siteInfo = await this.metaProvider.getSiteInfo();
-    
-    // 只返回公开需要的字段
-    const publicSiteInfo = {
-      siteName: siteInfo.siteName,
-      siteDesc: siteInfo.siteDesc,
-      siteLogo: siteInfo.siteLogo,
-      favicon: siteInfo.favicon,
-      beianNumber: siteInfo.beianNumber,
-      beianUrl: siteInfo.beianUrl,
-      gaBeianNumber: siteInfo.gaBeianNumber,
-      gaBeianUrl: siteInfo.gaBeianUrl,
-      gaBeianLogoUrl: siteInfo.gaBeianLogoUrl,
-      since: siteInfo.since,
-      baseUrl: siteInfo.baseUrl,
-    };
-    
+    const publicSiteInfo = await this.getCachedPublicPayload('public:site-info', 300, async () => {
+      const siteInfo = await this.metaProvider.getSiteInfo();
+      return {
+        siteName: siteInfo.siteName,
+        siteDesc: siteInfo.siteDesc,
+        siteLogo: siteInfo.siteLogo,
+        favicon: siteInfo.favicon,
+        beianNumber: siteInfo.beianNumber,
+        beianUrl: siteInfo.beianUrl,
+        gaBeianNumber: siteInfo.gaBeianNumber,
+        gaBeianUrl: siteInfo.gaBeianUrl,
+        gaBeianLogoUrl: siteInfo.gaBeianLogoUrl,
+        since: siteInfo.since,
+        baseUrl: siteInfo.baseUrl,
+      };
+    });
+
     return {
       statusCode: 200,
       data: publicSiteInfo,

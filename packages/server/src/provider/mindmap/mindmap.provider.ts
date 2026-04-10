@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { MindMap, MindMapDocument } from 'src/scheme/mindmap.schema';
 import { CreateMindMapDto, UpdateMindMapDto, SearchMindMapOption } from 'src/types/mindmap.dto';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 export type MindMapView = 'admin' | 'public' | 'list';
 
@@ -11,6 +12,7 @@ export class MindMapProvider {
   constructor(
     @InjectModel(MindMap.name)
     private mindMapModel: Model<MindMapDocument>,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   publicView = {
@@ -60,6 +62,17 @@ export class MindMapProvider {
     return thisView;
   }
 
+  private projectMindMapForView(mindMap: any, view: MindMapView) {
+    if (!mindMap) {
+      return mindMap;
+    }
+    const payload = { ...(mindMap?._doc || mindMap) };
+    if (view === 'list') {
+      delete payload.content;
+    }
+    return payload;
+  }
+
   async create(createMindMapDto: CreateMindMapDto): Promise<MindMap> {
     const createdData = new this.mindMapModel({
       ...createMindMapDto,
@@ -67,10 +80,21 @@ export class MindMapProvider {
       updatedAt: new Date(),
     });
     
-    return createdData.save();
+    const saved = await createdData.save();
+    await this.structuredDataService.upsertMindMap(saved.toObject());
+    return saved;
   }
 
   async getByOption(option: SearchMindMapOption): Promise<{ mindMaps: MindMap[]; total: number }> {
+    const pgResult = await this.structuredDataService.queryMindMaps(option);
+    if (pgResult.mindMaps.length || pgResult.total || this.structuredDataService.isInitialized()) {
+      return {
+        total: pgResult.total,
+        mindMaps: pgResult.mindMaps.map((mindMap: any) =>
+          this.projectMindMapForView(mindMap, 'list'),
+        ),
+      } as any;
+    }
     const query: any = {};
     const $and: any = [
       {
@@ -139,6 +163,10 @@ export class MindMapProvider {
   }
 
   async findById(id: string, view: MindMapView = 'admin'): Promise<MindMap> {
+    const mindMap = await this.structuredDataService.getMindMapById(id);
+    if (mindMap) {
+      return this.projectMindMapForView(mindMap, view) as any;
+    }
     const thisView = this.getView(view);
     return this.mindMapModel
       .findOne({ _id: id, $or: [{ deleted: false }, { deleted: { $exists: false } }] })
@@ -151,14 +179,30 @@ export class MindMapProvider {
       updatedAt: new Date(),
     };
     
-    return this.mindMapModel.findByIdAndUpdate(id, updateData, { new: true });
+    const updated = await this.mindMapModel.findByIdAndUpdate(id, updateData, { new: true });
+    if (updated) {
+      await this.structuredDataService.upsertMindMap(updated.toObject ? updated.toObject() : updated);
+    }
+    return updated;
   }
 
   async deleteById(id: string): Promise<MindMap> {
-    return this.mindMapModel.findByIdAndUpdate(id, { deleted: true, updatedAt: new Date() }, { new: true });
+    const deleted = await this.mindMapModel.findByIdAndUpdate(
+      id,
+      { deleted: true, updatedAt: new Date() },
+      { new: true },
+    );
+    if (deleted) {
+      await this.structuredDataService.upsertMindMap(deleted.toObject ? deleted.toObject() : deleted);
+    }
+    return deleted;
   }
 
   async searchByString(search: string): Promise<MindMap[]> {
+    const pgResults = await this.structuredDataService.searchMindMaps(search);
+    if (pgResults.length || this.structuredDataService.isInitialized()) {
+      return pgResults.map((mindMap: any) => this.projectMindMapForView(mindMap, 'list')) as any;
+    }
     const query = {
       $and: [
         {
@@ -189,9 +233,17 @@ export class MindMapProvider {
 
   async incrementViewer(id: string): Promise<void> {
     await this.mindMapModel.findByIdAndUpdate(id, { $inc: { viewer: 1 } });
+    const latest = await this.mindMapModel.findById(id).lean().exec();
+    if (latest) {
+      await this.structuredDataService.upsertMindMap(latest);
+    }
   }
 
   async getAllForBackup() {
+    const items = await this.structuredDataService.listMindMaps(true);
+    if (items.length || this.structuredDataService.isInitialized()) {
+      return items;
+    }
     return await this.mindMapModel.find({}).lean().exec();
   }
 
@@ -206,5 +258,6 @@ export class MindMapProvider {
       const query = mindMap._id ? { _id: mindMap._id } : { title: mindMap.title };
       await this.mindMapModel.updateOne(query, payload, { upsert: true });
     }
+    await this.structuredDataService.refreshMindMapsFromRecordStore();
   }
 }

@@ -10,7 +10,7 @@ export class PublicCacheMiddleware implements NestMiddleware {
 
     const path = req.path;
 
-    if (path === '/api/public/search') {
+    if (path === '/api/public/search' || path === '/api/public/search/all') {
       res.setHeader('Cache-Control', 'no-store');
       return next();
     }

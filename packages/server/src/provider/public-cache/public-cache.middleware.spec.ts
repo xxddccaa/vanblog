@@ -16,6 +16,13 @@ describe('PublicCacheMiddleware', () => {
     expect(res.headers.get('Cache-Control')).toBe('no-store');
   });
 
+  it('marks unified search responses as no-store', () => {
+    const middleware = new PublicCacheMiddleware();
+    const res = createRes();
+    middleware.use({ method: 'GET', path: '/api/public/search/all' } as any, res as any, jest.fn());
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+  });
+
   it('uses short cache headers for viewer fragments', () => {
     const middleware = new PublicCacheMiddleware();
     const res = createRes();

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { Setting, SettingDocument } from 'src/scheme/setting.schema';
 import { ArticleProvider } from '../article/article.provider';
 import axios from 'axios';

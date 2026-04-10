@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from 'src/storage/mongoose-compat';
+import { Document } from 'src/storage/mongoose-compat';
 import { Permission } from 'src/types/access/access';
 export type UserType = 'admin' | 'collaborator';
 export type UserDocument = User & Document;

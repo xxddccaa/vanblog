@@ -372,7 +372,7 @@ export default function (props) {
             }}
           >
             <Button icon={<UploadOutlined />} size="large" loading={uploadLoading}>
-              导入全部数据
+              导入站点 JSON
             </Button>
           </Upload>
 
@@ -383,7 +383,7 @@ export default function (props) {
             onClick={handleOutPut}
             loading={loading}
           >
-            导出全部数据
+            导出站点 JSON
           </Button>
 
           <Button
@@ -426,8 +426,8 @@ export default function (props) {
         <Title level={5}>💡 使用提示</Title>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
           <li>
-            <Text strong>导出范围：</Text>备份文件包含全部博客业务数据，并额外附带 MongoDB
-            原始集合快照，适合迁移到新系统
+            <Text strong>导出范围：</Text>
+            备份文件包含完整站点 JSON；同时会附带一份原始集合兼容数据，方便导入旧版本或迁移校验
           </li>
           <li>
             <Text strong>导入规则：</Text>

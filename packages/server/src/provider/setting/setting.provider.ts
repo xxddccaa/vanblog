@@ -1,6 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import {
   HttpsSetting,
   ISRSetting,
@@ -23,6 +23,7 @@ import { encode } from 'js-base64';
 import { defaultMenu, MenuItem } from 'src/types/menu.dto';
 import { MetaProvider } from '../meta/meta.provider';
 import { parseHtmlToHeadTagArr } from 'src/utils/htmlParser';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 @Injectable()
 export class SettingProvider {
   logger = new Logger(SettingProvider.name);
@@ -31,38 +32,69 @@ export class SettingProvider {
     private settingModel: Model<SettingDocument>,
     @Optional()
     private readonly metaProvider: MetaProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
+
+  private async findSettingRecord(type: string) {
+    return await this.structuredDataService.getSetting(type);
+  }
+
+  private async createSettingValue(type: string, value: any) {
+    const result = await this.settingModel.create({
+      type,
+      value,
+    });
+    await this.structuredDataService.upsertSetting(type, value, result?._id);
+    return result;
+  }
+
+  private async writeSettingValue(type: string, value: any) {
+    const result = await this.settingModel.updateOne(
+      { type },
+      {
+        type,
+        value,
+        updatedAt: new Date(),
+      },
+      { upsert: true },
+    );
+    await this.structuredDataService.upsertSetting(type, value);
+    return result;
+  }
+
+  private async upsertSettingValue(type: string, value: any) {
+    const existing = await this.findSettingRecord(type);
+    if (!existing) {
+      return await this.createSettingValue(type, value);
+    }
+    return await this.writeSettingValue(type, value);
+  }
+
   async getStaticSetting(): Promise<Partial<StaticSetting>> {
-    const res = (await this.settingModel.findOne({ type: 'static' }).exec()) as {
+    const res = (await this.findSettingRecord('static')) as {
       value: StaticSetting;
     };
     if (res) {
       return res?.value || defaultStaticSetting;
     } else {
-      await this.settingModel.create({
-        type: 'static',
-        value: defaultStaticSetting,
-      });
+      await this.createSettingValue('static', defaultStaticSetting);
       return defaultStaticSetting;
     }
   }
   async getVersionSetting(): Promise<any> {
-    const res = await this.settingModel.findOne({ type: 'version' }).exec();
+    const res = await this.findSettingRecord('version');
     if (res) {
       return res?.value;
     }
     return null;
   }
   async getISRSetting(): Promise<any> {
-    const res = await this.settingModel.findOne({ type: 'isr' }).exec();
+    const res = await this.findSettingRecord('isr');
     if (res) {
       return res?.value;
     } else {
-      await this.settingModel.create({
-        type: 'isr',
-        value: {
-          mode: 'onDemand',
-        },
+      await this.createSettingValue('isr', {
+        mode: 'onDemand',
       });
       return {
         mode: 'onDemand',
@@ -72,17 +104,10 @@ export class SettingProvider {
   async updateISRSetting(dto: ISRSetting) {
     const oldValue = await this.getISRSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'isr',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'isr' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('isr', newValue);
   }
   async getMenuSetting(): Promise<any> {
-    const res = await this.settingModel.findOne({ type: 'menu' }).exec();
+    const res = await this.findSettingRecord('menu');
     if (res) {
       return res?.value;
     }
@@ -91,14 +116,7 @@ export class SettingProvider {
   async updateMenuSetting(dto: MenuSetting) {
     const oldValue = await this.getMenuSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'menu',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'menu' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('menu', newValue);
   }
   async importSetting(setting: any) {
     for (const [k, v] of Object.entries(setting)) {
@@ -111,6 +129,10 @@ export class SettingProvider {
     await this.updateStaticSetting(dto);
   }
   async exportAllSettings() {
+    const settings = await this.structuredDataService.listSettings();
+    if (settings.length) {
+      return settings;
+    }
     return await this.settingModel.find({}).lean().exec();
   }
   async importAllSettings(
@@ -130,48 +152,49 @@ export class SettingProvider {
 
       if (overwrite) {
         await this.settingModel.updateOne({ type: setting.type }, payload, { upsert: true });
+        await this.structuredDataService.upsertSetting(setting.type, setting.value);
         continue;
       }
 
-      const existing = await this.settingModel.findOne({ type: setting.type }).lean().exec();
+      const existing = await this.findSettingRecord(setting.type);
       if (!existing) {
         await this.settingModel.create(payload);
+        await this.structuredDataService.upsertSetting(setting.type, setting.value);
       } else {
+        const mergedValue = { ...(existing.value || {}), ...(setting.value || {}) };
         await this.settingModel.updateOne(
           { type: setting.type },
-          { value: { ...(existing.value || {}), ...(setting.value || {}) }, updatedAt: new Date() },
+          { value: mergedValue, updatedAt: new Date() },
         );
+        await this.structuredDataService.upsertSetting(setting.type, mergedValue, existing._id);
       }
     }
   }
   async getHttpsSetting(): Promise<HttpsSetting> {
-    const res = await this.settingModel.findOne({ type: 'https' }).exec();
+    const res = await this.findSettingRecord('https');
     if (res) {
       return (res?.value as any) || { redirect: false };
     }
     return null;
   }
   async getLayoutSetting(): Promise<LayoutSetting> {
-    const res = await this.settingModel.findOne({ type: 'layout' }).exec();
+    const res = await this.findSettingRecord('layout');
     if (res) {
       return res?.value as any;
     }
     return null;
   }
   async getAdminLayoutSetting(): Promise<AdminLayoutSetting> {
-    const res = await this.settingModel.findOne({ type: 'adminLayout' }).exec();
+    const res = await this.findSettingRecord('adminLayout');
     if (res) {
       return res?.value as any;
     } else {
-      await this.settingModel.create({
-        type: 'adminLayout',
-        value: defaultAdminLayoutSetting,
-      });
+      await this.createSettingValue('adminLayout', defaultAdminLayoutSetting);
       return defaultAdminLayoutSetting;
     }
   }
   async getLoginSetting(): Promise<LoginSetting> {
-    const res = await this.settingModel.findOne({ type: 'login' }).exec();
+    const res = await this.findSettingRecord('login');
     if (res) {
       return (
         (res?.value as any) || {
@@ -1496,11 +1519,11 @@ if (typeof window !== 'undefined') {
     }
     window.mouseDragSystem = new MouseDragSystem();
   });
-}
+  }
 `;
   }
   async getWalineSetting(): Promise<WalineSetting> {
-    const res = await this.settingModel.findOne({ type: 'waline' }).exec();
+    const res = await this.findSettingRecord('waline');
     if (res) {
       return (
         (res?.value as any) || {
@@ -1515,89 +1538,41 @@ if (typeof window !== 'undefined') {
   async updateLoginSetting(dto: LoginSetting) {
     const oldValue = await this.getLoginSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'login',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'login' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('login', newValue);
   }
   async updateVersionSetting(dto: VersionSetting) {
     const oldValue = await this.getVersionSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'version',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'version' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('version', newValue);
   }
 
   async updateWalineSetting(dto: WalineSetting) {
     const oldValue = await this.getWalineSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'waline',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'waline' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('waline', newValue);
   }
   async updateLayoutSetting(dto: LayoutSetting) {
     const oldValue = await this.getLayoutSetting();
     const newValue = { ...(oldValue || {}), ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'layout',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'layout' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('layout', newValue);
   }
   async updateAdminLayoutSetting(dto: AdminLayoutSetting) {
     const oldValue = await this.getAdminLayoutSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'adminLayout',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'adminLayout' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('adminLayout', newValue);
   }
   async updateHttpsSetting(dto: HttpsSetting) {
     const oldValue = await this.getHttpsSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'https',
-        value: newValue,
-      });
-    }
-    const res = await this.settingModel.updateOne({ type: 'https' }, { value: newValue });
-    return res;
+    return await this.upsertSettingValue('https', newValue);
   }
   async updateStaticSetting(dto: Partial<StaticSetting>) {
     const oldValue = await this.getStaticSetting();
     const newValue = { ...oldValue, ...dto };
-    if (!oldValue) {
-      return await this.settingModel.create({
-        type: 'static',
-        value: newValue,
-      });
-    }
-    return await this.settingModel.updateOne({ type: 'static' }, { value: newValue });
+    return await this.upsertSettingValue('static', newValue);
   }
   async washDefaultMenu() {
-    const r = await this.settingModel.findOne({ type: 'menu' });
+    const r = await this.findSettingRecord('menu');
     if (!r) {
       // 没有的话需要清洗
       const toInsert: MenuItem[] = defaultMenu;
@@ -1618,7 +1593,7 @@ if (typeof window !== 'undefined') {
   }
 
   async getAutoBackupSetting(): Promise<AutoBackupSetting> {
-    const setting = await this.settingModel.findOne({ type: 'autoBackup' });
+    const setting = await this.findSettingRecord('autoBackup');
     if (!setting || !setting.value) {
       return defaultAutoBackupSetting;
     }
@@ -1638,26 +1613,15 @@ if (typeof window !== 'undefined') {
   }
 
   async updateAutoBackupSetting(setting: AutoBackupSetting): Promise<void> {
-    await this.settingModel.updateOne(
-      { type: 'autoBackup' },
-      { 
-        type: 'autoBackup',
-        value: setting,
-        updatedAt: new Date(),
-      },
-      { upsert: true }
-    );
+    await this.upsertSettingValue('autoBackup', setting);
   }
 
   async getMusicSetting(): Promise<MusicSetting> {
-    const res = await this.settingModel.findOne({ type: 'music' }).exec();
+    const res = await this.findSettingRecord('music');
     if (res) {
       return res?.value as any;
     } else {
-      await this.settingModel.create({
-        type: 'music',
-        value: defaultMusicSetting,
-      });
+      await this.createSettingValue('music', defaultMusicSetting);
       return defaultMusicSetting;
     }
   }
@@ -1665,19 +1629,10 @@ if (typeof window !== 'undefined') {
   async updateMusicSetting(dto: Partial<MusicSetting>) {
     const oldValue = await this.getMusicSetting();
     const newValue = { ...oldValue, ...dto };
-    
-    const existingSetting = await this.settingModel.findOne({ type: 'music' }).exec();
-    if (existingSetting) {
-      const res = await this.settingModel.updateOne({ type: 'music' }, { value: newValue });
-      this.logger.log('音乐设置已更新');
-      return res;
-    } else {
-      const res = await this.settingModel.create({
-        type: 'music',
-        value: newValue,
-      });
-      this.logger.log('音乐设置已创建');
-      return res;
-    }
+
+    const existingSetting = await this.findSettingRecord('music');
+    const res = await this.upsertSettingValue('music', newValue);
+    this.logger.log(existingSetting ? '音乐设置已更新' : '音乐设置已创建');
+    return res;
   }
 }

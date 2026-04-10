@@ -1,7 +1,9 @@
 import { loadConfig } from 'src/utils/loadConfig';
 
 export interface Config {
-  mongoUrl: string;
+  databaseUrl: string;
+  redisUrl: string;
+  walineDatabaseUrl: string;
   staticPath: string;
   codeRunnerPath: string;
   pluginRunnerPath: string;
@@ -10,26 +12,13 @@ export interface Config {
   log: string;
 }
 
-export const loadMongoUrl = () => {
-  return loadConfig('database.url', () => {
-    const db = {
-      host: loadConfig('database.host', 'mongo'),
-      port: loadConfig('database.port', '27017'),
-      user: loadConfig('database.user', ''),
-      passwd: loadConfig('database.passwd', ''),
-      name: loadConfig('database.name', 'vanBlog'),
-    };
-
-    let authInfo = '';
-    if (db.user !== '' && db.passwd === '') authInfo = `${db.user}@`;
-    if (db.user !== '' && db.passwd !== '') authInfo = `${db.user}:${db.passwd}@`;
-
-    return `mongodb://${authInfo}${db.host}:${db.port}/${db.name}?authSource=admin`;
-  });
-};
+export const loadDatabaseUrl = () =>
+  loadConfig('database.url', 'postgresql://postgres:postgres@postgres:5432/vanblog');
 
 export const config: Config = {
-  mongoUrl: loadMongoUrl(),
+  databaseUrl: loadDatabaseUrl(),
+  redisUrl: loadConfig('redis.url', 'redis://redis:6379'),
+  walineDatabaseUrl: loadConfig('waline.databaseUrl', ''),
   staticPath: loadConfig('static.path', '/app/static'),
   demo: loadConfig('demo', false),
   walineDB: loadConfig('waline.db', 'waline'),

@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document as MongoDocument } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from 'src/storage/mongoose-compat';
+import { Document as MongoDocument } from 'src/storage/mongoose-compat';
 
 @Schema()
 export class Document extends MongoDocument {

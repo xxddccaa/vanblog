@@ -16,13 +16,17 @@ import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ApiToken } from 'src/provider/swagger/token';
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { IconDto } from 'src/types/icon.dto';
+import { ISRProvider } from 'src/provider/isr/isr.provider';
 
 @ApiTags('icon')
 @UseGuards(...AdminGuard)
 @ApiToken
 @Controller('/api/admin/icon')
 export class IconController {
-  constructor(private readonly iconProvider: IconProvider) {}
+  constructor(
+    private readonly iconProvider: IconProvider,
+    private readonly isrProvider: ISRProvider,
+  ) {}
 
   @Get()
   async getAllIcons(
@@ -71,6 +75,7 @@ export class IconController {
   async createIcon(@Body() iconDto: IconDto) {
     try {
       const icon = await this.iconProvider.createIcon(iconDto);
+      this.isrProvider.activeAll('创建图标触发增量渲染！');
       return {
         statusCode: 200,
         data: icon,
@@ -85,6 +90,7 @@ export class IconController {
   async updateIcon(@Param('name') name: string, @Body() iconDto: Partial<IconDto>) {
     try {
       const icon = await this.iconProvider.updateIcon(name, iconDto);
+      this.isrProvider.activeAll('更新图标触发增量渲染！');
       return {
         statusCode: 200,
         data: icon,
@@ -99,6 +105,7 @@ export class IconController {
   async deleteIcon(@Param('name') name: string) {
     try {
       await this.iconProvider.deleteIcon(name);
+      this.isrProvider.activeAll('删除图标触发增量渲染！');
       return {
         statusCode: 200,
         message: '图标删除成功',
@@ -112,6 +119,7 @@ export class IconController {
   async deleteAllIcons() {
     try {
       await this.iconProvider.deleteAllIcons();
+      this.isrProvider.activeAll('清空图标触发增量渲染！');
       return {
         statusCode: 200,
         message: '所有图标删除成功',

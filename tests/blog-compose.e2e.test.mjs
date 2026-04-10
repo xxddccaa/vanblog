@@ -176,8 +176,9 @@ function createComposeEnv(httpPort, httpsPort) {
 
   const dirs = {
     VANBLOG_LOG_DIR: path.join(tempRoot, 'log'),
-    VANBLOG_MONGO_DIR: path.join(tempRoot, 'mongo'),
     VANBLOG_STATIC_DIR: path.join(tempRoot, 'static'),
+    VANBLOG_POSTGRES_DIR: path.join(tempRoot, 'postgres'),
+    VANBLOG_REDIS_DIR: path.join(tempRoot, 'redis'),
     VANBLOG_CADDY_CONFIG_DIR: path.join(tempRoot, 'caddy-config'),
     VANBLOG_CADDY_DATA_DIR: path.join(tempRoot, 'caddy-data'),
     VANBLOG_ALIYUNPAN_CONFIG_DIR: path.join(tempRoot, 'aliyunpan-config'),
@@ -213,7 +214,7 @@ async function waitForHealthyStack(composeEnv) {
 
     const services = parseComposePsOutput(result.stdout);
     const byService = Object.fromEntries(services.map((service) => [service.Service, service]));
-    const requiredHealthy = ['mongo', 'server', 'website', 'admin', 'waline'];
+    const requiredHealthy = ['postgres', 'redis', 'server', 'website', 'admin'];
     if (!requiredHealthy.every((name) => byService[name]?.Health === 'healthy')) {
       return false;
     }
@@ -350,9 +351,6 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
       const response = await fetchText(`${baseUrl}${pathname}`);
       assert.equal(response.status, 200, `Expected ${pathname} to be reachable`);
     }
-
-    const commentHome = await fetchText(`${baseUrl}/comment/`);
-    assert.equal(commentHome.status, 200);
 
     const initResponse = await fetchJson(`${baseUrl}/api/admin/init`, {
       method: 'POST',
@@ -493,12 +491,20 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
       env: composeEnv,
     });
     const services = parseComposePsOutput(psResult.stdout);
-    const mongoService = services.find((service) => service.Service === 'mongo');
-    assert.ok(mongoService, 'Mongo service should exist in the compose stack');
+    const postgresService = services.find((service) => service.Service === 'postgres');
+    assert.ok(postgresService, 'PostgreSQL service should exist in the compose stack');
     assert.equal(
-      mongoService.Publishers?.every((publisher) => publisher.PublishedPort === 0),
+      postgresService.Publishers?.every((publisher) => publisher.PublishedPort === 0),
       true,
-      'Mongo should stay internal-only and must not publish a host port',
+      'PostgreSQL should stay internal-only and must not publish a host port',
+    );
+
+    const redisService = services.find((service) => service.Service === 'redis');
+    assert.ok(redisService, 'Redis service should exist in the compose stack');
+    assert.equal(
+      redisService.Publishers?.every((publisher) => publisher.PublishedPort === 0),
+      true,
+      'Redis should stay internal-only and must not publish a host port',
     );
 
     const caddyService = services.find((service) => service.Service === 'caddy');

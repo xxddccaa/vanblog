@@ -1,16 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { PipelineDocument } from 'src/scheme/pipeline.schema';
 import { VanblogSystemEvent, VanblogSystemEventNames } from 'src/types/event';
 import { CreatePipelineDto, UpdatePipelineDto } from 'src/types/pipeline.dto';
-import { sleep } from 'src/utils/sleep';
 import { spawnSync } from 'child_process';
 import { config } from 'src/config/index';
 import { writeFileSync, rmSync } from 'fs';
 import { fork } from 'child_process';
 import { LogProvider } from '../log/log.provider';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 export interface CodeResult {
   logs: string[];
@@ -21,12 +21,12 @@ export interface CodeResult {
 @Injectable()
 export class PipelineProvider {
   logger = new Logger(PipelineProvider.name);
-  idLock = false;
   runnerPath = config.codeRunnerPath;
   constructor(
     @InjectModel('Pipeline')
     private pipelineModel: Model<PipelineDocument>,
     private readonly logProvider: LogProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {
     this.init();
   }
@@ -66,17 +66,7 @@ export class PipelineProvider {
   }
 
   async getNewId() {
-    while (this.idLock) {
-      await sleep(10);
-    }
-    this.idLock = true;
-    const maxObj = await this.pipelineModel.find({}).sort({ id: -1 }).limit(1);
-    let res = 1;
-    if (maxObj.length) {
-      res = maxObj[0].id + 1;
-    }
-    this.idLock = false;
-    return res;
+    return await this.structuredDataService.nextPipelineId();
   }
 
   async createPipeline(pipeline: CreatePipelineDto) {
@@ -99,19 +89,27 @@ export class PipelineProvider {
       ...pipeline,
       script,
     });
-    await newPipeline.save();
+    await this.structuredDataService.upsertPipeline(
+      newPipeline.toObject ? newPipeline.toObject() : newPipeline,
+    );
     await this.saveOrUpdateScriptToRunnerPath(id, newPipeline.script);
     await this.addDeps(newPipeline.deps);
+    return newPipeline;
   }
 
   async updatePipelineById(id: number, updateDto: UpdatePipelineDto) {
     await this.pipelineModel.updateOne({ id: id }, updateDto);
+    const latest = await this.pipelineModel.findOne({ id }).lean().exec();
+    if (latest) {
+      await this.structuredDataService.upsertPipeline(latest);
+    }
     if (updateDto.script) {
       await this.saveOrUpdateScriptToRunnerPath(id, updateDto.script);
     }
     if (updateDto.deps) {
       await this.addDeps(updateDto.deps);
     }
+    return latest;
   }
 
   async deletePipelineById(id: number) {
@@ -121,19 +119,36 @@ export class PipelineProvider {
         deleted: true,
       },
     );
+    const latest = await this.pipelineModel.findOne({ id }).lean().exec();
+    if (latest) {
+      await this.structuredDataService.upsertPipeline(latest);
+    }
     await this.deleteScriptById(id);
+    return latest;
   }
   async getAll() {
+    if (this.structuredDataService.isInitialized()) {
+      const pipelines = await this.structuredDataService.listPipelines();
+      return pipelines as any;
+    }
     return await this.pipelineModel.find({
       deleted: false,
     });
   }
 
   async getPipelineById(id: number) {
+    if (this.structuredDataService.isInitialized()) {
+      const pipeline = await this.structuredDataService.getPipelineById(id);
+      return pipeline as any;
+    }
     return await this.pipelineModel.findOne({ id: id });
   }
 
   async getPipelinesByEvent(eventName: string) {
+    if (this.structuredDataService.isInitialized()) {
+      const pipelines = await this.structuredDataService.getPipelinesByEvent(eventName);
+      return pipelines as any;
+    }
     return await this.pipelineModel.find({
       eventName,
       deleted: false,

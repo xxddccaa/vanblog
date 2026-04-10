@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, NotImplementedException, Optional } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { SearchStaticOption, StaticType, StorageType } from 'src/types/setting.dto';
 import { Static, StaticDocument } from 'src/scheme/static.schema';
 import { encryptFileMD5 } from 'src/utils/crypto';
@@ -17,6 +17,8 @@ import { UploadConfig } from 'src/types/upload';
 import { addWaterMarkToIMG } from 'src/utils/watermark';
 import { checkTrue } from 'src/utils/checkTrue';
 import { compressImgToWebp } from 'src/utils/webp';
+import { StructuredDataService } from 'src/storage/structured-data.service';
+
 @Injectable()
 export class StaticProvider {
   constructor(
@@ -28,6 +30,7 @@ export class StaticProvider {
     private readonly articleProvder: ArticleProvider,
     @Optional()
     private readonly picgoProvider?: PicgoProvider,
+    private readonly structuredDataService?: StructuredDataService,
   ) {}
   publicView = {
     _id: 0,
@@ -138,6 +141,7 @@ export class StaticProvider {
     if (clearExisting) {
       // 可选：清空现有的静态文件记录（不删除实际文件）
       await this.staticModel.deleteMany({});
+      await this.structuredDataService?.deleteAllStatics();
     }
     
     for (const each of items) {
@@ -148,6 +152,7 @@ export class StaticProvider {
         await this.staticModel.updateOne({ _id: oldItem._id }, each);
       }
     }
+    await this.structuredDataService?.refreshStaticsFromRecordStore();
   }
   async fetchImg(link: string): Promise<Buffer | null> {
     try {
@@ -277,18 +282,58 @@ export class StaticProvider {
   }
   async createInDB(dto: Partial<Static>) {
     const newModal = new this.staticModel(dto);
-    return await newModal.save();
+    const saved = await newModal.save();
+    await this.structuredDataService?.upsertStatic(saved.toObject());
+    return saved;
   }
   async getOneBySign(sign: string) {
+    const item = await this.structuredDataService?.getStaticBySign(sign);
+    if (item || this.structuredDataService?.isInitialized()) {
+      return item as any;
+    }
     return await this.staticModel.findOne({ sign }).exec();
   }
   async getAll(type: StaticType, view: 'admin' | 'public') {
+    const items = await this.structuredDataService?.listStatics(type);
+    if (items?.length || this.structuredDataService?.isInitialized()) {
+      if (view === 'public') {
+        return items.map((item: any) => {
+          const payload = { ...(item?._doc || item) };
+          delete payload._id;
+          return payload;
+        }) as any;
+      }
+      return items as any;
+    }
     return await this.staticModel.find({ staticType: type }, this.getView(view)).exec();
   }
   async exportAll() {
+    const items = await this.structuredDataService?.exportStatics();
+    if (items?.length || this.structuredDataService?.isInitialized()) {
+      return items.map((item: any) => {
+        const payload = { ...(item?._doc || item) };
+        delete payload._id;
+        return payload;
+      }) as any;
+    }
     return await this.staticModel.find({}, this.getView('public')).exec();
   }
   async getByOption(option: SearchStaticOption) {
+    const pgResult = await this.structuredDataService?.queryStatics(option);
+    if (pgResult && (pgResult.items.length || pgResult.total || this.structuredDataService?.isInitialized())) {
+      const data =
+        option.view === 'public'
+          ? pgResult.items.map((item: any) => {
+              const payload = { ...(item?._doc || item) };
+              delete payload._id;
+              return payload;
+            })
+          : pgResult.items;
+      return {
+        total: pgResult.total,
+        data,
+      };
+    }
     const query: any = {};
     if (option.staticType) {
       query.staticType = option.staticType;
@@ -337,7 +382,9 @@ export class StaticProvider {
       case 'picgo':
         console.log('实际上只删了数据库，网盘上还有的。');
     }
-    return await this.staticModel.deleteOne({ sign }).exec();
+    const result = await this.staticModel.deleteOne({ sign });
+    await this.structuredDataService?.deleteStaticBySign(sign);
+    return result;
   }
   async deleteAllIMG() {
     // 获取站点信息，确定哪些图片需要保留

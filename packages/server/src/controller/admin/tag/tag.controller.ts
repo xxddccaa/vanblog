@@ -5,6 +5,7 @@ import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 import { TagProvider } from 'src/provider/tag/tag.provider';
+import { PublicDataCacheProvider } from 'src/provider/public-data-cache/public-data-cache.provider';
 
 @ApiTags('tag')
 @ApiToken
@@ -14,6 +15,7 @@ export class TagController {
   constructor(
     private readonly tagProvider: TagProvider,
     private readonly isrProvider: ISRProvider,
+    private readonly publicDataCacheProvider: PublicDataCacheProvider,
   ) {}
 
   @Get('/all')
@@ -90,8 +92,8 @@ export class TagController {
     }
     
     await this.tagProvider.syncTagsFromArticles();
-    this.isrProvider.activeUrl('/tag', false);
-    this.isrProvider.activePath('tag');
+    await this.publicDataCacheProvider.clearTagData();
+    await this.isrProvider.activeAll('同步标签数据触发全站刷新！');
     return {
       statusCode: 200,
       message: '标签数据同步成功！',
@@ -129,9 +131,8 @@ export class TagController {
     
     try {
       const data = await this.tagProvider.updateTagByName(name, newName);
-      this.isrProvider.activeUrl('/tag', false);
-      this.isrProvider.activeUrl(`/tag/${encodeURIComponent(name)}`, false);
-      this.isrProvider.activeUrl(`/tag/${encodeURIComponent(newName)}`, false);
+      await this.publicDataCacheProvider.clearTagData();
+      await this.isrProvider.activeAll('重命名标签触发全站刷新！');
       return {
         statusCode: 200,
         data,
@@ -156,8 +157,8 @@ export class TagController {
     
     try {
       const data = await this.tagProvider.deleteOne(name);
-      this.isrProvider.activeUrl('/tag', false);
-      this.isrProvider.activeUrl(`/tag/${encodeURIComponent(name)}`, false);
+      await this.publicDataCacheProvider.clearTagData();
+      await this.isrProvider.activeAll('删除标签触发全站刷新！');
       return {
         statusCode: 200,
         data,

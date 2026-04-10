@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { MongooseModule } from '@nestjs/mongoose';
+import { MongooseModule } from 'src/storage/mongoose-compat';
 import { config } from './config/index';
 import { Article, ArticleSchema } from './scheme/article.schema';
 import { Draft, DraftSchema } from './scheme/draft.schema';
@@ -113,10 +113,12 @@ import { MindMapController } from './controller/admin/mindmap/mindmap.controller
 import { SearchIndexProvider } from './provider/search-index/search-index.provider';
 import { PublicCacheMiddleware } from './provider/public-cache/public-cache.middleware';
 import { MongoBackupProvider } from './provider/mongo-backup/mongo-backup.provider';
+import { PublicDataCacheProvider } from './provider/public-data-cache/public-data-cache.provider';
+import { SearchController } from './controller/admin/search/search.controller';
 
 @Module({
   imports: [
-    MongooseModule.forRoot(config.mongoUrl, {
+    MongooseModule.forRoot(config.databaseUrl, {
       autoIndex: true,
     }),
     MongooseModule.forFeature([
@@ -193,6 +195,7 @@ import { MongoBackupProvider } from './provider/mongo-backup/mongo-backup.provid
     MusicController,
     DocumentController,
     MindMapController,
+    SearchController,
   ],
   providers: [
     AppService,
@@ -241,6 +244,7 @@ import { MongoBackupProvider } from './provider/mongo-backup/mongo-backup.provid
     MindMapProvider,
     SearchIndexProvider,
     MongoBackupProvider,
+    PublicDataCacheProvider,
   ],
 })
 export class AppModule implements NestModule {

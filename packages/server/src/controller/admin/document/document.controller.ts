@@ -17,6 +17,7 @@ import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { DocumentProvider } from 'src/provider/document/document.provider';
 import { config } from 'src/config';
 import { ApiToken } from 'src/provider/swagger/token';
+import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 
 @ApiTags('document')
 @UseGuards(...AdminGuard)
@@ -25,6 +26,7 @@ import { ApiToken } from 'src/provider/swagger/token';
 export class DocumentController {
   constructor(
     private readonly documentProvider: DocumentProvider,
+    private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
 
   @Get('/')
@@ -121,6 +123,7 @@ export class DocumentController {
   @Put('/:id')
   async update(@Param('id') id: number, @Body() updateDto: UpdateDocumentDto) {
     const data = await this.documentProvider.updateById(id, updateDto);
+    this.searchIndexProvider.generateSearchIndex('更新私密文档触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -134,6 +137,7 @@ export class DocumentController {
       createDto.author = author;
     }
     const data = await this.documentProvider.create(createDto);
+    this.searchIndexProvider.generateSearchIndex('创建私密文档触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -159,6 +163,7 @@ export class DocumentController {
   @Delete('/:id')
   async delete(@Param('id') id: number) {
     const data = await this.documentProvider.deleteById(id);
+    this.searchIndexProvider.generateSearchIndex('删除私密文档触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
@@ -175,6 +180,7 @@ export class DocumentController {
     }
     
     const data = await this.documentProvider.convertToDraft(id, body.category);
+    this.searchIndexProvider.generateSearchIndex('文档转草稿触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,

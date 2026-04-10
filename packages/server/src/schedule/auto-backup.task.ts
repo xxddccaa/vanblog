@@ -278,7 +278,7 @@ export class AutoBackupTask {
         aiTaggingConfig,
         documents,
         mindMaps,
-        mongoCollections,
+        rawCollections,
       ] = await Promise.all([
         this.articleProvider.getAll('admin', true),
         this.categoryProvider.getAllCategories(true),
@@ -295,7 +295,7 @@ export class AutoBackupTask {
         this.momentProvider
           .getByOption({ page: 1, pageSize: -1 }, false)
           .then((result) => result.moments),
-        this.customPageProvider.getAll(),
+        this.customPageProvider.getAll(true),
         this.pipelineProvider.getAll(),
         this.tokenProvider.getAllTokens(),
         this.navToolProvider.getAllTools(),
@@ -310,8 +310,8 @@ export class AutoBackupTask {
         this.mongoBackupProvider.exportAllCollections(),
       ]);
 
-      const mongoCollectionCounts = Object.fromEntries(
-        Object.entries(mongoCollections).map(([name, docs]) => [name, docs?.length || 0]),
+      const rawCollectionCounts = Object.fromEntries(
+        Object.entries(rawCollections).map(([name, docs]) => [name, docs?.length || 0]),
       );
 
       const data = {
@@ -338,13 +338,16 @@ export class AutoBackupTask {
         aiTaggingConfig,
         documents,
         mindMaps,
-        mongoCollections,
+        rawCollections,
+        mongoCollections: rawCollections,
         backupInfo: {
-          version: '3.0.0',
+          version: '4.0.0',
+          formatVersion: '4.0.0',
           timestamp: new Date().toISOString(),
           instanceId: this.instanceId,
-          scope: 'full-system-migration',
-          sourceDatabase: 'mongodb',
+          scope: 'full-site-json',
+          contract: 'full-site-backup-json',
+          sourceDatabase: 'postgresql',
           dataTypes: [
             'articles',
             'tags',
@@ -369,6 +372,7 @@ export class AutoBackupTask {
             'aiTaggingConfig',
             'documents',
             'mindMaps',
+            'rawCollections',
             'mongoCollections',
           ],
           counts: {
@@ -391,7 +395,9 @@ export class AutoBackupTask {
             documents: documents?.length || 0,
             mindMaps: mindMaps?.length || 0,
           },
-          mongoCollectionCounts,
+          rawCollectionCounts,
+          mongoCollectionCounts: rawCollectionCounts,
+          legacyFields: ['mongoCollections'],
         },
       };
 

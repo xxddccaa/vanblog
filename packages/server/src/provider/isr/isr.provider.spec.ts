@@ -2,19 +2,25 @@ import { ISRProvider } from './isr.provider';
 
 describe('ISRProvider', () => {
   const oldEnv = process.env['VANBLOG_WEBSITE_ISR_BASE'];
+  const oldDisableWebsite = process.env['VANBLOG_DISABLE_WEBSITE'];
 
   afterAll(() => {
     if (oldEnv === undefined) {
       delete process.env['VANBLOG_WEBSITE_ISR_BASE'];
-      return;
+    } else {
+      process.env['VANBLOG_WEBSITE_ISR_BASE'] = oldEnv;
     }
-    process.env['VANBLOG_WEBSITE_ISR_BASE'] = oldEnv;
+    if (oldDisableWebsite === undefined) {
+      delete process.env['VANBLOG_DISABLE_WEBSITE'];
+    } else {
+      process.env['VANBLOG_DISABLE_WEBSITE'] = oldDisableWebsite;
+    }
   });
 
   it('reads the revalidate base URL from the environment', () => {
     process.env['VANBLOG_WEBSITE_ISR_BASE'] = 'http://website:3001/api/revalidate?path=';
 
-    const provider = new ISRProvider({} as any, {} as any, {} as any, {} as any, {} as any);
+    const provider = new ISRProvider({} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
 
     expect(provider.base).toBe('http://website:3001/api/revalidate?path=');
   });
@@ -35,6 +41,10 @@ describe('ISRProvider', () => {
     const searchIndexProvider = {
       generateSearchIndex: jest.fn(),
     };
+    const publicDataCacheProvider = {
+      clearArticleRelatedData: jest.fn().mockResolvedValue(undefined),
+      clearAllPublicData: jest.fn().mockResolvedValue(undefined),
+    };
     const provider = new ISRProvider(
       articleProvider as any,
       {} as any,
@@ -45,6 +55,7 @@ describe('ISRProvider', () => {
       } as any,
       {} as any,
       searchIndexProvider as any,
+      publicDataCacheProvider as any,
     );
     const activeUrl = jest.spyOn(provider, 'activeUrl').mockResolvedValue(undefined);
     const activeUrls = jest.spyOn(provider, 'activeUrls').mockResolvedValue(undefined);
@@ -60,5 +71,68 @@ describe('ISRProvider', () => {
     expect(activeUrls).toHaveBeenCalledWith(['/tag/Cloudflare/page/2'], false);
     expect(activeUrls).toHaveBeenCalledWith(['/category/System Design/page/2'], false);
     expect(searchIndexProvider.generateSearchIndex).toHaveBeenCalled();
+    expect(publicDataCacheProvider.clearArticleRelatedData).toHaveBeenCalled();
+  });
+
+  it('clears meta cache before revalidating about and link pages', async () => {
+    const publicDataCacheProvider = {
+      clearArticleRelatedData: jest.fn().mockResolvedValue(undefined),
+      clearAllPublicData: jest.fn().mockResolvedValue(undefined),
+      clearMetaData: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ISRProvider(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      publicDataCacheProvider as any,
+    );
+    jest.spyOn(provider, 'activeWithRetry').mockImplementation(async (fn) => {
+      if (typeof fn === 'function') {
+        await fn();
+      }
+    });
+    const activeUrl = jest.spyOn(provider, 'activeUrl').mockResolvedValue(undefined);
+
+    await provider.activeAbout('about');
+    await provider.activeLink('link');
+
+    expect(publicDataCacheProvider.clearMetaData).toHaveBeenCalledTimes(2);
+    expect(activeUrl).toHaveBeenCalledWith('/about', false);
+    expect(activeUrl).toHaveBeenCalledWith('/link', false);
+  });
+
+  it('still clears public caches and refreshes derived artifacts when website is disabled', async () => {
+    process.env['VANBLOG_DISABLE_WEBSITE'] = 'true';
+    const rssProvider = {
+      generateRssFeed: jest.fn(),
+    };
+    const sitemapProvider = {
+      generateSiteMap: jest.fn(),
+    };
+    const searchIndexProvider = {
+      generateSearchIndex: jest.fn(),
+    };
+    const publicDataCacheProvider = {
+      clearArticleRelatedData: jest.fn().mockResolvedValue(undefined),
+      clearAllPublicData: jest.fn().mockResolvedValue(undefined),
+      clearMetaData: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ISRProvider(
+      {} as any,
+      rssProvider as any,
+      sitemapProvider as any,
+      {} as any,
+      searchIndexProvider as any,
+      publicDataCacheProvider as any,
+    );
+
+    await provider.activeAll('disabled-mode');
+
+    expect(publicDataCacheProvider.clearAllPublicData).toHaveBeenCalledTimes(1);
+    expect(rssProvider.generateRssFeed).toHaveBeenCalledWith('disabled-mode', undefined);
+    expect(sitemapProvider.generateSiteMap).toHaveBeenCalledWith('disabled-mode', undefined);
+    expect(searchIndexProvider.generateSearchIndex).toHaveBeenCalledWith('disabled-mode', undefined);
   });
 });

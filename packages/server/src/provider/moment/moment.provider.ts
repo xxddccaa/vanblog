@@ -1,18 +1,18 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { CreateMomentDto, SearchMomentOption, UpdateMomentDto } from 'src/types/moment.dto';
 import { Moment, MomentDocument } from 'src/scheme/moment.schema';
-import { sleep } from 'src/utils/sleep';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 export type MomentView = 'admin' | 'public';
 
 @Injectable()
 export class MomentProvider {
-  idLock = false;
   constructor(
     @InjectModel('Moment')
     private momentModel: Model<MomentDocument>,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   publicView = {
@@ -32,11 +32,23 @@ export class MomentProvider {
     _id: 0,
   };
 
+  private projectMomentForView(moment: any, view: MomentView) {
+    if (!moment) {
+      return moment;
+    }
+    const payload = { ...(moment?._doc || moment) };
+    if (view === 'public') {
+      delete payload.deleted;
+    }
+    return payload;
+  }
+
   async create(createMomentDto: CreateMomentDto): Promise<Moment> {
     const createdData = new this.momentModel(createMomentDto);
     const newId = await this.getNewId();
     createdData.id = newId;
     const res = await createdData.save();
+    await this.structuredDataService.upsertMoment(res.toObject());
     return res;
   }
 
@@ -44,6 +56,15 @@ export class MomentProvider {
     option: SearchMomentOption,
     isPublic: boolean,
   ): Promise<{ moments: Moment[]; total: number }> {
+    const pgResult = await this.structuredDataService.queryMoments(option);
+    if (pgResult.moments.length || pgResult.total || this.structuredDataService.isInitialized()) {
+      return {
+        total: pgResult.total,
+        moments: pgResult.moments.map((moment: any) =>
+          this.projectMomentForView(moment, isPublic ? 'public' : 'admin'),
+        ),
+      } as any;
+    }
     const { page, pageSize, sortCreatedAt, startTime, endTime } = option;
     const view = isPublic ? this.publicView : this.adminView;
 
@@ -88,6 +109,10 @@ export class MomentProvider {
   }
 
   async getById(id: number, view: MomentView): Promise<Moment> {
+    const pgMoment = await this.structuredDataService.getMomentById(id);
+    if (pgMoment) {
+      return this.projectMomentForView(pgMoment, view) as any;
+    }
     const viewFields = view === 'admin' ? this.adminView : this.publicView;
     
     // 两种视图都只能获取未删除的动态
@@ -105,7 +130,7 @@ export class MomentProvider {
       throw new NotFoundException('动态不存在');
     }
     
-    return moment;
+    return moment as any;
   }
 
   async updateById(id: number, updateMomentDto: UpdateMomentDto): Promise<Moment> {
@@ -127,7 +152,7 @@ export class MomentProvider {
     if (!updatedMoment) {
       throw new NotFoundException('动态不存在');
     }
-    
+    await this.structuredDataService.upsertMoment(updatedMoment.toObject());
     return updatedMoment;
   }
 
@@ -146,9 +171,17 @@ export class MomentProvider {
     if (result.matchedCount === 0) {
       throw new NotFoundException('动态不存在');
     }
+    const latest = await this.momentModel.findOne({ id }).lean().exec();
+    if (latest) {
+      await this.structuredDataService.upsertMoment(latest);
+    }
   }
 
   async getTotalNum(): Promise<number> {
+    const total = await this.structuredDataService.getTotalMoments();
+    if (total || this.structuredDataService.isInitialized()) {
+      return total;
+    }
     return await this.momentModel.countDocuments({
       $or: [
         { deleted: false },
@@ -157,23 +190,32 @@ export class MomentProvider {
     });
   }
 
+  async searchByString(str: string): Promise<Moment[]> {
+    const pgMoments = await this.structuredDataService.searchMoments(str);
+    if (pgMoments.length || this.structuredDataService.isInitialized()) {
+      return pgMoments.map((moment: any) => this.projectMomentForView(moment, 'admin')) as any;
+    }
+
+    const moments = await this.momentModel
+      .find({
+        $and: [
+          {
+            $or: [
+              { content: { $regex: `${str}`, $options: 'i' } },
+            ],
+          },
+          {
+            $or: [{ deleted: false }, { deleted: { $exists: false } }],
+          },
+        ],
+      }, this.adminView)
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    return moments as any;
+  }
+
   async getNewId(): Promise<number> {
-    while (this.idLock) {
-      await sleep(10);
-    }
-    this.idLock = true;
-    
-    try {
-      const lastMoment = await this.momentModel
-        .findOne({}, { id: 1 })
-        .sort({ id: -1 });
-      
-      const newId = lastMoment ? lastMoment.id + 1 : 1;
-      this.idLock = false;
-      return newId;
-    } catch (error) {
-      this.idLock = false;
-      throw error;
-    }
+    return await this.structuredDataService.nextMomentId();
   }
 } 

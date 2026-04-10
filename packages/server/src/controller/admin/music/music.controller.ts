@@ -19,6 +19,7 @@ import { SettingProvider } from 'src/provider/setting/setting.provider';
 import { config } from 'src/config';
 import { ApiToken } from 'src/provider/swagger/token';
 import { MusicSetting } from 'src/types/setting.dto';
+import { ISRProvider } from 'src/provider/isr/isr.provider';
 
 @ApiTags('music')
 @UseGuards(...AdminGuard)
@@ -28,6 +29,7 @@ export class MusicController {
   constructor(
     private readonly staticProvider: StaticProvider,
     private readonly settingProvider: SettingProvider,
+    private readonly isrProvider: ISRProvider,
   ) {}
 
   @Post('upload')
@@ -56,6 +58,7 @@ export class MusicController {
     }
 
     const res = await this.staticProvider.upload(file, 'music');
+    this.isrProvider.activeAll('上传音乐触发增量渲染！');
     return {
       statusCode: 200,
       data: res,
@@ -94,6 +97,7 @@ export class MusicController {
       };
     }
     const res = await this.staticProvider.deleteOneBySign(sign);
+    this.isrProvider.activeAll('删除音乐触发增量渲染！');
     return {
       statusCode: 200,
       data: res,
@@ -118,6 +122,7 @@ export class MusicController {
       };
     }
     const res = await this.settingProvider.updateMusicSetting(body);
+    this.isrProvider.activeAll('更新音乐设置触发增量渲染！');
     return {
       statusCode: 200,
       data: res,
@@ -141,6 +146,7 @@ export class MusicController {
     };
     
     const res = await this.settingProvider.updateMusicSetting(updatedSetting);
+    this.isrProvider.activeAll('更新音乐播放列表触发增量渲染！');
     return {
       statusCode: 200,
       data: res,

@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { NavTool } from 'src/scheme/nav-tool.schema';
 import { NavCategory } from 'src/scheme/nav-category.schema';
 import { CreateNavToolDto, UpdateNavToolDto, NavToolItem } from 'src/types/nav.dto';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 @Injectable()
 export class NavToolProvider {
@@ -12,9 +13,14 @@ export class NavToolProvider {
     private navToolModel: Model<NavTool>,
     @InjectModel(NavCategory.name)
     private navCategoryModel: Model<NavCategory>,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   async getAllTools(): Promise<NavToolItem[]> {
+    const pgTools = await this.structuredDataService.listNavTools();
+    if (pgTools.length || this.structuredDataService.isInitialized()) {
+      return pgTools as any;
+    }
     const tools = await this.navToolModel.find().sort({ sort: 1, createdAt: -1 }).exec();
     const categories = await this.navCategoryModel.find().exec();
     
@@ -44,6 +50,15 @@ export class NavToolProvider {
     page: number;
     pageSize: number;
   }> {
+    const pgResult = await this.structuredDataService.getNavToolsPaginated(page, pageSize);
+    if (pgResult.tools.length || pgResult.total || this.structuredDataService.isInitialized()) {
+      return {
+        tools: pgResult.tools as any,
+        total: pgResult.total,
+        page,
+        pageSize,
+      };
+    }
     const skip = (page - 1) * pageSize;
     const [tools, total] = await Promise.all([
       this.navToolModel.find().sort({ sort: 1, createdAt: -1 }).skip(skip).limit(pageSize).exec(),
@@ -78,6 +93,10 @@ export class NavToolProvider {
   }
 
   async getToolById(id: string): Promise<NavToolItem | null> {
+    const pgTool = await this.structuredDataService.getNavToolById(id);
+    if (pgTool || this.structuredDataService.isInitialized()) {
+      return pgTool as any;
+    }
     const tool = await this.navToolModel.findById(id).exec();
     if (!tool) return null;
 
@@ -108,23 +127,8 @@ export class NavToolProvider {
     });
 
     const savedTool = await tool.save();
-    const category = await this.navCategoryModel.findById(savedTool.categoryId).exec();
-
-    return {
-      _id: savedTool._id.toString(),
-      name: savedTool.name,
-      url: savedTool.url,
-      logo: savedTool.logo,
-      categoryId: savedTool.categoryId,
-      categoryName: category?.name,
-      description: savedTool.description,
-      sort: savedTool.sort,
-      hide: savedTool.hide,
-      useCustomIcon: savedTool.useCustomIcon,
-      customIcon: savedTool.customIcon,
-      createdAt: savedTool.createdAt,
-      updatedAt: savedTool.updatedAt,
-    };
+    await this.structuredDataService.upsertNavTool(savedTool.toObject());
+    return (await this.getToolById(savedTool._id.toString())) as NavToolItem;
   }
 
   async updateTool(id: string, toolDto: UpdateNavToolDto): Promise<NavToolItem> {
@@ -132,39 +136,30 @@ export class NavToolProvider {
       id,
       { ...toolDto, updatedAt: new Date() },
       { new: true }
-    ).exec();
+    );
 
     if (!updatedTool) {
       throw new Error(`工具 "${id}" 未找到`);
     }
-
-    const category = await this.navCategoryModel.findById(updatedTool.categoryId).exec();
-
-    return {
-      _id: updatedTool._id.toString(),
-      name: updatedTool.name,
-      url: updatedTool.url,
-      logo: updatedTool.logo,
-      categoryId: updatedTool.categoryId,
-      categoryName: category?.name,
-      description: updatedTool.description,
-      sort: updatedTool.sort,
-      hide: updatedTool.hide,
-      useCustomIcon: updatedTool.useCustomIcon,
-      customIcon: updatedTool.customIcon,
-      createdAt: updatedTool.createdAt,
-      updatedAt: updatedTool.updatedAt,
-    };
+    await this.structuredDataService.upsertNavTool(
+      updatedTool.toObject ? updatedTool.toObject() : updatedTool,
+    );
+    return (await this.getToolById(updatedTool._id.toString())) as NavToolItem;
   }
 
   async deleteTool(id: string): Promise<void> {
-    const result = await this.navToolModel.deleteOne({ _id: id }).exec();
+    const result = await this.navToolModel.deleteOne({ _id: id });
     if (result.deletedCount === 0) {
       throw new Error(`工具 "${id}" 未找到`);
     }
+    await this.structuredDataService.deleteNavToolById(id);
   }
 
   async getToolsByCategory(categoryId: string): Promise<NavToolItem[]> {
+    const pgTools = await this.structuredDataService.getNavToolsByCategory(categoryId);
+    if (pgTools.length || this.structuredDataService.isInitialized()) {
+      return pgTools as any;
+    }
     const tools = await this.navToolModel.find({ categoryId }).sort({ sort: 1, createdAt: -1 }).exec();
     const category = await this.navCategoryModel.findById(categoryId).exec();
 
@@ -194,5 +189,6 @@ export class NavToolProvider {
     }));
 
     await this.navToolModel.bulkWrite(bulkOps);
+    await this.structuredDataService.refreshNavToolsFromRecordStore();
   }
 } 

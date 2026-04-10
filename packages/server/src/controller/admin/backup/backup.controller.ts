@@ -41,6 +41,7 @@ import { AITaggingProvider } from 'src/provider/ai-tagging/ai-tagging.provider';
 import { DocumentProvider } from 'src/provider/document/document.provider';
 import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
 import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 @ApiTags('backup')
 @UseGuards(...AdminGuard)
@@ -71,12 +72,21 @@ export class BackupController {
     private readonly documentProvider: DocumentProvider,
     private readonly mindMapProvider: MindMapProvider,
     private readonly mongoBackupProvider: MongoBackupProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
+
+  private async refreshStructuredData(reason: string) {
+    try {
+      await this.structuredDataService.refreshAllFromRecordStore(reason);
+    } catch (error) {
+      this.logger.error(`结构化数据同步失败(${reason}): ${error.message}`);
+    }
+  }
 
   @Get('export')
   async getAll(@Res() res: Response) {
     try {
-      this.logger.log('开始导出全部数据...');
+      this.logger.log('开始导出完整站点 JSON...');
 
       const [
         articles,
@@ -102,7 +112,7 @@ export class BackupController {
         aiTaggingConfig,
         documents,
         mindMaps,
-        mongoCollections,
+        rawCollections,
       ] = await Promise.all([
         this.articleProvider.getAll('admin', true),
         this.categoryProvider.getAllCategories(true),
@@ -119,7 +129,7 @@ export class BackupController {
         this.momentProvider
           .getByOption({ page: 1, pageSize: -1 }, false)
           .then((result) => result.moments),
-        this.customPageProvider.getAll(),
+        this.customPageProvider.getAll(true),
         this.pipelineProvider.getAll(),
         this.tokenProvider.getAllTokens(),
         this.navToolProvider.getAllTools(),
@@ -134,8 +144,8 @@ export class BackupController {
         this.mongoBackupProvider.exportAllCollections(),
       ]);
 
-      const mongoCollectionCounts = Object.fromEntries(
-        Object.entries(mongoCollections).map(([name, docs]) => [name, docs?.length || 0]),
+      const rawCollectionCounts = Object.fromEntries(
+        Object.entries(rawCollections).map(([name, docs]) => [name, docs?.length || 0]),
       );
 
       const data = {
@@ -162,12 +172,15 @@ export class BackupController {
         aiTaggingConfig,
         documents,
         mindMaps,
-        mongoCollections,
+        rawCollections,
+        mongoCollections: rawCollections,
         backupInfo: {
-          version: '3.0.0',
+          version: '4.0.0',
+          formatVersion: '4.0.0',
           timestamp: new Date().toISOString(),
-          scope: 'full-system-migration',
-          sourceDatabase: 'mongodb',
+          scope: 'full-site-json',
+          contract: 'full-site-backup-json',
+          sourceDatabase: 'postgresql',
           dataTypes: [
             'articles',
             'tags',
@@ -192,6 +205,7 @@ export class BackupController {
             'aiTaggingConfig',
             'documents',
             'mindMaps',
+            'rawCollections',
             'mongoCollections',
           ],
           counts: {
@@ -214,7 +228,9 @@ export class BackupController {
             documents: documents?.length || 0,
             mindMaps: mindMaps?.length || 0,
           },
-          mongoCollectionCounts,
+          rawCollectionCounts,
+          mongoCollectionCounts: rawCollectionCounts,
+          legacyFields: ['mongoCollections'],
         },
       };
 
@@ -506,6 +522,8 @@ export class BackupController {
         this.logger.log(`脑图数据导入完成: ${importResults.mindMaps} 条`);
       }
 
+      await this.refreshStructuredData('backup-import');
+
       // 自动同步标签数据
       try {
         this.logger.log('开始同步标签数据...');
@@ -625,7 +643,7 @@ export class BackupController {
 
       // 2. 清空自定义页面
       try {
-        const customPages = await this.customPageProvider.getAll();
+        const customPages = await this.customPageProvider.getAll(true);
         for (const page of customPages) {
           await this.customPageProvider.deleteByPath(page.path);
         }
@@ -742,6 +760,7 @@ export class BackupController {
         const staticItems = await this.staticProvider.exportAll();
         // 使用MongoDB的deleteMany进行批量物理删除
         await this.staticProvider['staticModel'].deleteMany({});
+        await this.structuredDataService.deleteAllStatics();
         clearResults.staticItems = staticItems?.length || 0;
         this.logger.log(`清空静态文件记录完成: ${clearResults.staticItems} 条`);
       } catch (error) {
@@ -764,10 +783,12 @@ export class BackupController {
 
         // 清空用户表，让系统回到未初始化状态
         await this.userProvider['userModel'].deleteMany({});
+        await this.structuredDataService.deleteUsersExcept([]);
         this.logger.log('清空用户数据完成');
 
         // 清空settings表
         await this.settingProvider['settingModel'].deleteMany({});
+        await this.structuredDataService.deleteAllSettings();
         this.logger.log('清空网站设置完成，网站已重置为未初始化状态');
       } catch (error) {
         this.logger.error('清空网站数据失败:', error.message);
@@ -782,6 +803,7 @@ export class BackupController {
       }
 
       this.logger.warn('所有数据清空完成！', clearResults);
+      await this.refreshStructuredData('clear-all');
 
       return {
         statusCode: 200,
@@ -897,7 +919,8 @@ export class BackupController {
               id: targetId,
               updatedAt: createDto.updatedAt || new Date(),
             });
-            await newDraft.save();
+            const saved = await newDraft.save();
+            await this.structuredDataService.upsertDraft(saved?.toObject ? saved.toObject() : saved);
             createdCount++;
           }
         } catch (error) {
@@ -973,7 +996,10 @@ export class BackupController {
               createdAt: createDto.createdAt || new Date(),
               updatedAt: createDto.updatedAt || new Date(),
             });
-            await newMoment.save();
+            const saved = await newMoment.save();
+            await this.structuredDataService.upsertMoment(
+              saved?.toObject ? saved.toObject() : saved,
+            );
             createdCount++;
           }
         } catch (error) {
@@ -1187,6 +1213,10 @@ export class BackupController {
         ? this.userProvider['userModel']?.deleteMany?.({})
         : this.userProvider['userModel']?.deleteMany?.({ id: { $ne: keepAdminId } }),
     ]);
+
+    await this.structuredDataService.clearStructuredDataForRestore(
+      keepAdminId === undefined ? [] : [Number(keepAdminId)],
+    );
   }
 
   private buildUsersForRestore(users: any[], currentAdmin?: any) {
@@ -1243,6 +1273,7 @@ export class BackupController {
     delete payload._id;
     delete payload.__v;
     await this.metaProvider['metaModel'].updateOne({}, payload, { upsert: true });
+    await this.structuredDataService.upsertMeta(payload);
   }
 
   private async importArticlesEnhanced(articles: any[]) {
@@ -1489,11 +1520,15 @@ export class BackupController {
 
           if (existingById) {
             await this.documentProvider['documentModel'].updateOne({ id: targetId }, payload);
+            await this.structuredDataService.upsertDocument(payload);
             updatedCount++;
             this.logger.log(`更新文档: ${document.title}`);
           } else {
             const newDocument = new this.documentProvider['documentModel'](payload);
-            await newDocument.save();
+            const saved = await newDocument.save();
+            await this.structuredDataService.upsertDocument(
+              saved?.toObject ? saved.toObject() : saved,
+            );
             createdCount++;
           }
         } catch (error) {
@@ -1511,7 +1546,7 @@ export class BackupController {
   }
 
   private normalizeBackupPayload(data: any) {
-    const mongoCollections = data?.mongoCollections || data?.rawCollections || {};
+    const mongoCollections = data?.rawCollections || data?.mongoCollections || {};
     const settings = data?.settings || this.getCollection(mongoCollections, ['settings']);
 
     return {

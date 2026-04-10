@@ -8,6 +8,7 @@ import { VisitProvider } from 'src/provider/visit/visit.provider';
 import { config } from 'src/config';
 import { UpdateSiteViewerDto, BatchUpdateViewerDto } from 'src/types/viewer.dto';
 import { ApiToken } from 'src/provider/swagger/token';
+import { PublicDataCacheProvider } from 'src/provider/public-data-cache/public-data-cache.provider';
 
 @ApiTags('viewer')
 @UseGuards(...AdminGuard)
@@ -19,7 +20,15 @@ export class ViewerMetaController {
     private readonly articleProvider: ArticleProvider,
     private readonly visitProvider: VisitProvider,
     private readonly isrProvider: ISRProvider,
+    private readonly publicDataCacheProvider: PublicDataCacheProvider,
   ) {}
+
+  private async refreshViewerFacingPages() {
+    await this.publicDataCacheProvider.clearViewerData();
+    this.isrProvider.activeUrl('/', false);
+    this.isrProvider.activeUrl('/about', false);
+    this.isrProvider.activeUrl('/timeline', false);
+  }
 
   @Get()
   async get() {
@@ -56,6 +65,7 @@ export class ViewerMetaController {
       viewer: updateDto.viewer,
       visited: updateDto.visited,
     });
+    await this.refreshViewerFacingPages();
     
     return {
       statusCode: 200,
@@ -81,6 +91,7 @@ export class ViewerMetaController {
     // 同时更新Visit表中的浏览量（这是前端显示的数据源）
     const pathname = `/post/${updateDto.id}`;
     await this.visitProvider.rewriteToday(pathname, updateDto.viewer, updateDto.visited);
+    await this.refreshViewerFacingPages();
     
     return {
       statusCode: 200,
@@ -115,6 +126,7 @@ export class ViewerMetaController {
       const pathname = `/post/${article.id}`;
       await this.visitProvider.rewriteToday(pathname, article.viewer, article.visited);
     }
+    await this.refreshViewerFacingPages();
     
     return {
       statusCode: 200,
@@ -178,6 +190,7 @@ export class ViewerMetaController {
         visited: currentSite.visited + siteVisitedIncrease,
       });
     }
+    await this.refreshViewerFacingPages();
     
     return {
       statusCode: 200,

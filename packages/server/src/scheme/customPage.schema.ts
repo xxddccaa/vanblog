@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from 'src/storage/mongoose-compat';
+import { Document } from 'src/storage/mongoose-compat';
 import { CustomType } from 'src/types/custom';
 
 export type CustomPageDocument = CustomPage & Document;

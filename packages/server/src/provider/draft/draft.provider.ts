@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { CreateArticleDto } from 'src/types/article.dto';
 import {
   CreateDraftDto,
@@ -10,15 +10,16 @@ import {
 } from 'src/types/draft.dto';
 import { Draft, DraftDocument } from 'src/scheme/draft.schema';
 import { ArticleProvider } from '../article/article.provider';
-import { sleep } from 'src/utils/sleep';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 export type DraftView = 'admin' | 'public' | 'list';
+
 @Injectable()
 export class DraftProvider {
-  idLock = false;
   constructor(
     @InjectModel('Draft') private draftModel: Model<DraftDocument>,
     private readonly articleProvider: ArticleProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
   publicView = {
     title: 1,
@@ -69,12 +70,27 @@ export class DraftProvider {
     }
     return thisView;
   }
+
+  private projectDraftForView(draft: any, view: DraftView) {
+    if (!draft) {
+      return draft;
+    }
+    const payload = { ...(draft?._doc || draft) };
+    if (view === 'list') {
+      delete payload.content;
+    }
+    return payload;
+  }
+
   async create(createDraftDto: CreateDraftDto): Promise<Draft> {
     const createdData = new this.draftModel(createDraftDto);
     const newId = await this.getNewId();
     createdData.id = newId;
-    return createdData.save();
+    const saved = await createdData.save();
+    await this.structuredDataService.upsertDraft(saved.toObject());
+    return saved;
   }
+
   async importDrafts(drafts: Draft[]) {
     // 题目相同就合并，以导入的优先
     // for (let i = 0; i < drafts.length; i++) {
@@ -86,14 +102,24 @@ export class DraftProvider {
       const title = draft.title;
       const oldDraft = await this.findOneByTitle(title);
       if (oldDraft) {
-        this.updateById(oldDraft.id, { ...createDto, deleted: false });
+        await this.updateById(oldDraft.id, { ...createDto, deleted: false });
       } else {
         await this.create(createDto);
       }
     }
+    await this.structuredDataService.refreshDraftsFromRecordStore();
   }
 
   async getByOption(option: SearchDraftOption): Promise<{ drafts: Draft[]; total: number }> {
+    const pgResult = await this.structuredDataService.queryDrafts(option);
+    if (pgResult.drafts.length || pgResult.total || this.structuredDataService.isInitialized()) {
+      return {
+        drafts: pgResult.drafts.map((draft: any) =>
+          this.projectDraftForView(draft, option.toListView ? 'list' : 'admin'),
+        ),
+        total: pgResult.total,
+      } as any;
+    }
     const query: any = {};
     const $and: any = [
       {
@@ -151,14 +177,14 @@ export class DraftProvider {
 
     query.$and = $and;
     const view = option.toListView ? this.listView : this.adminView;
-
-    const drafts = await this.draftModel
-      .find(query, view)
-      .sort(sort)
-      .skip(option.pageSize * option.page - option.pageSize)
-      .limit(option.pageSize)
-      .exec();
-    const total = await this.draftModel.count(query).exec();
+    const draftQuery = this.draftModel.find(query, view).sort(sort);
+    const shouldPaginate = typeof option.pageSize === 'number' ? option.pageSize > 0 : true;
+    if (shouldPaginate) {
+      const page = option.page && option.page > 0 ? option.page : 1;
+      draftQuery.skip(option.pageSize * page - option.pageSize).limit(option.pageSize);
+    }
+    const drafts = await draftQuery.exec();
+    const total = await this.draftModel.countDocuments(query).exec();
 
     return {
       drafts,
@@ -186,20 +212,42 @@ export class DraftProvider {
   }
 
   async getAll(): Promise<Draft[]> {
+    const drafts = await this.structuredDataService.listDrafts();
+    if (drafts.length || this.structuredDataService.isInitialized()) {
+      return drafts as any;
+    }
     return this.draftModel.find({ deleted: false }).exec();
   }
 
   async getById(id: number): Promise<Draft> {
+    const draft = await this.structuredDataService.getDraftById(id);
+    if (draft || this.structuredDataService.isInitialized()) {
+      return draft as any;
+    }
     return this.draftModel.findOne({ id, deleted: false }).exec();
   }
+
   async findById(id: number): Promise<Draft> {
+    const draft = await this.structuredDataService.getDraftById(id, true);
+    if (draft || this.structuredDataService.isInitialized()) {
+      return draft as any;
+    }
     return this.draftModel.findOne({ id }).exec();
   }
+
   async findOneByTitle(title: string): Promise<Draft> {
+    const draft = await this.structuredDataService.findDraftByTitle(title);
+    if (draft || this.structuredDataService.isInitialized()) {
+      return draft as any;
+    }
     return this.draftModel.findOne({ title }).exec();
   }
 
   async searchByString(str: string): Promise<Draft[]> {
+    const drafts = await this.structuredDataService.searchDrafts(str);
+    if (drafts.length || this.structuredDataService.isInitialized()) {
+      return drafts as any;
+    }
     const $and: any = [
       {
         $or: [
@@ -228,29 +276,38 @@ export class DraftProvider {
   }
 
   async findAll(): Promise<Draft[]> {
+    const drafts = await this.structuredDataService.listDrafts(true);
+    if (drafts.length || this.structuredDataService.isInitialized()) {
+      return drafts as any;
+    }
     return this.draftModel.find().exec();
   }
+
   async deleteById(id: number) {
-    return this.draftModel.updateOne({ id }, { deleted: true }).exec();
+    const result = await this.draftModel.updateOne(
+      { id },
+      { deleted: true, updatedAt: new Date() },
+    );
+    const latest = await this.draftModel.findOne({ id }).lean().exec();
+    if (latest) {
+      await this.structuredDataService.upsertDraft(latest);
+    }
+    return result;
   }
 
   async updateById(id: number, updateDraftDto: UpdateDraftDto) {
-    return this.draftModel.updateOne({ id }, { ...updateDraftDto, updatedAt: new Date() });
+    const result = await this.draftModel.updateOne(
+      { id },
+      { ...updateDraftDto, updatedAt: new Date() },
+    );
+    const latest = await this.draftModel.findOne({ id }).lean().exec();
+    if (latest) {
+      await this.structuredDataService.upsertDraft(latest);
+    }
+    return result;
   }
 
   async getNewId() {
-    while (this.idLock) {
-      await sleep(10);
-    }
-    this.idLock = true;
-    const maxObj = await this.draftModel.find({}).sort({ id: -1 }).limit(1);
-    let res = 1;
-    if (maxObj.length) {
-      res = maxObj[0].id + 1;
-    }
-    this.idLock = false;
-    return res;
+    return await this.structuredDataService.nextDraftId();
   }
-
-
 }

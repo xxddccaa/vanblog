@@ -38,10 +38,11 @@ export class LoginGuard implements CanActivate {
       return true;
     }
     const key = `login-${ip.trim()}`;
-    const { count, lastLoginTime } = this.cacheProvider.get(key);
+    const cacheEntry = (await this.cacheProvider.get(key)) || {};
+    const { count, lastLoginTime } = cacheEntry;
 
     if (!lastLoginTime) {
-      this.cacheProvider.set(key, {
+      await this.cacheProvider.set(key, {
         count: 1,
         lastLoginTime: new Date(),
       });
@@ -49,7 +50,7 @@ export class LoginGuard implements CanActivate {
       const now = dayjs();
       const diff = now.diff(dayjs(lastLoginTime), 'seconds');
       if (diff > 60) {
-        this.cacheProvider.set(key, {
+        await this.cacheProvider.set(key, {
           count: 1,
           lastLoginTime: new Date(),
         });
@@ -58,7 +59,7 @@ export class LoginGuard implements CanActivate {
           this.logger.warn(
             `登录频繁失败检测触发\nip: ${ip}\ncount: ${count}\nlastLoginTime: ${lastLoginTime}\ndiff: ${diff}`,
           );
-          this.cacheProvider.set(key, {
+          await this.cacheProvider.set(key, {
             count: count + 1,
             lastLoginTime: new Date(),
           });
@@ -67,7 +68,7 @@ export class LoginGuard implements CanActivate {
             message: '错误次数过多！请一分钟之后再试！',
           });
         } else {
-          this.cacheProvider.set(key, {
+          await this.cacheProvider.set(key, {
             count: count + 1,
             lastLoginTime: new Date(),
           });

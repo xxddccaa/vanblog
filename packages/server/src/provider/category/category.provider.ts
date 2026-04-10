@@ -1,53 +1,57 @@
 import { Injectable, NotAcceptableException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { ArticleProvider } from '../article/article.provider';
 import { CategoryDocument } from 'src/scheme/category.schema';
-import { sleep } from 'src/utils/sleep';
 import { UpdateCategoryDto, UpdateCategorySortDto } from 'src/types/category.dto';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 @Injectable()
 export class CategoryProvider {
-  idLock = false;
   constructor(
     @InjectModel('Category') private categoryModal: Model<CategoryDocument>,
     private readonly articleProvider: ArticleProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
   async getCategoriesWithArticle(includeHidden: boolean) {
-    const allArticles = await this.articleProvider.getAll('list', includeHidden);
     const categories = await this.getAllCategories();
     const data = {};
     categories.forEach((c) => {
       data[c] = [];
     });
-    allArticles.forEach((a) => {
-      data[a.category]?.push(a);
-    });
+    for (const category of categories) {
+      data[category] = await this.getArticlesByCategory(category, includeHidden);
+    }
     return data;
   }
 
   async getCategorySummaries(includeHidden: boolean) {
+    const summaries = await this.structuredDataService.getCategoryArticleSummaries(includeHidden);
+    if (summaries.length || this.structuredDataService.isInitialized()) {
+      return summaries;
+    }
     const allArticles = await this.articleProvider.getAll('list', includeHidden);
     const categories = await this.getAllCategories();
     const countMap = new Map<string, number>();
-
     categories.forEach((category) => {
       countMap.set(category, 0);
     });
-
     allArticles.forEach((article) => {
       if (!article.category) {
         return;
       }
       countMap.set(article.category, (countMap.get(article.category) || 0) + 1);
     });
-
     return categories.map((name) => ({
       name,
       articleCount: countMap.get(name) || 0,
     }));
   }
   async getPieData() {
+    const pgResult = await this.structuredDataService.getCategoryDistribution(true);
+    if (pgResult.length || this.structuredDataService.isInitialized()) {
+      return pgResult;
+    }
     const oldData = await this.getCategoriesWithArticle(true);
     const categories = Object.keys(oldData);
     if (!categories || categories.length < 0) {
@@ -64,6 +68,11 @@ export class CategoryProvider {
   }
 
   async getAllCategories(all?: boolean) {
+    const pgCategories = await this.structuredDataService.listCategories();
+    if (pgCategories.length || this.structuredDataService.isInitialized()) {
+      if (all) return pgCategories as any;
+      return pgCategories.map((item: any) => item.name);
+    }
     const d = await this.categoryModal.find({}).sort({ sort: 1, id: 1 }).lean();
     if (!d || !d.length) {
       return [];
@@ -73,8 +82,12 @@ export class CategoryProvider {
   }
 
   async getArticlesByCategory(name: string, includeHidden: boolean) {
-    const d = await this.getCategoriesWithArticle(includeHidden);
-    return d[name] ?? [];
+    const articles = await this.structuredDataService.getArticlesByCategory(name, includeHidden);
+    if (articles.length || this.structuredDataService.isInitialized()) {
+      return articles as any;
+    }
+    const allArticles = await this.articleProvider.getAll('list', includeHidden);
+    return allArticles.filter((article) => article.category === name);
   }
 
   async addOne(name: string) {
@@ -96,28 +109,19 @@ export class CategoryProvider {
       const maxSortCategory = await this.categoryModal.findOne({}).sort({ sort: -1 });
       const newSort = maxSortCategory ? maxSortCategory.sort + 1 : 0;
       
-      await this.categoryModal.create({
+      const created = await this.categoryModal.create({
         id: await this.getNewId(),
         name: trimmedName,
         type: 'category',
         private: false,
         sort: newSort,
       });
+      await this.structuredDataService.upsertCategory(created.toObject());
     }
   }
 
   async getNewId() {
-    while (this.idLock) {
-      await sleep(10);
-    }
-    this.idLock = true;
-    const maxObj = await this.categoryModal.find({}).sort({ id: -1 }).limit(1);
-    let res = 1;
-    if (maxObj.length) {
-      res = maxObj[0].id + 1;
-    }
-    this.idLock = false;
-    return res;
+    return await this.structuredDataService.nextCategoryId();
   }
 
   async deleteOne(name: string) {
@@ -129,6 +133,7 @@ export class CategoryProvider {
     await this.categoryModal.deleteOne({
       name,
     });
+    await this.structuredDataService.deleteCategoryByName(name);
   }
 
   async updateCategoryByName(name: string, dto: UpdateCategoryDto) {
@@ -170,6 +175,10 @@ export class CategoryProvider {
         ...dto,
       },
     );
+    const latest = await this.categoryModal.findOne({ name: dto.name || name }).lean();
+    if (latest) {
+      await this.structuredDataService.upsertCategory(latest);
+    }
   }
 
   async updateCategoriesSort(dto: UpdateCategorySortDto) {
@@ -200,6 +209,10 @@ export class CategoryProvider {
         { name: categoryUpdate.name },
         { sort: categoryUpdate.sort }
       );
+      const latest = await this.categoryModal.findOne({ name: categoryUpdate.name }).lean();
+      if (latest) {
+        await this.structuredDataService.upsertCategory(latest);
+      }
     }
   }
 
@@ -214,6 +227,10 @@ export class CategoryProvider {
           { _id: category._id },
           { sort: i }
         );
+        const latest = await this.categoryModal.findOne({ _id: category._id }).lean();
+        if (latest) {
+          await this.structuredDataService.upsertCategory(latest);
+        }
       }
     }
   }

@@ -19,6 +19,7 @@ import { CustomPageProvider } from 'src/provider/customPage/customPage.provider'
 import { StaticProvider } from 'src/provider/static/static.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 import { CustomPage } from 'src/scheme/customPage.schema';
+import { ISRProvider } from 'src/provider/isr/isr.provider';
 
 @ApiTags('customPage')
 @UseGuards(...AdminGuard)
@@ -29,6 +30,7 @@ export class CustomPageController {
   constructor(
     private readonly customPageProvider: CustomPageProvider,
     private readonly staticProvider: StaticProvider,
+    private readonly isrProvider: ISRProvider,
   ) {}
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
@@ -40,6 +42,7 @@ export class CustomPageController {
     this.logger.log(`上传自定义页面文件：${path}\t ${name}`);
     file.originalname = name;
     const res = await this.staticProvider.upload(file, 'customPage', false, path);
+    this.isrProvider.activeAll('上传自定义页面文件触发增量渲染！');
     return {
       statusCode: 200,
       data: res,
@@ -83,6 +86,7 @@ export class CustomPageController {
       };
     }
     const data = await this.customPageProvider.createCustomPage(dto);
+    this.isrProvider.activeAll('创建自定义页面触发增量渲染！');
     return {
       statusCode: 200,
       data,
@@ -97,6 +101,7 @@ export class CustomPageController {
       };
     }
     const data = await this.staticProvider.createFile(pathname, subPath);
+    this.isrProvider.activeAll('创建自定义页面文件触发增量渲染！');
     return {
       statusCode: 200,
       data,
@@ -111,6 +116,7 @@ export class CustomPageController {
       };
     }
     const data = await this.staticProvider.createFolder(pathname, subPath);
+    this.isrProvider.activeAll('创建自定义页面目录触发增量渲染！');
     return {
       statusCode: 200,
       data,
@@ -131,6 +137,7 @@ export class CustomPageController {
       dto.filePath,
       dto.content,
     );
+    this.isrProvider.activeAll('更新自定义页面文件触发增量渲染！');
     return {
       statusCode: 200,
       data,
@@ -145,6 +152,7 @@ export class CustomPageController {
       };
     }
     const data = await this.customPageProvider.updateCustomPage(dto);
+    this.isrProvider.activeAll('更新自定义页面触发增量渲染！');
     return {
       statusCode: 200,
       data,
@@ -163,6 +171,7 @@ export class CustomPageController {
       await this.staticProvider.deleteCustomPage(path);
     }
     const data = await this.customPageProvider.deleteByPath(path);
+    this.isrProvider.activeAll('删除自定义页面触发增量渲染！');
     return {
       statusCode: 200,
       data,

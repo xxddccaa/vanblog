@@ -58,11 +58,11 @@ COPY --from=builder /prod/server/ ./
 COPY --from=builder /app/packages/server/dist ./dist
 
 ENV NODE_ENV=production
-ENV VAN_BLOG_DATABASE_URL="mongodb://mongo:27017/vanBlog?authSource=admin"
+ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
+ENV VAN_BLOG_REDIS_URL="redis://redis:6379"
 ENV VAN_BLOG_WALINE_DB="waline"
 ENV VANBLOG_CADDY_API_URL="http://caddy:2019"
 ENV VANBLOG_WEBSITE_CONTROL_URL="http://website:3011"
-ENV VANBLOG_WALINE_CONTROL_URL="http://waline:8361"
 ENV VANBLOG_WEBSITE_ISR_BASE="http://website:3001/api/revalidate?path="
 
 VOLUME /app/static

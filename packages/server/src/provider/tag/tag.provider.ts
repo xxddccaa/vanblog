@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Article } from 'src/scheme/article.schema';
+import { InjectModel } from 'src/storage/mongoose-compat';
+import { Model } from 'src/storage/mongoose-compat';
 import { Tag, TagDocument } from 'src/scheme/tag.schema';
 import { ArticleProvider } from '../article/article.provider';
 import { CacheProvider } from '../cache/cache.provider';
+import { StructuredDataService } from 'src/storage/structured-data.service';
 
 @Injectable()
 export class TagProvider {
@@ -12,6 +12,7 @@ export class TagProvider {
     private readonly articleProvider: ArticleProvider,
     @InjectModel(Tag.name) private readonly tagModel: Model<TagDocument>,
     private readonly cacheProvider: CacheProvider,
+    private readonly structuredDataService: StructuredDataService,
   ) {}
 
   // 缓存键前缀
@@ -23,54 +24,7 @@ export class TagProvider {
    * 这个方法用于初始化或修复标签数据
    */
   async syncTagsFromArticles() {
-    const allArticles = await this.articleProvider.getAll('list', true);
-    const tagMap = new Map<string, number[]>();
-
-    // 收集所有标签和对应的文章ID
-    allArticles.forEach((article) => {
-      if (article.tags && article.tags.length > 0) {
-        article.tags.forEach((tagName) => {
-          if (!tagMap.has(tagName)) {
-            tagMap.set(tagName, []);
-          }
-          tagMap.get(tagName)!.push(article.id);
-        });
-      }
-    });
-
-    // 批量更新Tag表
-    const bulkOps = [];
-    for (const [tagName, articleIds] of tagMap.entries()) {
-      bulkOps.push({
-        updateOne: {
-          filter: { name: tagName },
-          update: {
-            $set: {
-              name: tagName,
-              articleCount: articleIds.length,
-              articleIds: articleIds,
-              updatedAt: new Date(),
-            },
-            $setOnInsert: {
-              createdAt: new Date(),
-            },
-          },
-          upsert: true,
-        },
-      });
-    }
-
-    if (bulkOps.length > 0) {
-      await this.tagModel.bulkWrite(bulkOps);
-    }
-
-    // 删除不存在的标签
-    const existingTagNames = Array.from(tagMap.keys());
-    await this.tagModel.deleteMany({
-      name: { $nin: existingTagNames },
-    });
-
-    // 清除相关缓存
+    await this.structuredDataService.refreshArticlesFromRecordStore();
     await this.clearTagCache();
   }
 
@@ -140,31 +94,18 @@ export class TagProvider {
     const cacheKey = `${this.CACHE_PREFIX}paginated:${page}:${pageSize}:${sortBy}:${sortOrder}:${
       search || ''
     }`;
-    const cached = this.cacheProvider.get(cacheKey);
+    const cached = await this.cacheProvider.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const query: any = {};
-    if (search) {
-      query.name = { $regex: search, $options: 'i' };
-    }
-
-    const sort: any = {};
-    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
-
-    const skip = (page - 1) * pageSize;
-
-    const [tags, total] = await Promise.all([
-      this.tagModel
-        .find(query)
-        .sort(sort)
-        .skip(skip)
-        .limit(pageSize)
-        .select('name articleCount createdAt updatedAt')
-        .lean(),
-      this.tagModel.countDocuments(query),
-    ]);
+    const { tags, total } = await this.structuredDataService.getTagPage(
+      page,
+      pageSize,
+      sortBy,
+      sortOrder,
+      search,
+    );
 
     const result = {
       tags,
@@ -174,7 +115,7 @@ export class TagProvider {
       totalPages: Math.ceil(total / pageSize),
     };
 
-    this.cacheProvider.set(cacheKey, result, this.CACHE_TTL);
+    await this.cacheProvider.set(cacheKey, result, this.CACHE_TTL);
     return result;
   }
 
@@ -183,20 +124,18 @@ export class TagProvider {
    */
   async getAllTags(includeHidden: boolean = false): Promise<string[]> {
     const cacheKey = `${this.CACHE_PREFIX}all:${includeHidden}`;
-    const cached = this.cacheProvider.get(cacheKey);
+    const cached = await this.cacheProvider.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const tags = await this.tagModel.find({}).sort({ name: 1 }).select('name').lean();
-
-    const result = tags.map((tag) => tag.name);
-    this.cacheProvider.set(cacheKey, result, this.CACHE_TTL);
+    const result = await this.structuredDataService.listTagNames();
+    await this.cacheProvider.set(cacheKey, result, this.CACHE_TTL);
     return result;
   }
 
   async getAllTagRecords() {
-    return await this.tagModel.find({}).sort({ name: 1 }).lean().exec();
+    return await this.structuredDataService.listTagRecords();
   }
 
   /**
@@ -208,23 +147,9 @@ export class TagProvider {
     page?: number,
     pageSize?: number,
   ) {
-    const tag = await this.tagModel.findOne({ name: tagName }).lean();
-    if (!tag || !tag.articleIds.length) {
+    const tag = await this.structuredDataService.getTagByName(tagName);
+    if (!tag || !tag.articleCount) {
       return [];
-    }
-
-    // 构建查询条件
-    const query: any = {
-      id: { $in: tag.articleIds },
-      $or: [{ deleted: false }, { deleted: { $exists: false } }],
-    };
-
-    if (!includeHidden) {
-      query.$and = [
-        {
-          $or: [{ hidden: false }, { hidden: { $exists: false } }],
-        },
-      ];
     }
 
     // 直接使用ArticleProvider的方法来查询文章
@@ -244,24 +169,19 @@ export class TagProvider {
    */
   async getColumnData(topNum: number, includeHidden: boolean = false) {
     const cacheKey = `${this.CACHE_PREFIX}column:${topNum}:${includeHidden}`;
-    const cached = this.cacheProvider.get(cacheKey);
+    const cached = await this.cacheProvider.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const tags = await this.tagModel
-      .find({})
-      .sort({ articleCount: -1 })
-      .limit(topNum)
-      .select('name articleCount')
-      .lean();
+    const tags = await this.structuredDataService.getHotTags(topNum);
 
     const result = tags.map((tag) => ({
       type: tag.name,
       value: tag.articleCount,
     }));
 
-    this.cacheProvider.set(cacheKey, result, this.CACHE_TTL);
+    await this.cacheProvider.set(cacheKey, result, this.CACHE_TTL);
     return result;
   }
 
@@ -270,12 +190,12 @@ export class TagProvider {
    */
   async updateTagByName(oldName: string, newName: string) {
     // 检查新标签名是否已存在
-    const existingTag = await this.tagModel.findOne({ name: newName });
+    const existingTag = await this.structuredDataService.getTagByName(newName);
     if (existingTag && existingTag.name !== oldName) {
       throw new Error('新标签名已存在');
     }
 
-    const tag = await this.tagModel.findOne({ name: oldName });
+    const tag = await this.structuredDataService.getTagByName(oldName);
     if (!tag) {
       throw new Error('标签不存在');
     }
@@ -285,17 +205,7 @@ export class TagProvider {
       { tags: oldName },
       { $set: { 'tags.$': newName } },
     );
-
-    // 更新标签表
-    await this.tagModel.updateOne(
-      { name: oldName },
-      {
-        $set: {
-          name: newName,
-          updatedAt: new Date(),
-        },
-      },
-    );
+    await this.structuredDataService.refreshArticlesFromRecordStore('rename-tag');
 
     await this.clearTagCache();
     return { message: '更新成功！', total: tag.articleCount };
@@ -305,7 +215,7 @@ export class TagProvider {
    * 删除标签
    */
   async deleteOne(name: string) {
-    const tag = await this.tagModel.findOne({ name });
+    const tag = await this.structuredDataService.getTagByName(name);
     if (!tag) {
       throw new Error('标签不存在');
     }
@@ -315,9 +225,7 @@ export class TagProvider {
       { tags: name },
       { $pull: { tags: name } },
     );
-
-    // 删除标签记录
-    await this.tagModel.deleteOne({ name });
+    await this.structuredDataService.refreshArticlesFromRecordStore('delete-tag');
 
     await this.clearTagCache();
     return { message: '删除成功！', total: tag.articleCount };
@@ -328,19 +236,14 @@ export class TagProvider {
    */
   async getHotTags(limit: number = 20) {
     const cacheKey = `${this.CACHE_PREFIX}hot:${limit}`;
-    const cached = this.cacheProvider.get(cacheKey);
+    const cached = await this.cacheProvider.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const tags = await this.tagModel
-      .find({})
-      .sort({ articleCount: -1, updatedAt: -1 })
-      .limit(limit)
-      .select('name articleCount')
-      .lean();
+    const tags = await this.structuredDataService.getHotTags(limit);
 
-    this.cacheProvider.set(cacheKey, tags, this.CACHE_TTL);
+    await this.cacheProvider.set(cacheKey, tags, this.CACHE_TTL);
     return tags;
   }
 
@@ -348,28 +251,19 @@ export class TagProvider {
    * 搜索标签
    */
   async searchTags(keyword: string, limit: number = 20) {
-    const query = {
-      name: { $regex: keyword, $options: 'i' },
-    };
-
-    return await this.tagModel
-      .find(query)
-      .sort({ articleCount: -1 })
-      .limit(limit)
-      .select('name articleCount')
-      .lean();
+    return await this.structuredDataService.searchTags(keyword, limit);
   }
 
   /**
    * 清除标签相关缓存
    */
   private async clearTagCache() {
-    this.cacheProvider.delPattern(`${this.CACHE_PREFIX}*`);
+    await this.cacheProvider.delPattern(`${this.CACHE_PREFIX}*`);
   }
 
   // 为了兼容现有代码，保留旧方法
   async getTagsWithArticle(includeHidden: boolean) {
-    const tags = await this.tagModel.find({}).lean();
+    const tags = await this.structuredDataService.listTagRecords();
     const result = {};
 
     for (const tag of tags) {
