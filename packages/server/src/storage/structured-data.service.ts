@@ -464,31 +464,9 @@ export class StructuredDataService implements OnModuleInit {
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_mindmaps_active_updated ON vanblog_mindmaps (deleted, updated_at DESC)',
     );
-    await this.store.query(`
-      CREATE INDEX IF NOT EXISTS idx_vanblog_articles_search_vector
-      ON vanblog_articles
-      USING GIN ((${this.getArticleSearchVectorSql()}))
-    `);
-    await this.store.query(`
-      CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_search_vector
-      ON vanblog_drafts
-      USING GIN ((${this.getDraftSearchVectorSql()}))
-    `);
-    await this.store.query(`
-      CREATE INDEX IF NOT EXISTS idx_vanblog_documents_search_vector
-      ON vanblog_documents
-      USING GIN ((${this.getDocumentSearchVectorSql()}))
-    `);
-    await this.store.query(`
-      CREATE INDEX IF NOT EXISTS idx_vanblog_moments_search_vector
-      ON vanblog_moments
-      USING GIN ((${this.getMomentSearchVectorSql()}))
-    `);
-    await this.store.query(`
-      CREATE INDEX IF NOT EXISTS idx_vanblog_mindmaps_search_vector
-      ON vanblog_mindmaps
-      USING GIN ((${this.getMindMapSearchVectorSql()}))
-    `);
+    // Full-text queries already work without dedicated expression indexes.
+    // We defer these until the search vectors are materialized into columns,
+    // which avoids PostgreSQL immutability limits during bootstrap.
   }
 
   private asDate(value: any) {
@@ -911,12 +889,13 @@ export class StructuredDataService implements OnModuleInit {
       .join(' || ');
   }
 
-  private getArticleSearchVectorSql(alias = 'a') {
+  private getArticleSearchVectorSql(alias = '') {
+    const prefix = alias ? `${alias}.` : '';
     return this.buildWeightedSearchVectorSql([
-      { expr: `${alias}.title`, weight: 'A' },
-      { expr: `${alias}.category`, weight: 'B' },
-      { expr: `${alias}.author`, weight: 'C' },
-      { expr: `${alias}.content`, weight: 'D' },
+      { expr: `${prefix}title`, weight: 'A' },
+      { expr: `${prefix}category`, weight: 'B' },
+      { expr: `${prefix}author`, weight: 'C' },
+      { expr: `${prefix}content`, weight: 'D' },
     ]);
   }
 
@@ -1727,7 +1706,7 @@ export class StructuredDataService implements OnModuleInit {
       `
         SELECT setval(
           $1::regclass,
-          COALESCE((SELECT MAX(${columnName})::bigint FROM ${tableName}), 0),
+          GREATEST(COALESCE((SELECT MAX(${columnName})::bigint FROM ${tableName}), 0), 1),
           COALESCE((SELECT MAX(${columnName}) IS NOT NULL FROM ${tableName}), false)
         )
       `,

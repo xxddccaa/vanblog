@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
-    && apk add --no-cache --update tzdata curl \
+    && apk add --no-cache --update tzdata curl python3 make g++ \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
@@ -24,7 +24,8 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/re
     && pnpm config set fetch-timeout 600000 -g
 
 COPY packages/waline/package.json ./package.json
-RUN pnpm install --prod
+RUN pnpm install --prod \
+    && apk del python3 make g++
 
 WORKDIR /app
 COPY scripts/fix-waline-dashboard.js ./scripts/fix-waline-dashboard.js
