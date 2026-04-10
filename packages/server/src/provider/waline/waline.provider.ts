@@ -77,21 +77,39 @@ export class WalineProvider {
     // console.log(result);
     return result;
   }
+  private buildMongoEnv() {
+    if (config.walineDatabaseUrl) {
+      const url = new URL(config.walineDatabaseUrl);
+      return {
+        MONGO_HOST: url.hostname,
+        MONGO_PORT: url.port || '27017',
+        MONGO_USER: url.username,
+        MONGO_PASSWORD: url.password,
+        MONGO_DB: config.walineDB,
+        MONGO_AUTHSOURCE: 'admin',
+      };
+    }
+
+    if (this.isExternalControlMode()) {
+      return {
+        MONGO_HOST: process.env['WALINE_MONGO_HOST'] || 'mongo',
+        MONGO_PORT: process.env['WALINE_MONGO_PORT'] || '27017',
+        MONGO_USER: process.env['WALINE_MONGO_USER'] || '',
+        MONGO_PASSWORD: process.env['WALINE_MONGO_PASSWORD'] || '',
+        MONGO_DB: config.walineDB,
+        MONGO_AUTHSOURCE: process.env['WALINE_MONGO_AUTHSOURCE'] || 'admin',
+      };
+    }
+
+    return null;
+  }
   async loadEnv() {
-    if (!config.walineDatabaseUrl) {
+    const mongoEnv = this.buildMongoEnv();
+    if (!mongoEnv) {
       this.logger.warn('未配置 Waline 数据库地址，跳过 Waline 内置控制');
       this.env = {};
       return;
     }
-    const url = new URL(config.walineDatabaseUrl);
-    const mongoEnv = {
-      MONGO_HOST: url.hostname,
-      MONGO_PORT: url.port,
-      MONGO_USER: url.username,
-      MONGO_PASSWORD: url.password,
-      MONGO_DB: config.walineDB,
-      MONGO_AUTHSOURCE: 'admin',
-    };
     const siteInfo = await this.metaProvider.getSiteInfo();
     const otherEnv = {
       SITE_NAME: siteInfo?.siteName || undefined,

@@ -15,7 +15,14 @@ describe('DocumentProvider', () => {
       }),
     };
 
-    const provider = new DocumentProvider(documentModel as any, {} as any);
+    const provider = new DocumentProvider(
+      documentModel as any,
+      {} as any,
+      {
+        queryDocuments: jest.fn().mockResolvedValue({ documents: [], total: 0 }),
+        isInitialized: jest.fn().mockReturnValue(false),
+      } as any,
+    );
     const result = await provider.getByOption({ page: 1, pageSize: -1 });
 
     expect(result.documents).toHaveLength(2);

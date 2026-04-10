@@ -386,6 +386,11 @@ export async function importAll() {
     method: 'POST',
   });
 }
+export async function getBackupImportStatus(jobId) {
+  return request(`/api/admin/backup/import/status/${jobId}`, {
+    method: 'GET',
+  });
+}
 export async function exportAll() {
   return request(`/api/admin/backup/export`, {
     method: 'GET',

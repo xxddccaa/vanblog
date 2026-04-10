@@ -30,6 +30,33 @@ export class MetaProvider {
     private readonly structuredDataService: StructuredDataService,
   ) {}
 
+  private async ensureMetaDocument() {
+    let meta = await this.metaModel.findOne().lean().exec();
+    if (meta) {
+      return meta;
+    }
+
+    const created = await this.metaModel.create({
+      links: [],
+      socials: [],
+      menus: [],
+      rewards: [],
+      about: {
+        updatedAt: new Date(),
+        content: '',
+      },
+      siteInfo: {},
+      viewer: 0,
+      visited: 0,
+      categories: [],
+      totalWordCount: 0,
+    });
+    const plain = created.toObject ? created.toObject() : created;
+    await this.structuredDataService.upsertMeta(plain);
+    this.logger.warn('检测到站点缺少 meta 数据，已自动补齐默认记录');
+    return plain;
+  }
+
   async updateTotalWords(reason: string) {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(async () => {
@@ -93,7 +120,7 @@ export class MetaProvider {
     if (meta) {
       return meta as any;
     }
-    return this.metaModel.findOne().exec();
+    return this.ensureMetaDocument();
   }
 
   async getSocialTypes() {
@@ -253,6 +280,7 @@ export class MetaProvider {
   }
 
   async update(updateMetaDto: Partial<Meta>) {
+    await this.ensureMetaDocument();
     const result = await this.metaModel.updateOne({}, updateMetaDto);
     const latest = await this.metaModel.findOne().lean().exec();
     await this.structuredDataService.upsertMeta(latest);
@@ -298,6 +326,7 @@ export class MetaProvider {
   }
 
   async updateAbout(newContent: string) {
+    await this.ensureMetaDocument();
     const result = await this.metaModel.updateOne(
       {},
       {
@@ -313,6 +342,7 @@ export class MetaProvider {
   }
 
   async updateSiteInfo(updateSiteInfoDto: UpdateSiteInfoDto) {
+    await this.ensureMetaDocument();
     // @ts-ignore eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const { name, password, ...updateDto } = updateSiteInfoDto;
     const oldSiteInfo = await this.getSiteInfo();

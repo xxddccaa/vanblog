@@ -28,6 +28,10 @@ export class TagProvider {
     await this.clearTagCache();
   }
 
+  async invalidateCache() {
+    await this.clearTagCache();
+  }
+
   /**
    * 更新单个标签的文章关联
    */

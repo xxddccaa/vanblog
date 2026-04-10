@@ -32,7 +32,7 @@ test('docker compose wires cross-container control endpoints', () => {
 });
 
 test('caddy routes requests to the split services', () => {
-  assert.match(caddyfile, /ask http:\/\/server:3000\/api\/admin\/caddy\/ask/);
+  assert.match(caddyfile, /http:\/\/ \{/);
   assert.match(caddyfile, /reverse_proxy server:3000/);
   assert.match(caddyfile, /reverse_proxy website:3001/);
   assert.match(caddyfile, /reverse_proxy admin:3002/);

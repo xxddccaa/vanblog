@@ -10,6 +10,7 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('CaddyProvider', () => {
   const oldEnv = process.env['VANBLOG_CADDY_API_URL'];
+  const oldManageHttpsEnv = process.env['VAN_BLOG_CADDY_MANAGE_HTTPS'];
 
   beforeEach(() => {
     mockedAxios.get.mockReset();
@@ -17,14 +18,20 @@ describe('CaddyProvider', () => {
     mockedAxios.patch.mockReset();
     mockedAxios.delete.mockReset();
     process.env['VANBLOG_CADDY_API_URL'] = 'http://caddy:2019/';
+    process.env['VAN_BLOG_CADDY_MANAGE_HTTPS'] = 'true';
   });
 
   afterAll(() => {
     if (oldEnv === undefined) {
       delete process.env['VANBLOG_CADDY_API_URL'];
-      return;
+    } else {
+      process.env['VANBLOG_CADDY_API_URL'] = oldEnv;
     }
-    process.env['VANBLOG_CADDY_API_URL'] = oldEnv;
+    if (oldManageHttpsEnv === undefined) {
+      delete process.env['VAN_BLOG_CADDY_MANAGE_HTTPS'];
+    } else {
+      process.env['VAN_BLOG_CADDY_MANAGE_HTTPS'] = oldManageHttpsEnv;
+    }
   });
 
   it('uses the configured Caddy API base URL', async () => {
@@ -71,5 +78,18 @@ describe('CaddyProvider', () => {
     await provider.init();
 
     expect(mockedAxios.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips https management when disabled', async () => {
+    process.env['VAN_BLOG_CADDY_MANAGE_HTTPS'] = 'false';
+
+    const provider = new CaddyProvider({
+      getHttpsSetting: jest.fn().mockResolvedValue({ redirect: false }),
+    } as any);
+
+    await provider.init();
+
+    expect(mockedAxios.delete).not.toHaveBeenCalled();
+    expect(provider.isHttpsManagedByVanblog()).toBe(false);
   });
 });

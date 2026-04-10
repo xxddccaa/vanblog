@@ -97,6 +97,10 @@ const InitPage = () => {
               title={'基本配置'}
               formRef={formRef1}
               onFinish={async (values) => {
+                if (!values.baseUrl) {
+                  return true;
+                }
+
                 let ok = true;
                 try {
                   new URL(values.baseUrl);
@@ -120,7 +124,7 @@ const InitPage = () => {
             >
               <Alert
                 type="info"
-                message="默认的上传图片会到内置图床，如需配置 oss 图床，可在初始化后去设置页更改。初始化页面所有配置都可在初始化后进入后台修改。"
+                message="默认的上传图片会到内置图床，如需配置 oss 图床，可在初始化后去设置页更改。这里除登录用户名和密码外都可留空，后续可在后台补全，或直接导入备份覆盖。"
                 style={{ marginBottom: 8 }}
               ></Alert>
               <SiteInfoForm

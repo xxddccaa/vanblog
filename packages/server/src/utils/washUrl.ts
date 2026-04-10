@@ -1,15 +1,19 @@
 export function washUrl(s: string) {
+  const raw = s?.trim?.() || '';
+  if (!raw) {
+    return '';
+  }
   // 先判断一下带不带协议
-  let url = s;
-  if (!s.includes('http')) {
-    url = `https://${s}`;
+  let url = raw;
+  if (!raw.includes('http')) {
+    url = `https://${raw}`;
   }
   // 带反斜杠的
   try {
     const u = new URL(url);
     return u.toString();
   } catch (err) {
-    return url;
+    return '';
   }
 }
 export const encodeQuerystring = (s: string) => {

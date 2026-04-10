@@ -16,14 +16,15 @@ export class MetaController {
   @Get()
   async getAllMeta(@Req() req: Request) {
     const meta = await this.metaProvider.getAll();
+    const siteInfo = meta?.siteInfo || {};
     const serverData = await getVersionFromServer();
     const data = {
       version: version,
       latestVersion: serverData?.version || version,
       updatedAt: serverData?.updatedAt || new Date(),
       user: req.user,
-      baseUrl: meta.siteInfo.baseUrl,
-      enableComment: meta.siteInfo.enableComment || 'false',
+      baseUrl: siteInfo.baseUrl || '',
+      enableComment: siteInfo.enableComment || 'false',
       allowDomains: process.env.VAN_BLOG_ALLOW_DOMAINS || '',
     };
     return {

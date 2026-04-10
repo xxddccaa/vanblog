@@ -24,13 +24,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const moreDto = { ...payload };
     if (payload.sub != 0) {
       const user = await this.userProvider.getCollaboratorById(payload.sub);
-      moreDto.permissions = user.permissions;
-      moreDto.nickname = user.nickname;
+      moreDto.permissions = user?.permissions;
+      moreDto.nickname = user?.nickname;
     } else {
       const user = await this.userProvider.getUser();
       const siteInfo = await this.metaProvider.getSiteInfo();
-      const authorName = siteInfo.author;
-      moreDto.nickname = authorName || user.nickname;
+      const authorName = siteInfo?.author;
+      moreDto.nickname = authorName || user?.nickname || payload.nickname || payload.username;
     }
     return { name: payload.username, id: payload.sub, ...moreDto };
   }

@@ -2,8 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
-  Put,
   Res,
   UploadedFile,
   UseGuards,
@@ -42,6 +42,37 @@ import { DocumentProvider } from 'src/provider/document/document.provider';
 import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
 import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { BackupImportJobProvider } from 'src/provider/backup-import-job/backup-import-job.provider';
+
+interface PreparedImportPayload {
+  backupVersion: string;
+  currentAdmin: any;
+  canRestoreProtectedData: boolean;
+  includeAnalytics: boolean;
+  meta: any;
+  user: any;
+  users: any[];
+  setting: any;
+  settings: any[];
+  layoutSetting: any;
+  aiTaggingConfig: any;
+  categories: any[];
+  tags: any[];
+  articles: any[];
+  drafts: any[];
+  viewer: any[];
+  visit: any[];
+  staticItems: any[];
+  moments: any[];
+  customPages: any[];
+  pipelines: any[];
+  tokens: any[];
+  navTools: any[];
+  navCategories: any[];
+  icons: any[];
+  documents: any[];
+  mindMaps: any[];
+}
 
 @ApiTags('backup')
 @UseGuards(...AdminGuard)
@@ -73,14 +104,270 @@ export class BackupController {
     private readonly mindMapProvider: MindMapProvider,
     private readonly mongoBackupProvider: MongoBackupProvider,
     private readonly structuredDataService: StructuredDataService,
+    private readonly backupImportJobProvider: BackupImportJobProvider,
   ) {}
 
-  private async refreshStructuredData(reason: string) {
+  private async refreshStructuredData(
+    reason: string,
+    collections?: Array<'articles' | 'drafts' | 'documents' | 'moments'>,
+  ) {
     try {
+      if (collections?.length) {
+        await this.structuredDataService.refreshCollectionsFromRecordStore(collections, reason);
+        return;
+      }
       await this.structuredDataService.refreshAllFromRecordStore(reason);
     } catch (error) {
       this.logger.error(`结构化数据同步失败(${reason}): ${error.message}`);
     }
+  }
+
+  private cloneAdminSnapshot(currentAdmin: any) {
+    if (!currentAdmin) {
+      return currentAdmin;
+    }
+    if (typeof currentAdmin.toObject === 'function') {
+      return currentAdmin.toObject();
+    }
+    return JSON.parse(JSON.stringify(currentAdmin));
+  }
+
+  private sanitizeArray(items: any[] | undefined, useRemoveId = true) {
+    if (!items?.length) {
+      return [];
+    }
+    return useRemoveId ? removeID(items) : items.map((item) => ({ ...item }));
+  }
+
+  private shouldReportProgress(processed: number, total: number) {
+    if (processed <= 1 || processed === total) {
+      return true;
+    }
+    if (total <= 20) {
+      return true;
+    }
+    if (total <= 200) {
+      return processed % 5 === 0;
+    }
+    if (total <= 2000) {
+      return processed % 20 === 0;
+    }
+    return processed % 50 === 0;
+  }
+
+  private getImportConcurrency(total: number, max = 8) {
+    if (total <= 1) {
+      return 1;
+    }
+    return Math.max(1, Math.min(max, total));
+  }
+
+  private async runWithConcurrency<T>(
+    items: T[],
+    concurrency: number,
+    worker: (item: T, index: number) => Promise<void>,
+  ) {
+    if (!items?.length) {
+      return;
+    }
+
+    const runnerCount = Math.max(1, Math.min(concurrency, items.length));
+    let cursor = 0;
+
+    await Promise.all(
+      Array.from({ length: runnerCount }, async () => {
+        while (true) {
+          const currentIndex = cursor++;
+          if (currentIndex >= items.length) {
+            return;
+          }
+          await worker(items[currentIndex], currentIndex);
+        }
+      }),
+    );
+  }
+
+  private parseIncludeAnalyticsFlag(value: any) {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
+    }
+    return false;
+  }
+
+  private buildImportSummary(prepared: PreparedImportPayload) {
+    return {
+      backupVersion: prepared.backupVersion,
+      includeAnalytics: prepared.includeAnalytics,
+      counts: {
+        articles: prepared.articles.length,
+        drafts: prepared.drafts.length,
+        moments: prepared.moments.length,
+        documents: prepared.documents.length,
+        mindMaps: prepared.mindMaps.length,
+        settings: prepared.settings?.length || 0,
+        staticItems: prepared.staticItems.length,
+        tokens: prepared.tokens.length,
+        visit: prepared.visit.length,
+        viewer: prepared.viewer.length,
+      },
+    };
+  }
+
+  private buildImportStages(prepared: PreparedImportPayload) {
+    const stages: Array<{ key: string; label: string; total?: number }> = [];
+    if (!prepared.canRestoreProtectedData) {
+      stages.push({ key: 'cleanupExisting', label: '清理现有站点数据', total: 1 });
+    }
+    if ((prepared.users?.length || 0) > 0 || prepared.currentAdmin?.id !== undefined) {
+      stages.push({ key: 'users', label: '恢复管理员账号', total: Math.max(prepared.users?.length || 0, 1) });
+    }
+    if (prepared.meta) {
+      stages.push({ key: 'meta', label: '恢复站点信息', total: 1 });
+    }
+    if ((prepared.settings?.length || 0) > 0 || prepared.setting) {
+      stages.push({
+        key: 'settings',
+        label: '恢复系统设置',
+        total: Math.max(prepared.settings?.length || 0, 1),
+      });
+    }
+    if (prepared.categories.length > 0) {
+      stages.push({ key: 'categories', label: '恢复分类', total: prepared.categories.length });
+    }
+    if (prepared.articles.length > 0) {
+      stages.push({ key: 'articles', label: '恢复文章', total: prepared.articles.length });
+    }
+    if (prepared.drafts.length > 0) {
+      stages.push({ key: 'drafts', label: '恢复草稿', total: prepared.drafts.length });
+    }
+    if (prepared.moments.length > 0) {
+      stages.push({ key: 'moments', label: '恢复动态', total: prepared.moments.length });
+    }
+    if (prepared.customPages.length > 0) {
+      stages.push({ key: 'customPages', label: '恢复自定义页面', total: prepared.customPages.length });
+    }
+    if (prepared.navCategories.length > 0) {
+      stages.push({ key: 'navCategories', label: '恢复导航分类', total: prepared.navCategories.length });
+    }
+    if (prepared.navTools.length > 0) {
+      stages.push({ key: 'navTools', label: '恢复导航工具', total: prepared.navTools.length });
+    }
+    if (prepared.icons.length > 0) {
+      stages.push({ key: 'icons', label: '恢复图标', total: prepared.icons.length });
+    }
+    if (prepared.pipelines.length > 0) {
+      stages.push({ key: 'pipelines', label: '恢复流水线', total: prepared.pipelines.length });
+    }
+    if (prepared.tokens.length > 0) {
+      stages.push({ key: 'tokens', label: '恢复 Token', total: prepared.tokens.length });
+    }
+    if (prepared.staticItems.length > 0) {
+      stages.push({ key: 'staticItems', label: '恢复静态文件记录', total: prepared.staticItems.length });
+    }
+    stages.push({
+      key: 'analytics',
+      label: '访问统计数据',
+      total: Math.max(prepared.visit.length + prepared.viewer.length, 1),
+    });
+    if (prepared.layoutSetting && Object.keys(prepared.layoutSetting).length > 0) {
+      stages.push({ key: 'layoutSetting', label: '恢复定制化设置', total: 1 });
+    }
+    if (prepared.aiTaggingConfig && Object.keys(prepared.aiTaggingConfig).length > 0) {
+      stages.push({ key: 'aiTaggingConfig', label: '恢复 AI 标签配置', total: 1 });
+    }
+    if (prepared.documents.length > 0) {
+      stages.push({ key: 'documents', label: '恢复私密文档', total: prepared.documents.length });
+    }
+    if (prepared.mindMaps.length > 0) {
+      stages.push({ key: 'mindMaps', label: '恢复思维导图', total: prepared.mindMaps.length });
+    }
+    stages.push({ key: 'structuredData', label: '同步结构化数据', total: 1 });
+    stages.push({ key: 'syncTags', label: '同步标签与前台缓存', total: 1 });
+    return stages;
+  }
+
+  private getStructuredCollectionsForImport(prepared: PreparedImportPayload) {
+    const collections: Array<'articles' | 'drafts' | 'documents' | 'moments'> = [];
+    if (prepared.articles.length > 0) {
+      collections.push('articles');
+    }
+    if (prepared.drafts.length > 0) {
+      collections.push('drafts');
+    }
+    if (prepared.moments.length > 0) {
+      collections.push('moments');
+    }
+    if (prepared.documents.length > 0) {
+      collections.push('documents');
+    }
+    return collections;
+  }
+
+  private async prepareImportPayload(
+    file: Express.Multer.File,
+    includeAnalytics = false,
+  ): Promise<PreparedImportPayload> {
+    const json = file.buffer.toString();
+    const data = this.normalizeBackupPayload(JSON.parse(json));
+    const currentAdmin = await this.userProvider.getUser();
+    const canRestoreProtectedData = await this.canRestoreProtectedData();
+    const backupVersion = data.backupInfo?.version || '1.0.0';
+
+    const prepared: PreparedImportPayload = {
+      backupVersion,
+      currentAdmin: this.cloneAdminSnapshot(currentAdmin),
+      canRestoreProtectedData,
+      includeAnalytics,
+      meta: data.meta ? { ...data.meta } : undefined,
+      user: data.user ? { ...data.user } : undefined,
+      users: this.sanitizeArray(data.users),
+      setting: data.setting ? { ...data.setting } : undefined,
+      settings: this.sanitizeArray(data.settings, false),
+      layoutSetting: data.layoutSetting,
+      aiTaggingConfig: data.aiTaggingConfig,
+      categories: Array.isArray(data.categories) ? data.categories.map((item: any) => ({ ...item })) : [],
+      tags: Array.isArray(data.tags) ? data.tags.map((item: any) => ({ ...item })) : [],
+      articles: this.sanitizeArray(data.articles),
+      drafts: this.sanitizeArray(data.drafts),
+      viewer: includeAnalytics ? this.sanitizeArray(data.viewer) : [],
+      visit: includeAnalytics ? this.sanitizeArray(data.visit) : [],
+      staticItems: this.sanitizeArray(data.static),
+      moments: this.sanitizeArray(data.moments),
+      customPages: this.sanitizeArray(data.customPages),
+      pipelines: this.sanitizeArray(data.pipelines),
+      tokens: this.sanitizeArray(data.tokens),
+      navTools: this.sanitizeArray(data.navTools),
+      navCategories: this.sanitizeArray(data.navCategories),
+      icons: this.sanitizeArray(data.icons),
+      documents: this.sanitizeArray(data.documents),
+      mindMaps: Array.isArray(data.mindMaps)
+        ? data.mindMaps.map((item: any) => {
+            const payload = { ...item };
+            delete payload.__v;
+            return payload;
+          })
+        : [],
+    };
+
+    if (prepared.setting?.static) {
+      prepared.setting.static = {
+        ...prepared.setting.static,
+        _id: undefined,
+        __v: undefined,
+      };
+    }
+    if (prepared.user) {
+      delete prepared.user._id;
+      delete prepared.user.__v;
+    }
+    if (prepared.meta) {
+      delete prepared.meta._id;
+      delete prepared.meta.__v;
+    }
+    return prepared;
   }
 
   @Get('export')
@@ -260,7 +547,7 @@ export class BackupController {
 
   @Post('/import')
   @UseInterceptors(FileInterceptor('file'))
-  async importAll(@UploadedFile() file: Express.Multer.File) {
+  async importAll(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
     if (config.demo && config.demo == 'true') {
       return {
         statusCode: 401,
@@ -269,63 +556,104 @@ export class BackupController {
     }
 
     try {
+      if (!file?.buffer?.length) {
+        return {
+          statusCode: 400,
+          message: '未检测到备份文件内容',
+        };
+      }
+
+      const includeAnalytics = this.parseIncludeAnalyticsFlag(body?.includeAnalytics);
+      const prepared = await this.prepareImportPayload(file, includeAnalytics);
+      this.logger.log(`检测到备份版本: ${prepared.backupVersion}`);
+
+      const created = await this.backupImportJobProvider.createJob(
+        this.buildImportStages(prepared),
+        this.buildImportSummary(prepared),
+      );
+
+      if (!created.created) {
+        return {
+          statusCode: 409,
+          message: '已有备份导入任务正在执行，请等待当前任务完成',
+          data: {
+            jobId: created.job.id,
+          },
+        };
+      }
+
+      void Promise.resolve().then(async () => {
+        try {
+          await this.executeImport(prepared, created.job.id);
+        } catch (error) {
+          const message = error?.message || '未知错误';
+          this.logger.error(`后台导入任务失败(${created.job.id}): ${message}`, error?.stack);
+          await this.backupImportJobProvider.failJob(created.job.id, message);
+        }
+      });
+
+      return {
+        statusCode: 202,
+        message: '备份文件已接收，正在后台导入',
+        data: {
+          jobId: created.job.id,
+        },
+      };
+    } catch (error) {
+      this.logger.error('导入数据时发生错误', error.stack);
+      return {
+        statusCode: 500,
+        message: '导入失败：' + error.message,
+      };
+    }
+  }
+
+  @Get('/import/status/:jobId')
+  async getImportStatus(@Param('jobId') jobId: string) {
+    const job = await this.backupImportJobProvider.getJob(jobId);
+    if (!job) {
+      return {
+        statusCode: 404,
+        message: '导入任务不存在或已过期',
+      };
+    }
+    return {
+      statusCode: 200,
+      data: job,
+    };
+  }
+
+  async importAllSync(file: Express.Multer.File, includeAnalytics = false) {
+    const prepared = await this.prepareImportPayload(file, includeAnalytics);
+    return await this.executeImport(prepared);
+  }
+
+  private async executeImport(prepared: PreparedImportPayload, jobId?: string) {
+    const startStage = async (key: string, detail?: string) => {
+      if (jobId) {
+        await this.backupImportJobProvider.startStage(jobId, key, detail);
+      }
+    };
+    const advanceStage = async (key: string, completed: number, detail?: string) => {
+      if (jobId) {
+        await this.backupImportJobProvider.advanceStage(jobId, key, completed, detail);
+      }
+    };
+    const completeStage = async (key: string, detail?: string) => {
+      if (jobId) {
+        await this.backupImportJobProvider.completeStage(jobId, key, detail);
+      }
+    };
+    const skipStage = async (key: string, detail?: string) => {
+      if (jobId) {
+        await this.backupImportJobProvider.skipStage(jobId, key, detail);
+      }
+    };
+
+    try {
       this.logger.log('开始导入数据...');
-
-      const json = file.buffer.toString();
-      const data = this.normalizeBackupPayload(JSON.parse(json));
-      const currentAdmin = await this.userProvider.getUser();
-
-      const backupVersion = data.backupInfo?.version || '1.0.0';
-      this.logger.log(`检测到备份版本: ${backupVersion}`);
-
-      const { meta, user, users, setting, settings, layoutSetting, aiTaggingConfig } = data;
-      let {
-        articles,
-        drafts,
-        viewer,
-        visit,
-        static: staticItems,
-        moments,
-        customPages,
-        pipelines,
-        tokens,
-        navTools,
-        navCategories,
-        icons,
-        documents,
-        mindMaps,
-      } = data;
-
-      if (articles) articles = removeID(articles);
-      if (drafts) drafts = removeID(drafts);
-      if (viewer) viewer = removeID(viewer);
-      if (visit) visit = removeID(visit);
-      if (staticItems) staticItems = removeID(staticItems);
-      if (moments) moments = removeID(moments);
-      if (customPages) customPages = removeID(customPages);
-      if (pipelines) pipelines = removeID(pipelines);
-      if (tokens) tokens = removeID(tokens);
-      if (navTools) navTools = removeID(navTools);
-      if (navCategories) navCategories = removeID(navCategories);
-      if (icons) icons = removeID(icons);
-      if (documents) documents = removeID(documents);
-      if (mindMaps) {
-        mindMaps = mindMaps.map((item: any) => {
-          const payload = { ...item };
-          delete payload.__v;
-          return payload;
-        });
-      }
-
-      if (setting && setting.static) {
-        setting.static = { ...setting.static, _id: undefined, __v: undefined };
-      }
-      if (user) {
-        delete user._id;
-        delete user.__v;
-      }
-      if (meta) {
-        delete meta._id;
+      if (jobId) {
+        await this.backupImportJobProvider.markRunning(jobId, '开始后台导入备份数据');
       }
 
       const importResults = {
@@ -350,202 +678,280 @@ export class BackupController {
         other: 0,
       };
 
-      const canRestoreProtectedData = await this.canRestoreProtectedData();
-      const usersToImport = this.buildUsersForRestore(users || (user ? [user] : []), currentAdmin);
+      const usersToImport = this.buildUsersForRestore(
+        prepared.users || (prepared.user ? [prepared.user] : []),
+        prepared.currentAdmin,
+      );
       this.logger.log(
-        canRestoreProtectedData
+        prepared.canRestoreProtectedData
           ? '检测到目标站点为空，直接执行整站恢复'
           : '检测到目标站点已有数据，先清空现有站点数据，仅保留当前登录名与密码后再恢复',
       );
 
-      if (!canRestoreProtectedData) {
-        await this.prepareForFullRestore(currentAdmin);
+      if (!prepared.canRestoreProtectedData) {
+        await startStage('cleanupExisting', '正在清理旧站点数据');
+        await this.prepareForFullRestore(prepared.currentAdmin);
+        await completeStage('cleanupExisting', '旧站点数据清理完成');
       }
 
       if (usersToImport?.length) {
+        await startStage('users', '正在恢复管理员账号');
         await this.userProvider.importUsers(usersToImport);
         importResults.users = usersToImport.length;
         this.logger.log(`用户数据导入完成: ${importResults.users} 条（已保留当前登录名与密码）`);
-      } else if (currentAdmin?.id !== undefined) {
+        await completeStage('users', `已恢复 ${importResults.users} 个用户记录`);
+      } else if (prepared.currentAdmin?.id !== undefined) {
         this.logger.log('备份文件中未发现用户数据，保留当前管理员账号');
+        await skipStage('users', '备份中没有用户数据，已保留当前管理员');
       }
 
-      if (meta) {
-        await this.restoreMeta(meta);
+      if (prepared.meta) {
+        await startStage('meta', '正在恢复站点信息');
+        await this.restoreMeta(prepared.meta);
         this.logger.log('元数据导入完成（包含站点信息）');
+        await completeStage('meta', '站点信息已恢复');
       }
 
-      if (settings?.length) {
-        await this.settingProvider.importAllSettings(settings, true);
-        importResults.settings = settings.length;
+      if (prepared.settings?.length) {
+        await startStage('settings', '正在恢复系统设置');
+        await this.settingProvider.importAllSettings(prepared.settings, true);
+        importResults.settings = prepared.settings.length;
         this.logger.log(`完整设置导入完成: ${importResults.settings} 条（覆盖模式）`);
-      } else if (setting) {
-        await this.settingProvider.importSetting(setting);
+        await completeStage('settings', `已恢复 ${importResults.settings} 条系统设置`);
+      } else if (prepared.setting) {
+        await startStage('settings', '正在恢复系统设置');
+        await this.settingProvider.importSetting(prepared.setting);
         this.logger.log('设置数据导入完成');
+        await completeStage('settings', '系统设置已恢复');
       }
 
-      if (data.categories) {
-        await this.importCategoriesWithRebuild(data.categories);
-        importResults.categories = data.categories.length;
+      if (prepared.categories.length > 0) {
+        await startStage('categories', '正在恢复分类');
+        await this.importCategoriesWithRebuild(prepared.categories);
+        importResults.categories = prepared.categories.length;
         this.logger.log(`分类数据导入完成: ${importResults.categories} 条`);
+        await completeStage('categories', `已恢复 ${importResults.categories} 个分类`);
       }
 
-      if (data.tags) {
-        importResults.tags = data.tags.length;
+      if (prepared.tags.length > 0) {
+        importResults.tags = prepared.tags.length;
         this.logger.log(`标签数据准备完成: ${importResults.tags} 条`);
       }
 
-      if (articles) {
-        // 先自动创建文章分类
-        await this.autoCreateCategoriesFromContent(articles, 'articles');
-
-        await this.importArticlesEnhanced(articles);
-        importResults.articles = articles.length;
+      if (prepared.articles.length > 0) {
+        await startStage('articles', `准备恢复 ${prepared.articles.length} 篇文章`);
+        await this.autoCreateCategoriesFromContent(prepared.articles, 'articles');
+        await this.importArticlesEnhanced(prepared.articles, async (completed, detail) => {
+          if (this.shouldReportProgress(completed, prepared.articles.length)) {
+            await advanceStage('articles', completed, detail);
+          }
+        });
+        importResults.articles = prepared.articles.length;
         this.logger.log(`文章数据增量导入完成: ${importResults.articles} 条`);
+        await completeStage('articles', `已恢复 ${importResults.articles} 篇文章`);
       }
 
-      if (drafts) {
-        // 先自动创建草稿分类
-        await this.autoCreateCategoriesFromContent(drafts, 'drafts');
-
-        await this.importDraftsEnhanced(drafts);
-        importResults.drafts = drafts.length;
+      if (prepared.drafts.length > 0) {
+        await startStage('drafts', `准备恢复 ${prepared.drafts.length} 个草稿`);
+        await this.autoCreateCategoriesFromContent(prepared.drafts, 'drafts');
+        await this.importDraftsEnhanced(prepared.drafts, async (completed, detail) => {
+          if (this.shouldReportProgress(completed, prepared.drafts.length)) {
+            await advanceStage('drafts', completed, detail);
+          }
+        });
+        importResults.drafts = prepared.drafts.length;
         this.logger.log(`草稿数据增量导入完成: ${importResults.drafts} 条`);
+        await completeStage('drafts', `已恢复 ${importResults.drafts} 个草稿`);
       }
 
-      if (moments) {
-        await this.importMomentsEnhanced(moments);
-        importResults.moments = moments.length;
+      if (prepared.moments.length > 0) {
+        await startStage('moments', `准备恢复 ${prepared.moments.length} 条动态`);
+        await this.importMomentsEnhanced(prepared.moments, async (completed, detail) => {
+          if (this.shouldReportProgress(completed, prepared.moments.length)) {
+            await advanceStage('moments', completed, detail);
+          }
+        });
+        importResults.moments = prepared.moments.length;
         this.logger.log(`动态数据增量导入完成: ${importResults.moments} 条`);
+        await completeStage('moments', `已恢复 ${importResults.moments} 条动态`);
       }
 
-      if (customPages) {
-        await this.importCustomPagesEnhanced(customPages);
-        importResults.customPages = customPages.length;
+      if (prepared.customPages.length > 0) {
+        await startStage('customPages', '正在恢复自定义页面');
+        await this.importCustomPagesEnhanced(prepared.customPages);
+        importResults.customPages = prepared.customPages.length;
         this.logger.log(`自定义页面导入完成: ${importResults.customPages} 条`);
+        await completeStage('customPages', `已恢复 ${importResults.customPages} 个自定义页面`);
       }
 
-      if (navCategories) {
-        await this.importNavCategoriesEnhanced(navCategories);
-        importResults.navCategories = navCategories.length;
+      if (prepared.navCategories.length > 0) {
+        await startStage('navCategories', '正在恢复导航分类');
+        await this.importNavCategoriesEnhanced(prepared.navCategories);
+        importResults.navCategories = prepared.navCategories.length;
         this.logger.log(`导航分类导入完成: ${importResults.navCategories} 条`);
+        await completeStage('navCategories', `已恢复 ${importResults.navCategories} 个导航分类`);
       }
 
-      if (navTools) {
-        // 先确保所有需要的导航分类都存在
-        await this.autoCreateNavCategoriesFromTools(navTools);
-
-        await this.importNavToolsEnhanced(navTools);
-        importResults.navTools = navTools.length;
+      if (prepared.navTools.length > 0) {
+        await startStage('navTools', '正在恢复导航工具');
+        await this.autoCreateNavCategoriesFromTools(prepared.navTools);
+        await this.importNavToolsEnhanced(prepared.navTools);
+        importResults.navTools = prepared.navTools.length;
         this.logger.log(`导航工具导入完成: ${importResults.navTools} 条`);
+        await completeStage('navTools', `已恢复 ${importResults.navTools} 个导航工具`);
       }
 
-      if (icons) {
-        await this.importIconsEnhanced(icons);
-        importResults.icons = icons.length;
+      if (prepared.icons.length > 0) {
+        await startStage('icons', '正在恢复图标');
+        await this.importIconsEnhanced(prepared.icons);
+        importResults.icons = prepared.icons.length;
         this.logger.log(`图标数据导入完成: ${importResults.icons} 条`);
+        await completeStage('icons', `已恢复 ${importResults.icons} 个图标`);
       }
 
-      if (pipelines) {
-        await this.importPipelinesEnhanced(pipelines);
-        importResults.pipelines = pipelines.length;
+      if (prepared.pipelines.length > 0) {
+        await startStage('pipelines', '正在恢复流水线');
+        await this.importPipelinesEnhanced(prepared.pipelines);
+        importResults.pipelines = prepared.pipelines.length;
         this.logger.log(`流水线数据导入完成: ${importResults.pipelines} 条`);
+        await completeStage('pipelines', `已恢复 ${importResults.pipelines} 条流水线配置`);
       }
 
-      if (tokens) {
-        await this.importTokensEnhanced(tokens);
-        importResults.tokens = tokens.length;
+      if (prepared.tokens.length > 0) {
+        await startStage('tokens', '正在恢复 Token');
+        await this.importTokensEnhanced(prepared.tokens);
+        importResults.tokens = prepared.tokens.length;
         this.logger.log(`Token数据导入完成: ${importResults.tokens} 条`);
+        await completeStage('tokens', `已恢复 ${importResults.tokens} 条 Token`);
       }
 
-      if (staticItems) {
-        this.logger.log(`开始导入静态文件记录: ${staticItems.length} 条`);
-        await this.staticProvider.importItems(staticItems, false); // false = 不清空现有记录，增量导入
-        importResults.staticItems = staticItems.length;
+      if (prepared.staticItems.length > 0) {
+        await startStage('staticItems', `正在恢复 ${prepared.staticItems.length} 条静态文件记录`);
+        this.logger.log(`开始导入静态文件记录: ${prepared.staticItems.length} 条`);
+        await this.staticProvider.importItems(prepared.staticItems, false);
+        importResults.staticItems = prepared.staticItems.length;
         this.logger.log(`静态文件记录导入完成: ${importResults.staticItems} 条`);
+        await completeStage('staticItems', `已恢复 ${importResults.staticItems} 条静态文件记录`);
       }
 
-      if (visit) {
-        await this.visitProvider.import(visit);
-        this.logger.log('访问记录导入完成');
-      }
-
-      if (viewer) {
-        await this.viewerProvider.import(viewer);
-        this.logger.log('访客记录导入完成');
-      }
-
-      // 导入定制化设置（增量导入）
-      if (layoutSetting && Object.keys(layoutSetting).length > 0) {
+      if (prepared.layoutSetting && Object.keys(prepared.layoutSetting).length > 0) {
+        await startStage('layoutSetting', '正在恢复定制化设置');
         try {
-          await this.settingProvider.updateLayoutSetting(layoutSetting);
+          await this.settingProvider.updateLayoutSetting(prepared.layoutSetting);
           importResults.layoutSetting = 1;
           this.logger.log('定制化设置导入完成');
-          // 触发ISR更新
           this.isrProvider.activeAll('导入定制化设置');
+          await completeStage('layoutSetting', '定制化设置已恢复');
         } catch (error) {
           this.logger.warn(`定制化设置导入失败: ${error.message}`);
+          await skipStage('layoutSetting', `定制化设置恢复失败：${error.message}`);
         }
       } else {
         this.logger.log('备份文件中未发现定制化设置数据或数据为空');
       }
 
-      // 导入AI标签配置（直接覆盖）
-      if (aiTaggingConfig && Object.keys(aiTaggingConfig).length > 0) {
+      if (prepared.aiTaggingConfig && Object.keys(prepared.aiTaggingConfig).length > 0) {
+        await startStage('aiTaggingConfig', '正在恢复 AI 标签配置');
         try {
-          await this.aiTaggingProvider.updateConfig(aiTaggingConfig);
+          await this.aiTaggingProvider.updateConfig(prepared.aiTaggingConfig);
           importResults.aiTaggingConfig = 1;
           this.logger.log('AI标签配置导入完成（覆盖模式）');
+          await completeStage('aiTaggingConfig', 'AI 标签配置已恢复');
         } catch (error) {
           this.logger.warn(`AI标签配置导入失败: ${error.message}`);
+          await skipStage('aiTaggingConfig', `AI 标签配置恢复失败：${error.message}`);
         }
       } else {
         this.logger.log('备份文件中未发现AI标签配置数据或数据为空');
       }
 
-      // 导入私密文档库数据
-      if (documents && documents.length > 0) {
+      if (prepared.documents.length > 0) {
+        await startStage('documents', `准备恢复 ${prepared.documents.length} 个私密文档`);
         try {
-          await this.importDocumentsEnhanced(documents);
-          importResults.documents = documents.length;
+          await this.importDocumentsEnhanced(prepared.documents, async (completed, detail) => {
+            if (this.shouldReportProgress(completed, prepared.documents.length)) {
+              await advanceStage('documents', completed, detail);
+            }
+          });
+          importResults.documents = prepared.documents.length;
           this.logger.log(`私密文档库数据导入完成: ${importResults.documents} 条`);
+          await completeStage('documents', `已恢复 ${importResults.documents} 个私密文档`);
         } catch (error) {
           this.logger.warn(`私密文档库数据导入失败: ${error.message}`);
+          throw error;
         }
       } else {
         this.logger.log('备份文件中未发现私密文档库数据或数据为空');
       }
 
-      if (mindMaps && mindMaps.length > 0) {
-        await this.mindMapProvider.importMindMaps(mindMaps);
-        importResults.mindMaps = mindMaps.length;
+      if (prepared.mindMaps.length > 0) {
+        await startStage('mindMaps', '正在恢复思维导图');
+        await this.mindMapProvider.importMindMaps(prepared.mindMaps);
+        importResults.mindMaps = prepared.mindMaps.length;
         this.logger.log(`脑图数据导入完成: ${importResults.mindMaps} 条`);
+        await completeStage('mindMaps', `已恢复 ${importResults.mindMaps} 个思维导图`);
       }
 
-      await this.refreshStructuredData('backup-import');
+      if (!prepared.includeAnalytics) {
+        await skipStage(
+          'analytics',
+          '已默认跳过访问统计（viewer/visit）；这类按日期和页面路径累计的历史数据恢复意义低，且会显著拖慢导入',
+        );
+      } else {
+        await startStage('analytics', '正在恢复访问统计');
+        if (prepared.visit.length > 0) {
+          await this.visitProvider.import(prepared.visit);
+        }
+        if (prepared.viewer.length > 0) {
+          await this.viewerProvider.import(prepared.viewer);
+        }
+        this.logger.log('访问统计导入完成');
+        await completeStage(
+          'analytics',
+          `已恢复 ${prepared.visit.length + prepared.viewer.length} 条访问统计`,
+        );
+      }
 
-      // 自动同步标签数据
+      await startStage('structuredData', '正在同步结构化数据');
+      await this.refreshStructuredData(
+        'backup-import',
+        this.getStructuredCollectionsForImport(prepared),
+      );
+      await completeStage('structuredData', '结构化数据同步完成');
+
+      await startStage('syncTags', '正在同步标签与前台缓存');
       try {
-        this.logger.log('开始同步标签数据...');
-        await this.tagProvider.syncTagsFromArticles();
-        this.logger.log('标签数据同步完成');
-
-        // 触发标签相关页面的ISR更新
+        this.logger.log('开始清理标签缓存并刷新前台缓存...');
+        await this.tagProvider.invalidateCache();
+        this.logger.log('标签缓存清理完成');
         this.isrProvider.activeUrl('/tag', false);
         this.isrProvider.activePath('tag');
+        await completeStage('syncTags', '标签同步完成');
       } catch (error) {
         this.logger.error('标签数据同步失败:', error.message);
+        await skipStage('syncTags', `标签同步失败：${error.message}`);
       }
 
-      this.logger.log('所有数据导入完成！', importResults);
+      const skippedNotes = prepared.includeAnalytics
+        ? []
+        : ['访问统计（viewer/visit）已默认跳过，不会导入这类按日期和路径累计的历史数据。'];
 
-      return {
+      this.logger.log('所有数据导入完成！', importResults);
+      const result = {
         statusCode: 200,
         data: '导入成功！',
         importResults,
+        skippedNotes,
       };
+      if (jobId) {
+        await this.backupImportJobProvider.completeJob(jobId, result, '导入完成');
+      }
+      return result;
     } catch (error) {
       this.logger.error('导入数据时发生错误', error.stack);
+      if (jobId) {
+        await this.backupImportJobProvider.failJob(jobId, error.message);
+      }
       return {
         statusCode: 500,
         message: '导入失败：' + error.message,
@@ -871,65 +1277,56 @@ export class BackupController {
     }
   }
 
-  private async importDraftsEnhanced(drafts: any[]) {
+  private async importDraftsEnhanced(
+    drafts: any[],
+    onProgress?: (completed: number, detail?: string) => Promise<void> | void,
+  ) {
     if (!drafts || drafts.length === 0) return;
 
     try {
-      this.logger.log(`开始增量导入 ${drafts.length} 个草稿...`);
+      this.logger.log(`开始快速恢复 ${drafts.length} 个草稿...`);
+      const usedIds = new Set<number>();
       let newIdCount = 0;
-      let updatedCount = 0;
-      let createdCount = 0;
+      const payloads: any[] = [];
 
       for (const draft of drafts) {
-        try {
-          let targetId = draft.id;
+        let targetId = Number(draft?.id);
 
-          // 检查ID是否冲突（包括软删除的记录）
-          if (targetId) {
-            const existingDraft = await this.draftProvider['draftModel'].findOne({ id: targetId });
-            if (existingDraft) {
-              // ID冲突，分配新ID
-              targetId = await this.draftProvider.getNewId();
-              newIdCount++;
-              this.logger.log(`草稿ID冲突 (${draft.id} -> ${targetId}): ${draft.title}`);
-            }
-          } else {
-            // 没有ID，分配新ID
-            targetId = await this.draftProvider.getNewId();
-            newIdCount++;
+        if (!Number.isFinite(targetId) || targetId <= 0 || usedIds.has(targetId)) {
+          targetId = await this.draftProvider.getNewId();
+          newIdCount++;
+          if (draft?.id) {
+            this.logger.log(`草稿ID冲突 (${draft.id} -> ${targetId}): ${draft.title}`);
           }
-
-          const { id, _id, __v, ...createDto } = draft;
-
-          // 先尝试根据标题查找是否已存在相同草稿（只查未删除的）
-          const existingByTitle = await this.draftProvider.findOneByTitle(draft.title);
-          if (existingByTitle && !existingByTitle.deleted) {
-            // 更新现有草稿
-            await this.draftProvider.updateById(existingByTitle.id, {
-              ...createDto,
-              deleted: false,
-              updatedAt: new Date(),
-            });
-            updatedCount++;
-            this.logger.log(`更新草稿: ${draft.title}`);
-          } else {
-            // 创建新草稿，手动设置ID
-            const newDraft = new this.draftProvider['draftModel']({
-              ...createDto,
-              id: targetId,
-              updatedAt: createDto.updatedAt || new Date(),
-            });
-            const saved = await newDraft.save();
-            await this.structuredDataService.upsertDraft(saved?.toObject ? saved.toObject() : saved);
-            createdCount++;
-          }
-        } catch (error) {
-          this.logger.error(`导入草稿失败 (${draft.title}): ${error.message}`);
         }
+
+        usedIds.add(targetId);
+        const { id, _id, __v, ...createDto } = draft;
+        payloads.push({
+          ...createDto,
+          id: targetId,
+          deleted: createDto.deleted ?? false,
+          createdAt: createDto.createdAt || new Date(),
+          updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
+        });
       }
 
+      let processedCount = 0;
+      await this.runWithConcurrency(
+        payloads,
+        this.getImportConcurrency(payloads.length),
+        async (payload) => {
+          const newDraft = new this.draftProvider['draftModel'](payload);
+          await newDraft.save();
+          processedCount++;
+          if (onProgress && this.shouldReportProgress(processedCount, payloads.length)) {
+            await onProgress(processedCount, payload.title);
+          }
+        },
+      );
+
       this.logger.log(
-        `草稿增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`,
+        `草稿快速恢复完成: 创建 ${payloads.length} 个, 重新分配ID ${newIdCount} 个`,
       );
     } catch (error) {
       this.logger.error('批量导入草稿失败:', error.message);
@@ -937,79 +1334,55 @@ export class BackupController {
     }
   }
 
-  private async importMomentsEnhanced(moments: any[]) {
+  private async importMomentsEnhanced(
+    moments: any[],
+    onProgress?: (completed: number, detail?: string) => Promise<void> | void,
+  ) {
     if (!moments || moments.length === 0) return;
 
     try {
-      this.logger.log(`开始增量导入 ${moments.length} 个动态...`);
+      this.logger.log(`开始快速恢复 ${moments.length} 个动态...`);
+      const usedIds = new Set<number>();
       let newIdCount = 0;
-      let updatedCount = 0;
-      let createdCount = 0;
+      const payloads: any[] = [];
 
       for (const moment of moments) {
-        try {
-          let targetId = moment.id;
+        let targetId = Number(moment?.id);
 
-          // 检查ID是否冲突（包括软删除的记录）
-          if (targetId) {
-            const existingMoment = await this.momentProvider['momentModel'].findOne({
-              id: targetId,
-            });
-            if (existingMoment) {
-              // ID冲突，分配新ID
-              targetId = await this.momentProvider.getNewId();
-              newIdCount++;
-              this.logger.log(`动态ID冲突 (${moment.id} -> ${targetId})`);
-            }
-          } else {
-            // 没有ID，分配新ID
-            targetId = await this.momentProvider.getNewId();
-            newIdCount++;
+        if (!Number.isFinite(targetId) || targetId <= 0 || usedIds.has(targetId)) {
+          targetId = await this.momentProvider.getNewId();
+          newIdCount++;
+          if (moment?.id) {
+            this.logger.log(`动态ID冲突 (${moment.id} -> ${targetId})`);
           }
-
-          const { id, _id, __v, ...createDto } = moment;
-
-          // 尝试根据内容和时间查找是否已存在相同动态（只查未删除的）
-          let existingByContent = null;
-          if (moment.content && moment.createdAt) {
-            existingByContent = await this.momentProvider['momentModel'].findOne({
-              content: moment.content,
-              createdAt: moment.createdAt,
-              $or: [{ deleted: false }, { deleted: { $exists: false } }],
-            });
-          }
-
-          if (existingByContent) {
-            // 更新现有动态
-            await this.momentProvider.updateById(existingByContent.id, {
-              ...createDto,
-              deleted: false,
-              updatedAt: new Date(),
-            });
-            updatedCount++;
-            this.logger.log(`更新动态: ${moment.content?.substring(0, 50)}...`);
-          } else {
-            // 创建新动态，手动设置ID
-            const newMoment = new this.momentProvider['momentModel']({
-              ...createDto,
-              id: targetId,
-              createdAt: createDto.createdAt || new Date(),
-              updatedAt: createDto.updatedAt || new Date(),
-            });
-            const saved = await newMoment.save();
-            await this.structuredDataService.upsertMoment(
-              saved?.toObject ? saved.toObject() : saved,
-            );
-            createdCount++;
-          }
-        } catch (error) {
-          this.logger.error(`导入动态失败: ${error.message}`);
         }
+
+        usedIds.add(targetId);
+        const { id, _id, __v, ...createDto } = moment;
+        payloads.push({
+          ...createDto,
+          id: targetId,
+          deleted: createDto.deleted ?? false,
+          createdAt: createDto.createdAt || new Date(),
+          updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
+        });
       }
 
-      this.logger.log(
-        `动态增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`,
+      let processedCount = 0;
+      await this.runWithConcurrency(
+        payloads,
+        this.getImportConcurrency(payloads.length),
+        async (payload) => {
+          const newMoment = new this.momentProvider['momentModel'](payload);
+          await newMoment.save();
+          processedCount++;
+          if (onProgress && this.shouldReportProgress(processedCount, payloads.length)) {
+            await onProgress(processedCount, payload.content?.substring(0, 30));
+          }
+        },
       );
+
+      this.logger.log(`动态快速恢复完成: 创建 ${payloads.length} 个, 重新分配ID ${newIdCount} 个`);
     } catch (error) {
       this.logger.error('批量导入动态失败:', error.message);
       throw error;
@@ -1276,72 +1649,57 @@ export class BackupController {
     await this.structuredDataService.upsertMeta(payload);
   }
 
-  private async importArticlesEnhanced(articles: any[]) {
+  private async importArticlesEnhanced(
+    articles: any[],
+    onProgress?: (completed: number, detail?: string) => Promise<void> | void,
+  ) {
     if (!articles || articles.length === 0) return;
 
     try {
-      this.logger.log(`开始增量导入 ${articles.length} 篇文章...`);
+      this.logger.log(`开始快速恢复 ${articles.length} 篇文章...`);
+      const usedIds = new Set<number>();
       let newIdCount = 0;
-      let updatedCount = 0;
-      let createdCount = 0;
+      const payloads: any[] = [];
 
       for (const article of articles) {
-        let targetId = article.id;
+        let targetId = Number(article?.id);
 
-        // 检查ID是否冲突（包括软删除的记录）
-        if (targetId) {
-          const existingArticle = await this.articleProvider['articleModel'].findOne({
-            id: targetId,
-          });
-          if (existingArticle) {
-            // ID冲突，分配新ID
-            targetId = await this.articleProvider.getNewId();
-            newIdCount++;
-            this.logger.log(`文章ID冲突 (${article.id} -> ${targetId}): ${article.title}`);
-          }
-        } else {
-          // 没有ID，分配新ID
+        if (!Number.isFinite(targetId) || targetId <= 0 || usedIds.has(targetId)) {
           targetId = await this.articleProvider.getNewId();
           newIdCount++;
-        }
-
-        const { id, _id, __v, ...createDto } = article;
-
-        try {
-          // 先尝试根据标题查找是否已存在相同文章（只查未删除的）
-          const existingByTitle = await this.articleProvider.findOneByTitle(article.title);
-          if (existingByTitle && !existingByTitle.deleted) {
-            // 更新现有文章
-            await this.articleProvider.updateById(
-              existingByTitle.id,
-              {
-                ...createDto,
-                deleted: false,
-                updatedAt: new Date(),
-              },
-              true,
-            );
-            updatedCount++;
-            this.logger.log(`更新文章: ${article.title}`);
-          } else {
-            // 创建新文章
-            await this.articleProvider.create(
-              {
-                ...createDto,
-                updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
-              },
-              true,
-              targetId,
-            );
-            createdCount++;
+          if (article?.id) {
+            this.logger.log(`文章ID冲突 (${article.id} -> ${targetId}): ${article.title}`);
           }
-        } catch (error) {
-          this.logger.error(`导入文章失败 (${article.title}): ${error.message}`);
         }
+
+        usedIds.add(targetId);
+        const { id, _id, __v, ...createDto } = article;
+        payloads.push({
+          ...createDto,
+          id: targetId,
+          deleted: createDto.deleted ?? false,
+          pathname: createDto.pathname || '',
+          createdAt: createDto.createdAt || new Date(),
+          updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
+        });
       }
 
+      let processedCount = 0;
+      await this.runWithConcurrency(
+        payloads,
+        this.getImportConcurrency(payloads.length),
+        async (payload) => {
+          const newArticle = new this.articleProvider['articleModel'](payload);
+          await newArticle.save();
+          processedCount++;
+          if (onProgress && this.shouldReportProgress(processedCount, payloads.length)) {
+            await onProgress(processedCount, payload.title);
+          }
+        },
+      );
+
       this.logger.log(
-        `文章增量导入完成: 创建 ${createdCount} 篇, 更新 ${updatedCount} 篇, 重新分配ID ${newIdCount} 篇`,
+        `文章快速恢复完成: 创建 ${payloads.length} 篇, 重新分配ID ${newIdCount} 篇`,
       );
       await this.metaProvider.updateTotalWords('增量导入文章');
     } catch (error) {
@@ -1354,7 +1712,6 @@ export class BackupController {
     if (!content || content.length === 0) return;
 
     try {
-      // 收集所有分类名称
       const categoryNames = new Set<string>();
       content.forEach((item) => {
         if (item.category && typeof item.category === 'string' && item.category.trim()) {
@@ -1367,7 +1724,6 @@ export class BackupController {
         return;
       }
 
-      // 获取现有分类（明确指定返回字符串数组）
       const existingCategories = (await this.categoryProvider.getAllCategories(false)) as string[];
       const existingCategoryNames = new Set(existingCategories);
 
@@ -1439,11 +1795,14 @@ export class BackupController {
     }
   }
 
-  private async importDocumentsEnhanced(documents: any[]) {
+  private async importDocumentsEnhanced(
+    documents: any[],
+    onProgress?: (completed: number, detail?: string) => Promise<void> | void,
+  ) {
     if (!documents || documents.length === 0) return;
 
     try {
-      this.logger.log(`开始增量导入 ${documents.length} 个私密文档...`);
+      this.logger.log(`开始快速恢复 ${documents.length} 个私密文档...`);
       const orderedDocuments = [...documents].sort((a, b) => {
         if (a.type !== b.type) {
           return a.type === 'library' ? -1 : 1;
@@ -1462,34 +1821,23 @@ export class BackupController {
       const idMap = new Map<number, number>();
       const usedIds = new Set<number>();
       let newIdCount = 0;
-      let updatedCount = 0;
-      let createdCount = 0;
+      const payloads: any[] = [];
 
       for (const document of orderedDocuments) {
-        let targetId = document.id;
+        let targetId = Number(document?.id);
 
-        if (
-          !targetId ||
-          usedIds.has(targetId) ||
-          (await this.documentProvider['documentModel'].findOne({ id: targetId }))
-        ) {
+        if (!Number.isFinite(targetId) || targetId <= 0 || usedIds.has(targetId)) {
           targetId = await this.documentProvider.getNewId();
           newIdCount++;
           if (document.id) {
             this.logger.log(`文档ID冲突 (${document.id} -> ${targetId}): ${document.title}`);
           }
-        } else {
-          usedIds.add(targetId);
         }
 
         if (typeof document.id === 'number') {
           idMap.set(document.id, targetId);
         }
         usedIds.add(targetId);
-      }
-
-      for (const document of orderedDocuments) {
-        const targetId = typeof document.id === 'number' ? idMap.get(document.id) : document.id;
         const { id, _id, __v, ...createDto } = document;
         const mappedParentId =
           createDto.parent_id === null || createDto.parent_id === undefined
@@ -1503,41 +1851,34 @@ export class BackupController {
           ? createDto.path.map((pathId: number) => idMap.get(pathId) ?? pathId)
           : [];
 
-        try {
-          const payload = {
-            ...createDto,
-            id: targetId,
-            parent_id: mappedParentId,
-            library_id: mappedLibraryId,
-            path: mappedPath,
-            deleted: false,
-            createdAt: createDto.createdAt || new Date(),
-            updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
-          };
-          const existingById = await this.documentProvider['documentModel'].findOne({
-            id: targetId,
-          });
-
-          if (existingById) {
-            await this.documentProvider['documentModel'].updateOne({ id: targetId }, payload);
-            await this.structuredDataService.upsertDocument(payload);
-            updatedCount++;
-            this.logger.log(`更新文档: ${document.title}`);
-          } else {
-            const newDocument = new this.documentProvider['documentModel'](payload);
-            const saved = await newDocument.save();
-            await this.structuredDataService.upsertDocument(
-              saved?.toObject ? saved.toObject() : saved,
-            );
-            createdCount++;
-          }
-        } catch (error) {
-          this.logger.error(`导入文档失败 (${document.title}): ${error.message}`);
-        }
+        payloads.push({
+          ...createDto,
+          id: targetId!,
+          parent_id: mappedParentId,
+          library_id: mappedLibraryId,
+          path: mappedPath,
+          deleted: createDto.deleted ?? false,
+          createdAt: createDto.createdAt || new Date(),
+          updatedAt: createDto.updatedAt || createDto.createdAt || new Date(),
+        });
       }
 
+      let processedCount = 0;
+      await this.runWithConcurrency(
+        payloads,
+        this.getImportConcurrency(payloads.length, 6),
+        async (payload) => {
+          const newDocument = new this.documentProvider['documentModel'](payload);
+          await newDocument.save();
+          processedCount++;
+          if (onProgress && this.shouldReportProgress(processedCount, orderedDocuments.length)) {
+            await onProgress(processedCount, payload.title);
+          }
+        },
+      );
+
       this.logger.log(
-        `私密文档增量导入完成: 创建 ${createdCount} 个, 更新 ${updatedCount} 个, 重新分配ID ${newIdCount} 个`,
+        `私密文档快速恢复完成: 创建 ${payloads.length} 个, 重新分配ID ${newIdCount} 个`,
       );
     } catch (error) {
       this.logger.error('批量导入私密文档失败:', error.message);

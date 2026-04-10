@@ -115,6 +115,7 @@ import { PublicCacheMiddleware } from './provider/public-cache/public-cache.midd
 import { MongoBackupProvider } from './provider/mongo-backup/mongo-backup.provider';
 import { PublicDataCacheProvider } from './provider/public-data-cache/public-data-cache.provider';
 import { SearchController } from './controller/admin/search/search.controller';
+import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
 
 @Module({
   imports: [
@@ -245,6 +246,7 @@ import { SearchController } from './controller/admin/search/search.controller';
     SearchIndexProvider,
     MongoBackupProvider,
     PublicDataCacheProvider,
+    BackupImportJobProvider,
   ],
 })
 export class AppModule implements NestModule {

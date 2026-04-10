@@ -80,7 +80,12 @@ kevinchina/deeplearning:vanblog-waline-v1.0.0-<image-id>
 | `admin` | `docker/admin.Dockerfile` | Umi 后台静态页面 |
 | `waline` | `docker/waline.Dockerfile` | 评论服务 |
 
-`mongo` 继续直接使用官方镜像 `mongo:4.4.16`，不单独维护自定义发布。
+数据库与缓存继续直接使用官方镜像：
+
+- `postgres:16-alpine`
+- `redis:7-alpine`
+
+它们属于运行时依赖，不单独维护自定义发布镜像。
 
 ## 4. 发布前准备
 
@@ -265,7 +270,7 @@ bash scripts/release-images.sh --push
 docker compose -f docker-compose.image.yml up -d
 ```
 
-7. 不要把 `mongo` 端口暴露到 `0.0.0.0`。
+7. 不要把 `postgres`、`redis` 端口暴露到 `0.0.0.0`。
 8. 不要把 Caddy admin API `2019` 暴露到宿主机。
 9. 任何涉及 `/admin` 的改动都要考虑子路径资源和跳转。
 10. 发版前优先跑：

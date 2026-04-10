@@ -14,6 +14,7 @@ import { useModel } from 'umi';
 export default function (props) {
   const [loading, setLoading] = useState(false);
   const [curData, setCurData] = useState(null);
+  const [managedByVanblog, setManagedByVanblog] = useState(false);
   const [form] = ProForm.useForm();
   const { initialState } = useModel('@@initialState');
   const cls = useMemo(() => {
@@ -26,6 +27,10 @@ export default function (props) {
   const updateHttpsConfig = async (data) => {
     setLoading(true);
     try {
+      if (!managedByVanblog) {
+        message.warning('当前部署未启用 VanBlog 内置 HTTPS 管理，请在外部 Caddy 中自行配置 TLS。');
+        return false;
+      }
       if (data.redirect) {
         setTimeout(() => {
           window.location.reload();
@@ -61,11 +66,22 @@ export default function (props) {
         message={
           <div>
             <p>
-              VanBlog 是通过{' '}
+              当前版本内置 Caddy 默认只负责反向代理，不主动接管 HTTPS/TLS。
+            </p>
+            <p>
+              如需证书、Cloudflare DNS、自动跳转等能力，推荐在外层自行编写{' '}
+              <code>Caddyfile</code> 或使用你自己的 Caddy 实例。
+            </p>
+            <p>
+              如果你明确要让 VanBlog 内置 Caddy 接管 HTTPS，可额外开启环境变量{' '}
+              <code>VAN_BLOG_CADDY_MANAGE_HTTPS=true</code>。
+            </p>
+            <p>
+              运行日志与当前配置仍可在这里查看。底层代理仍然基于{' '}
               <a target={'_blank'} rel="noreferrer" href="https://caddyserver.com/">
                 Caddy
               </a>{' '}
-              实现的证书全自动按需申请。
+              。
               <a
                 target={'_blank'}
                 rel="noreferrer"
@@ -84,21 +100,12 @@ export default function (props) {
         type="warning"
         message={
           <div>
-            <p>请确保 80/443 端口处于开放状态。</p>
+            <p>默认情况下，此页面的 HTTPS 开关不会生效，除非显式启用内置 HTTPS 管理。</p>
             <p>
-              第一次通过某域名 https
-              访问时，如果没有证书会自动申请证书的。你也可以点击下面的按钮手动触发证书申请。
+              如果你在外部又套了一层反向代理，请直接在外部代理里处理证书和 80/443 跳转。
             </p>
-            <p>稳定后可打开 https 自动重定向功能，开启通过 http 访问将自动跳转至 https </p>
-            <p>如果你用了 80 端口反代，请不要开启 https 自动重定向！否则你的反代可能会失效。</p>
             <p>
-              如果不小心开启了此选项后关不掉，可以参考：
-              <a
-                href="https://vanblog.mereith.com/faq/usage.html#开启了-https-重定向后关不掉"
-                target="_blank"
-              >
-                开启了 https 重定向后关不掉
-              </a>
+              只有当你显式打开 <code>VAN_BLOG_CADDY_MANAGE_HTTPS=true</code> 时，下面的重定向配置才会实际写入内置 Caddy。
             </p>
           </div>
         }
@@ -114,6 +121,7 @@ export default function (props) {
               const { data: res } = await getHttpsConfig();
               setLoading(false);
               if (!res) {
+                setManagedByVanblog(false);
                 setCurData({
                   redirect: false,
                 });
@@ -121,6 +129,7 @@ export default function (props) {
                   redirect: false,
                 };
               }
+              setManagedByVanblog(!!res.managedByVanblog);
               setCurData(res);
 
               return res;
@@ -246,6 +255,7 @@ export default function (props) {
                   </Row>
                   <Row style={{ marginTop: 10 }}>
                     <Button
+                      disabled={!managedByVanblog}
                       type="primary"
                       onClick={async () => {
                         Modal.confirm({
@@ -270,6 +280,7 @@ export default function (props) {
             label="HTTPS 自动重定向"
             name="redirect"
             tooltip="开启后通过 http 访问本站将自动重定向至 https"
+            disabled={!managedByVanblog}
             fieldProps={{
               className: cls,
             }}

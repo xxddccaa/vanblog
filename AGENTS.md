@@ -1,16 +1,16 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This repository is a `pnpm` monorepo for a customized VanBlog deployment with split Docker services.
+This repository is a `pnpm` monorepo for a customized VanBlog deployment with split Docker services and Dockerized stateful dependencies.
 
 - `packages/server`: NestJS backend; core code is in `src/`, with unit tests in `src/**/*.spec.ts` and e2e tests in `test/`.
 - `packages/admin`: Umi + Ant Design Pro admin app; pages live in `src/pages`, shared UI in `src/components`.
 - `packages/website`: Next.js frontend theme; routes live in `pages/`, shared UI in `components/`, helpers in `utils/`, and tests in `__tests__/`.
-- `packages/waline`: embedded Waline comment service wrapper.
+- `packages/waline`: Waline-related wrapper/runtime code used by the comment integration and release artifacts.
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
-- `docker-compose.yml`: local and production-like multi-container orchestration entrypoint.
-- `docker-compose.image.yml`: deployment entrypoint that pulls already-published split images.
+- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires `caddy`, `server`, `website`, `admin`, `postgres`, and `redis`.
+- `docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology.
 - `RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
 - `DEPLOY.md`: production deployment guide for pulling published images with `.env.release.example`.
 - `.env.release.example`: server-side environment template for image deployments.
@@ -35,7 +35,7 @@ Use `pnpm` at the repo root.
 - `pnpm release:images:push`: build and push all split release images.
 - `docker compose up -d --build`: start the split runtime locally.
 - `docker compose -f docker-compose.image.yml up -d`: start from already-published images.
-- `docker compose logs -f caddy server website admin waline mongo`: inspect container logs by service.
+- `docker compose logs -f caddy server website admin postgres redis`: inspect logs for the current top-level compose stack.
 
 ## Coding Style & Naming Conventions
 Follow existing 2-space indentation and run Prettier before committing; root formatting comes from `@umijs/fabric`.
@@ -52,6 +52,16 @@ Add or update tests for each behavior change; there is no visible repo-wide cove
 - Frontend utility tests use Vitest with `*.spec.ts` naming.
 - Deployment regressions belong in `tests/deployment-config.test.mjs` and `tests/blog-compose.e2e.test.mjs`.
 - For split deployment changes, cover `/admin` routing, static assets, public reading flows, and container exposure/security assumptions.
+
+## Release & Deployment Notes
+Treat release and deployment work as documented workflows, not guesswork.
+
+- For image publishing or versioned rollout tasks, read `RELEASE.md` first; it is the canonical guide for image naming, release commands, and rollback expectations.
+- For production deployment tasks, read `DEPLOY.md` and use `docker-compose.image.yml` plus `.env.release.example`; do not switch back to the legacy single-image flow.
+- Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
+- If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.
+- For release or deployment changes, validate with at least `pnpm test:blog-flow`; if the change is config- or routing-focused, also run `pnpm test:deploy`.
+- Keep production exposure assumptions intact: public entry is through Caddy on `80/443`, `postgres` and `redis` should not gain host ports, and the Caddy admin API `2019` must stay private.
 
 ## Commit & Pull Request Guidelines
 Recent history uses short, change-focused Chinese subjects, for example: `分类与标签页增加分页并优化公开文章查询。` Match that concise style or use an equally clear English summary.

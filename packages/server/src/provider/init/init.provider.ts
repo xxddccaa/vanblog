@@ -15,7 +15,6 @@ import path from 'path';
 import { WebsiteProvider } from '../website/website.provider';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { CustomPageDocument } from 'src/scheme/customPage.schema';
-import e from 'express';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 @Injectable()
 export class InitProvider {
@@ -33,44 +32,114 @@ export class InitProvider {
     private readonly structuredDataService: StructuredDataService,
   ) {}
 
+  private buildSiteInfoPayload(siteInfo: InitDto['siteInfo']) {
+    const safeSiteInfo = siteInfo || ({} as InitDto['siteInfo']);
+    const normalized = {
+      ...safeSiteInfo,
+      author: safeSiteInfo?.author || '',
+      authorDesc: (safeSiteInfo as any)?.authorDesc || '',
+      authorLogo: safeSiteInfo?.authorLogo || '',
+      authorLogoDark: safeSiteInfo?.authorLogoDark || '',
+      siteLogo: safeSiteInfo?.siteLogo || '',
+      siteLogoDark: safeSiteInfo?.siteLogoDark || '',
+      favicon: safeSiteInfo?.favicon || '',
+      siteName: safeSiteInfo?.siteName || 'VanBlog',
+      siteDesc: safeSiteInfo?.siteDesc || '',
+      baseUrl: safeSiteInfo?.baseUrl || '',
+    };
+    if (normalized?.since) {
+      return normalized;
+    }
+    return { ...normalized, since: new Date() };
+  }
+
+  private async upsertAdminUser(user: InitDto['user']) {
+    const existingAdmin = await this.userModel.findOne({ id: 0 }).exec();
+    const salt = makeSalt();
+    const payload = {
+      id: 0,
+      name: user.username,
+      password: encryptPassword(user.username, user.password, salt),
+      nickname: user?.nickname || user.username,
+      type: 'admin' as const,
+      salt,
+    };
+
+    if (existingAdmin) {
+      await this.userModel.updateOne({ id: 0 }, payload);
+      const latestAdmin = await this.userModel.findOne({ id: 0 }).lean().exec();
+      await this.structuredDataService.upsertUser(latestAdmin);
+      return latestAdmin;
+    }
+
+    const admin = await this.userModel.create(payload);
+    const plainAdmin = admin.toObject();
+    await this.structuredDataService.upsertUser(plainAdmin);
+    return plainAdmin;
+  }
+
+  private async upsertMeta(siteInfo: InitDto['siteInfo']) {
+    const existingMeta = await this.metaModel.findOne().lean().exec();
+    const payload = {
+      siteInfo: {
+        ...(existingMeta?.siteInfo || {}),
+        ...siteInfo,
+      },
+      links: existingMeta?.links || [],
+      socials: existingMeta?.socials || [],
+      menus: existingMeta?.menus || [],
+      rewards: existingMeta?.rewards || [],
+      about: existingMeta?.about || {
+        updatedAt: new Date(),
+        content: '',
+      },
+      categories: existingMeta?.categories || [],
+      viewer: existingMeta?.viewer || 0,
+      visited: existingMeta?.visited || 0,
+      totalWordCount: existingMeta?.totalWordCount || 0,
+    };
+
+    if (existingMeta) {
+      await this.metaModel.updateOne({}, payload);
+      const latestMeta = await this.metaModel.findOne().lean().exec();
+      await this.structuredDataService.upsertMeta(latestMeta);
+      return latestMeta;
+    }
+
+    const meta = await this.metaModel.create(payload);
+    const plainMeta = meta.toObject();
+    await this.structuredDataService.upsertMeta(plainMeta);
+    return plainMeta;
+  }
+
   async init(initDto: InitDto) {
     const { user, siteInfo } = initDto;
-    let toUpdateDto = siteInfo;
-    if (!siteInfo.since) {
-      toUpdateDto = { ...siteInfo, since: new Date() };
+    const siteInfoPayload = this.buildSiteInfoPayload(siteInfo);
+    if (!siteInfoPayload.author) {
+      siteInfoPayload.author = user?.nickname || user?.username || 'VanBlog';
     }
     try {
-      const salt = makeSalt();
-      const admin = await this.userModel.create({
-        id: 0,
-        name: user.username,
-        password: encryptPassword(user.username, user.password, salt),
-        mickname: user?.nickname || user.username,
-        type: 'admin',
-        salt,
-      });
-      await this.structuredDataService.upsertUser(admin.toObject());
-      const meta = await this.metaModel.create({
-        siteInfo: toUpdateDto,
-        links: [],
-        socials: [],
-        rewards: [],
-        about: {
-          updatedAt: new Date(),
-          content: '',
-        },
-        categories: [],
-      });
-      await this.structuredDataService.upsertMeta(meta.toObject());
+      await this.upsertAdminUser(user);
+      await this.upsertMeta(siteInfoPayload);
       await this.settingProvider.updateMenuSetting({ data: defaultMenu });
-      // 运行 waline
-      this.walineProvider.init();
-      // 重启前台
-      this.websiteProvider.restart('初始化');
-      return '初始化成功!';
     } catch (err) {
+      this.logger.error(`初始化核心数据失败: ${err?.message || err}`);
       throw new BadRequestException('初始化失败');
     }
+
+    try {
+      await this.walineProvider.init();
+    } catch (err) {
+      this.logger.warn(`初始化后同步 Waline 失败: ${err?.message || err}`);
+    }
+
+    try {
+      await this.websiteProvider.restart('初始化');
+    } catch (err) {
+      this.logger.warn(`初始化后同步 Website 失败: ${err?.message || err}`);
+    }
+
+    return '初始化成功!';
   }
 
   async checkHasInited() {

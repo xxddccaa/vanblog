@@ -8,15 +8,17 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 
 | 名称 | 常见位置 | 说明 | 默认值 |
 | --- | --- | --- | --- |
-| `EMAIL` | `caddy` | 自动申请 HTTPS 证书时使用的邮箱 | `someone@example.com` |
-| `VAN_BLOG_DATABASE_URL` | `server` | MongoDB 连接串 | `mongodb://mongo:27017/vanBlog?authSource=admin` |
+| `EMAIL` | `caddy` | 使用内置 Caddy HTTPS 时申请证书的邮箱 | `someone@example.com` |
+| `VAN_BLOG_DATABASE_URL` | `server` | PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/vanblog` |
 | `VAN_BLOG_WALINE_DB` | `server` / `waline` | 评论系统数据库名 | `waline` |
 | `VAN_BLOG_ALLOW_DOMAINS` | `website` | Next.js 允许加载的外部图片域名，多个用逗号分隔 | `pic.mereith.com` |
 | `WALINE_JWT_TOKEN` | `waline` | Waline 使用的 JWT 密钥 | `vanblog-change-me` |
 | `VANBLOG_HTTP_PORT` | `caddy` | 宿主机暴露的 HTTP 端口 | `80` |
-| `VANBLOG_HTTPS_PORT` | `caddy` | 宿主机暴露的 HTTPS 端口 | `443` |
+| `VANBLOG_HTTPS_PORT` | `caddy` | 使用 `docker-compose.https.yml` 时暴露的 HTTPS 端口 | `443` |
+| `VAN_BLOG_CADDY_MANAGE_HTTPS` | `server` | 是否允许后台管理内置 Caddy HTTPS 行为 | `false` |
 | `VANBLOG_STATIC_DIR` | `server` | 本地图床宿主机目录 | `./data/static` |
-| `VANBLOG_MONGO_DIR` | `mongo` | MongoDB 宿主机目录 | `./data/mongo` |
+| `VANBLOG_POSTGRES_DIR` | `postgres` | PostgreSQL 宿主机目录 | `./data/postgres` |
+| `VANBLOG_REDIS_DIR` | `redis` | Redis 宿主机目录 | `./data/redis` |
 | `VANBLOG_LOG_DIR` | `caddy` / `server` | 日志宿主机目录 | `./log` |
 
 ## 修改后如何生效

@@ -1,34 +1,125 @@
-import { exportAll, clearAllData } from '@/services/van-blog/api';
+import { exportAll, clearAllData, getBackupImportStatus } from '@/services/van-blog/api';
 import {
   Alert,
   Button,
   Card,
-  message,
-  Modal,
-  Space,
-  Spin,
-  Upload,
-  Typography,
   Divider,
   List,
-  Popconfirm,
+  Modal,
+  Progress,
+  Space,
+  Spin,
+  Typography,
+  Upload,
+  message,
 } from 'antd';
 import moment from 'moment';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  DownloadOutlined,
-  UploadOutlined,
-  InfoCircleOutlined,
   DeleteOutlined,
+  DownloadOutlined,
   ExclamationCircleOutlined,
+  InfoCircleOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 
 const { Text, Title } = Typography;
 
-export default function (props) {
+export default function BackupTab() {
   const [loading, setLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
+  const [importProgressVisible, setImportProgressVisible] = useState(false);
+  const [importProgress, setImportProgress] = useState(null);
+  const pollTimerRef = useRef(null);
+
+  const stopPolling = () => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  };
+
+  const startPolling = (jobId) => {
+    stopPolling();
+    setImportProgressVisible(true);
+
+    const poll = async () => {
+      try {
+        const result = await getBackupImportStatus(jobId);
+        if (result?.statusCode !== 200 || !result?.data) {
+          throw new Error(result?.message || '无法获取导入进度');
+        }
+
+        const job = result.data;
+        setImportProgress(job);
+
+        if (job.status === 'completed') {
+          stopPolling();
+          setUploadLoading(false);
+          setImportProgressVisible(false);
+          Modal.success({
+            title: '导入成功！',
+            content: (
+              <div>
+                <p>站点数据已经恢复完成。</p>
+                {job.result?.skippedNotes?.length > 0 && (
+                  <Alert
+                    type="info"
+                    showIcon
+                    style={{ margin: '12px 0' }}
+                    message={job.result.skippedNotes.join('；')}
+                  />
+                )}
+                {job.result?.importResults && (
+                  <div style={{ marginTop: 16 }}>
+                    <Text strong>导入统计：</Text>
+                    <ul style={{ marginTop: 8 }}>
+                      {Object.entries(job.result.importResults).map(([key, value]) =>
+                        value > 0 ? (
+                          <li key={key}>
+                            {key}: {value} 条
+                          </li>
+                        ) : null,
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ),
+            onOk: () => {
+              setTimeout(() => window.location.reload(), 1000);
+            },
+          });
+          return;
+        }
+
+        if (job.status === 'failed') {
+          stopPolling();
+          setUploadLoading(false);
+          setImportProgressVisible(false);
+          Modal.error({
+            title: '导入失败',
+            content: job.error || job.message || '导入任务执行失败，请查看后端日志后重试。',
+          });
+        }
+      } catch (error) {
+        stopPolling();
+        setUploadLoading(false);
+        setImportProgressVisible(false);
+        message.error(error?.message || '获取导入进度失败');
+      }
+    };
+
+    void poll();
+    pollTimerRef.current = setInterval(() => {
+      void poll();
+    }, 1500);
+  };
+
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
 
   const handleOutPut = async () => {
     setLoading(true);
@@ -86,7 +177,6 @@ export default function (props) {
       okType: 'danger',
       cancelText: '取消',
       onOk: () => {
-        // 二次确认
         Modal.confirm({
           title: '最后确认',
           icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
@@ -199,10 +289,13 @@ export default function (props) {
     { name: '✅ AI标签配置', desc: '按备份覆盖恢复当前 AI 配置参数' },
     { name: '✅ 私密文档库', desc: '文档库、文档内容、层级关系按备份原样恢复' },
     { name: '✅ 脑图数据', desc: '思维导图数据按备份原样恢复' },
-    { name: '✅ 访问统计', desc: '访问统计与历史记录会按备份恢复' },
     {
       name: '⚠️ 登录信息保护',
       desc: '导入时只保留当前管理员的登录名和密码；站点信息、动态、文档、脑图等其余站点数据都按备份恢复',
+    },
+    {
+      name: 'ℹ️ 访问统计默认跳过',
+      desc: '不会导入 viewer/visit 这类按日期和页面路径累计的历史访问记录，因为数据量大、恢复意义低，还会显著拖慢导入速度',
     },
   ];
 
@@ -234,6 +327,14 @@ export default function (props) {
             <p>
               <strong>原样恢复：</strong>
               动态、私密文档、思维导图等数据会尽量按备份中的原始结构和 ID 关系恢复。
+            </p>
+            <p>
+              <strong>统计默认跳过：</strong>
+              导入时不会恢复 viewer/visit 访问统计，这类按日期和页面路径累计的历史数据体积大、意义低，会严重拖慢导入。
+            </p>
+            <p>
+              <strong>后台导入进度：</strong>
+              备份文件上传成功后会转入后台异步恢复，页面会显示当前恢复阶段和进度。
             </p>
           </div>
         }
@@ -279,7 +380,7 @@ export default function (props) {
                 title={
                   <Text
                     strong
-                    style={{ color: item.name.startsWith('❌') ? '#ff4d4f' : '#1890ff' }}
+                    style={{ color: item.name.startsWith('⚠️') ? '#fa8c16' : '#1890ff' }}
                   >
                     {item.name}
                   </Text>
@@ -292,7 +393,7 @@ export default function (props) {
             background: '#f0f5ff',
             padding: '16px',
             borderRadius: '6px',
-            maxHeight: '200px',
+            maxHeight: '220px',
             overflowY: 'auto',
             border: '1px solid #91d5ff',
           }}
@@ -309,25 +410,21 @@ export default function (props) {
             accept=".json"
             action="/api/admin/backup/import"
             headers={{
-              token: (() => {
-                return window.localStorage.getItem('token') || 'null';
-              })(),
+              token: (() => window.localStorage.getItem('token') || 'null')(),
             }}
             beforeUpload={(file) => {
-              // 验证文件类型
               if (!file.name.endsWith('.json')) {
                 message.error('请选择正确的备份文件（.json格式）');
                 return false;
               }
               setUploadLoading(true);
+              setImportProgress(null);
               return true;
             }}
             onChange={(info) => {
-              if (info.file.status !== 'uploading') {
-                setUploadLoading(false);
-              }
               if (info.file.status === 'done') {
                 if (location.hostname == 'blog-demo.mereith.com') {
+                  setUploadLoading(false);
                   Modal.info({
                     title: '演示站禁止修改此项！',
                     content: '因为有个人在演示站首页放黄色信息，所以关了这个权限了。',
@@ -336,38 +433,18 @@ export default function (props) {
                 }
 
                 const response = info.file.response;
-                if (response?.statusCode === 200) {
-                  Modal.success({
-                    title: '导入成功！',
-                    content: (
-                      <div>
-                        <p>数据已成功导入，页面将在3秒后自动刷新。</p>
-                        {response.importResults && (
-                          <div style={{ marginTop: 16 }}>
-                            <Text strong>导入统计：</Text>
-                            <ul style={{ marginTop: 8 }}>
-                              {Object.entries(response.importResults).map(([key, value]) =>
-                                value > 0 ? (
-                                  <li key={key}>
-                                    {key}: {value} 条
-                                  </li>
-                                ) : null,
-                              )}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    ),
-                    onOk: () => {
-                      setTimeout(() => window.location.reload(), 1000);
-                    },
-                  });
+                if (response?.statusCode === 202 && response?.data?.jobId) {
+                  startPolling(response.data.jobId);
+                } else if (response?.statusCode === 200) {
+                  setUploadLoading(false);
+                  message.success('导入完成');
                 } else {
+                  setUploadLoading(false);
                   message.error(`导入失败: ${response?.message || '未知错误'}`);
                 }
               } else if (info.file.status === 'error') {
-                message.error(`${info.file.name} 上传失败！请检查文件格式和网络连接。`);
                 setUploadLoading(false);
+                message.error(`${info.file.name} 上传失败！请检查文件格式和网络连接。`);
               }
             }}
           >
@@ -397,6 +474,60 @@ export default function (props) {
           </Button>
         </Space>
       </Spin>
+
+      <Modal
+        title="正在后台恢复备份"
+        open={importProgressVisible}
+        footer={null}
+        closable={false}
+        maskClosable={false}
+      >
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message="已默认跳过 viewer/visit 访问统计导入，只恢复真正有迁移价值的站点内容。"
+        />
+        <Progress
+          percent={importProgress?.progress || 0}
+          status={importProgress?.status === 'failed' ? 'exception' : 'active'}
+        />
+        <div style={{ marginTop: 12 }}>
+          <Text strong>当前阶段：</Text>{' '}
+          <Text>{importProgress?.currentStageLabel || importProgress?.message || '等待开始...'}</Text>
+        </div>
+        {importProgress?.currentStageDetail && (
+          <div style={{ marginTop: 8 }}>
+            <Text type="secondary">{importProgress.currentStageDetail}</Text>
+          </div>
+        )}
+        {Array.isArray(importProgress?.stages) && importProgress.stages.length > 0 && (
+          <div style={{ marginTop: 16, maxHeight: 260, overflowY: 'auto' }}>
+            {importProgress.stages.map((stage) => {
+              const total = stage.total || 1;
+              const completed =
+                stage.status === 'skipped' ? total : Math.min(stage.completed || 0, total);
+              const percent = Math.round((completed / total) * 100);
+              return (
+                <div key={stage.key} style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <Text>{stage.label}</Text>
+                    <Text type="secondary">
+                      {stage.status === 'skipped' ? '已跳过' : `${completed}/${total}`}
+                    </Text>
+                  </div>
+                  <Progress
+                    percent={percent}
+                    size="small"
+                    status={stage.status === 'completed' ? 'success' : 'active'}
+                    showInfo={false}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
 
       <div style={{ marginTop: 24 }}>
         <Alert
@@ -437,19 +568,16 @@ export default function (props) {
             <Text strong>原样恢复：</Text>站点信息、动态、私密文档、思维导图等都会按备份覆盖恢复
           </li>
           <li>
+            <Text strong>统计跳过：</Text>不会导入 viewer/visit 这类按日期与路径累计的历史访问统计
+          </li>
+          <li>
             <Text strong>图片处理：</Text>仅备份图片索引，实际图片文件需要单独备份文件系统
           </li>
           <li>
-            <Text strong>数据完整：</Text>导入时会自动重建分类关系、处理 ID 冲突，并兼容旧版/原始
-            Mongo 集合导出格式
+            <Text strong>进度可见：</Text>上传完成后会转入后台异步导入，页面实时展示恢复进度
           </li>
           <li>
-            <Text strong>建议操作：</Text>导入前建议先备份当前数据，测试环境先验证
-          </li>
-          <li>
-            <Text strong style={{ color: '#ff4d4f' }}>
-              危险操作：
-            </Text>
+            <Text strong style={{ color: '#ff4d4f' }}>危险操作：</Text>
             清空数据无法撤销，执行前务必备份！
           </li>
         </ul>

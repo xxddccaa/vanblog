@@ -53,32 +53,37 @@ export class RssProvider {
         email = walineSetting?.authorEmail;
       }
       walineSetting?.authorEmail;
+      const siteInfo = meta?.siteInfo || {};
+      const siteUrl = washUrl(siteInfo.baseUrl || '');
+      if (!siteUrl) {
+        this.logger.warn('站点 baseUrl 未配置，跳过 RSS 生成');
+        return;
+      }
       const author = {
-        name: meta.siteInfo.author,
+        name: siteInfo.author,
         email,
-        link: meta.siteInfo.baseUrl,
+        link: siteInfo.baseUrl,
       };
-      const siteUrl = washUrl(meta.siteInfo.baseUrl);
       const favicon =
-        meta.siteInfo.favicon ||
-        meta.siteInfo.siteLogo ||
-        meta.siteInfo.authorLogo ||
+        siteInfo.favicon ||
+        siteInfo.siteLogo ||
+        siteInfo.authorLogo ||
         `${siteUrl}logo.svg`;
       const siteLogo =
-        meta.siteInfo.siteLogo ||
-        meta.siteInfo.authorLogo ||
-        meta.siteInfo.favicon ||
+        siteInfo.siteLogo ||
+        siteInfo.authorLogo ||
+        siteInfo.favicon ||
         `${siteUrl}logo.svg`;
       const date = new Date();
       const feed = new Feed({
-        title: meta.siteInfo.siteName,
-        description: meta.siteInfo.siteDesc,
+        title: siteInfo.siteName,
+        description: siteInfo.siteDesc,
         id: siteUrl,
         link: siteUrl,
         language: '	zh-cn',
         image: siteLogo,
         favicon: favicon,
-        copyright: `All rights reserved ${date.getFullYear()}, ${meta.siteInfo.author}`,
+        copyright: `All rights reserved ${date.getFullYear()}, ${siteInfo.author}`,
         updated: date,
         generator: 'Feed for VanBlog',
         feedLinks: {

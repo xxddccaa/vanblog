@@ -13,7 +13,13 @@ describe('MomentProvider', () => {
       find: jest.fn().mockReturnValue(query),
     };
 
-    const provider = new MomentProvider(momentModel as any);
+    const provider = new MomentProvider(
+      momentModel as any,
+      {
+        queryMoments: jest.fn().mockResolvedValue({ moments: [], total: 0 }),
+        isInitialized: jest.fn().mockReturnValue(false),
+      } as any,
+    );
     const result = await provider.getByOption({ page: 1, pageSize: -1 }, false);
 
     expect(result.moments).toHaveLength(2);

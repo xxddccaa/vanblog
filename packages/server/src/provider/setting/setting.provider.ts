@@ -1577,7 +1577,7 @@ if (typeof window !== 'undefined') {
       // 没有的话需要清洗
       const toInsert: MenuItem[] = defaultMenu;
       const meta = await this.metaProvider.getAll();
-      const oldMenus = meta.menus;
+      const oldMenus = meta?.menus || [];
       const d = Date.now();
       oldMenus.forEach((item: any, index: number) => {
         toInsert.push({

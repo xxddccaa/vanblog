@@ -1,0 +1,10 @@
+services:
+  caddy:
+    volumes:
+      - ./docker/caddy/Caddyfile.https:/etc/caddy/Caddyfile:ro
+    ports:
+      - ${VANBLOG_HTTPS_PORT:-443}:443
+
+  server:
+    environment:
+      VAN_BLOG_CADDY_MANAGE_HTTPS: ${VAN_BLOG_CADDY_MANAGE_HTTPS:-true}

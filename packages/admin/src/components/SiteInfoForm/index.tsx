@@ -13,29 +13,32 @@ export default function (props: {
   form: any;
   isInit: boolean;
 }) {
+  const initOptional = props.isInit;
+  const basicRequired = !initOptional;
+
   return (
     <>
       {props.showRequire && (
         <>
           <ProFormText
             name="author"
-            required
+            required={basicRequired}
             label="作者名字"
             placeholder={'请输入作者名字'}
-            rules={[{ required: true, message: '这是必填项' }]}
+            rules={basicRequired ? [{ required: true, message: '这是必填项' }] : undefined}
           />
           <ProFormText
             name="authorDesc"
-            required
+            required={basicRequired}
             label="作者描述"
             placeholder={'请输入作者描述'}
-            rules={[{ required: true, message: '这是必填项' }]}
+            rules={basicRequired ? [{ required: true, message: '这是必填项' }] : undefined}
           />
           <UrlFormItem
             isInit={props.isInit}
             formRef={props.form}
             name="authorLogo"
-            required
+            required={basicRequired}
             label="作者 Logo"
             placeholder={'请输入作者 Logo Url'}
           />
@@ -77,24 +80,24 @@ export default function (props: {
             isInit={props.isInit}
             formRef={props.form}
             name="favicon"
-            required
+            required={basicRequired}
             label="网站图标(favicon)"
             placeholder={'请输入网站图标 Url'}
             isFavicon={true}
           />
           <ProFormText
             name="siteName"
-            required
+            required={basicRequired}
             label="网站名"
             placeholder={'请输入网站名'}
-            rules={[{ required: true, message: '这是必填项' }]}
+            rules={basicRequired ? [{ required: true, message: '这是必填项' }] : undefined}
           />
           <ProFormText
             name="siteDesc"
-            required
+            required={basicRequired}
             label="网站描述"
             placeholder={'请输入网站描述'}
-            rules={[{ required: true, message: '这是必填项' }]}
+            rules={basicRequired ? [{ required: true, message: '这是必填项' }] : undefined}
           />
         </>
       )}
@@ -137,11 +140,11 @@ export default function (props: {
       {props.showRequire && (
         <ProFormText
           name="baseUrl"
-          rules={[{ required: true, message: '这是必填项' }]}
+          rules={basicRequired ? [{ required: true, message: '这是必填项' }] : undefined}
           label="网站 Url"
           placeholder={'请输入包含访问协议的完整 URL'}
           tooltip={'请输入包含访问协议的完整 URL，此 URL 会被用来生成前后台/RSS的相关数据。'}
-          required={true}
+          required={basicRequired}
         />
       )}
       {props.showOption && (

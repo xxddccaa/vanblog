@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs';
+import { config } from 'src/config';
 import { withRetry } from 'src/utils/retry';
 import { SettingProvider } from '../setting/setting.provider';
 @Injectable()
@@ -12,7 +13,15 @@ export class CaddyProvider {
     (process.env.NODE_ENV === 'production' ? 'http://caddy:2019' : 'http://127.0.0.1:2019')
   ).replace(/\/$/, '');
   constructor(private readonly settingProvider: SettingProvider) {}
+  isHttpsManagedByVanblog() {
+    const rawValue = process.env['VAN_BLOG_CADDY_MANAGE_HTTPS'] ?? config.caddyManageHttps;
+    return rawValue === true || rawValue === 'true';
+  }
   async init() {
+    if (!this.isHttpsManagedByVanblog()) {
+      this.logger.log('已关闭内置 Caddy HTTPS 管理，仅保留反向代理能力');
+      return;
+    }
     try {
       const configInDB = await this.settingProvider.getHttpsSetting();
       await withRetry(
@@ -49,13 +58,20 @@ export class CaddyProvider {
   }
 
   async setRedirect(redirect: boolean) {
+    if (!this.isHttpsManagedByVanblog()) {
+      this.logger.warn('内置 Caddy HTTPS 管理未开启，忽略自动重定向配置');
+      return false;
+    }
     if (!redirect) {
       try {
         await axios.delete(`${this.apiBaseUrl}/config/apps/http/servers/srv1/listener_wrappers`);
         this.logger.log('https 自动重定向已关闭');
         return '关闭成功！';
       } catch (err) {
-        // console.log(err);
+        if (err?.response?.status === 404) {
+          this.logger.log('https 自动重定向已关闭');
+          return '关闭成功！';
+        }
         this.logger.error('关闭 https 自动重定向失败');
         return false;
       }

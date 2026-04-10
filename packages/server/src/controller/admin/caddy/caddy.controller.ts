@@ -33,7 +33,10 @@ export class CaddyController {
     const config = await this.settingProvider.getHttpsSetting();
     return {
       statusCode: 200,
-      data: config,
+      data: {
+        ...config,
+        managedByVanblog: this.caddyProvider.isHttpsManagedByVanblog(),
+      },
     };
   }
 
@@ -91,6 +94,12 @@ export class CaddyController {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
+      };
+    }
+    if (!this.caddyProvider.isHttpsManagedByVanblog()) {
+      return {
+        statusCode: 400,
+        message: '当前部署未启用 VanBlog 内置 Caddy HTTPS 管理，请自行在外部 Caddy 中配置 TLS。',
       };
     }
     const result = await this.caddyProvider.setRedirect(dto.redirect || false);

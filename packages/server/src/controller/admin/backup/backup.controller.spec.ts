@@ -3,6 +3,15 @@ import { BackupController } from './backup.controller';
 
 describe('BackupController import mode', () => {
   const createController = (overrides: Record<string, any> = {}) => {
+    const articleModel = Object.assign(
+      jest.fn(() => ({
+        save: jest.fn().mockResolvedValue(undefined),
+      })),
+      {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        findOne: jest.fn().mockResolvedValue(null),
+      },
+    );
     const momentModel = Object.assign(
       jest.fn(() => ({
         save: jest.fn().mockResolvedValue(undefined),
@@ -26,13 +35,17 @@ describe('BackupController import mode', () => {
     const articleProvider = {
       getTotalNum: jest.fn().mockResolvedValue(0),
       getAll: jest.fn().mockResolvedValue([]),
-      articleModel: {
-        deleteMany: jest.fn().mockResolvedValue(undefined),
-      },
+      articleModel,
+      getNewId: jest.fn().mockResolvedValue(1),
+      findOneByTitle: jest.fn().mockResolvedValue(null),
+      updateById: jest.fn().mockResolvedValue(undefined),
+      create: jest.fn().mockResolvedValue(undefined),
       ...overrides.articleProvider,
     };
     const categoryProvider = {
       getAllCategories: jest.fn().mockResolvedValue([]),
+      addOne: jest.fn().mockResolvedValue(undefined),
+      updateCategoryByName: jest.fn().mockResolvedValue(undefined),
       categoryModal: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -41,6 +54,7 @@ describe('BackupController import mode', () => {
     const tagProvider = {
       getAllTagRecords: jest.fn().mockResolvedValue([]),
       syncTagsFromArticles: jest.fn().mockResolvedValue(undefined),
+      invalidateCache: jest.fn().mockResolvedValue(undefined),
       tagModel: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -49,6 +63,7 @@ describe('BackupController import mode', () => {
     const metaProvider = {
       getAll: jest.fn().mockResolvedValue({}),
       update: jest.fn().mockResolvedValue(undefined),
+      updateTotalWords: jest.fn().mockResolvedValue(undefined),
       metaModel: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
         updateOne: jest.fn().mockResolvedValue(undefined),
@@ -193,14 +208,32 @@ describe('BackupController import mode', () => {
     };
     const structuredDataService = {
       refreshAllFromRecordStore: jest.fn().mockResolvedValue(undefined),
+      refreshCollectionsFromRecordStore: jest.fn().mockResolvedValue(undefined),
       clearStructuredDataForRestore: jest.fn().mockResolvedValue(undefined),
       deleteAllSettings: jest.fn().mockResolvedValue(undefined),
+      deleteAllStatics: jest.fn().mockResolvedValue(undefined),
       deleteUsersExcept: jest.fn().mockResolvedValue(undefined),
       upsertMeta: jest.fn().mockResolvedValue(undefined),
       upsertDraft: jest.fn().mockResolvedValue(undefined),
       upsertMoment: jest.fn().mockResolvedValue(undefined),
       upsertDocument: jest.fn().mockResolvedValue(undefined),
       ...overrides.structuredDataService,
+    };
+    const backupImportJobProvider = {
+      createJob: jest.fn().mockResolvedValue({
+        created: true,
+        job: { id: 'job-1' },
+      }),
+      getJob: jest.fn().mockResolvedValue(null),
+      getActiveJob: jest.fn().mockResolvedValue(null),
+      markRunning: jest.fn().mockResolvedValue(undefined),
+      startStage: jest.fn().mockResolvedValue(undefined),
+      advanceStage: jest.fn().mockResolvedValue(undefined),
+      completeStage: jest.fn().mockResolvedValue(undefined),
+      skipStage: jest.fn().mockResolvedValue(undefined),
+      completeJob: jest.fn().mockResolvedValue(undefined),
+      failJob: jest.fn().mockResolvedValue(undefined),
+      ...overrides.backupImportJobProvider,
     };
 
     const controller = new BackupController(
@@ -227,6 +260,7 @@ describe('BackupController import mode', () => {
       mindMapProvider as any,
       mongoBackupProvider as any,
       structuredDataService as any,
+      backupImportJobProvider as any,
     );
 
     return {
@@ -252,6 +286,7 @@ describe('BackupController import mode', () => {
       mindMapProvider,
       mongoBackupProvider,
       structuredDataService,
+      backupImportJobProvider,
     };
   };
 
@@ -319,7 +354,7 @@ describe('BackupController import mode', () => {
     const { controller, userProvider, metaProvider, settingProvider, structuredDataService } =
       createController();
 
-    const result = await controller.importAll({
+    const result = await controller.importAllSync({
       buffer: Buffer.from(
         JSON.stringify({
           backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
@@ -349,6 +384,7 @@ describe('BackupController import mode', () => {
       true,
     );
     expect(structuredDataService.refreshAllFromRecordStore).toHaveBeenCalledWith('backup-import');
+    expect(structuredDataService.refreshCollectionsFromRecordStore).not.toHaveBeenCalled();
   });
 
   it('keeps only the current login credentials when importing into a non-empty instance', async () => {
@@ -366,7 +402,7 @@ describe('BackupController import mode', () => {
       },
     });
 
-    const result = await controller.importAll({
+    const result = await controller.importAllSync({
       buffer: Buffer.from(
         JSON.stringify({
           backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
@@ -405,13 +441,68 @@ describe('BackupController import mode', () => {
       true,
     );
     expect(structuredDataService.refreshAllFromRecordStore).toHaveBeenCalledWith('backup-import');
+    expect(structuredDataService.refreshCollectionsFromRecordStore).not.toHaveBeenCalled();
+  });
+
+  it('preserves imported admin profile fields while keeping the current login credentials', async () => {
+    const { controller, userProvider } = createController({
+      articleProvider: {
+        getTotalNum: jest.fn().mockResolvedValue(1),
+      },
+      userProvider: {
+        getUser: jest.fn().mockResolvedValue({
+          id: 0,
+          name: 'current-admin',
+          password: 'current-hash',
+          salt: 'current-salt',
+          nickname: 'Current Nickname',
+          avatar: 'current-avatar.png',
+          type: 'admin',
+        }),
+      },
+    });
+
+    const result = await controller.importAllSync({
+      buffer: Buffer.from(
+        JSON.stringify({
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
+          users: [
+            {
+              id: 0,
+              name: 'legacy-admin',
+              password: 'legacy-hash',
+              salt: 'legacy-salt',
+              nickname: 'Legacy Nickname',
+              avatar: 'legacy-avatar.png',
+              introduction: 'keep-my-profile',
+              type: 'admin',
+            },
+          ],
+          meta: { siteInfo: { siteName: 'Restored Blog' } },
+          settings: [{ type: 'menu', value: { data: [] } }],
+        }),
+      ),
+    } as any);
+
+    expect(result.statusCode).toBe(200);
+    expect(userProvider.importUsers).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 0,
+        name: 'current-admin',
+        password: 'current-hash',
+        salt: 'current-salt',
+        nickname: 'Legacy Nickname',
+        avatar: 'legacy-avatar.png',
+        introduction: 'keep-my-profile',
+      }),
+    ]);
   });
 
   it('can hydrate import data from raw mongo collections when logical fields are absent', async () => {
     const { controller, userProvider, metaProvider, settingProvider, tokenProvider } =
       createController();
 
-    const result = await controller.importAll({
+    const result = await controller.importAllSync({
       buffer: Buffer.from(
         JSON.stringify({
           backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
@@ -476,7 +567,7 @@ describe('BackupController import mode', () => {
         },
       });
 
-    const result = await controller.importAll({
+    const result = await controller.importAllSync({
       buffer: Buffer.from(
         JSON.stringify({
           backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
@@ -509,5 +600,133 @@ describe('BackupController import mode', () => {
     expect(userProvider.importUsers).toHaveBeenCalledWith([
       expect.objectContaining({ name: 'admin', password: 'current-hash', salt: 'current-salt' }),
     ]);
+  });
+
+  it('restores articles with direct create saves instead of per-title merge lookups', async () => {
+    const articleSaveMock = jest.fn().mockResolvedValue(undefined);
+    const articleModel = Object.assign(
+      jest.fn(() => ({
+        save: articleSaveMock,
+      })),
+      {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        findOne: jest.fn().mockResolvedValue(null),
+      },
+    );
+
+    const { controller, articleProvider, structuredDataService } = createController({
+      articleProvider: {
+        articleModel,
+        findOneByTitle: jest.fn(() => {
+          throw new Error('fast restore should not call title merge lookup');
+        }),
+      },
+    });
+
+    const result = await controller.importAllSync({
+      buffer: Buffer.from(
+        JSON.stringify({
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
+          articles: [
+            { id: 1, title: 'Article A', content: 'alpha', category: 'Tech', tags: ['a'] },
+            { id: 2, title: 'Article B', content: 'beta', category: 'Tech', tags: ['b'] },
+          ],
+        }),
+      ),
+    } as any);
+
+    expect(result.statusCode).toBe(200);
+    expect(articleSaveMock).toHaveBeenCalledTimes(2);
+    expect(articleProvider.findOneByTitle).not.toHaveBeenCalled();
+    expect(structuredDataService.refreshCollectionsFromRecordStore).toHaveBeenCalledWith(
+      ['articles'],
+      'backup-import',
+    );
+  });
+
+  it('clears site initialization state and structured data when clear-all is requested', async () => {
+    const { controller, userProvider, metaProvider, settingProvider, structuredDataService } =
+      createController({
+        articleProvider: {
+          findAll: jest.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]),
+        },
+        draftProvider: {
+          getAll: jest.fn().mockResolvedValue([{ id: 3 }]),
+        },
+        momentProvider: {
+          getByOption: jest.fn().mockResolvedValue({ total: 2, moments: [{ id: 4 }, { id: 5 }] }),
+        },
+        customPageProvider: {
+          getAll: jest.fn().mockResolvedValue([]),
+        },
+        navToolProvider: {
+          getAllTools: jest.fn().mockResolvedValue([]),
+          deleteTool: jest.fn().mockResolvedValue(undefined),
+        },
+        navCategoryProvider: {
+          getAllCategories: jest.fn().mockResolvedValue([]),
+          deleteCategory: jest.fn().mockResolvedValue(undefined),
+        },
+        iconProvider: {
+          deleteAllIcons: jest.fn().mockResolvedValue(undefined),
+        },
+        pipelineProvider: {
+          getAll: jest.fn().mockResolvedValue([]),
+          deletePipelineById: jest.fn().mockResolvedValue(undefined),
+        },
+        documentProvider: {
+          getByOption: jest.fn().mockResolvedValue({ total: 1, documents: [{ id: 6 }] }),
+        },
+        mindMapProvider: {
+          getByOption: jest.fn().mockResolvedValue({ total: 1, mindMaps: [{ _id: 'mind-1' }] }),
+          mindMapModel: {
+            deleteMany: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        viewerProvider: {
+          getAll: jest.fn().mockResolvedValue([{ id: 7 }]),
+          viewerModel: {
+            deleteMany: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        visitProvider: {
+          getAll: jest.fn().mockResolvedValue([{ id: 8 }]),
+          visitModel: {
+            deleteMany: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        staticProvider: {
+          exportAll: jest.fn().mockResolvedValue([{ id: 9 }]),
+          staticModel: {
+            deleteMany: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        tokenProvider: {
+          disableAllAdmin: jest.fn().mockResolvedValue(undefined),
+          tokenModel: {
+            deleteMany: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        categoryProvider: {
+          getAllCategories: jest.fn().mockResolvedValue([]),
+        },
+        tagProvider: {
+          syncTagsFromArticles: jest.fn().mockResolvedValue(undefined),
+          getAllTags: jest.fn().mockResolvedValue([]),
+          tagModel: {
+            deleteMany: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      });
+
+    const result = await controller.clearAllData();
+
+    expect(result.statusCode).toBe(200);
+    expect(metaProvider.metaModel.deleteMany).toHaveBeenCalledWith({});
+    expect(userProvider.userModel.deleteMany).toHaveBeenCalledWith({});
+    expect(settingProvider.settingModel.deleteMany).toHaveBeenCalledWith({});
+    expect(structuredDataService.deleteUsersExcept).toHaveBeenCalledWith([]);
+    expect(structuredDataService.deleteAllSettings).toHaveBeenCalled();
+    expect(structuredDataService.refreshAllFromRecordStore).toHaveBeenCalledWith('clear-all');
   });
 });

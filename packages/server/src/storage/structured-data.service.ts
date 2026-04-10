@@ -1671,6 +1671,61 @@ export class StructuredDataService implements OnModuleInit {
     await this.replaceMindMaps(mindMaps);
   }
 
+  async refreshCollectionsFromRecordStore(
+    collections: Array<
+      | 'users'
+      | 'settings'
+      | 'meta'
+      | 'viewers'
+      | 'visits'
+      | 'categories'
+      | 'articles'
+      | 'drafts'
+      | 'customPages'
+      | 'navCategories'
+      | 'navTools'
+      | 'icons'
+      | 'pipelines'
+      | 'tokens'
+      | 'statics'
+      | 'documents'
+      | 'moments'
+      | 'mindMaps'
+    >,
+    reason = 'manual',
+  ) {
+    await this.ensureSchema();
+
+    const refreshers = {
+      users: () => this.refreshUsersFromRecordStore(),
+      settings: () => this.refreshSettingsFromRecordStore(),
+      meta: () => this.refreshMetaFromRecordStore(),
+      viewers: () => this.refreshViewersFromRecordStore(),
+      visits: () => this.refreshVisitsFromRecordStore(),
+      categories: () => this.refreshCategoriesFromRecordStore(),
+      articles: () => this.refreshArticlesFromRecordStore(reason),
+      drafts: () => this.refreshDraftsFromRecordStore(),
+      customPages: () => this.refreshCustomPagesFromRecordStore(),
+      navCategories: () => this.refreshNavCategoriesFromRecordStore(),
+      navTools: () => this.refreshNavToolsFromRecordStore(),
+      icons: () => this.refreshIconsFromRecordStore(),
+      pipelines: () => this.refreshPipelinesFromRecordStore(),
+      tokens: () => this.refreshTokensFromRecordStore(),
+      statics: () => this.refreshStaticsFromRecordStore(),
+      documents: () => this.refreshDocumentsFromRecordStore(),
+      moments: () => this.refreshMomentsFromRecordStore(),
+      mindMaps: () => this.refreshMindMapsFromRecordStore(),
+    } as const;
+
+    const uniqueCollections = Array.from(new Set(collections || []));
+    for (const collection of uniqueCollections) {
+      await refreshers[collection]();
+    }
+
+    await this.syncNumericIdSequences();
+    this.logger.log(`结构化表定向同步完成: ${reason} (${uniqueCollections.join(', ') || 'none'})`);
+  }
+
   async refreshAllFromRecordStore(reason = 'manual') {
     await this.ensureSchema();
     await this.refreshUsersFromRecordStore();
@@ -1733,12 +1788,13 @@ export class StructuredDataService implements OnModuleInit {
           $1::regclass,
           GREATEST(
             COALESCE((SELECT last_value::bigint FROM pg_sequences WHERE schemaname = current_schema() AND sequencename = $2), 0),
-            $3::bigint
+            $3::bigint,
+            $4::bigint
           ),
           true
         )
       `,
-      [sequenceName, sequenceName, parsedId],
+      [sequenceName, sequenceName, parsedId, 1],
     );
   }
 
