@@ -346,7 +346,13 @@ export class MetaProvider {
     // @ts-ignore eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const { name, password, ...updateDto } = updateSiteInfoDto;
     const oldSiteInfo = await this.getSiteInfo();
-    const result = await this.metaModel.updateOne({}, { siteInfo: { ...oldSiteInfo, ...updateDto } });
+    const result = await this.metaModel.updateOne({}, {
+      siteInfo: {
+        ...oldSiteInfo,
+        ...updateDto,
+        updatedAt: new Date(),
+      },
+    });
     const latest = await this.metaModel.findOne().lean().exec();
     await this.structuredDataService.upsertMeta(latest);
     return result;

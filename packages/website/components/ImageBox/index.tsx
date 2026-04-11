@@ -1,5 +1,6 @@
 // import "react-photo-view/dist/react-photo-view.css";
 // import { PhotoView } from "react-photo-view";
+import React from "react";
 import { useEffect, useRef, useState } from "react";
 import m from "medium-zoom"
 export const errorImg =

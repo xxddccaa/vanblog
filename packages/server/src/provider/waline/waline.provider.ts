@@ -128,6 +128,35 @@ export class WalineProvider {
   async init() {
     this.run();
   }
+  private getApiBaseUrl() {
+    return config.walineApiUrl?.replace(/\/$/, '') || '';
+  }
+  async getCommentCounts(paths: string[], lang: string = 'zh-CN') {
+    const apiBaseUrl = this.getApiBaseUrl();
+    if (!apiBaseUrl || !paths?.length) {
+      return paths.map(() => 0);
+    }
+
+    try {
+      const { data } = await axios.get(`${apiBaseUrl}/comment`, {
+        params: {
+          type: 'count',
+          url: paths.join(','),
+          lang,
+        },
+        timeout: 5000,
+      });
+      const rawCounts = Array.isArray(data) ? data : [data];
+      return rawCounts.map((item) => Number(item) || 0);
+    } catch (err) {
+      this.logger.warn(`获取 Waline 评论数失败: ${err?.message || err}`);
+      return paths.map(() => 0);
+    }
+  }
+  async getCommentCount(path: string, lang: string = 'zh-CN') {
+    const [count] = await this.getCommentCounts([path], lang);
+    return count || 0;
+  }
   async restart(reason: string) {
     this.logger.log(`${reason}重启 waline`);
     if (this.isExternalControlMode()) {

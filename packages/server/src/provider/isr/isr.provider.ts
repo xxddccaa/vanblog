@@ -9,13 +9,15 @@ import { SiteMapProvider } from '../sitemap/sitemap.provider';
 import { SearchIndexProvider } from '../search-index/search-index.provider';
 import { encodeQuerystring } from 'src/utils/washUrl';
 import { PublicDataCacheProvider } from '../public-data-cache/public-data-cache.provider';
+import { CloudflareCacheProvider } from '../cloudflare-cache/cloudflare-cache.provider';
+import { toCacheTag } from 'src/utils/cacheTag';
 export interface ActiveConfig {
   postId?: number;
   forceActice?: boolean;
 }
 @Injectable()
 export class ISRProvider {
-  urlList = ['/', '/category', '/tag', '/timeline', '/about', '/link'];
+  urlList = ['/', '/archive', '/category', '/tag', '/timeline', '/about', '/link'];
   base =
     process.env['VANBLOG_WEBSITE_ISR_BASE'] ||
     (process.env.NODE_ENV === 'production'
@@ -30,7 +32,13 @@ export class ISRProvider {
     private readonly settingProvider: SettingProvider,
     private readonly searchIndexProvider: SearchIndexProvider,
     private readonly publicDataCacheProvider: PublicDataCacheProvider,
+    private readonly cloudflareCacheProvider: CloudflareCacheProvider,
   ) {}
+
+  private getArtifactUrls() {
+    return ['/feed.xml', '/feed.json', '/atom.xml', '/sitemap.xml', '/static/search-index.json'];
+  }
+
   async activeAllFn(info?: string, activeConfig?: ActiveConfig) {
     const isrConfig = await this.settingProvider.getISRSetting();
     if (isrConfig?.mode == 'delay' && !activeConfig?.forceActice) {
@@ -51,7 +59,7 @@ export class ISRProvider {
       postId = articleWithThisId.pathname || articleWithThisId.id;
     }
     await this.activePath('post', postId || undefined);
-    await this.activePath('page');
+    await this.activePath('archive');
     await this.activePath('category');
     await this.activePath('tag');
     this.logger.log('触发全量渲染完成！');
@@ -62,6 +70,19 @@ export class ISRProvider {
       this.rssProvider.generateRssFeed(info || '', delay);
       this.sitemapProvider.generateSiteMap(info || '', delay);
       this.searchIndexProvider.generateSearchIndex(info || '', delay);
+      await this.cloudflareCacheProvider.purgeByTagsAndUrls(
+        [
+          'html-public',
+          'html-post',
+          'html-listing',
+          'public-api',
+          'artifact:feed',
+          'artifact:sitemap',
+          'artifact:search-index',
+        ],
+        this.getArtifactUrls(),
+        info || 'full-site-refresh',
+      );
       return;
     }
     if (this.timer) {
@@ -74,6 +95,19 @@ export class ISRProvider {
       this.activeWithRetry(() => {
         this.activeAllFn(info, activeConfig);
       });
+      void this.cloudflareCacheProvider.purgeByTagsAndUrls(
+        [
+          'html-public',
+          'html-post',
+          'html-listing',
+          'public-api',
+          'artifact:feed',
+          'artifact:sitemap',
+          'artifact:search-index',
+        ],
+        this.getArtifactUrls(),
+        info || 'full-site-refresh',
+      );
     }, 1000);
   }
 
@@ -108,25 +142,279 @@ export class ISRProvider {
     }
   }
   async activeUrls(urls: string[], log: boolean) {
-    for (const each of urls) {
+    for (const each of [...new Set(urls.filter(Boolean))]) {
       await this.activeUrl(each, log);
     }
   }
-  async activePath(type: 'category' | 'tag' | 'page' | 'post', postId?: number) {
+
+  private isListingVisible(article?: Article) {
+    return Boolean(article && !article.deleted && !article.hidden);
+  }
+
+  private sameTagSet(left?: string[], right?: string[]) {
+    const leftTags = [...new Set((left || []).filter(Boolean))].sort();
+    const rightTags = [...new Set((right || []).filter(Boolean))].sort();
+    return leftTags.join('||') === rightTags.join('||');
+  }
+
+  private didPaginationShapeChange(beforeObj?: Article, article?: Article) {
+    if (!beforeObj || !article) {
+      return true;
+    }
+
+    return (
+      beforeObj.top !== article.top ||
+      beforeObj.hidden !== article.hidden ||
+      beforeObj.deleted !== article.deleted ||
+      new Date(beforeObj.createdAt).getTime() !== new Date(article.createdAt).getTime()
+    );
+  }
+
+  private didListingContentChange(beforeObj?: Article, article?: Article) {
+    if (!beforeObj || !article) {
+      return true;
+    }
+
+    return (
+      beforeObj.title !== article.title ||
+      beforeObj.content !== article.content ||
+      beforeObj.category !== article.category ||
+      beforeObj.pathname !== article.pathname ||
+      !this.sameTagSet(beforeObj.tags, article.tags)
+    );
+  }
+
+  private didSummaryShapeChange(event: 'create' | 'delete' | 'update', beforeObj?: Article, article?: Article) {
+    if (event !== 'update') {
+      return true;
+    }
+    if (!beforeObj || !article) {
+      return true;
+    }
+
+    return (
+      beforeObj.category !== article.category ||
+      !this.sameTagSet(beforeObj.tags, article.tags) ||
+      this.didPaginationShapeChange(beforeObj, article)
+    );
+  }
+
+  private async getListingPageUrl(
+    articleId: number,
+    option: Record<string, any>,
+    firstPagePath: string,
+    pageBasePath: string,
+  ) {
+    const pageSize = await this.sitemapProvider.getHomePageSize();
+    const { articles } = await this.articleProvider.getByOption(
+      {
+        page: 1,
+        pageSize: -1,
+        regMatch: false,
+        toListView: true,
+        ...option,
+      },
+      true,
+    );
+    const index = articles.findIndex((item) => item.id === articleId);
+    if (index === -1) {
+      return null;
+    }
+    const pageNum = Math.floor(index / pageSize) + 1;
+    return pageNum === 1 ? firstPagePath : `${pageBasePath}/${pageNum}`;
+  }
+
+  private async getTagListingUrls(article: Article) {
+    const urls: string[] = [];
+    for (const each of article.tags || []) {
+      const encodedTag = encodeQuerystring(each);
+      const pageUrl = await this.getListingPageUrl(article.id, { tags: each }, `/tag/${encodedTag}`, `/tag/${encodedTag}/page`);
+      if (pageUrl) {
+        urls.push(pageUrl);
+      }
+    }
+    return urls;
+  }
+
+  private async getCategoryListingUrl(article: Article) {
+    const encodedCategory = encodeQuerystring(article.category);
+    return await this.getListingPageUrl(
+      article.id,
+      { category: article.category },
+      `/category/${encodedCategory}`,
+      `/category/${encodedCategory}/page`,
+    );
+  }
+
+  private getArchiveYear(article?: Article) {
+    if (!article?.createdAt) {
+      return null;
+    }
+    return String(new Date(article.createdAt).getFullYear());
+  }
+
+  private getArchiveMonth(article?: Article) {
+    if (!article?.createdAt) {
+      return null;
+    }
+    return String(new Date(article.createdAt).getMonth() + 1).padStart(2, '0');
+  }
+
+  private getArchiveMonthKey(article?: Article) {
+    const year = this.getArchiveYear(article);
+    const month = this.getArchiveMonth(article);
+    if (!year || !month) {
+      return null;
+    }
+    return `${year}-${month}`;
+  }
+
+  private getGlobalArchiveUrls(article?: Article) {
+    const year = this.getArchiveYear(article);
+    const month = this.getArchiveMonth(article);
+    if (!year || !month) {
+      return [];
+    }
+    return [`/archive/${year}`, `/archive/${year}/${month}`];
+  }
+
+  private getCategoryArchiveUrls(article?: Article) {
+    if (!article?.category) {
+      return [];
+    }
+    const year = this.getArchiveYear(article);
+    const month = this.getArchiveMonth(article);
+    const encodedCategory = encodeQuerystring(article.category);
+    const urls = [`/category/${encodedCategory}`];
+    if (year) {
+      urls.push(`/category/${encodedCategory}/archive/${year}`);
+    }
+    if (year && month) {
+      urls.push(`/category/${encodedCategory}/archive/${year}/${month}`);
+    }
+    return urls;
+  }
+
+  private getTagArchiveUrls(article?: Article) {
+    const year = this.getArchiveYear(article);
+    const month = this.getArchiveMonth(article);
+    const urls: string[] = [];
+
+    for (const tag of article?.tags || []) {
+      const encodedTag = encodeQuerystring(tag);
+      urls.push(`/tag/${encodedTag}`);
+      if (year) {
+        urls.push(`/tag/${encodedTag}/archive/${year}`);
+      }
+      if (year && month) {
+        urls.push(`/tag/${encodedTag}/archive/${year}/${month}`);
+      }
+    }
+
+    return urls;
+  }
+
+  private async purgeArticleChange(
+    event: 'create' | 'delete' | 'update',
+    article: Article,
+    beforeObj?: Article,
+    htmlUrls: string[] = [],
+    summaryShapeChanged: boolean = true,
+    listingContentChanged: boolean = true,
+  ) {
+    const cacheTags = new Set<string>([
+      'article-shell',
+      'article-nav',
+      'article-engagement',
+      'article-fragments',
+      'article-ranking',
+      'article-listing',
+      'archive-summary',
+      'site-stats',
+      'artifact:feed',
+      'artifact:sitemap',
+      'artifact:search-index',
+      toCacheTag('post', article.id),
+      toCacheTag('post', article.pathname),
+      toCacheTag('archive-year', this.getArchiveYear(article)),
+      toCacheTag('archive-month', this.getArchiveMonthKey(article)),
+      toCacheTag('category', article.category),
+      toCacheTag('timeline', new Date(article.createdAt).getFullYear()),
+    ]);
+
+    for (const tag of article.tags || []) {
+      cacheTags.add(toCacheTag('tag', tag));
+    }
+    if (beforeObj?.pathname) {
+      cacheTags.add(toCacheTag('post', beforeObj.pathname));
+    }
+    if (beforeObj?.category) {
+      cacheTags.add(toCacheTag('category', beforeObj.category));
+      cacheTags.add(toCacheTag('category-archive-summary', beforeObj.category));
+    }
+    if (beforeObj?.createdAt) {
+      cacheTags.add(toCacheTag('timeline', new Date(beforeObj.createdAt).getFullYear()));
+      cacheTags.add(toCacheTag('archive-year', this.getArchiveYear(beforeObj)));
+      cacheTags.add(toCacheTag('archive-month', this.getArchiveMonthKey(beforeObj)));
+    }
+    for (const tag of beforeObj?.tags || []) {
+      cacheTags.add(toCacheTag('tag', tag));
+    }
+    if (article.category) {
+      cacheTags.add(toCacheTag('category-archive-summary', article.category));
+      cacheTags.add(toCacheTag('category-archive-month', `${article.category}-${this.getArchiveMonthKey(article)}`));
+    }
+    for (const tag of article.tags || []) {
+      cacheTags.add(toCacheTag('tag-archive-summary', tag));
+      cacheTags.add(toCacheTag('tag-archive-month', `${tag}-${this.getArchiveMonthKey(article)}`));
+    }
+    if (beforeObj?.category) {
+      cacheTags.add(toCacheTag('category-archive-month', `${beforeObj.category}-${this.getArchiveMonthKey(beforeObj)}`));
+    }
+    for (const tag of beforeObj?.tags || []) {
+      cacheTags.add(toCacheTag('tag-archive-summary', tag));
+      cacheTags.add(toCacheTag('tag-archive-month', `${tag}-${this.getArchiveMonthKey(beforeObj)}`));
+    }
+    if (summaryShapeChanged) {
+      cacheTags.add('category-summary');
+      cacheTags.add('timeline-summary');
+      cacheTags.add('tag-hot');
+      cacheTags.add('tag-list');
+    }
+    if (summaryShapeChanged || (listingContentChanged && this.isListingVisible(article))) {
+      cacheTags.add('category-list');
+      cacheTags.add('timeline-list');
+    }
+
+    const tags = [
+      ...cacheTags,
+    ];
+
+    if (beforeObj?.pathname && beforeObj.pathname !== article.pathname) {
+      htmlUrls.push(`/post/${beforeObj.pathname}`);
+    }
+
+    htmlUrls.push(...this.getArtifactUrls());
+
+    await this.cloudflareCacheProvider.purgeByTagsAndUrls(
+      tags,
+      [...new Set(htmlUrls.filter(Boolean))],
+      `article-${event}-${article.id}`,
+    );
+  }
+  async activePath(type: 'archive' | 'category' | 'tag' | 'post', postId?: number) {
     switch (type) {
-      case 'category':
-        const categoryUrls = await this.sitemapProvider.getCategoryUrls();
-        const categoryPageUrls = await this.sitemapProvider.getCategoryPageUrls();
-        await this.activeUrls([...categoryUrls, ...categoryPageUrls], false);
+      case 'archive':
+        const archiveUrls = await this.sitemapProvider.getArchiveSummaryUrls();
+        await this.activeUrls(archiveUrls, false);
         break;
-      case 'page':
-        const pageUrls = await this.sitemapProvider.getPageUrls();
-        await this.activeUrls(pageUrls, false);
+      case 'category':
+        const categoryArchiveUrls = await this.sitemapProvider.getCategoryArchiveUrls();
+        await this.activeUrls(categoryArchiveUrls, false);
         break;
       case 'tag':
-        const tagUrls = await this.sitemapProvider.getTagUrls();
-        const tagPageUrls = await this.sitemapProvider.getTagPageUrls();
-        await this.activeUrls([...tagUrls, ...tagPageUrls], false);
+        const tagArchiveUrls = await this.sitemapProvider.getTagArchiveUrls();
+        await this.activeUrls(tagArchiveUrls, false);
         break;
       case 'post':
         const articleUrls = await this.getArticleUrls();
@@ -153,64 +441,84 @@ export class ISRProvider {
       const result = await this.articleProvider.getByIdOrPathnameWithPreNext(id, 'list');
       article = result.article;
     }
-    
-    // 无论是什么事件都先触发文章本身、标签和分类。
+
+    const htmlUrls = [`/post/${id}`];
     this.activeUrl(`/post/${id}`, true);
-    
-    // 如果文章有自定义路径名，触发基于 pathname 的路径重新生成
+
     if (article.pathname) {
+      htmlUrls.push(`/post/${article.pathname}`);
       this.activeUrl(`/post/${article.pathname}`, true);
     }
-    
+
     if (event == 'update' && beforeObj) {
-      // 如果 pathname 发生变化，触发旧 pathname 路径的重新生成（使旧路径失效）
       const oldPathname = beforeObj.pathname;
       const newPathname = article.pathname;
       if (oldPathname && oldPathname !== newPathname) {
         this.logger.log(`检测到 pathname 变化：${oldPathname} -> ${newPathname}，触发旧路径失效`);
-        // 触发旧路径的重新生成，由于 getByIdOrPathname 的修复，旧路径会返回 404
         this.activeUrl(`/post/${oldPathname}`, true);
+        htmlUrls.push(`/post/${oldPathname}`);
       }
-      
-      // 更新文档需要考虑更新之前的标签和分类。
-      const tags = beforeObj.tags;
-      if (tags && tags.length > 0) {
-        for (const each of tags) {
-          this.activeUrl(`/tag/${encodeQuerystring(each)}`, true);
+    }
+
+    const summaryShapeChanged = this.didSummaryShapeChange(event, beforeObj, article);
+    const paginationShapeChanged = event !== 'update' || this.didPaginationShapeChange(beforeObj, article);
+    const listingContentChanged = event !== 'update' || this.didListingContentChange(beforeObj, article);
+
+    const affectedUrls = new Set<string>(['/archive']);
+    const pushAffectedUrls = (urls: string[]) => {
+      for (const url of urls || []) {
+        if (url) {
+          affectedUrls.add(url);
         }
       }
-      const category = beforeObj.category;
-      this.activeUrl(`/category/${encodeQuerystring(category)}`, true);
+    };
+
+    pushAffectedUrls(this.getGlobalArchiveUrls(article));
+    pushAffectedUrls(this.getGlobalArchiveUrls(beforeObj));
+
+    if (summaryShapeChanged || listingContentChanged) {
+      pushAffectedUrls(this.getCategoryArchiveUrls(article));
+      pushAffectedUrls(this.getCategoryArchiveUrls(beforeObj));
+      pushAffectedUrls(this.getTagArchiveUrls(article));
+      pushAffectedUrls(this.getTagArchiveUrls(beforeObj));
     }
-    
-    const tags = article.tags;
-    if (tags && tags.length > 0) {
-      for (const each of tags) {
-        this.activeUrl(`/tag/${encodeQuerystring(each)}`, true);
-        const tagPageUrls = await this.sitemapProvider.getTagPageUrls(each);
-        await this.activeUrls(tagPageUrls, false);
-      }
+
+    if (summaryShapeChanged) {
+      affectedUrls.add('/timeline');
+      affectedUrls.add('/tag');
+      affectedUrls.add('/category');
     }
-    const category = article.category;
-    this.activeUrl(`/category/${encodeQuerystring(category)}`, true);
-    const categoryPageUrls = await this.sitemapProvider.getCategoryPageUrls(category);
-    await this.activeUrls(categoryPageUrls, false);
+
+    const targetedArchiveUrls = [...affectedUrls];
+    if (targetedArchiveUrls.length) {
+      await this.activeUrls(targetedArchiveUrls, false);
+      htmlUrls.push(...targetedArchiveUrls);
+    }
 
     this.searchIndexProvider.generateSearchIndex(`文章 ${event} 触发搜索索引更新`, 1000);
+    this.rssProvider.generateRssFeed(`文章 ${event} 触发 RSS 更新`, 1000);
+    this.sitemapProvider.generateSiteMap(`文章 ${event} 触发 SiteMap 更新`, 1000);
 
-    // 时间线、首页、标签页、tag 页
+    if (paginationShapeChanged) {
+      this.activeUrl(`/`, true);
+      this.logger.log('触发首页增量渲染！');
+      htmlUrls.push('/');
+    } else if (listingContentChanged && this.isListingVisible(article)) {
+      const homePageUrl = await this.getListingPageUrl(article.id, {}, '/', '/page');
+      if (homePageUrl === '/') {
+        await this.activeUrl('/', true);
+        htmlUrls.push('/');
+      }
+    }
 
-    this.activeUrl(`/timeline`, true);
-    this.activeUrl(`/tag`, true);
-    this.activeUrl(`/category`, true);
-    this.activeUrl(`/`, true);
-    // 如果是创建或者删除需要重新触发 page 页面
-    // 如果更改了 hidden 或者 private 也需要触发全部 page 页面
-    // 干脆就都触发了。
-    // if (event == 'create' || event == 'delete') {
-    this.logger.log('触发全部 page 页增量渲染！');
-    this.activePath('page');
-    // }
+    await this.purgeArticleChange(
+      event,
+      article,
+      beforeObj,
+      htmlUrls,
+      summaryShapeChanged,
+      listingContentChanged,
+    );
   }
 
   async activeAbout(info: string) {
@@ -219,6 +527,7 @@ export class ISRProvider {
       this.logger.log(info);
       this.activeUrl(`/about`, false);
     }, info);
+    await this.cloudflareCacheProvider.purgeByTagsAndUrls(['public-meta'], ['/about'], 'about-page-update');
   }
   async activeLink(info: string) {
     await this.publicDataCacheProvider.clearMetaData();
@@ -226,6 +535,7 @@ export class ISRProvider {
       this.logger.log(info);
       this.activeUrl(`/link`, false);
     }, info);
+    await this.cloudflareCacheProvider.purgeByTagsAndUrls(['public-meta'], ['/link'], 'link-page-update');
   }
 
   async activeUrl(url: string, log: boolean) {

@@ -1,3 +1,4 @@
+import React from "react";
 import { BytemdPlugin } from "bytemd";
 import remarkDirective from "remark-directive";
 import { visit } from "unist-util-visit";

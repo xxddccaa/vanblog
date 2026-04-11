@@ -1,3 +1,4 @@
+import React from "react";
 import { useEffect, useState } from "react";
 import { SocialItem } from "../../api/getAllData";
 import SocialIcon from "../SocialIcon";

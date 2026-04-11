@@ -1,3 +1,4 @@
+import React from "react";
 import { LinkItem } from "../../api/getAllData";
 import ImageBox from "../ImageBox";
 

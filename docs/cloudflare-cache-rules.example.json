@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "cache_rules": [
+    {
+      "name": "bypass-admin-and-write",
+      "priority": 1,
+      "match": {
+        "paths": [
+          "/admin*",
+          "/api/admin/*",
+          "/api/comment*",
+          "/comment*",
+          "/ui*",
+          "/user*",
+          "/token*",
+          "/db*",
+          "/oauth*"
+        ],
+        "methods": [
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE"
+        ],
+        "notes": [
+          "Bypass any request with authorization headers",
+          "Bypass any request that returns Set-Cookie",
+          "Bypass Waline-related traffic"
+        ]
+      },
+      "action": {
+        "cache": "bypass"
+      }
+    },
+    {
+      "name": "cache-public-html",
+      "priority": 2,
+      "match": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "paths": [
+          "/",
+          "/post/*",
+          "/archive*",
+          "/category*",
+          "/tag*",
+          "/timeline",
+          "/about",
+          "/link",
+          "/c/*"
+        ]
+      },
+      "action": {
+        "cache": "eligible",
+        "cache_level": "cache_everything",
+        "edge_ttl": "respect_origin"
+      }
+    },
+    {
+      "name": "bypass-public-search-and-admin-nav",
+      "priority": 3,
+      "match": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "paths": [
+          "/api/public/search*",
+          "/api/public/nav/admin-data"
+        ],
+        "notes": [
+          "Keep live search out of edge cache",
+          "Keep admin nav payloads out of edge cache even though they sit under /api/public/*"
+        ]
+      },
+      "action": {
+        "cache": "bypass"
+      }
+    },
+    {
+      "name": "cache-public-json-fragments",
+      "priority": 4,
+      "match": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "paths": [
+          "/api/public/*"
+        ],
+        "notes": [
+          "Only cache anonymous read endpoints",
+          "Keep authenticated requests bypassed"
+        ]
+      },
+      "action": {
+        "cache": "eligible",
+        "cache_level": "cache_everything",
+        "edge_ttl": "respect_origin"
+      }
+    },
+    {
+      "name": "cache-dynamic-public-pages",
+      "priority": 5,
+      "match": {
+        "methods": [
+          "GET",
+          "HEAD"
+        ],
+        "paths": [
+          "/moment*",
+          "/nav*"
+        ]
+      },
+      "action": {
+        "cache": "eligible",
+        "cache_level": "cache_everything",
+        "edge_ttl": "respect_origin"
+      }
+    }
+  ],
+  "cache_key_hygiene": {
+    "ignore_query_params": [
+      "utm_*",
+      "fbclid",
+      "gclid",
+      "msclkid"
+    ],
+    "ignore_anonymous_cookies": true,
+    "preserve_auth_cookies": [
+      "token",
+      "auth",
+      "authorization",
+      "session",
+      "session-id",
+      "session_id",
+      "sessionid",
+      "connect.sid",
+      "next-auth.session-token"
+    ],
+    "worker_fallback": "/root/vanblog/vanblog_git/vanblog/docs/cloudflare-worker-cache-normalize.js"
+  },
+  "optional_enhancements": [
+    "Enable Tiered Cache",
+    "Enable Respect Strong ETags",
+    "Use Cache Analytics to monitor hit rate and origin traffic"
+  ]
+}

@@ -3324,6 +3324,135 @@ export class StructuredDataService implements OnModuleInit {
     }));
   }
 
+  async getArchiveSummary(
+    includeHidden: boolean,
+    filter?: {
+      category?: string;
+      tag?: string;
+    },
+  ) {
+    const { params, whereSql } = this.buildArticleWhere({
+      includeHidden,
+      includeDelete: false,
+      category: filter?.category,
+      tags: filter?.tag,
+      regMatch: false,
+    });
+    const result = await this.store.query(
+      `
+        SELECT
+          EXTRACT(YEAR FROM a.created_at)::int AS year,
+          EXTRACT(MONTH FROM a.created_at)::int AS month,
+          COUNT(*)::int AS article_count,
+          MAX(COALESCE(a.updated_at, a.created_at)) AS last_modified
+        FROM vanblog_articles a
+        ${whereSql}
+        GROUP BY EXTRACT(YEAR FROM a.created_at), EXTRACT(MONTH FROM a.created_at)
+        ORDER BY year DESC, month DESC
+      `,
+      params,
+    );
+
+    const years: Array<{
+      year: string;
+      articleCount: number;
+      months: Array<{
+        month: string;
+        articleCount: number;
+      }>;
+    }> = [];
+    const yearMap = new Map<string, (typeof years)[number]>();
+    let latestTimestamp: string | null = null;
+    let totalArticles = 0;
+
+    for (const row of result.rows as any[]) {
+      const year = String(row.year);
+      const month = String(row.month).padStart(2, '0');
+      const articleCount = Number(row.article_count || 0);
+      totalArticles += articleCount;
+
+      if (!yearMap.has(year)) {
+        const payload = {
+          year,
+          articleCount: 0,
+          months: [],
+        };
+        yearMap.set(year, payload);
+        years.push(payload);
+      }
+
+      const yearEntry = yearMap.get(year);
+      yearEntry.articleCount += articleCount;
+      yearEntry.months.push({
+        month,
+        articleCount,
+      });
+
+      const rowTimestamp = row.last_modified ? new Date(row.last_modified).getTime() : NaN;
+      const currentLatest = latestTimestamp ? new Date(latestTimestamp).getTime() : NaN;
+      if (!Number.isNaN(rowTimestamp) && (Number.isNaN(currentLatest) || rowTimestamp > currentLatest)) {
+        latestTimestamp = new Date(rowTimestamp).toISOString();
+      }
+    }
+
+    return {
+      totalArticles,
+      years,
+      latestTimestamp,
+    };
+  }
+
+  async getArchiveMonthArticles(
+    year: string,
+    month: string,
+    includeHidden: boolean,
+    filter?: {
+      category?: string;
+      tag?: string;
+    },
+  ) {
+    const numericYear = parseInt(year, 10);
+    const numericMonth = parseInt(month, 10);
+    if (
+      Number.isNaN(numericYear) ||
+      Number.isNaN(numericMonth) ||
+      numericMonth < 1 ||
+      numericMonth > 12
+    ) {
+      return {
+        articles: [],
+        latestTimestamp: null,
+      };
+    }
+
+    const start = new Date(Date.UTC(numericYear, numericMonth - 1, 1, 0, 0, 0, 0));
+    const end = new Date(Date.UTC(numericYear, numericMonth, 1, 0, 0, 0, 0));
+
+    const result = await this.queryArticles(
+      {
+        page: 1,
+        pageSize: -1,
+        regMatch: false,
+        startTime: start.toISOString(),
+        endTime: new Date(end.getTime() - 1).toISOString(),
+        category: filter?.category,
+        tags: filter?.tag,
+        toListView: true,
+      },
+      !includeHidden,
+    );
+
+    const latestTimestamp = result.articles
+      .map((article: any) => new Date(article.updatedAt || article.createdAt).getTime())
+      .filter((value) => !Number.isNaN(value))
+      .sort((left, right) => right - left)[0];
+
+    return {
+      articles: result.articles,
+      latestTimestamp: latestTimestamp ? new Date(latestTimestamp).toISOString() : null,
+    };
+  }
+
   async getTimelineArticlesGrouped(includeHidden: boolean) {
     const { params, whereSql } = this.buildArticleWhere({
       includeHidden,

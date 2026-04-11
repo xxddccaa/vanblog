@@ -1626,6 +1626,21 @@ if (typeof window !== 'undefined') {
     }
   }
 
+  async getMusicSettingRecord(): Promise<{ value: MusicSetting; updatedAt?: Date | string } | null> {
+    const res = await this.findSettingRecord('music');
+    if (res) {
+      return {
+        value: (res?.value as any) || defaultMusicSetting,
+        updatedAt: res?.updatedAt,
+      };
+    }
+
+    await this.createSettingValue('music', defaultMusicSetting);
+    return {
+      value: defaultMusicSetting,
+    };
+  }
+
   async updateMusicSetting(dto: Partial<MusicSetting>) {
     const oldValue = await this.getMusicSetting();
     const newValue = { ...oldValue, ...dto };

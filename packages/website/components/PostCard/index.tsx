@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import AlertCard from "../AlertCard";
@@ -7,6 +8,7 @@ import TopPinIcon from "../TopPinIcon";
 import UnLockCard from "../UnLockCard";
 import WaLine from "../WaLine";
 import { PostBottom } from "./bottom";
+import PostFragments from "./fragments";
 import { SubTitle, Title } from "./title";
 import { getTarget } from "../Link/tools";
 import TocMobile from "../TocMobile";
@@ -190,6 +192,12 @@ export default function (props: {
           tags={props.tags}
           openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
         />
+        {props.type == "article" && !lock && (
+          <PostFragments
+            id={props.id}
+            openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
+          />
+        )}
         <div
           style={{
             height: props.type == "about" && !showDonate ? "16px" : "0",

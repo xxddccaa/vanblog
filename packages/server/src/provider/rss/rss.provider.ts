@@ -87,8 +87,8 @@ export class RssProvider {
         updated: date,
         generator: 'Feed for VanBlog',
         feedLinks: {
-          rss2: `${siteUrl}rss/feed.xml`, // xml format
-          json: `${siteUrl}rss/feed.json`, // json fromat
+          rss2: `${siteUrl}feed.xml`, // xml format
+          json: `${siteUrl}feed.json`, // json fromat
         },
         author,
       });

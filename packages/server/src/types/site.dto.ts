@@ -1,4 +1,5 @@
 export class SiteInfo {
+  updatedAt?: Date;
   author: string;
   authorLogo: string;
   authorLogoDark: string;

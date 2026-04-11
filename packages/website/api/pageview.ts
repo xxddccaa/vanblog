@@ -5,7 +5,7 @@ export interface PageViewData {
   visited: number;
 }
 
-export const getPageview = async (pathname: string): Promise<PageViewData> => {
+export const getPageview = async (_pathname?: string): Promise<PageViewData> => {
   try {
     const { statusCode, data } = await fetch(
       `/api/public/viewer`,
@@ -19,9 +19,9 @@ export const getPageview = async (pathname: string): Promise<PageViewData> => {
   }
 }
 
-export const updatePageview = async (
+export const recordPageview = async (
   pathname: string
-): Promise<PageViewData> => {
+): Promise<void> => {
   const hasVisited = window.localStorage.getItem("visited");
   const hasVisitedCurrentPath = window.localStorage.getItem(
     `visited-${pathname}`
@@ -35,16 +35,21 @@ export const updatePageview = async (
     window.localStorage.setItem(`visited-${pathname}`, "true");
   }
 
-  try {
-    const { statusCode, data } = await fetch(
-      `/api/public/viewer?isNew=${!hasVisited}&isNewByPath=${!hasVisitedCurrentPath}`,
-      { method: "POST" }
-    ).then((res) => res.json());
+  const url = `/api/public/viewer?isNew=${!hasVisited}&isNewByPath=${!hasVisitedCurrentPath}`;
 
-    return statusCode === 233 ? DEFAULT_PAGEVIEW_RESPONSE : data;
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+      const ok = navigator.sendBeacon(url, new Blob([], { type: "text/plain;charset=UTF-8" }));
+      if (ok) {
+        return;
+      }
+    }
+
+    await fetch(url, {
+      method: "POST",
+      keepalive: true,
+    });
   } catch (err) {
     console.log(err);
-    throw err;
   }
 };
-

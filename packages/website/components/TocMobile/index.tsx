@@ -1,3 +1,4 @@
+import React from "react";
 import MarkdownTocBar from "../MarkdownTocBar";
 
 export default function (props: { content: string }) {

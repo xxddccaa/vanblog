@@ -17,30 +17,7 @@ import { WebsiteProvider } from './provider/website/website.provider';
 import { CaddyProvider } from './provider/caddy/caddy.provider';
 import { initJwt } from './utils/initJwt';
 import { SearchIndexProvider } from './provider/search-index/search-index.provider';
-
-const setStaticCacheHeaders = (
-  kind: 'asset' | 'feed' | 'sitemap' | 'searchIndex',
-  res: any,
-  filePath: string,
-) => {
-  const basename = path.basename(filePath);
-
-  if (kind === 'asset') {
-    if (basename === 'search-index.json') {
-      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
-      res.setHeader('Surrogate-Control', 'max-age=3600, stale-while-revalidate=86400');
-      return;
-    }
-
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    return;
-  }
-
-  if (kind === 'feed' || kind === 'sitemap' || kind === 'searchIndex') {
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=86400');
-    res.setHeader('Surrogate-Control', 'max-age=86400, stale-while-revalidate=86400');
-  }
-};
+import { setStaticCacheHeaders } from './utils/staticCacheHeaders';
 
 async function bootstrap() {
   const jwtSecret = await initJwt();

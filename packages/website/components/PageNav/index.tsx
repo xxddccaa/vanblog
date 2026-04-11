@@ -1,3 +1,4 @@
+import React from "react";
 import { calItemList, PageNavProps } from "./core";
 import { RenderItemList } from "./render";
 export default function (props: PageNavProps) {

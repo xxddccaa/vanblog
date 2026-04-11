@@ -1,3 +1,4 @@
+import React from "react";
 import { Viewer } from "@bytemd/react"
 import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';

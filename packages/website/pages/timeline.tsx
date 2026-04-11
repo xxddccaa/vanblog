@@ -1,3 +1,4 @@
+import React from "react";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import { TimelineSummaryItem } from "../api/getArticles";
 import Layout from "../components/Layout";
@@ -9,7 +10,6 @@ export interface TimeLinePageProps {
   layoutProps: LayoutProps;
   authorCardProps: AuthorCardProps;
   summaries: TimelineSummaryItem[];
-  wordTotal: number;
 }
 const TimeLine = (props: TimeLinePageProps) => {
   return (
@@ -20,11 +20,8 @@ const TimeLine = (props: TimeLinePageProps) => {
     >
       <TimelinePageComponent
         summaries={props.summaries}
-        authorCardProps={props.authorCardProps}
-        wordTotal={props.wordTotal}
         openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
         pageTitle="时间线"
-        pageSubtitle={`${props.authorCardProps.catelogNum} 分类 × ${props.authorCardProps.postNum} 文章 × ${props.authorCardProps.tagNum} 标签 × ${props.wordTotal} 字`}
       />
     </Layout>
   );

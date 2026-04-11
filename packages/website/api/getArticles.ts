@@ -24,20 +24,103 @@ export interface TimelineSummaryItem {
   articleCount: number;
 }
 
+export interface ArchiveSummaryMonth {
+  month: string;
+  articleCount: number;
+}
+
+export interface ArchiveSummaryYear {
+  year: string;
+  articleCount: number;
+  months: ArchiveSummaryMonth[];
+}
+
+export interface ArchiveSummaryData {
+  totalArticles: number;
+  years: ArchiveSummaryYear[];
+}
+
 export interface ArticleNavItem {
   id: number;
   title: string;
   pathname?: string;
 }
+
+export interface ArticleFragments {
+  commentCount: number;
+  related: Article[];
+  latest: Article[];
+  hot: Article[];
+}
+
+export interface ArticleEngagement {
+  viewer: number;
+  visited: number;
+  commentCount: number;
+}
+
+const ARTICLE_QUERY_KEYS: Array<keyof GetArticleOption> = [
+  "page",
+  "pageSize",
+  "category",
+  "tags",
+  "sortCreatedAt",
+  "sortTop",
+  "withWordCount",
+  "toListView",
+  "withPreviewContent",
+];
+
+const buildArticleQueryString = (option: GetArticleOption) => {
+  const params = new URLSearchParams();
+
+  for (const key of ARTICLE_QUERY_KEYS) {
+    const value = option[key];
+
+    if (value === undefined || value === null) {
+      continue;
+    }
+
+    if (typeof value === "boolean") {
+      if (!value) {
+        continue;
+      }
+      params.set(key, "true");
+      continue;
+    }
+
+    if (typeof value === "string" && value.length === 0) {
+      continue;
+    }
+
+    params.set(key, String(value));
+  }
+
+  return encodeQuerystring(params.toString());
+};
+
+const toArticleShell = (article: any): Article => ({
+  id: article?.id,
+  title: article?.title,
+  pathname: article?.pathname,
+  updatedAt: article?.updatedAt,
+  createdAt: article?.createdAt,
+  category: article?.category,
+  content: article?.content,
+  private: Boolean(article?.private),
+  tags: Array.isArray(article?.tags) ? article.tags : [],
+  author: article?.author,
+  copyright: article?.copyright,
+  top: article?.top,
+});
+
+const toArticleShellList = (articles: any[] = []): Article[] =>
+  articles.map((article) => toArticleShell(article));
+
 export const getArticlesByOption = async (
   option: GetArticleOption
 ): Promise<{ articles: Article[]; total: number; totalWordCount?: number }> => {
-  let queryString = "";
-  for (const [k, v] of Object.entries(option)) {
-    queryString += `${k}=${v}&`;
-  }
-  queryString = queryString.substring(0, queryString.length - 1);
-  queryString = encodeQuerystring(queryString);
+  const queryString = buildArticleQueryString(option);
   try {
     const url = `${config.baseUrl}api/public/article?${queryString}`;
     const res = await fetch(url);
@@ -45,7 +128,10 @@ export const getArticlesByOption = async (
     if (statusCode == 233) {
       return { articles: [], total: 0, totalWordCount: 0 };
     }
-    return data;
+    return {
+      ...data,
+      articles: toArticleShellList(data?.articles),
+    };
   } catch (err) {
     if (process.env.isBuild == "t") {
       console.log("Failed to connect, using default values");
@@ -93,7 +179,7 @@ export const getTimelineArticlesByYear = async (year: string): Promise<Article[]
     const url = `${config.baseUrl}api/public/timeline/${encodeQuerystring(year)}/articles`;
     const res = await fetch(url);
     const { data } = await res.json();
-    return data || [];
+    return toArticleShellList(data || []);
   } catch (err) {
     if (process.env.isBuild == "t") {
       console.log("Failed to connect, using default values");
@@ -133,6 +219,85 @@ export const getCategorySummary = async (): Promise<CategorySummaryItem[]> => {
     }
   }
 };
+
+const getArchiveSummaryByUrl = async (url: string): Promise<ArchiveSummaryData> => {
+  try {
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return {
+      totalArticles: Number(data?.totalArticles || 0),
+      years: Array.isArray(data?.years) ? data.years : [],
+    };
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+      return {
+        totalArticles: 0,
+        years: [],
+      };
+    } else {
+      throw err;
+    }
+  }
+};
+
+export const getArchiveSummary = async (): Promise<ArchiveSummaryData> =>
+  await getArchiveSummaryByUrl(`${config.baseUrl}api/public/archive/summary`);
+
+export const getCategoryArchiveSummary = async (
+  category: string
+): Promise<ArchiveSummaryData> =>
+  await getArchiveSummaryByUrl(
+    `${config.baseUrl}api/public/category/${encodeQuerystring(category)}/archive/summary`
+  );
+
+export const getTagArchiveSummary = async (
+  tag: string
+): Promise<ArchiveSummaryData> =>
+  await getArchiveSummaryByUrl(
+    `${config.baseUrl}api/public/tag/${encodeQuerystring(tag)}/archive/summary`
+  );
+
+const getArchiveMonthArticlesByUrl = async (url: string): Promise<Article[]> => {
+  try {
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return toArticleShellList(data || []);
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+      return [];
+    } else {
+      throw err;
+    }
+  }
+};
+
+export const getArchiveMonthArticles = async (
+  year: string,
+  month: string
+): Promise<Article[]> =>
+  await getArchiveMonthArticlesByUrl(
+    `${config.baseUrl}api/public/archive/${encodeQuerystring(year)}/${encodeQuerystring(month)}/articles`
+  );
+
+export const getCategoryArchiveMonthArticles = async (
+  category: string,
+  year: string,
+  month: string
+): Promise<Article[]> =>
+  await getArchiveMonthArticlesByUrl(
+    `${config.baseUrl}api/public/category/${encodeQuerystring(category)}/archive/${encodeQuerystring(year)}/${encodeQuerystring(month)}/articles`
+  );
+
+export const getTagArchiveMonthArticles = async (
+  tag: string,
+  year: string,
+  month: string
+): Promise<Article[]> =>
+  await getArchiveMonthArticlesByUrl(
+    `${config.baseUrl}api/public/tag/${encodeQuerystring(tag)}/archive/${encodeQuerystring(year)}/${encodeQuerystring(month)}/articles`
+  );
 export const getCategoryArticles = async (
   category: string
 ): Promise<Article[]> => {
@@ -140,7 +305,7 @@ export const getCategoryArticles = async (
     const url = `${config.baseUrl}api/public/category/${encodeQuerystring(category)}/articles`;
     const res = await fetch(url);
     const { data } = await res.json();
-    return data || [];
+    return toArticleShellList(data || []);
   } catch (err) {
     if (process.env.isBuild == "t") {
       console.log("Failed to connect, using default values");
@@ -170,7 +335,7 @@ export const getArticleByIdOrPathname = async (id: string) => {
     const url = `${config.baseUrl}api/public/article/${id}`;
     const res = await fetch(url);
     const { data } = await res.json();
-    return { article: data.article };
+    return { article: toArticleShell(data.article) };
   } catch (err) {
     if (process.env.isBuild == "t") {
       console.log("Failed to connect, using default values");
@@ -211,6 +376,57 @@ export const getArticleNavByIdOrPathname = async (
     } else {
       return {};
     }
+  }
+};
+
+export const getArticleEngagementByIdOrPathname = async (
+  id: string
+): Promise<ArticleEngagement> => {
+  try {
+    const url = `/api/public/article/${id}/engagement`;
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return {
+      viewer: Number(data?.viewer || 0),
+      visited: Number(data?.visited || 0),
+      commentCount: Number(data?.commentCount || 0),
+    };
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+    }
+    return {
+      viewer: 0,
+      visited: 0,
+      commentCount: 0,
+    };
+  }
+};
+
+export const getArticleFragmentsByIdOrPathname = async (
+  id: string,
+  limit: number = 4
+): Promise<ArticleFragments> => {
+  try {
+    const url = `/api/public/article/${id}/fragments?limit=${limit}`;
+    const res = await fetch(url);
+    const { data } = await res.json();
+    return {
+      commentCount: Number(data?.commentCount || 0),
+      related: toArticleShellList(data?.related || []),
+      latest: toArticleShellList(data?.latest || []),
+      hot: toArticleShellList(data?.hot || []),
+    };
+  } catch (err) {
+    if (process.env.isBuild == "t") {
+      console.log("Failed to connect, using default values");
+    }
+    return {
+      commentCount: 0,
+      related: [],
+      latest: [],
+      hot: [],
+    };
   }
 };
 export const getArticleByIdOrPathnameWithPassword = async (

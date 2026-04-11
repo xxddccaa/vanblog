@@ -63,7 +63,7 @@ export const defaultMenu: MenuItem[] = [
   },
   {
     id: 5,
-    name: "个人动态",
+    name: "动态",
     value: "/moment",
     level: 0,
   },

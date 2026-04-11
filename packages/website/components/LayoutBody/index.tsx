@@ -1,3 +1,4 @@
+import React from "react";
 export default function (props: {
   children: any;
   sideBar: any;

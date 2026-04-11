@@ -1,7 +1,9 @@
+import React from "react";
 import Link from "next/link";
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import Headroom from "headroom.js";
 import { SocialItem } from "../../api/getAllData";
+import { getSiteStats, SiteStatsData } from "../../api/getSiteStats";
 import SocialCard from "../SocialCard";
 import { ThemeContext } from "../../utils/themeContext";
 import ImageBox from "../ImageBox";
@@ -10,9 +12,9 @@ export interface AuthorCardProps {
   desc: string;
   logo: string;
   logoDark: string;
-  postNum: number;
-  catelogNum: number;
-  tagNum: number;
+  postNum?: number;
+  catelogNum?: number;
+  tagNum?: number;
   enableComment?: "true" | "false";
   socials: SocialItem[];
   showSubMenu: "true" | "false";
@@ -21,6 +23,7 @@ export interface AuthorCardProps {
 
 export default function (props: { option: AuthorCardProps }) {
   const { theme } = useContext(ThemeContext);
+  const [siteStats, setSiteStats] = useState<SiteStatsData | null>(null);
 
   const logoUrl = useMemo(() => {
     if (
@@ -47,7 +50,42 @@ export default function (props: { option: AuthorCardProps }) {
       });
       headroom.init();
     }
-  });
+  }, [props.option.showSubMenu]);
+
+  useEffect(() => {
+    let active = true;
+
+    void getSiteStats()
+      .then((stats) => {
+        if (active) {
+          setSiteStats(stats);
+        }
+      })
+      .catch(() => {
+        if (
+          active &&
+          typeof props.option.postNum === "number" &&
+          typeof props.option.catelogNum === "number" &&
+          typeof props.option.tagNum === "number"
+        ) {
+          setSiteStats({
+            postNum: props.option.postNum,
+            categoryNum: props.option.catelogNum,
+            tagNum: props.option.tagNum,
+            totalWordCount: 0,
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [props.option.catelogNum, props.option.postNum, props.option.tagNum]);
+
+  const postNum = siteStats?.postNum ?? "--";
+  const categoryNum = siteStats?.categoryNum ?? "--";
+  const tagNum = siteStats?.tagNum ?? "--";
+
   return (
     <div id="author-card" className="sticky ">
       <div className="w-52 flex flex-col justify-center items-center bg-white pt-6  pb-4 card-shadow ml-2 dark:bg-dark dark:card-shadow-dark">
@@ -71,7 +109,7 @@ export default function (props: { option: AuthorCardProps }) {
             <Link href="/timeline">
               <div className="group flex flex-col justify-center items-center text-gray-600 text-sm px-1 dark:text-dark ">
                 <div className="group-hover:text-gray-900 font-bold group-hover:font-black dark:group-hover:text-dark-hover">
-                  {props.option.postNum}
+                  {postNum}
                 </div>
                 <div className="group-hover:text-gray-900 group-hover:font-normal text-gray-500 dark:text-dark-light dark:group-hover:text-dark-hover">
                   日志
@@ -81,7 +119,7 @@ export default function (props: { option: AuthorCardProps }) {
             <Link href="/category">
               <div className="group flex flex-col justify-center items-center text-gray-600 text-sm px-1 dark:text-dark">
                 <div className="group-hover:text-gray-900 font-bold group-hover:font-black dark:group-hover:text-dark-hover">
-                  {props.option.catelogNum}
+                  {categoryNum}
                 </div>
                 <div className="group-hover:text-gray-900 group-hover:font-normal text-gray-500 dark:text-dark-light dark:group-hover:text-dark-hover">
                   分类
@@ -91,7 +129,7 @@ export default function (props: { option: AuthorCardProps }) {
             <Link href="/tag">
               <div className="group flex flex-col justify-center items-center text-gray-600 text-sm px-1 dark:text-dark">
                 <div className="group-hover:text-gray-900 font-bold group-hover:font-black dark:group-hover:text-dark-hover">
-                  {props.option.tagNum}
+                  {tagNum}
                 </div>
                 <div className=" group-hover:text-gray-900 group-hover:font-normal text-gray-500 dark:text-dark-light dark:group-hover:text-dark-hover">
                   标签

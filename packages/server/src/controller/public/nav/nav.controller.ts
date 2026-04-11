@@ -1,5 +1,6 @@
-import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { NavToolProvider } from 'src/provider/nav-tool/nav-tool.provider';
 import { NavCategoryProvider } from 'src/provider/nav-category/nav-category.provider';
 import { NavData } from 'src/types/nav.dto';
@@ -16,15 +17,76 @@ export class NavController {
     private readonly cacheProvider: CacheProvider,
   ) {}
 
+  private setLastModified(res: Response | undefined, values: unknown[]) {
+    if (!res) {
+      return;
+    }
+
+    const latest = values
+      .map((value) => new Date((value as any)?.updatedAt || (value as any)?.createdAt || value as any).getTime())
+      .filter((value) => !Number.isNaN(value))
+      .sort((left, right) => right - left)[0];
+
+    if (latest) {
+      res.setHeader('Last-Modified', new Date(latest).toUTCString());
+    }
+  }
+
+  private getLatestTimestamp(values: unknown[]) {
+    return values
+      .map((value) => new Date((value as any)?.updatedAt || (value as any)?.createdAt || value as any).getTime())
+      .filter((value) => !Number.isNaN(value))
+      .sort((left, right) => right - left)[0];
+  }
+
+  private buildCachedEnvelope(data: NavData) {
+    const latest = this.getLatestTimestamp([...(data.categories || []), ...(data.tools || [])]);
+    return {
+      __lastModified: latest ? new Date(latest).toISOString() : undefined,
+      data,
+    };
+  }
+
+  private unwrapCachedPayload(
+    res: Response | undefined,
+    payload:
+      | NavData
+      | {
+          __lastModified?: string;
+          data: NavData;
+        },
+  ) {
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      !Array.isArray(payload) &&
+      Object.prototype.hasOwnProperty.call(payload, 'data')
+    ) {
+      const envelope = payload as {
+        __lastModified?: string;
+        data: NavData;
+      };
+      if (envelope.__lastModified) {
+        this.setLastModified(res, [envelope.__lastModified]);
+      }
+      return envelope.data;
+    }
+
+    const data = payload as NavData;
+    this.setLastModified(res, [...(data?.categories || []), ...(data?.tools || [])]);
+    return data;
+  }
+
   @Get('/data')
-  async getNavData(): Promise<{ statusCode: number; data: NavData }> {
+  async getNavData(@Res({ passthrough: true }) res?: Response): Promise<{ statusCode: number; data: NavData }> {
     try {
       const cacheKey = 'public:nav:data';
       const cached = await this.cacheProvider.get(cacheKey);
       if (cached) {
+        const data = this.unwrapCachedPayload(res, cached as any);
         return {
           statusCode: 200,
-          data: cached as NavData,
+          data,
         };
       }
 
@@ -47,7 +109,8 @@ export class NavController {
         categories: visibleCategories,
         tools: visibleTools,
       };
-      await this.cacheProvider.set(cacheKey, data, 300);
+      await this.cacheProvider.set(cacheKey, this.buildCachedEnvelope(data), 300);
+      this.setLastModified(res, [...visibleCategories, ...visibleTools]);
 
       return {
         statusCode: 200,
@@ -59,14 +122,15 @@ export class NavController {
   }
 
   @Get('/admin-data')
-  async getAdminNavData(): Promise<{ statusCode: number; data: NavData }> {
+  async getAdminNavData(@Res({ passthrough: true }) res?: Response): Promise<{ statusCode: number; data: NavData }> {
     try {
       const cacheKey = 'public:nav:admin-data';
       const cached = await this.cacheProvider.get(cacheKey);
       if (cached) {
+        const data = this.unwrapCachedPayload(res, cached as any);
         return {
           statusCode: 200,
-          data: cached as NavData,
+          data,
         };
       }
 
@@ -78,7 +142,8 @@ export class NavController {
         categories,
         tools,
       };
-      await this.cacheProvider.set(cacheKey, data, 120);
+      await this.cacheProvider.set(cacheKey, this.buildCachedEnvelope(data), 120);
+      this.setLastModified(res, [...categories, ...tools]);
 
       return {
         statusCode: 200,

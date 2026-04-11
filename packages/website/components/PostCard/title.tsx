@@ -1,8 +1,8 @@
+import React from "react";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { useMemo } from "react";
 import { encodeQuerystring } from "../../utils/encode";
-import PostViewer from "../PostViewer";
 import PostViewerStats from "../PostViewerStats";
 import { getTarget } from "../Link/tools";
 import { checkLogin } from "../../utils/auth";
@@ -108,14 +108,7 @@ export function SubTitle(props: {
   const iconSize = "16";
   const iconClass =
     "mr-1 fill-gray-400 dark:text-dark dark:group-hover:text-dark-hover group-hover:text-gray-900 ";
-
-  const dataPath = useMemo(() => {
-    if (props.type == "about") {
-      return "/about";
-    } else {
-      return "/post/" + props.id;
-    }
-  }, [props]);
+  const showDynamicFragments = props.type === "article";
   return (
     <div className="text-center text-xs md:text-sm divide-x divide-gray-400 text-gray-400 dark:text-dark post-card-sub-title">
       <span className="inline-flex px-2 items-center">
@@ -169,33 +162,14 @@ export function SubTitle(props: {
           </Link>
         </span>
       )}
-      <PostViewerStats
-        shouldAddViewer={props.type != "overview"}
-        id={props.id}
-        iconSize={iconSize}
-        iconClass={iconClass}
-      />
-      {props.enableComment != "false" && (
-        <span className="inline-flex px-2 items-center">
-          <span className={iconClass}>
-            <svg
-              viewBox="0 0 1024 1024"
-              version="1.1"
-              xmlns="http://www.w3.org/2000/svg"
-              p-id="13953"
-              width={iconSize}
-              height={iconSize}
-            >
-              <path
-                d="M873.559 97.82h-723.12c-45.886 0-83.436 37.627-83.436 83.611v542.098c0 45.984 37.55 69.685 83.437 69.685h333.747c45.888 0 109.987 34.242 142.43 66.767l48.888 52.12c12.589 12.615 24.309 20.262 33.91 20.262 15.143 0 25.083-20.55 25.083-48.675 0-45.983 37.548-90.474 83.436-90.474h55.625c45.887 0 83.438-23.701 83.438-69.685V181.431c0-45.984-37.55-83.61-83.438-83.61z m27.813 625.71c0 15.105-12.738 15.307-27.813 15.307h-55.625c-61.382 0-113.612 46.353-132 101.74l-19.989-23.15c-42.914-43.016-121.055-78.59-181.758-78.59H150.44c-15.074 0-27.813-0.204-27.813-15.308V181.431c0-15.106 12.739-27.87 27.813-27.87h723.119c15.075 0 27.813 12.766 27.813 27.87v542.098zM261.689 348.652h278.124c15.358 0 27.812-12.48 27.812-27.87s-12.454-27.87-27.812-27.87H261.689c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.87 27.812 27.87z m472.81 83.613H261.69c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.871 27.812 27.871H734.5c15.357 0 27.812-12.48 27.812-27.87 0-15.392-12.455-27.87-27.812-27.87z m0 111.48H261.69c-15.357 0-27.812 12.48-27.812 27.87s12.455 27.871 27.812 27.871H734.5c15.357 0 27.812-12.48 27.812-27.87s-12.455-27.87-27.812-27.87z"
-                p-id="13954"
-              ></path>
-            </svg>
-          </span>
-          <span className="waline-comment-count" data-path={dataPath}>
-            0
-          </span>
-        </span>
+      {showDynamicFragments && (
+        <PostViewerStats
+          shouldAddViewer={true}
+          id={props.id}
+          iconSize={iconSize}
+          iconClass={iconClass}
+          showCommentCount={props.enableComment != "false"}
+        />
       )}
     </div>
   );

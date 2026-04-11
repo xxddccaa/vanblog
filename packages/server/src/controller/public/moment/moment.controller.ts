@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { SortOrder } from 'src/types/sort';
 import { MomentProvider } from 'src/provider/moment/moment.provider';
 
@@ -15,6 +16,7 @@ export class PublicMomentController {
     @Query('sortCreatedAt') sortCreatedAt?: SortOrder,
     @Query('startTime') startTime?: string,
     @Query('endTime') endTime?: string,
+    @Res({ passthrough: true }) res?: Response,
   ) {
     const option = {
       page: parseInt(page as any),
@@ -24,6 +26,13 @@ export class PublicMomentController {
       endTime,
     };
     const data = await this.momentProvider.getByOption(option, true);
+    const latest = (data.moments || [])
+      .map((moment) => new Date((moment as any).updatedAt || (moment as any).createdAt).getTime())
+      .filter((value) => !Number.isNaN(value))
+      .sort((left, right) => right - left)[0];
+    if (res && latest) {
+      res.setHeader('Last-Modified', new Date(latest).toUTCString());
+    }
     return {
       statusCode: 200,
       data,

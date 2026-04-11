@@ -223,6 +223,15 @@ docker compose -f docker-compose.image.yml up -d
 - `vanblog-admin-v1.0.0-<image-id>`
 - `vanblog-waline-v1.0.0-<image-id>`
 
+如果这次发布包含 Cloudflare 缓存契约或定向 purge 相关改动，部署前还应确认服务器 `.env` 中是否已经保留：
+
+- `VAN_BLOG_CLOUDFLARE_API_TOKEN`
+- `VAN_BLOG_CLOUDFLARE_ZONE_ID`
+
+如果两者留空，镜像仍可运行，但文章更新后的 Cloudflare tag/url purge 不会启用。
+
+还应确认线上站点元数据中的 `siteInfo.baseUrl` 已经设置成最终公网地址；如果这个值缺失，tag purge 仍可发送，但 Cloudflare URL purge 会被跳过。
+
 ### 6.2 使用版本别名或 latest
 
 如果你想改成别名模式，可以直接调整 `VANBLOG_RELEASE_SUFFIX`：

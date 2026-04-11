@@ -16,8 +16,11 @@ export class PublicDataCacheProvider {
   async clearArticleRelatedData() {
     await Promise.all([
       this.cacheProvider.del('public:meta'),
+      this.cacheProvider.del('public:site-stats'),
       this.cacheProvider.del('public:category:summary'),
       this.cacheProvider.delPattern('public:timeline*'),
+      this.cacheProvider.delPattern('public:article:engagement:*'),
+      this.cacheProvider.delPattern('public:article:fragments:*'),
       this.cacheProvider.delPattern('tag:*'),
       this.cacheProvider.delPattern('analysis:*'),
     ]);
@@ -26,6 +29,7 @@ export class PublicDataCacheProvider {
   async clearTagData() {
     await Promise.all([
       this.cacheProvider.del('public:meta'),
+      this.cacheProvider.del('public:site-stats'),
       this.cacheProvider.delPattern('tag:*'),
       this.cacheProvider.delPattern('analysis:*'),
     ]);
@@ -34,6 +38,8 @@ export class PublicDataCacheProvider {
   async clearMetaData() {
     await Promise.all([
       this.cacheProvider.del('public:meta'),
+      this.cacheProvider.del('public:site-info'),
+      this.cacheProvider.del('public:site-stats'),
       this.cacheProvider.delPattern('analysis:*'),
     ]);
   }
@@ -41,6 +47,9 @@ export class PublicDataCacheProvider {
   async clearViewerData() {
     await Promise.all([
       this.cacheProvider.del('public:meta'),
+      this.cacheProvider.del('public:site-stats'),
+      this.cacheProvider.delPattern('public:article:engagement:*'),
+      this.cacheProvider.delPattern('public:article:fragments:*'),
       this.cacheProvider.delPattern('analysis:*'),
     ]);
   }

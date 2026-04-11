@@ -1,0 +1,286 @@
+import { ArticleController } from './article.controller';
+
+describe('ArticleController', () => {
+  const originalSetTimeout = global.setTimeout;
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+  beforeEach(() => {
+    jest.spyOn(global, 'setTimeout').mockImplementation(((handler: TimerHandler) => {
+      if (typeof handler === 'function') {
+        void handler();
+      }
+      return 0 as any;
+    }) as any);
+    console.log = jest.fn();
+    console.error = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    global.setTimeout = originalSetTimeout;
+    console.log = originalConsoleLog;
+    console.error = originalConsoleError;
+  });
+
+  const createController = (overrides: Record<string, any> = {}) => {
+    const articleProvider = {
+      getById: jest.fn().mockResolvedValue({
+        id: 7,
+        pathname: 'stable-post',
+        category: 'System Design',
+        tags: ['Cloudflare'],
+      }),
+      getByPathName: jest.fn().mockResolvedValue(null),
+      updateById: jest.fn().mockResolvedValue({ id: 7 }),
+      create: jest.fn().mockResolvedValue({ id: 8, pathname: 'new-post' }),
+      deleteById: jest.fn().mockResolvedValue({ acknowledged: true }),
+      ...overrides.articleProvider,
+    };
+    const isrProvider = {
+      activeArticleById: jest.fn(),
+      activeAll: jest.fn(),
+      activeUrl: jest.fn(),
+      activePath: jest.fn(),
+      ...overrides.isrProvider,
+    };
+    const tagProvider = {
+      syncTagsFromArticles: jest.fn().mockResolvedValue(undefined),
+      ...overrides.tagProvider,
+    };
+
+    return {
+      controller: new ArticleController(
+        articleProvider as any,
+        isrProvider as any,
+        {} as any,
+        tagProvider as any,
+      ),
+      articleProvider,
+      isrProvider,
+      tagProvider,
+    };
+  };
+
+  it('uses precise article invalidation for updates', async () => {
+    const beforeObj = {
+      id: 7,
+      pathname: 'stable-post',
+      title: 'old title',
+    };
+    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+      articleProvider: {
+        getById: jest.fn().mockResolvedValue(beforeObj),
+        updateById: jest.fn().mockResolvedValue({ id: 7, title: 'new title' }),
+      },
+    });
+
+    await controller.updateArticle(7, {
+      title: 'new title',
+      pathname: 'stable-post',
+    } as any);
+
+    expect(articleProvider.getById).toHaveBeenCalledWith(7, 'admin');
+    expect(articleProvider.updateById).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ title: 'new title' }),
+    );
+    expect(isrProvider.activeArticleById).toHaveBeenCalledWith(7, 'update', beforeObj);
+    expect(isrProvider.activeAll).not.toHaveBeenCalled();
+    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses precise article invalidation for creates', async () => {
+    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+      articleProvider: {
+        create: jest.fn().mockResolvedValue({ id: 8, pathname: 'new-post' }),
+      },
+    });
+
+    await controller.createArticle({
+      title: 'hello',
+      content: 'world',
+      pathname: 'new-post',
+    } as any);
+
+    expect(articleProvider.create).toHaveBeenCalled();
+    expect(isrProvider.activeArticleById).toHaveBeenCalledWith(8, 'create');
+    expect(isrProvider.activeAll).not.toHaveBeenCalled();
+    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses precise article invalidation for deletes instead of full-site refresh', async () => {
+    const beforeObj = {
+      id: 7,
+      pathname: 'stable-post',
+      category: 'System Design',
+      tags: ['Cloudflare'],
+    };
+    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+      articleProvider: {
+        getById: jest.fn().mockResolvedValue(beforeObj),
+      },
+    });
+
+    await controller.deleteArticle(7);
+
+    expect(articleProvider.getById).toHaveBeenCalledWith(7, 'admin');
+    expect(articleProvider.deleteById).toHaveBeenCalledWith(7);
+    expect(isrProvider.activeArticleById).toHaveBeenCalledWith(7, 'delete', beforeObj);
+    expect(isrProvider.activeAll).not.toHaveBeenCalled();
+    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects numeric create pathnames without triggering invalidation side effects', async () => {
+    const { controller, articleProvider, isrProvider, tagProvider } = createController();
+
+    const result = await controller.createArticle({
+      title: 'hello',
+      content: 'world',
+      pathname: '12345',
+    } as any);
+
+    expect(result).toEqual({
+      statusCode: 400,
+      message: '自定义路径名不能为纯数字，避免与文章ID冲突',
+    });
+    expect(articleProvider.create).not.toHaveBeenCalled();
+    expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
+    expect(isrProvider.activeAll).not.toHaveBeenCalled();
+    expect(tagProvider.syncTagsFromArticles).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate create pathnames without triggering invalidation side effects', async () => {
+    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+      articleProvider: {
+        getByPathName: jest.fn().mockResolvedValue({ id: 99, pathname: 'existing-path' }),
+      },
+    });
+
+    const result = await controller.createArticle({
+      title: 'hello',
+      content: 'world',
+      pathname: 'existing-path',
+    } as any);
+
+    expect(articleProvider.getByPathName).toHaveBeenCalledWith('existing-path', 'admin');
+    expect(result).toEqual({
+      statusCode: 400,
+      message: '自定义路径名 "existing-path" 已被其他文章使用，请使用不同的路径名',
+    });
+    expect(articleProvider.create).not.toHaveBeenCalled();
+    expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
+    expect(isrProvider.activeAll).not.toHaveBeenCalled();
+    expect(tagProvider.syncTagsFromArticles).not.toHaveBeenCalled();
+  });
+
+  it('rejects duplicate update pathnames without triggering invalidation side effects', async () => {
+    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+      articleProvider: {
+        getByPathName: jest.fn().mockResolvedValue({ id: 99, pathname: 'existing-path' }),
+      },
+    });
+
+    const result = await controller.updateArticle(7, {
+      title: 'new title',
+      pathname: 'existing-path',
+    } as any);
+
+    expect(articleProvider.getByPathName).toHaveBeenCalledWith('existing-path', 'admin');
+    expect(result).toEqual({
+      statusCode: 400,
+      message: '自定义路径名 "existing-path" 已被其他文章使用，请使用不同的路径名',
+    });
+    expect(articleProvider.getById).not.toHaveBeenCalled();
+    expect(articleProvider.updateById).not.toHaveBeenCalled();
+    expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
+    expect(isrProvider.activeAll).not.toHaveBeenCalled();
+    expect(tagProvider.syncTagsFromArticles).not.toHaveBeenCalled();
+  });
+
+  it('uses full-site ISR for reorder because article ids change globally', async () => {
+    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+      articleProvider: {
+        reorderArticleIds: jest.fn().mockResolvedValue({ updated: 12 }),
+      },
+    });
+
+    const result = await controller.reorderArticles();
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { updated: 12 },
+    });
+    expect(articleProvider.reorderArticleIds).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeAll).toHaveBeenCalledWith('文章重排', undefined, { forceActice: true });
+    expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
+    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses full-site ISR when repairing negative ids', async () => {
+    const { controller, articleProvider, isrProvider } = createController({
+      articleProvider: {
+        fixNegativeIds: jest.fn().mockResolvedValue({ fixedCount: 3 }),
+      },
+    });
+
+    const result = await controller.fixNegativeIds();
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { fixedCount: 3 },
+    });
+    expect(articleProvider.fixNegativeIds).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeAll).toHaveBeenCalledWith(
+      '修复负数文章 ID 触发增量渲染！',
+      undefined,
+      { forceActice: true },
+    );
+    expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
+  });
+
+  it('uses full-site ISR when cleaning temporary ids', async () => {
+    const { controller, articleProvider, isrProvider } = createController({
+      articleProvider: {
+        cleanupTempIds: jest.fn().mockResolvedValue({ cleanedCount: 4 }),
+      },
+    });
+
+    const result = await controller.cleanupTempIds();
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { cleanedCount: 4 },
+    });
+    expect(articleProvider.cleanupTempIds).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeAll).toHaveBeenCalledWith(
+      '清理临时文章 ID 触发增量渲染！',
+      undefined,
+      { forceActice: true },
+    );
+    expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
+  });
+
+  it('uses full-site ISR when cleaning duplicate pathnames', async () => {
+    const { controller, articleProvider, isrProvider } = createController({
+      articleProvider: {
+        cleanupDuplicatePathnames: jest.fn().mockResolvedValue({ cleanedCount: 2 }),
+      },
+    });
+
+    const result = await controller.cleanupDuplicatePathnames();
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { cleanedCount: 2 },
+      message: '已清理 2 篇文章的重复路径名',
+    });
+    expect(articleProvider.cleanupDuplicatePathnames).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeAll).toHaveBeenCalledWith(
+      '清理重复路径名触发增量渲染！',
+      undefined,
+      { forceActice: true },
+    );
+    expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
+  });
+});

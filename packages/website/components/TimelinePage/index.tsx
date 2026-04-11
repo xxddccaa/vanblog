@@ -1,19 +1,13 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { getTimelineArticlesByYear, TimelineSummaryItem } from "../../api/getArticles";
+import SiteStatsSummary from "../SiteStatsSummary";
 import { Article } from "../../types/article";
 import ArticleList from "../ArticleList";
 
 interface TimelinePageProps {
   summaries: TimelineSummaryItem[];
-  authorCardProps: {
-    catelogNum: number;
-    postNum: number;
-    tagNum: number;
-  };
-  wordTotal: number;
   openArticleLinksInNewWindow: boolean;
   pageTitle: string;
-  pageSubtitle?: string;
   defaultExpanded?: boolean;
 }
 
@@ -62,11 +56,9 @@ export default function TimelinePage(props: TimelinePageProps) {
         <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-4">
           {props.pageTitle}
         </h1>
-        {props.pageSubtitle && (
-          <div className="text-center text-gray-600 text-sm font-light dark:text-dark mb-6">
-            {props.pageSubtitle}
-          </div>
-        )}
+        <SiteStatsSummary
+          className="text-center text-gray-600 text-sm font-light dark:text-dark mb-6"
+        />
       </div>
 
       <div className="space-y-6">

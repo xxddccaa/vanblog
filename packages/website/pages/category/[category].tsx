@@ -1,63 +1,46 @@
-import { getPublicMeta } from "../../api/getAllData";
+import React from "react";
 import AuthorCard, { AuthorCardProps } from "../../components/AuthorCard";
+import ArchiveSummaryPage from "../../components/ArchiveSummaryPage";
 import Layout from "../../components/Layout";
-import ArticleList from "../../components/ArticleList";
-import PageNav from "../../components/PageNav";
-import { Article } from "../../types/article";
+import { ArchiveSummaryData } from "../../api/getArticles";
 import { LayoutProps } from "../../utils/getLayoutProps";
-import { getCategoryPagesProps } from "../../utils/getPageProps";
+import { getCategoryArchivePageProps } from "../../utils/getPageProps";
 import { revalidate } from "../../utils/loadConfig";
-export interface CategoryPagesProps {
+import { getCategoryArchiveBasePath } from "../../utils/archive";
+import { getPublicMeta } from "../../api/getAllData";
+
+export interface CategoryArchivePageProps {
   layoutProps: LayoutProps;
   authorCardProps: AuthorCardProps;
-  curCategory: string;
-  sortedArticles: Record<string, Article[]>;
-  curNum: number;
-  wordTotal: number;
-  currPage: number;
+  category: string;
+  summary: ArchiveSummaryData;
 }
-const CategoryPages = (props: CategoryPagesProps) => {
+
+const CategoryArchivePage = (props: CategoryArchivePageProps) => {
   return (
     <Layout
       option={props.layoutProps}
-      title={props.curCategory}
+      title={props.category}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >
-      <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-2">
-            {props.curCategory}
-          </h1>
-          <div className="text-center text-gray-600 text-sm font-light dark:text-dark">
-            {`${props.curNum} 文章 × ${props.wordTotal} 字`}
-          </div>
-        </div>
-
-        <ArticleList
-          articles={props.sortedArticles[props.curCategory] || []}
-          showYear={false}
-          openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
-          showTags={true}
-        />
-        <PageNav
-          total={props.curNum}
-          current={props.currPage}
-          base={`/category/${props.curCategory}`}
-          more={`/category/${props.curCategory}/page`}
-          pageSize={props.layoutProps.homePageSize || 5}
-        />
-      </div>
+      <ArchiveSummaryPage
+        title={props.category}
+        description={`按月份查看 ${props.category} 分类下的稳定归档。`}
+        summary={props.summary}
+        basePath={getCategoryArchiveBasePath(props.category)}
+        openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
+      />
     </Layout>
   );
 };
 
-export default CategoryPages;
+export default CategoryArchivePage;
+
 export async function getStaticPaths() {
   const data = await getPublicMeta();
-
   const paths = data.meta.categories.map((category) => ({
     params: {
-      category: category,
+      category,
     },
   }));
 
@@ -66,12 +49,10 @@ export async function getStaticPaths() {
     fallback: "blocking",
   };
 }
-export async function getStaticProps({
-  params,
-}: any): Promise<{ props: CategoryPagesProps; revalidate?: number }> {
-  const decodedCategory = decodeURIComponent(params.category);
+
+export async function getStaticProps({ params }: any): Promise<{ props: CategoryArchivePageProps; revalidate?: number }> {
   return {
-    props: await getCategoryPagesProps(decodedCategory, 1),
+    props: await getCategoryArchivePageProps(decodeURIComponent(params.category)),
     ...revalidate,
   };
 }

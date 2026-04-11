@@ -50,6 +50,18 @@ cp .env.release.example .env
 - `WALINE_JWT_TOKEN`：替换成高强度随机字符串
 - 目录挂载项：按你的服务器实际目录调整
 
+可选但和本文这轮缓存改造直接相关的配置：
+
+- `VAN_BLOG_CLOUDFLARE_API_TOKEN`
+- `VAN_BLOG_CLOUDFLARE_ZONE_ID`
+
+说明：
+
+- 两个值都配置后，服务端才会在文章更新、RSS/sitemap/search-index 刷新后请求 Cloudflare tag/url purge。
+- 如果留空，站点仍可运行，但 Cloudflare 精准 purge 会保持关闭状态，只能依赖边缘 TTL 自然过期。
+- 这两个变量只会传给 `server` 容器，不需要暴露给 `website`、`admin`、`caddy`。
+- URL purge 还依赖站点元数据里的 `siteInfo.baseUrl`。如果初始化或站点设置里没有填最终公网域名，Cloudflare URL purge 会跳过。
+
 注意：
 
 - 不要把 `postgres`、`redis` 单独映射到宿主机端口
@@ -85,6 +97,16 @@ http://<你的域名或 IP>/admin/init
 ```
 
 按页面引导完成初始化。
+
+初始化时请特别确认：
+
+- `siteInfo.baseUrl` 填的是最终对外访问的完整公网地址，例如 `https://blog.example.com`
+
+如果这里留空或填错：
+
+- Cloudflare tag purge 仍可工作
+- Cloudflare URL purge 会跳过
+- RSS 中依赖站点域名的绝对链接也可能不完整
 
 ### 可选：启用内置 Caddy HTTPS
 

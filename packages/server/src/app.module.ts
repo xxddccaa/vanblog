@@ -116,6 +116,7 @@ import { MongoBackupProvider } from './provider/mongo-backup/mongo-backup.provid
 import { PublicDataCacheProvider } from './provider/public-data-cache/public-data-cache.provider';
 import { SearchController } from './controller/admin/search/search.controller';
 import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
+import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-cache.provider';
 
 @Module({
   imports: [
@@ -246,6 +247,7 @@ import { BackupImportJobProvider } from './provider/backup-import-job/backup-imp
     SearchIndexProvider,
     MongoBackupProvider,
     PublicDataCacheProvider,
+    CloudflareCacheProvider,
     BackupImportJobProvider,
   ],
 })

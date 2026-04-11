@@ -14,6 +14,23 @@ import { StructuredDataService } from 'src/storage/structured-data.service';
 
 export type ArticleView = 'admin' | 'public' | 'list';
 
+export interface ArchiveSummaryMonth {
+  month: string;
+  articleCount: number;
+}
+
+export interface ArchiveSummaryYear {
+  year: string;
+  articleCount: number;
+  months: ArchiveSummaryMonth[];
+}
+
+export interface ArchiveSummaryPayload {
+  totalArticles: number;
+  years: ArchiveSummaryYear[];
+  latestTimestamp?: string | null;
+}
+
 @Injectable()
 export class ArticleProvider {
   idLock = false;
@@ -120,6 +137,11 @@ export class ArticleProvider {
     }
     return payload;
   }
+
+  private trimArticleList<T extends { id: number }>(articles: T[], limit: number, excludeId?: number) {
+    return articles.filter((article) => article.id !== excludeId).slice(0, limit);
+  }
+
   async create(
     createArticleDto: CreateArticleDto,
     skipUpdateWordCount?: boolean,
@@ -494,6 +516,80 @@ export class ArticleProvider {
     return articles as any;
   }
 
+  async getLatestPublicArticles(limit: number = 5, excludeId?: number) {
+    const { articles } = await this.getByOption(
+      {
+        page: 1,
+        pageSize: Math.max(limit + (excludeId ? 1 : 0), limit),
+        regMatch: false,
+        toListView: true,
+      },
+      true,
+    );
+    return this.trimArticleList(articles, limit, excludeId);
+  }
+
+  async getHotPublicArticles(limit: number = 5, excludeId?: number) {
+    const { articles } = await this.getByOption(
+      {
+        page: 1,
+        pageSize: Math.max(limit + (excludeId ? 1 : 0), limit),
+        regMatch: false,
+        toListView: true,
+        sortViewer: 'desc',
+      },
+      true,
+    );
+    return this.trimArticleList(articles, limit, excludeId);
+  }
+
+  async getRelatedPublicArticles(id: string | number, limit: number = 5) {
+    const current = await this.getPublicArticleByIdOrPathname(id, 'list');
+    const { articles } = await this.getByOption(
+      {
+        page: 1,
+        pageSize: -1,
+        regMatch: false,
+        toListView: true,
+      },
+      true,
+    );
+    const currentTags = new Set(current.tags || []);
+
+    const scored = articles
+      .filter((article) => article.id !== current.id)
+      .map((article: any) => {
+        const articleTags = article.tags || [];
+        const overlapCount = articleTags.filter((tag: string) => currentTags.has(tag)).length;
+        const categoryScore = article.category === current.category ? 3 : 0;
+        const tagScore = overlapCount * 2;
+        const viewerScore = Math.min(Number(article.viewer || 0), 500) / 500;
+        const totalScore = categoryScore + tagScore + viewerScore;
+
+        return {
+          article,
+          totalScore,
+        };
+      })
+      .filter((item) => item.totalScore > 0)
+      .sort((left, right) => {
+        if (right.totalScore !== left.totalScore) {
+          return right.totalScore - left.totalScore;
+        }
+        return new Date(right.article.createdAt).getTime() - new Date(left.article.createdAt).getTime();
+      })
+      .map((item) => item.article)
+      .slice(0, limit);
+
+    if (scored.length >= limit) {
+      return scored;
+    }
+
+    const fallback = articles.filter((article) => article.id !== current.id);
+    return [...scored, ...this.trimArticleList(fallback, limit, current.id).filter((item) => !scored.includes(item))]
+      .slice(0, limit);
+  }
+
   async getTimeLineInfo() {
     const grouped = await this.structuredDataService.getTimelineArticlesGrouped(false);
     if (Object.keys(grouped).length || this.structuredDataService.isInitialized()) {
@@ -598,6 +694,130 @@ export class ArticleProvider {
       .lean()
       .exec();
   }
+
+  async getArchiveSummary(filter?: { category?: string; tag?: string }): Promise<ArchiveSummaryPayload> {
+    const summary = await this.structuredDataService.getArchiveSummary(false, filter);
+    if (summary.years.length || this.structuredDataService.isInitialized()) {
+      return summary;
+    }
+
+    const allArticles = await this.getAll('list', false);
+    const filteredArticles = allArticles.filter((article) => {
+      if (filter?.category && article.category !== filter.category) {
+        return false;
+      }
+      if (filter?.tag && !(article.tags || []).includes(filter.tag)) {
+        return false;
+      }
+      return true;
+    });
+    const yearMap = new Map<string, ArchiveSummaryYear>();
+    let latestTimestamp: string | null = null;
+
+    for (const article of filteredArticles) {
+      const createdAt = new Date(article.createdAt);
+      const year = String(createdAt.getFullYear());
+      const month = String(createdAt.getMonth() + 1).padStart(2, '0');
+
+      if (!yearMap.has(year)) {
+        yearMap.set(year, {
+          year,
+          articleCount: 0,
+          months: [],
+        });
+      }
+
+      const yearEntry = yearMap.get(year);
+      yearEntry.articleCount += 1;
+      const monthEntry = yearEntry.months.find((item) => item.month === month);
+      if (monthEntry) {
+        monthEntry.articleCount += 1;
+      } else {
+        yearEntry.months.push({
+          month,
+          articleCount: 1,
+        });
+      }
+
+      const articleTimestamp = new Date(article.updatedAt || article.createdAt).getTime();
+      const currentLatest = latestTimestamp ? new Date(latestTimestamp).getTime() : NaN;
+      if (!Number.isNaN(articleTimestamp) && (Number.isNaN(currentLatest) || articleTimestamp > currentLatest)) {
+        latestTimestamp = new Date(articleTimestamp).toISOString();
+      }
+    }
+
+    const years = [...yearMap.values()]
+      .map((year) => ({
+        ...year,
+        months: [...year.months].sort((left, right) => parseInt(right.month, 10) - parseInt(left.month, 10)),
+      }))
+      .sort((left, right) => parseInt(right.year, 10) - parseInt(left.year, 10));
+
+    return {
+      totalArticles: filteredArticles.length,
+      years,
+      latestTimestamp,
+    };
+  }
+
+  async getArchiveMonthArticles(
+    year: string,
+    month: string,
+    filter?: { category?: string; tag?: string },
+  ) {
+    const result = await this.structuredDataService.getArchiveMonthArticles(year, month, false, filter);
+    if (result.articles.length || this.structuredDataService.isInitialized()) {
+      return {
+        latestTimestamp: result.latestTimestamp,
+        articles: result.articles.map((article: any) => this.projectArticleForView(article, 'list')) as Article[],
+      };
+    }
+
+    const numericYear = parseInt(year, 10);
+    const numericMonth = parseInt(month, 10);
+    if (
+      Number.isNaN(numericYear) ||
+      Number.isNaN(numericMonth) ||
+      numericMonth < 1 ||
+      numericMonth > 12
+    ) {
+      return {
+        latestTimestamp: null,
+        articles: [],
+      };
+    }
+
+    const allArticles = await this.getAll('list', false);
+    const filteredArticles = allArticles
+      .filter((article) => {
+        const createdAt = new Date(article.createdAt);
+        if (
+          createdAt.getUTCFullYear() !== numericYear ||
+          createdAt.getUTCMonth() + 1 !== numericMonth
+        ) {
+          return false;
+        }
+        if (filter?.category && article.category !== filter.category) {
+          return false;
+        }
+        if (filter?.tag && !(article.tags || []).includes(filter.tag)) {
+          return false;
+        }
+        return true;
+      })
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+
+    const latestTimestamp = filteredArticles
+      .map((article) => new Date(article.updatedAt || article.createdAt).getTime())
+      .filter((value) => !Number.isNaN(value))
+      .sort((left, right) => right - left)[0];
+
+    return {
+      latestTimestamp: latestTimestamp ? new Date(latestTimestamp).toISOString() : null,
+      articles: filteredArticles,
+    };
+  }
+
   async getByOption(
     option: SearchArticleOption,
     isPublic: boolean,
@@ -993,6 +1213,21 @@ export class ArticleProvider {
     }
   }
   async getByIdOrPathnameWithPreNext(id: string | number, view: ArticleView) {
+    const curArticle = await this.getPublicArticleByIdOrPathname(id, view);
+    const res: any = { article: curArticle };
+    // 找它的前一个和后一个。
+    const preArticle = await this.getPreArticleByArticle(curArticle, 'list');
+    const nextArticle = await this.getNextArticleByArticle(curArticle, 'list');
+    if (preArticle) {
+      res.pre = preArticle;
+    }
+    if (nextArticle) {
+      res.next = nextArticle;
+    }
+    return res;
+  }
+
+  async getPublicArticleByIdOrPathname(id: string | number, view: ArticleView) {
     const curArticle = await this.getByIdOrPathname(id, view);
     if (!curArticle) {
       throw new NotFoundException('找不到文章');
@@ -1006,27 +1241,19 @@ export class ArticleProvider {
     }
     if (curArticle.private) {
       curArticle.content = undefined;
-    } else {
-      // 检查分类是不是加密了
-      const category = await this.categoryModal.findOne({
-        name: curArticle.category,
-      });
-      if (category && category.private) {
-        curArticle.private = true;
-        curArticle.content = undefined;
-      }
+      return curArticle;
     }
-    const res: any = { article: curArticle };
-    // 找它的前一个和后一个。
-    const preArticle = await this.getPreArticleByArticle(curArticle, 'list');
-    const nextArticle = await this.getNextArticleByArticle(curArticle, 'list');
-    if (preArticle) {
-      res.pre = preArticle;
+
+    // 检查分类是不是加密了
+    const category = await this.categoryModal.findOne({
+      name: curArticle.category,
+    });
+    if (category && category.private) {
+      curArticle.private = true;
+      curArticle.content = undefined;
     }
-    if (nextArticle) {
-      res.next = nextArticle;
-    }
-    return res;
+
+    return curArticle;
   }
 
   async getArticleNavByIdOrPathname(id: string | number, view: ArticleView) {

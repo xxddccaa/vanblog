@@ -191,13 +191,13 @@ export default function MomentPage({
   return (
     <Layout
       option={layoutProps}
-      title={"个人动态 - " + layoutProps.siteName}
+      title={"动态 - " + layoutProps.siteName}
       sideBar={<AuthorCard option={authorCardProps} />}
     >
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-dark mb-2">
-            个人动态
+            动态
           </h1>
           <p className="text-gray-600 dark:text-dark-light">
             分享日常生活的点滴

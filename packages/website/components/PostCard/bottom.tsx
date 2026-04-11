@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getArticleNavByIdOrPathname } from "../../api/getArticles";

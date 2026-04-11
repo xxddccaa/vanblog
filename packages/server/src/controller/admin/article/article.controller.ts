@@ -197,8 +197,8 @@ export class ArticleController {
     const beforeObj = await this.articleProvider.getById(id, 'admin');
     const data = await this.articleProvider.deleteById(id);
     
-    // 删除文章后使用全量渲染，因为可能影响其他文章的链接
-    this.isrProvider.activeAll('文章删除', undefined, { forceActice: true });
+    // 删除文章后按受影响页面做定向刷新，避免整站缓存联动失效
+    this.isrProvider.activeArticleById(id, 'delete', beforeObj);
     
     // 异步同步标签数据，不影响用户体验
     this.syncTagsAsync('文章删除');

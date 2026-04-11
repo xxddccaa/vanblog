@@ -1,3 +1,4 @@
+import React from "react";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
 import CategoryPageComponent from "../components/CategoryPage";
@@ -10,7 +11,6 @@ export interface CategoryPageProps {
   layoutProps: LayoutProps;
   authorCardProps: AuthorCardProps;
   summaries: CategorySummaryItem[];
-  wordTotal: number;
 }
 const CategoryPage = (props: CategoryPageProps) => {
   return (
@@ -21,8 +21,6 @@ const CategoryPage = (props: CategoryPageProps) => {
     >
       <CategoryPageComponent
         summaries={props.summaries}
-        authorCardProps={props.authorCardProps}
-        wordTotal={props.wordTotal}
         openArticleLinksInNewWindow={props.layoutProps.openArticleLinksInNewWindow === "true"}
         showTags={true}
       />

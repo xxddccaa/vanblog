@@ -1,16 +1,11 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { CategorySummaryItem, getCategoryArticles } from "../../api/getArticles";
+import SiteStatsSummary from "../SiteStatsSummary";
 import { Article } from "../../types/article";
 import ArticleList from "../ArticleList";
 
 interface CategoryPageProps {
   summaries: CategorySummaryItem[];
-  authorCardProps: {
-    catelogNum: number;
-    postNum: number;
-    tagNum: number;
-  };
-  wordTotal: number;
   openArticleLinksInNewWindow: boolean;
   showTags?: boolean;
 }
@@ -58,9 +53,9 @@ export default function CategoryPage(props: CategoryPageProps) {
         <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-4">
           分类
         </h1>
-        <div className="text-center text-gray-600 text-sm font-light dark:text-dark mb-6">
-          {`${props.authorCardProps.catelogNum} 分类 × ${props.authorCardProps.postNum} 文章 × ${props.authorCardProps.tagNum} 标签 × ${props.wordTotal} 字`}
-        </div>
+        <SiteStatsSummary
+          className="text-center text-gray-600 text-sm font-light dark:text-dark mb-6"
+        />
       </div>
 
       <div className="space-y-4">

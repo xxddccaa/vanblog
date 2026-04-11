@@ -80,7 +80,7 @@
     reverse_proxy server:3000
   }
   handle /atom.xml {
-    uri replace /feed.xml /rss/atom.xml
+    uri replace /atom.xml /rss/atom.xml
     reverse_proxy server:3000
   }
   handle /rss/* {

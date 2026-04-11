@@ -51,25 +51,219 @@ module.exports = withBundleAnalyzer({
   experimental: {
     largePageDataBytes: 1024 * 1024 * 10,
   },
+  async redirects() {
+    return [
+      {
+        source: "/page/:path*",
+        destination: "/archive",
+        permanent: true,
+      },
+      {
+        source: "/category/:category/page/:path*",
+        destination: "/category/:category",
+        permanent: true,
+      },
+      {
+        source: "/tag/:tag/page/:path*",
+        destination: "/tag/:tag",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
         source: "/post/:path*",
         headers: [
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-post" },
           {
-            key: "Surrogate-Control",
-            value: "max-age=604800, stale-while-revalidate=86400",
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
           },
         ],
       },
       {
-        source: "/((?!api|admin|_next/static).*)",
+        source: "/(about|link)",
         headers: [
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-post" },
           {
-            key: "Surrogate-Control",
-            value: "max-age=3600, stale-while-revalidate=86400",
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/c/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-post" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/(moment|nav)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-dynamic" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=300, stale-while-revalidate=600",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=300, stale-while-revalidate=600",
+          },
+        ],
+      },
+      {
+        source: "/",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-listing,home" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/archive/:year/:month",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-post,archive-month" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/archive",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-listing,archive" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/archive/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-listing,archive" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/category/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-listing" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/category/:category/archive/:year/:month",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-post,archive-month" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/tag/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-listing" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/tag/:tag/archive/:year/:month",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-post,archive-month" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=604800, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/timeline",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Cache-Tag", value: "html-public,html-listing" },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
         ],
       },
@@ -79,6 +273,41 @@ module.exports = withBundleAnalyzer({
           {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/markdown-themes/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=86400, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=86400, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source:
+          "/:path(background.svg|favicon.ico|initTheme.js|logo.svg|markdown.css|more.png|robot.txt|robots.txt|yly_tools_logo.png)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=86400, stale-while-revalidate=86400",
+          },
+          {
+            key: "Cloudflare-CDN-Cache-Control",
+            value: "public, s-maxage=86400, stale-while-revalidate=86400",
           },
         ],
       },

@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
@@ -6,7 +7,7 @@ import { getTarget } from "../components/Link/tools";
 import { encodeQuerystring } from "../utils/encode";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getTagPageProps } from "../utils/getPageProps";
-import { getServerBaseUrl, revalidate } from "../utils/loadConfig";
+import { revalidate } from "../utils/loadConfig";
 
 interface TagWithCount {
   name: string;
@@ -17,20 +18,21 @@ export interface TagPageProps {
   layoutProps: LayoutProps;
   authorCardProps: AuthorCardProps;
   tags: string[];
-  hotTags?: TagWithCount[];
 }
 
 const PAGE_SIZE = 120;
+const toStaticTagShell = (tags: string[]): TagWithCount[] =>
+  (tags || []).map((tag) => ({ name: tag, articleCount: 0 }));
 
 const TagPage = (props: TagPageProps) => {
-  const [tags, setTags] = useState<TagWithCount[]>(props.hotTags || []);
+  const [tags, setTags] = useState<TagWithCount[]>(() => toStaticTagShell(props.tags));
   const [loading, setLoading] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "articleCount">("articleCount");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalTags, setTotalTags] = useState(props.hotTags?.length || props.tags.length);
+  const [totalTags, setTotalTags] = useState(props.tags.length);
   const [totalPages, setTotalPages] = useState(1);
 
   const loadTags = useCallback(
@@ -67,7 +69,7 @@ const TagPage = (props: TagPageProps) => {
         throw new Error("Failed to load tags");
       } catch (error) {
         console.error("加载标签失败:", error);
-        const fallback = props.hotTags || props.tags.map((tag) => ({ name: tag, articleCount: 0 }));
+        const fallback = toStaticTagShell(props.tags);
         setTags(fallback.slice(0, PAGE_SIZE));
         setCurrentPage(1);
         setTotalTags(fallback.length);
@@ -76,7 +78,7 @@ const TagPage = (props: TagPageProps) => {
         setLoading(false);
       }
     },
-    [props.hotTags, props.tags]
+    [props.tags]
   );
 
   useEffect(() => {
@@ -275,23 +277,9 @@ export async function getStaticProps(): Promise<{
   props: TagPageProps;
   revalidate?: number;
 }> {
-  const baseProps = await getTagPageProps();
-
-  let hotTags: TagWithCount[] = [];
-  try {
-    const response = await fetch(`${getServerBaseUrl()}api/public/tags/hot?limit=100`);
-    const result = await response.json();
-    if (result.statusCode === 200) {
-      hotTags = result.data || [];
-    }
-  } catch (error) {
-    console.log("获取热门标签失败，使用原有数据");
-  }
-
   return {
     props: {
-      ...baseProps,
-      hotTags,
+      ...(await getTagPageProps()),
     },
     ...revalidate,
   };

@@ -1,3 +1,4 @@
+import React from "react";
 import ImageBox from "../ImageBox";
 import RunningTime from "../RunningTime";
 import Viewer from "../Viewer";

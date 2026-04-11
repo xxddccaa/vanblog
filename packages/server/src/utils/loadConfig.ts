@@ -33,17 +33,25 @@ const config = [...rawConfigs].reduce((prev, curr) => {
  * @param defaultValue 默认值
  */
 export const loadConfig = (key: string, defaultValue?: any) => {
-  const envKey =
+  const segments = key.split('.');
+  const envKeys = [
     'VAN_BLOG_' +
-    key
-      .split('.')
-      .map((x) => x.toUpperCase())
-      .join('_');
+      segments
+        .map((segment) =>
+          segment
+            .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+            .replace(/-/g, '_')
+            .toUpperCase(),
+        )
+        .join('_'),
+    'VAN_BLOG_' + segments.map((x) => x.toUpperCase()).join('_'),
+  ];
+  const envValue = envKeys.map((envKey) => process.env[envKey]).find((value) => value !== undefined);
 
   if (typeof defaultValue !== 'function') {
-    return process.env[envKey] || _.get(config, key, defaultValue);
+    return envValue || _.get(config, key, defaultValue);
   } else {
-    return process.env[envKey] || _.get(config, key, false) || defaultValue();
+    return envValue || _.get(config, key, false) || defaultValue();
   }
 };
 export const version = process.env['VAN_BLOG_VERSION'] || 'dev';

@@ -57,6 +57,42 @@ export interface HeadTag {
   content: string;
 }
 
+const buildAuthorCardProps = (
+  data: PublicMetaProp,
+  counts: Partial<Pick<AuthorCardProps, "postNum" | "tagNum" | "catelogNum">> = {}
+): AuthorCardProps => {
+  const showSubMenu =
+    Boolean(data.meta.categories.length) &&
+    data.meta.siteInfo?.showSubMenu == "true";
+  let showRSS: "true" | "false" = "true";
+  if (data.meta.siteInfo?.showRSS && data.meta.siteInfo?.showRSS == "false") {
+    showRSS = "false";
+  }
+
+  return {
+    socials: data.meta.socials,
+    author: data.meta.siteInfo.author,
+    desc: data.meta.siteInfo.authorDesc,
+    logo: data.meta.siteInfo.authorLogo,
+    logoDark: data.meta.siteInfo.authorLogoDark || "",
+    showSubMenu: showSubMenu ? "true" : "false",
+    showRSS,
+    ...counts,
+  };
+};
+
+const normalizePublicMenus = (menus?: MenuItem[]) => {
+  return (menus || defaultMenu).map((menu) => {
+    if (menu.value === "/moment" && menu.name !== "动态") {
+      return {
+        ...menu,
+        name: "动态",
+      };
+    }
+    return menu;
+  });
+};
+
 export function getLayoutProps(data: PublicMetaProp): LayoutProps {
   const siteInfo = data.meta.siteInfo;
   const showSubMenu =
@@ -145,7 +181,7 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     logoDark: siteInfo?.siteLogoDark || "",
     showExpirationReminder: showExpirationReminder,
     description: siteInfo?.siteDesc || "",
-    menus: data?.menus || defaultMenu,
+    menus: normalizePublicMenus(data?.menus),
     categories: data.meta.categories,
     showSubMenu: showSubMenu ? "true" : "false",
     enableComment: siteInfo?.enableComment || "false",
@@ -180,23 +216,13 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
 }
 
 export function getAuthorCardProps(data: PublicMetaProp): AuthorCardProps {
-  const showSubMenu =
-    Boolean(data.meta.categories.length) &&
-    data.meta.siteInfo?.showSubMenu == "true";
-  let showRSS: "true" | "false" = "true";
-  if (data.meta.siteInfo?.showRSS && data.meta.siteInfo?.showRSS == "false") {
-    showRSS = "false";
-  }
-  return {
+  return buildAuthorCardProps(data, {
     postNum: data.totalArticles,
     tagNum: data.tags.length,
     catelogNum: data.meta.categories.length,
-    socials: data.meta.socials,
-    author: data.meta.siteInfo.author,
-    desc: data.meta.siteInfo.authorDesc,
-    logo: data.meta.siteInfo.authorLogo,
-    logoDark: data.meta.siteInfo.authorLogoDark || "",
-    showSubMenu: showSubMenu ? "true" : "false",
-    showRSS,
-  };
+  });
+}
+
+export function getAuthorCardShellProps(data: PublicMetaProp): AuthorCardProps {
+  return buildAuthorCardProps(data);
 }

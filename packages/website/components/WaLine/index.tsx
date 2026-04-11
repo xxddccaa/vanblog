@@ -1,3 +1,4 @@
+import React from "react";
 import dynamic from "next/dynamic";
 export default function (props: {
   enable: "true" | "false";
