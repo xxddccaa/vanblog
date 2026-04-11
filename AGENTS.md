@@ -63,6 +63,19 @@ Treat release and deployment work as documented workflows, not guesswork.
 - For release or deployment changes, validate with at least `pnpm test:blog-flow`; if the change is config- or routing-focused, also run `pnpm test:deploy`.
 - Keep production exposure assumptions intact: public entry is through Caddy on `80/443`, `postgres` and `redis` should not gain host ports, and the Caddy admin API `2019` must stay private.
 
+## Local Proxy & Buildx Notes
+This repo may be released from a machine that uses a local proxy for GitHub and Docker Hub access.
+
+- Default local proxy: `http://127.0.0.1:10829`
+- When release, push, or remote-auth tasks need outbound access, prefer exporting:
+  - `http_proxy=http://127.0.0.1:10829`
+  - `https_proxy=http://127.0.0.1:10829`
+- For image release tasks that need proxied outbound access, prefer reusing the existing buildx builder:
+  - `vanblog-release-proxy-10829`
+- Do not delete `vanblog-release-proxy-10829` unless the user explicitly asks for cleanup or confirms it is no longer needed.
+- Before creating a new proxied builder, check `docker buildx ls` first and reuse an existing one when possible.
+- The `moby/buildkit` / `buildx_buildkit_*` containers are build infrastructure only; they are not part of the running blog stack and do not serve web traffic.
+
 ## Commit & Pull Request Guidelines
 Recent history uses short, change-focused Chinese subjects, for example: `分类与标签页增加分页并优化公开文章查询。` Match that concise style or use an equally clear English summary.
 
