@@ -10,6 +10,10 @@ actions:
     link: /guide/get-started.html
     type: primary
 
+  - text: 🏷️ 发布说明
+    link: /releases/
+    type: secondary
+
   - text: GitHub 仓库
     link: https://github.com/xxddccaa/vanblog
     type: secondary

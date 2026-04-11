@@ -7,6 +7,8 @@
 - **源码部署**：用 `docker-compose.yml` 从当前仓库直接构建并启动
 - **镜像部署**：用 `docker-compose.image.yml` 拉取已经发布的多镜像版本启动
 
+当前默认维护分支是 `master`。如果你从 GitHub 拉取源码或引用仓库内文档，请统一以 `master` 为准。
+
 项目沿用 `GPL-3.0`；保留对上游 VanBlog 的致谢，但使用、部署与更新请以当前仓库为准。
 
 我的博客地址：<https://www.dong-blog.fun/>
@@ -175,6 +177,8 @@ pnpm release:images:push
 详细说明请看：[`RELEASE.md`](RELEASE.md)
 
 生产部署说明请看：[`DEPLOY.md`](DEPLOY.md)
+
+版本发布说明索引请看：[`docs/releases/README.md`](docs/releases/README.md)
 
 ## 文档给 AI 的入口
 
