@@ -157,3 +157,5 @@ sync_to_remote.sh
 # local runtime data
 data/
 tests/.tmp/
+.codex
+.codex-run/
