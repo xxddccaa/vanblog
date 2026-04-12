@@ -11,7 +11,8 @@ VanBlog 当前采用多容器部署。为了在升级、重建容器后保留数
 | 宿主机默认目录 | 容器内目录 | 说明 |
 | -------------- | ---------- | ---- |
 | `./data/static` | `/app/static` | 本地图床与静态资源 |
-| `./data/mongo` | `/data/db` | MongoDB 数据目录 |
+| `./data/postgres` | `/var/lib/postgresql/data` | PostgreSQL 数据目录（包含 VanBlog 与 Waline 独立数据库） |
+| `./data/redis` | `/data` | Redis 数据目录 |
 | `./log` | `/var/log` | 访问日志、事件日志、恢复密钥等 |
 | `./caddy/config` | `/root/.config/caddy` | Caddy 配置目录 |
 | `./caddy/data` | `/root/.local/share/caddy` | Caddy 证书与运行数据 |

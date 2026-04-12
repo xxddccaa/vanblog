@@ -116,6 +116,7 @@ test('docker compose defines the split runtime services', () => {
     'server:',
     'website:',
     'admin:',
+    'waline:',
     'postgres:',
     'redis:',
   ]) {
@@ -131,15 +132,36 @@ test('docker compose defines the split runtime services', () => {
 test('docker compose wires cross-container control endpoints', () => {
   assert.match(compose, /VANBLOG_CADDY_API_URL:\s+http:\/\/caddy:2019/);
   assert.match(compose, /VANBLOG_WEBSITE_CONTROL_URL:\s+http:\/\/website:3011/);
+  assert.match(compose, /VANBLOG_WALINE_CONTROL_URL:\s+http:\/\/waline:8361/);
   assert.match(compose, /VAN_BLOG_DATABASE_URL:\s+\$\{VAN_BLOG_DATABASE_URL:-postgresql:\/\//);
   assert.match(compose, /VAN_BLOG_REDIS_URL:\s+\$\{VAN_BLOG_REDIS_URL:-redis:\/\/redis:6379\}/);
+  assert.match(
+    compose,
+    /VAN_BLOG_WALINE_DATABASE_URL:\s+\$\{VAN_BLOG_WALINE_DATABASE_URL:-postgresql:\/\//,
+  );
   assert.match(compose, /VANBLOG_WEBSITE_ISR_BASE:\s+http:\/\/website:3001\/api\/revalidate\?path=/);
   assert.match(compose, /VAN_BLOG_CLOUDFLARE_API_TOKEN:\s+\$\{VAN_BLOG_CLOUDFLARE_API_TOKEN:-\}/);
   assert.match(compose, /VAN_BLOG_CLOUDFLARE_ZONE_ID:\s+\$\{VAN_BLOG_CLOUDFLARE_ZONE_ID:-\}/);
   assert.match(composeImage, /VANBLOG_CADDY_API_URL:\s+http:\/\/caddy:2019/);
   assert.match(composeImage, /VANBLOG_WEBSITE_CONTROL_URL:\s+http:\/\/website:3011/);
+  assert.match(composeImage, /VANBLOG_WALINE_CONTROL_URL:\s+http:\/\/waline:8361/);
+  assert.match(
+    composeImage,
+    /VAN_BLOG_WALINE_DATABASE_URL:\s+\$\{VAN_BLOG_WALINE_DATABASE_URL:-postgresql:\/\//,
+  );
   assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_API_TOKEN:\s+\$\{VAN_BLOG_CLOUDFLARE_API_TOKEN:-\}/);
   assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_ZONE_ID:\s+\$\{VAN_BLOG_CLOUDFLARE_ZONE_ID:-\}/);
+  assert.match(compose, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}/);
+  assert.match(composeImage, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}/);
+});
+
+test('waline service is configured to use standalone postgres credentials', () => {
+  assert.match(compose, /PG_DB:\s+\$\{VAN_BLOG_WALINE_DB:-waline\}/);
+  assert.match(compose, /PG_USER:\s+\$\{POSTGRES_USER:-postgres\}/);
+  assert.match(compose, /PG_PASSWORD:\s+\$\{POSTGRES_PASSWORD:-postgres\}/);
+  assert.match(composeImage, /PG_DB:\s+\$\{VAN_BLOG_WALINE_DB:-waline\}/);
+  assert.match(composeImage, /PG_USER:\s+\$\{POSTGRES_USER:-postgres\}/);
+  assert.match(composeImage, /PG_PASSWORD:\s+\$\{POSTGRES_PASSWORD:-postgres\}/);
 });
 
 test('release env example and deploy guide document optional Cloudflare purge credentials', () => {
@@ -159,6 +181,10 @@ test('release env example and deploy guide document optional Cloudflare purge cr
   assert.match(releaseDoc, /Cloudflare tag\/url purge 不会启用/);
   assert.match(releaseDoc, /siteInfo\.baseUrl/);
   assert.match(releaseDoc, /Cloudflare URL purge 会被跳过/);
+  assert.match(releaseEnv, /VAN_BLOG_WALINE_DATABASE_URL=postgresql:\/\/postgres:postgres@postgres:5432\/waline/);
+  assert.match(releaseEnv, /WALINE_JWT_TOKEN=replace-with-a-long-random-string/);
+  assert.match(deployDoc, /VAN_BLOG_WALINE_DATABASE_URL/);
+  assert.match(deployDoc, /VANBLOG_WALINE_CONTROL_URL/);
 });
 
 test('caddy routes requests to the split services', () => {

@@ -34,19 +34,19 @@ docker compose version
 
 ## 如何在外部访问数据库
 
-默认情况下，`mongo` 只在 compose 内部网络开放，这样更安全。
+默认情况下，`postgres` 只在 compose 内部网络开放，这样更安全。
 
 如果你只是临时排查数据，优先推荐直接进入容器：
 
 ```bash
-docker compose exec mongo mongo vanBlog
+docker compose exec postgres psql -U postgres -d vanblog
 ```
 
-如果你一定要让宿主机外部访问 MongoDB，请自行评估安全风险，并在 `mongo` 服务里显式增加端口映射，例如：
+如果你一定要让宿主机外部访问 PostgreSQL，请自行评估安全风险，并在 `postgres` 服务里显式增加端口映射，例如：
 
 ```yaml
 ports:
-  - "27017:27017"
+  - "5432:5432"
 ```
 
 然后重新启动服务：
@@ -63,7 +63,7 @@ docker compose up -d
 2. `caddy`、`server`、`website`、`admin` 是否都已健康启动
 3. 宿主机的 `80/443` 端口是否真的放行
 4. 是否错误地把外层反代直接指向了 `server` 或 `admin`
-5. 用 `docker compose logs -f caddy server website admin waline mongo` 查看报错
+5. 用 `docker compose logs -f caddy server website admin waline postgres redis` 查看报错
 
 ## docker 镜像拉取慢
 
@@ -83,12 +83,12 @@ ports:
 
 ## 部署后出现数据库连接错误
 
-请优先检查 `server` 服务里的 `VAN_BLOG_DATABASE_URL` 是否和 `mongo` 服务保持一致。
+请优先检查 `server` 服务里的 `VAN_BLOG_DATABASE_URL` 是否和 `postgres` 服务保持一致。
 
 默认值应类似：
 
 ```text
-mongodb://mongo:27017/vanBlog?authSource=admin
+postgresql://postgres:postgres@postgres:5432/vanblog
 ```
 
 如果你改过数据库服务名、端口或鉴权参数，需要一起改这里。
@@ -112,7 +112,7 @@ mongodb://mongo:27017/vanBlog?authSource=admin
 
 - 使用的是 `docker-compose.yml` 还是 `docker-compose.image.yml`
 - `docker compose ps` 的结果
-- `docker compose logs -f caddy server website admin waline mongo` 中的关键错误
+- `docker compose logs -f caddy server website admin waline postgres redis` 中的关键错误
 - 你是否额外套了 Nginx / Caddy / CDN
 
 Issue 地址：<https://github.com/xxddccaa/vanblog/issues/new/choose>

@@ -1,11 +1,12 @@
-import CodeEditor from '@/components/CodeEditor';
 import AnimationEffects from '@/components/AnimationEffects';
 import MarkdownThemeSelector from '@/components/MarkdownThemeSelector';
 import { getLayoutConfig, updateLayoutConfig } from '@/services/van-blog/api';
 import { getSiteInfo, updateSiteInfo } from '@/services/van-blog/api';
 import { useTab } from '@/services/van-blog/useTab';
 import { Button, Card, message, Modal, Spin } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+
+const CodeEditor = lazy(() => import('@/components/CodeEditor'));
 
 export default function () {
   const [tab, setTab] = useTab('animations', 'customTab');
@@ -114,6 +115,7 @@ export default function () {
     html: 'html',
     head: 'html',
   };
+  const isCodeTab = ['css', 'script', 'html', 'head'].includes(tab);
 
   const tabList = [
     {
@@ -176,45 +178,23 @@ export default function () {
               }}
             />
           )}
-          {tab == 'css' && (
-            <CodeEditor
-              height={600}
-              language={languageMap[tab]}
-              onChange={(v) => {
-                setValues({ ...values, [tab]: v });
-              }}
-              value={values[tab] || ''}
-            />
-          )}
-          {tab == 'script' && (
-            <CodeEditor
-              height={600}
-              language={languageMap[tab]}
-              onChange={(v) => {
-                setValues({ ...values, [tab]: v });
-              }}
-              value={values[tab] || ''}
-            />
-          )}
-          {tab == 'html' && (
-            <CodeEditor
-              height={600}
-              language={languageMap[tab]}
-              onChange={(v) => {
-                setValues({ ...values, [tab]: v });
-              }}
-              value={values[tab] || ''}
-            />
-          )}
-          {tab == 'head' && (
-            <CodeEditor
-              height={600}
-              language={languageMap[tab]}
-              onChange={(v) => {
-                setValues({ ...values, [tab]: v });
-              }}
-              value={values[tab] || ''}
-            />
+          {isCodeTab && (
+            <Suspense
+              fallback={
+                <div style={{ padding: '48px 0', textAlign: 'center' }}>
+                  <Spin />
+                </div>
+              }
+            >
+              <CodeEditor
+                height={600}
+                language={languageMap[tab]}
+                onChange={(v) => {
+                  setValues({ ...values, [tab]: v });
+                }}
+                value={values[tab] || ''}
+              />
+            </Suspense>
           )}
         </Spin>
       </Card>

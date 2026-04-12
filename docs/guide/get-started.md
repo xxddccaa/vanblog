@@ -52,7 +52,7 @@ docker compose -f docker-compose.image.yml up -d
 
 ```bash
 docker compose -f docker-compose.image.yml ps
-docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
+docker compose -f docker-compose.image.yml logs -f caddy server website admin waline postgres redis
 ```
 
 ### 4. 完成初始化
@@ -70,7 +70,7 @@ http://<你的域名或 IP>/admin/init
 - 前台首页：`http://<你的域名或 IP>/`
 - 后台管理：`http://<你的域名或 IP>/admin`
 - API 文档：`http://<你的域名或 IP>/swagger`
-- 评论前台：如启用了外部 Waline，请访问你配置的评论服务地址
+- 评论管理：`http://<你的域名或 IP>/api/ui/`
 
 ## 下一步建议
 

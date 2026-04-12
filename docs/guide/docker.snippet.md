@@ -27,16 +27,18 @@ cd vanblog
 - `server`：后端 API 与静态资源服务
 - `website`：Next.js 前台
 - `admin`：后台静态页面
-- `waline`：评论服务
-- `mongo`：数据库，仅内网访问
+- `waline`：独立评论服务
+- `postgres`：主站与 Waline 共用的 PostgreSQL 实例，仅内网访问
+- `redis`：缓存，仅内网访问
 
 ::: warning 安全说明
 
 默认配置下：
 
-- `mongo` 不对外暴露端口
+- `postgres`、`redis` 不对外暴露端口
 - Caddy admin API `2019` 不对外暴露端口
 - 后台通过 `http://<你的域名>/admin` 访问，不需要单独暴露 `3002`
+- Waline 管理页通过 `http://<你的域名>/api/ui/` 访问，不需要单独暴露 `8360/8361`
 
 :::
 
@@ -51,7 +53,7 @@ docker compose up -d --build
 查看日志：
 
 ```bash
-docker compose logs -f caddy server website admin waline mongo
+docker compose logs -f caddy server website admin waline postgres redis
 ```
 
 启动完成后，请继续 [完成初始化](./init.md)。

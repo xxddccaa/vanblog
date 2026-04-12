@@ -10,7 +10,9 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 | --- | --- | --- | --- |
 | `EMAIL` | `caddy` | 使用内置 Caddy HTTPS 时申请证书的邮箱 | `someone@example.com` |
 | `VAN_BLOG_DATABASE_URL` | `server` | PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/vanblog` |
-| `VAN_BLOG_WALINE_DB` | `server` / `waline` | 评论系统数据库名 | `waline` |
+| `VAN_BLOG_WALINE_DB` | `server` / `waline` / `postgres` | 评论系统独立数据库名 | `waline` |
+| `VAN_BLOG_WALINE_DATABASE_URL` | `server` | Waline 独立 PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/waline` |
+| `VANBLOG_WALINE_CONTROL_URL` | `server` | Waline 控制端点 | `http://waline:8361` |
 | `VAN_BLOG_ALLOW_DOMAINS` | `website` | Next.js 允许加载的外部图片域名，多个用逗号分隔 | `pic.mereith.com` |
 | `WALINE_JWT_TOKEN` | `waline` | Waline 使用的 JWT 密钥 | `vanblog-change-me` |
 | `VANBLOG_HTTP_PORT` | `caddy` | 宿主机暴露的 HTTP 端口 | `80` |

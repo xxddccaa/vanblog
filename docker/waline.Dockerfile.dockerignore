@@ -1,6 +1,7 @@
 **
 !docker/
 !docker/waline/
+!docker/waline/entrypoint.sh
 !docker/waline/runner.cjs
 !scripts/
 !scripts/fix-waline-dashboard.js

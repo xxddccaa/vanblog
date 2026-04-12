@@ -214,7 +214,7 @@ async function waitForHealthyStack(composeEnv) {
 
     const services = parseComposePsOutput(result.stdout);
     const byService = Object.fromEntries(services.map((service) => [service.Service, service]));
-    const requiredHealthy = ['postgres', 'redis', 'server', 'website', 'admin'];
+    const requiredHealthy = ['postgres', 'redis', 'server', 'website', 'admin', 'waline'];
     if (!requiredHealthy.every((name) => byService[name]?.Health === 'healthy')) {
       return false;
     }
@@ -279,6 +279,10 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     const swagger = await fetchText(`${baseUrl}/swagger`);
     assert.equal(swagger.status, 200);
     assert.match(swagger.text, /Swagger UI/i);
+
+    const walineAdmin = await fetchText(`${baseUrl}/api/ui/`);
+    assert.equal(walineAdmin.status, 200);
+    assert.match(walineAdmin.text, /Waline Management System/i);
 
     const adminRedirect = await fetchText(`${baseUrl}/admin`, {
       redirect: 'manual',
@@ -455,6 +459,14 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     assert.equal(publicArticle.body?.data?.article?.title, articleTitle);
     assert.equal(publicArticle.body?.data?.article?.pathname, articlePathname);
     assert.match(publicArticle.body?.data?.article?.content || '', /frontend page after publish/);
+    const publishedCreatedAt = new Date(publicArticle.body?.data?.article?.createdAt || Date.now());
+    const archiveYear = String(publishedCreatedAt.getFullYear());
+    const archiveMonth = String(publishedCreatedAt.getMonth() + 1).padStart(2, '0');
+
+    const engagementResponse = await fetchJson(`${baseUrl}/api/public/article/${articlePathname}/engagement`);
+    assert.equal(engagementResponse.status, 200);
+    assert.equal(engagementResponse.body?.statusCode, 200);
+    assert.equal(engagementResponse.body?.data?.commentCount, 0);
 
     const publicList = await fetchJson(`${baseUrl}/api/public/article?page=1&pageSize=10&toListView=true`);
     assert.equal(publicList.status, 200);
@@ -481,8 +493,11 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
 
     await waitForHtml(baseUrl, '/', articleTitle);
     await waitForHtml(baseUrl, '/tag', 'compose');
-    await waitForHtml(baseUrl, '/tag/compose', articleTitle);
-    await waitForHtml(baseUrl, '/category/Testing', articleTitle);
+    await waitForHtml(baseUrl, '/tag/compose', '查看年份目录');
+    await waitForHtml(baseUrl, `/tag/compose/archive/${archiveYear}/${archiveMonth}`, articleTitle);
+    await waitForHtml(baseUrl, '/category', '分类');
+    await waitForHtml(baseUrl, '/category/Testing', '查看年份目录');
+    await waitForHtml(baseUrl, `/category/Testing/archive/${archiveYear}/${archiveMonth}`, articleTitle);
     await waitForHtml(baseUrl, `/post/${articlePathname}`, articleTitle);
     await waitForHtml(baseUrl, `/post/${articlePathname}`, draftContent);
     await waitForHtml(baseUrl, `/post/${articlePathname}`, publishedBody);

@@ -40,13 +40,17 @@ order: 2
 如果后台已经打不开，可以直接删除数据库里的 HTTPS 设置，再重启 `server` 服务同步配置。
 
 ```bash
-docker compose exec mongo mongo vanBlog --quiet --eval 'db.settings.deleteOne({ type: "https" })'
+docker compose exec postgres \
+  psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vanblog} \
+  -c "DELETE FROM vanblog_settings WHERE setting_type = 'https';"
 docker compose restart server
 ```
 
 如果你使用的是镜像部署，只需要把命令里的 compose 文件替换成你实际使用的那一套，例如：
 
 ```bash
-docker compose -f docker-compose.image.yml exec mongo mongo vanBlog --quiet --eval 'db.settings.deleteOne({ type: "https" })'
+docker compose -f docker-compose.image.yml exec postgres \
+  psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vanblog} \
+  -c "DELETE FROM vanblog_settings WHERE setting_type = 'https';"
 docker compose -f docker-compose.image.yml restart server
 ```

@@ -17,7 +17,7 @@
     "@next/bundle-analyzer": "^13.5.6",
     "@types/lodash": "^4.14.202",
     "@types/markdown-navbar": "^1.4.3",
-    "@waline/client": "^2.15.8",
+    "@waline/client": "3.13.0",
     "bytemd": "^1.21.0",
     "copy-to-clipboard": "^3.3.3",
     "dayjs": "^1.11.10",

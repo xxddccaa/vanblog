@@ -14,7 +14,7 @@ order: 4
 
 1. 让外层反代指向宿主机的 `80`
 2. 保持内部 `caddy` 继续处理 `/admin`、`/api`、前台页面、评论等路由
-3. 不要额外暴露 `mongo`、Caddy admin `2019`、或内部服务端口
+3. 不要额外暴露 `postgres`、`redis`、Waline 控制端口、Caddy admin `2019`、或内部服务端口
 
 :::
 

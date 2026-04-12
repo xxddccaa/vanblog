@@ -1,30 +1,36 @@
 import { useTab } from '@/services/van-blog/useTab';
 import { PageContainer } from '@ant-design/pro-layout';
+import { Spin } from 'antd';
+import { lazy, Suspense } from 'react';
 import thinstyle from '../Welcome/index.less';
-import Advance from './tabs/Advance';
-import Backup from './tabs/Backup';
-import AutoBackup from './tabs/AutoBackup';
-import Customizing from './tabs/Customizing';
-import ImgTab from './tabs/ImgTab';
-import SiteInfo from './tabs/SiteInfo';
-import User from './tabs/User';
-import WalineTab from './tabs/WalineTab';
-import Token from './tabs/Token';
-import AdminLayout from './tabs/AdminLayout';
+
+const SiteInfo = lazy(() => import('./tabs/SiteInfo'));
+const Customizing = lazy(() => import('./tabs/Customizing'));
+const Backup = lazy(() => import('./tabs/Backup'));
+const AutoBackup = lazy(() => import('./tabs/AutoBackup'));
+const User = lazy(() => import('./tabs/User'));
+const ImgTab = lazy(() => import('./tabs/ImgTab'));
+const WalineTab = lazy(() => import('./tabs/WalineTab'));
+const Advance = lazy(() => import('./tabs/Advance'));
+const Token = lazy(() => import('./tabs/Token'));
+const AdminLayout = lazy(() => import('./tabs/AdminLayout'));
+
+const tabComponentMap = {
+  siteInfo: SiteInfo,
+  customizing: Customizing,
+  backup: Backup,
+  autoBackup: AutoBackup,
+  user: User,
+  img: ImgTab,
+  waline: WalineTab,
+  advance: Advance,
+  token: Token,
+  adminLayout: AdminLayout,
+};
+
 export default function () {
-  const tabMap = {
-    siteInfo: <SiteInfo />,
-    customizing: <Customizing />,
-    backup: <Backup />,
-    autoBackup: <AutoBackup />,
-    user: <User />,
-    img: <ImgTab />,
-    waline: <WalineTab />,
-    advance: <Advance />,
-    token: <Token />,
-    adminLayout: <AdminLayout />,
-  };
   const [tab, setTab] = useTab('siteInfo', 'tab');
+  const ActiveTab = tabComponentMap[tab] || SiteInfo;
 
   return (
     <PageContainer
@@ -77,7 +83,15 @@ export default function () {
       ]}
       onTabChange={setTab}
     >
-      {tabMap[tab]}
+      <Suspense
+        fallback={
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+            <Spin />
+          </div>
+        }
+      >
+        <ActiveTab />
+      </Suspense>
     </PageContainer>
   );
 }

@@ -1,4 +1,4 @@
-import "@waline/client/dist/waline.css";
+import "@waline/client/style";
 import { useEffect, useRef } from "react";
 import { init, commentCount } from "@waline/client";
 export default function (props: {

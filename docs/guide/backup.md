@@ -26,7 +26,8 @@ VanBlog 当前采用多容器部署，真正需要长期保存的是宿主机上
 默认建议至少备份：
 
 - `data/static`：本地图床与静态资源
-- `data/mongo`：MongoDB 数据
+- `data/postgres`：PostgreSQL 数据（包含 VanBlog 与 Waline 独立数据库）
+- `data/redis`：Redis 数据
 - `log`：运行日志与 `restore.key`
 - `caddy/config`：Caddy 配置目录
 - `caddy/data`：Caddy 证书与运行数据

@@ -1,4 +1,4 @@
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app/waline
 ARG VANBLOG_IMAGE_NAME="vanblog-waline"
@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
-    && apk add --no-cache --update tzdata curl python3 py3-setuptools make g++ \
+    && apk add --no-cache --update tzdata curl postgresql-client python3 py3-setuptools make g++ \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
@@ -24,11 +24,12 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/re
     && pnpm config set fetch-timeout 600000 -g
 
 COPY packages/waline/package.json ./package.json
-RUN pnpm install --prod \
+RUN pnpm install --prod --ignore-scripts \
     && apk del python3 py3-setuptools make g++
 
 WORKDIR /app
 COPY scripts/fix-waline-dashboard.js ./scripts/fix-waline-dashboard.js
+COPY docker/waline/entrypoint.sh ./waline/entrypoint.sh
 COPY docker/waline/runner.cjs ./waline/runner.cjs
 RUN node ./scripts/fix-waline-dashboard.js
 
@@ -38,4 +39,4 @@ ENV PORT=8360
 ENV WALINE_CONTROL_PORT=8361
 
 EXPOSE 8360 8361
-CMD ["node", "runner.cjs"]
+CMD ["sh", "entrypoint.sh"]

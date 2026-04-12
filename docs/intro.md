@@ -20,14 +20,15 @@ VanBlog 是一套面向个人博客场景的完整系统，包含公开站点、
 - `server`：NestJS API、静态资源、Swagger
 - `website`：Next.js 前台站点
 - `admin`：后台静态资源，统一挂到 `/admin/`
-- `waline`：评论服务
-- `mongo`：数据库，仅在内部网络访问
+- `waline`：独立评论服务
+- `postgres`：主站与评论共用的 PostgreSQL 实例，仅在内部网络访问
+- `redis`：缓存，仅在内部网络访问
 
 这样做的主要好处是：
 
 - 服务边界清晰，便于排障和独立重启
 - 后台不再依赖单独暴露 `3002`，统一走 `/admin`
-- `mongo` 与 Caddy admin API 默认不对外暴露，安全边界更明确
+- `postgres`、`redis` 与 Caddy admin API 默认不对外暴露，安全边界更明确
 - 生产环境可以直接基于多镜像版本做回滚与追踪
 
 ## 主要特性

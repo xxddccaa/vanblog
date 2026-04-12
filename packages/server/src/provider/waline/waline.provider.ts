@@ -77,52 +77,93 @@ export class WalineProvider {
     // console.log(result);
     return result;
   }
-  private buildMongoEnv() {
-    if (config.walineDatabaseUrl) {
-      const url = new URL(config.walineDatabaseUrl);
-      return {
+  private compactEnv(target: Record<string, any>) {
+    return Object.fromEntries(
+      Object.entries(target).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+    );
+  }
+
+  private getDatabaseNameFromUrl(url: URL) {
+    const pathname = url.pathname?.replace(/^\/+/, '');
+    return pathname || config.walineDB;
+  }
+
+  private buildMongoEnv(url?: URL) {
+    if (url) {
+      return this.compactEnv({
         MONGO_HOST: url.hostname,
         MONGO_PORT: url.port || '27017',
-        MONGO_USER: url.username,
-        MONGO_PASSWORD: url.password,
-        MONGO_DB: config.walineDB,
-        MONGO_AUTHSOURCE: 'admin',
-      };
+        MONGO_USER: decodeURIComponent(url.username || ''),
+        MONGO_PASSWORD: decodeURIComponent(url.password || ''),
+        MONGO_DB: this.getDatabaseNameFromUrl(url),
+        MONGO_AUTHSOURCE: url.searchParams.get('authSource') || 'admin',
+      });
     }
 
     if (this.isExternalControlMode()) {
-      return {
+      return this.compactEnv({
         MONGO_HOST: process.env['WALINE_MONGO_HOST'] || 'mongo',
         MONGO_PORT: process.env['WALINE_MONGO_PORT'] || '27017',
         MONGO_USER: process.env['WALINE_MONGO_USER'] || '',
         MONGO_PASSWORD: process.env['WALINE_MONGO_PASSWORD'] || '',
         MONGO_DB: config.walineDB,
         MONGO_AUTHSOURCE: process.env['WALINE_MONGO_AUTHSOURCE'] || 'admin',
-      };
+      });
     }
 
     return null;
   }
+
+  private buildPostgresEnv(url: URL) {
+    return this.compactEnv({
+      PG_HOST: url.hostname,
+      PG_PORT: url.port || '5432',
+      PG_USER: decodeURIComponent(url.username || ''),
+      PG_PASSWORD: decodeURIComponent(url.password || ''),
+      PG_DB: this.getDatabaseNameFromUrl(url),
+      PG_SSL: url.searchParams.get('sslmode') === 'require' ? 'true' : undefined,
+    });
+  }
+
+  private buildStorageEnv() {
+    if (config.walineDatabaseUrl) {
+      const url = new URL(config.walineDatabaseUrl);
+      const protocol = url.protocol.replace(/:$/, '').toLowerCase();
+
+      if (protocol === 'postgres' || protocol === 'postgresql') {
+        return this.buildPostgresEnv(url);
+      }
+
+      if (protocol === 'mongodb' || protocol === 'mongodb+srv') {
+        return this.buildMongoEnv(url);
+      }
+
+      this.logger.warn(`暂不支持的 Waline 数据库协议: ${url.protocol}`);
+      return null;
+    }
+
+    return this.buildMongoEnv();
+  }
   async loadEnv() {
-    const mongoEnv = this.buildMongoEnv();
-    if (!mongoEnv) {
-      this.logger.warn('未配置 Waline 数据库地址，跳过 Waline 内置控制');
+    const storageEnv = this.buildStorageEnv();
+    if (!storageEnv) {
+      this.logger.warn('未配置 Waline 数据库地址，跳过 Waline 启动配置同步');
       this.env = {};
       return;
     }
     const siteInfo = await this.metaProvider.getSiteInfo();
     const otherEnv = {
       SITE_NAME: siteInfo?.siteName || undefined,
-      SITE_URL: undefined,
-      JWT_TOKEN: global.jwtSecret || makeSalt(),
+      SITE_URL: siteInfo?.baseUrl || undefined,
+      JWT_TOKEN: process.env['WALINE_JWT_TOKEN'] || global.jwtSecret || makeSalt(),
     };
     const walineConfig = await this.settingProvider.getWalineSetting();
     const walineConfigEnv = this.mapConfig2Env(walineConfig);
-    this.env = {
-      ...mongoEnv,
+    this.env = this.compactEnv({
+      ...storageEnv,
       ...otherEnv,
       ...walineConfigEnv,
-    };
+    });
     this.logger.log(`waline 配置： ${JSON.stringify(this.env, null, 2)}`);
   }
   async init() {

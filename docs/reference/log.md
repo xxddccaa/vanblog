@@ -11,13 +11,13 @@ VanBlog 提供后台日志查看，同时也可以直接从 compose 层面查看
 源码部署：
 
 ```bash
-docker compose logs -f caddy server website admin waline mongo
+docker compose logs -f caddy server website admin waline postgres redis
 ```
 
 镜像部署：
 
 ```bash
-docker compose -f docker-compose.image.yml logs -f caddy server website admin waline mongo
+docker compose -f docker-compose.image.yml logs -f caddy server website admin waline postgres redis
 ```
 
 ## 宿主机日志目录

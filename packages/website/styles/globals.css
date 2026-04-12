@@ -160,6 +160,7 @@
 
 
 :root {
+  --waline-bg-color-light: #fff !important;
   --waline-bgcolor-light: #fff !important;
 }
 /* waline */

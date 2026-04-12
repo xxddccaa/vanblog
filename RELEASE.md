@@ -232,6 +232,13 @@ docker compose -f docker-compose.image.yml up -d
 
 还应确认线上站点元数据中的 `siteInfo.baseUrl` 已经设置成最终公网地址；如果这个值缺失，tag purge 仍可发送，但 Cloudflare URL purge 会被跳过。
 
+如果这次发布涉及评论系统，也应确认服务器 `.env` 中已经设置：
+
+- `VAN_BLOG_WALINE_DATABASE_URL`
+- `WALINE_JWT_TOKEN`
+
+当前官方拓扑默认让 `server` 通过 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361` 管理独立 Waline 容器，并让 Waline 使用同一个 PostgreSQL 实例里的独立 `waline` 数据库。
+
 ### 6.2 使用版本别名或 latest
 
 如果你想改成别名模式，可以直接调整 `VANBLOG_RELEASE_SUFFIX`：

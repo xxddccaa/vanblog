@@ -9,6 +9,8 @@ services:
         condition: service_healthy
       admin:
         condition: service_healthy
+      waline:
+        condition: service_healthy
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       EMAIL: ${EMAIL:-someone@example.com}
@@ -34,11 +36,13 @@ services:
       VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-vanblog}}
       VAN_BLOG_REDIS_URL: ${VAN_BLOG_REDIS_URL:-redis://redis:6379}
       VAN_BLOG_WALINE_DB: ${VAN_BLOG_WALINE_DB:-waline}
+      VAN_BLOG_WALINE_DATABASE_URL: ${VAN_BLOG_WALINE_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${VAN_BLOG_WALINE_DB:-waline}}
       VAN_BLOG_CADDY_MANAGE_HTTPS: ${VAN_BLOG_CADDY_MANAGE_HTTPS:-false}
       VAN_BLOG_CLOUDFLARE_API_TOKEN: ${VAN_BLOG_CLOUDFLARE_API_TOKEN:-}
       VAN_BLOG_CLOUDFLARE_ZONE_ID: ${VAN_BLOG_CLOUDFLARE_ZONE_ID:-}
       VANBLOG_CADDY_API_URL: http://caddy:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
+      VANBLOG_WALINE_CONTROL_URL: http://waline:8361
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
     volumes:
       - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
@@ -86,6 +90,34 @@ services:
       timeout: 10s
       retries: 10
       start_period: 20s
+
+  waline:
+    image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-waline-${VANBLOG_RELEASE_SUFFIX:-latest}
+    restart: always
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      NODE_ENV: production
+      PORT: 8360
+      WALINE_CONTROL_PORT: 8361
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DB: ${VAN_BLOG_WALINE_DB:-waline}
+      PG_USER: ${POSTGRES_USER:-postgres}
+      PG_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
+    expose:
+      - "8360"
+      - "8361"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   postgres:
     image: postgres:16-alpine

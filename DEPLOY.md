@@ -47,6 +47,7 @@ cp .env.release.example .env
 
 - `EMAIL`：你的邮箱，用于证书相关场景
 - `VANBLOG_RELEASE_SUFFIX`：本次要部署的镜像版本，例如 `v1.0.0-<image-id>`
+- `VAN_BLOG_WALINE_DATABASE_URL`：Waline 独立 PostgreSQL 数据库连接串，默认是同实例下的 `waline` 数据库
 - `WALINE_JWT_TOKEN`：替换成高强度随机字符串
 - 目录挂载项：按你的服务器实际目录调整
 
@@ -68,12 +69,24 @@ cp .env.release.example .env
 - 不要把 Caddy admin API `2019` 暴露到公网
 - 默认 HTTP-only 模式只需要暴露 `80`
 - 如果叠加 `docker-compose.https.yml`，再额外暴露 `443`
+- 默认官方拓扑会自动启用 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361`，不需要再额外开放 Waline 端口
 
 ## 4. 首次部署
 
 ```bash
 docker compose -f docker-compose.image.yml pull
 docker compose -f docker-compose.image.yml up -d
+```
+
+说明：
+
+- 官方 `waline` 容器会在首次启动时尝试确保 `waline` 数据库存在，默认使用 `POSTGRES_USER` / `POSTGRES_PASSWORD` 连接 PostgreSQL。
+- 如果你改成了权限受限的数据库账号，导致容器无法自动建库，请手动补建 Waline 数据库，例如：
+
+```bash
+docker compose -f docker-compose.image.yml exec postgres \
+  psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vanblog} \
+  -c 'CREATE DATABASE waline;'
 ```
 
 如果你的机器是老版本 Compose，也可以用：
@@ -87,7 +100,7 @@ docker-compose -f docker-compose.image.yml up -d
 
 ```bash
 docker compose -f docker-compose.image.yml ps
-docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
+docker compose -f docker-compose.image.yml logs -f caddy server website admin waline postgres redis
 ```
 
 首次启动后，访问：
@@ -177,7 +190,7 @@ docker compose -f docker-compose.image.yml -f docker-compose.https.yml up -d
 - `http://<host>/`
 - `http://<host>/admin`
 - `http://<host>/swagger`
-- `http://<host>/comment/`
+- `http://<host>/api/ui/`
 
 建议进一步确认：
 
@@ -185,7 +198,7 @@ docker compose -f docker-compose.image.yml -f docker-compose.https.yml up -d
 - 后台 CSS / JS 能正常加载
 - 前台首页能打开
 - 文章页能正常访问
-- 评论服务能正常返回页面
+- 评论管理页能正常打开
 
 ## 8. AI 部署规则
 

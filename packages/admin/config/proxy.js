@@ -8,6 +8,36 @@
  */
 export default {
   dev: {
+    '/api/comment/': {
+      target: 'http://localhost:8360',
+      changeOrigin: true,
+      pathRewrite: { '^/api': '' },
+    },
+    '/api/user/': {
+      target: 'http://localhost:8360',
+      changeOrigin: true,
+      pathRewrite: { '^/api': '' },
+    },
+    '/api/token/': {
+      target: 'http://localhost:8360',
+      changeOrigin: true,
+      pathRewrite: { '^/api': '' },
+    },
+    '/api/db/': {
+      target: 'http://localhost:8360',
+      changeOrigin: true,
+      pathRewrite: { '^/api': '' },
+    },
+    '/api/oauth/': {
+      target: 'http://localhost:8360',
+      changeOrigin: true,
+      pathRewrite: { '^/api': '' },
+    },
+    '/api/ui/': {
+      target: 'http://localhost:8360',
+      changeOrigin: true,
+      pathRewrite: { '^/api': '' },
+    },
     // localhost:8000/api/** -> https://preview.pro.ant.design/api/**
     '/api/': {
       // 要代理的地址

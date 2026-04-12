@@ -6,6 +6,30 @@ const childPort = process.env.PORT || '8360';
 let runtimeEnv = {};
 let child = null;
 
+const probeChild = () =>
+  new Promise((resolve) => {
+    if (!child) {
+      resolve(false);
+      return;
+    }
+
+    const request = http.get(
+      `http://127.0.0.1:${childPort}/comment?type=count&url=%2F__health__`,
+      { timeout: 5000 },
+      (response) => {
+        response.resume();
+        resolve(response.statusCode >= 200 && response.statusCode < 500);
+      },
+    );
+
+    request.on('timeout', () => {
+      request.destroy(new Error('timeout'));
+    });
+    request.on('error', () => {
+      resolve(false);
+    });
+  });
+
 const parseBody = (req) =>
   new Promise((resolve, reject) => {
     let body = '';
@@ -92,7 +116,8 @@ const sendJson = (res, statusCode, payload) => {
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'GET' && req.url === '/health') {
-      sendJson(res, child ? 200 : 503, { ok: !!child, running: !!child, port: childPort });
+      const ready = await probeChild();
+      sendJson(res, ready ? 200 : 503, { ok: ready, running: !!child, port: childPort });
       return;
     }
 

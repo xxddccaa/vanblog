@@ -1,19 +1,12 @@
 import { PageContainer } from '@ant-design/pro-layout';
 import { Button, Modal, Space, Spin } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { history, useModel } from 'umi';
+import { useEffect, useRef, useState } from 'react';
+import { history } from 'umi';
 import TipTitle from '../../components/TipTitle';
 export default function () {
-  const { initialState } = useModel('@@initialState');
   const [loading, setLoading] = useState(true);
   const { current } = useRef({ hasInit: false });
-  const src = useMemo(() => {
-    if (initialState?.version && initialState?.version == 'dev') {
-      return 'http://192.168.5.11:8360/ui';
-    } else {
-      return '/api/ui/';
-    }
-  }, [initialState]);
+  const src = '/api/ui/';
   const showTips = () => {
     Modal.info({
       title: '使用说明',

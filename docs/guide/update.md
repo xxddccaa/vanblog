@@ -74,7 +74,7 @@ docker compose up -d --build
 - `http://<你的域名>/admin/init` 是否不会误出现
 - 前台首页、文章页、分类页、标签页是否正常访问
 - 评论、图片、RSS、Swagger 是否仍可访问
-- `docker compose logs -f caddy server website admin waline mongo` 是否有明显报错
+- `docker compose logs -f caddy server website admin waline postgres redis` 是否有明显报错
 
 ## 常见问题
 

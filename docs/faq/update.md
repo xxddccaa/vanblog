@@ -57,7 +57,7 @@ docker compose logs -f admin caddy
 
 ```bash
 docker compose ps
-docker compose logs -f caddy server website admin waline mongo
+docker compose logs -f caddy server website admin waline postgres redis
 ```
 
 如果你已经确定是升级引入的问题，优先回滚到上一个可用版本。
