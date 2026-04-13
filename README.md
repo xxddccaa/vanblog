@@ -180,6 +180,11 @@ pnpm release:images
 pnpm release:images:push
 ```
 
+说明：
+
+- 正式 Docker Hub 发布以本机手工执行为准
+- 不再使用 GitHub Actions 自动推送发布镜像
+
 详细说明请看：[`RELEASE.md`](RELEASE.md)
 
 生产部署说明请看：[`DEPLOY.md`](DEPLOY.md)

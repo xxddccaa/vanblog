@@ -295,19 +295,23 @@ docker compose -f docker-compose.image.yml up -d
 pnpm test:full
 ```
 
-## 9. GitHub Actions 建议
+## 9. GitHub Actions 说明
 
-仓库已经保留了基于这个机制的 Actions 样例：
+当前仓库**不再使用 GitHub Actions 执行镜像发布**。
 
-- `.github/workflows/release.yml`：推送 `v*` tag 时自动构建并发布多镜像
-- `.github/workflows/local-build.yml`：手动触发构建/推送
-- `.github/workflows/ci.yml`：普通 push / PR 时自动运行 `pnpm test:full`
+原因很直接：
 
-建议做法：
+- Docker Hub 发布以当前机器的本地手工流程为准
+- 本机已经配置了代理、buildx builder、测试链路和 Docker 登录态
+- 推送 `v*` tag 后再让 GitHub 侧重复构建，容易产生失败邮件和额外噪音
 
-- 开发期先用本地手工发布验证流程
-- 稳定后再主要依赖 GitHub Actions 自动化
-- 无论本地还是 CI，镜像命名都必须遵循同一套 tag 规范
+因此：
+
+- `.github/workflows/release.yml` 已移除
+- `.github/workflows/local-build.yml` 已移除
+- 正式发布统一使用本地命令：`pnpm release:images:push`
+
+如果保留 GitHub Actions，定位仅限于普通代码校验；不要再把 Docker Hub 正式发布绑定到 GitHub Actions。
 
 ## 10. 常用命令速查
 
