@@ -18,7 +18,7 @@ import { imgUploadPlugin, uploadImg } from './imgUpload';
 import './index.less';
 import { insertMore } from './insertMore';
 import { cn } from './locales';
-import { useModel } from 'umi';
+import { useModel } from '@umijs/max';
 import { customContainer } from './plugins/customContainer';
 import { historyIcon } from './history';
 import rawHTML from './rawHTML';

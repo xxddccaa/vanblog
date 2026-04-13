@@ -28,7 +28,7 @@ import { DownOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-layout';
 import { Button, Dropdown, Input, Menu, message, Modal, Space, Tag, Upload } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 import moment from 'moment';
 
 export default function () {

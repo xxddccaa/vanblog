@@ -32,6 +32,30 @@ export const mapTheme = (theme) => {
     }
   }
 };
+
+export const applyThemeToDocument = (theme) => {
+  if (typeof document === 'undefined') {
+    return mapTheme(theme);
+  }
+
+  const resolvedTheme = mapTheme(theme);
+  const isDark = resolvedTheme === 'realDark';
+  const documentTheme = isDark ? 'dark' : 'light';
+  const body = document.body;
+
+  document.documentElement.dataset.theme = documentTheme;
+  document.documentElement.style.colorScheme = documentTheme;
+  document.documentElement.classList.toggle('dark', isDark);
+
+  if (body) {
+    body.dataset.theme = documentTheme;
+    body.style.colorScheme = documentTheme;
+    body.classList.toggle('dark', isDark);
+  }
+
+  return resolvedTheme;
+};
+
 export const beforeSwitchTheme = (to) => {
   if (to == 'light') {
     localStorage.theme = 'light';
@@ -40,5 +64,5 @@ export const beforeSwitchTheme = (to) => {
   } else {
     localStorage.theme = 'dark';
   }
-  return mapTheme(to);
+  return applyThemeToDocument(to);
 };

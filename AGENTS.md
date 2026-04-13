@@ -29,6 +29,7 @@ Use `pnpm` at the repo root.
 - `pnpm build:admin`: build the admin static assets served under `/admin/`.
 - `pnpm --filter @vanblog/server test`: run backend unit tests.
 - `pnpm --filter @vanblog/theme-default test -- --run`: run website Vitest tests.
+- `pnpm test:full`: run the full regression suite, including backend tests, website tests, admin type-check, production builds, deployment assertions, and the compose blog-flow e2e.
 - `pnpm test:deploy`: validate deployment config and routing assertions.
 - `pnpm test:blog-flow`: build the split stack and run the full compose smoke flow.
 - `pnpm release:images`: build all split release images with versioned tags locally.
@@ -60,7 +61,7 @@ Treat release and deployment work as documented workflows, not guesswork.
 - For production deployment tasks, read `DEPLOY.md` and use `docker-compose.image.yml` plus `.env.release.example`; do not switch back to the legacy single-image flow.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
 - If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.
-- For release or deployment changes, validate with at least `pnpm test:blog-flow`; if the change is config- or routing-focused, also run `pnpm test:deploy`.
+- For release or deployment changes, prefer validating with `pnpm test:full`; if you only need a narrower config/routing check, at minimum run `pnpm test:blog-flow`, and also run `pnpm test:deploy` for config- or routing-focused changes.
 - Keep production exposure assumptions intact: public entry is through Caddy on `80/443`, `postgres` and `redis` should not gain host ports, and the Caddy admin API `2019` must stay private.
 
 ## Local Proxy & Buildx Notes
@@ -75,6 +76,32 @@ This repo may be released from a machine that uses a local proxy for GitHub and 
 - Do not delete `vanblog-release-proxy-10829` unless the user explicitly asks for cleanup or confirms it is no longer needed.
 - Before creating a new proxied builder, check `docker buildx ls` first and reuse an existing one when possible.
 - The `moby/buildkit` / `buildx_buildkit_*` containers are build infrastructure only; they are not part of the running blog stack and do not serve web traffic.
+
+## Host Debug Workflow
+This machine now has two sanctioned `18080` debug workflows documented in `docs/host-debug.md`.
+
+- Docker image-style acceptance on `18080`:
+  - `docker compose -f tests/manual-v1.3.0/docker-compose.yaml -p vanblog-manual-v130 up -d`
+  - `docker compose -f tests/manual-v1.3.0/docker-compose.yaml -p vanblog-manual-v130 down`
+  - runtime data lives in `tests/manual-v1.3.0/runtime`
+- Optional source-build Docker debug on `18080`:
+  - `VANBLOG_HTTP_PORT=18080 docker compose up -d --build`
+  - `VANBLOG_HTTP_PORT=18080 docker compose down`
+- Fast host-debug on `18080`:
+  - `pnpm host:dev:up`
+  - `pnpm host:dev:down`
+  - `pnpm host:dev:status`
+
+- Host-debug Docker deps live in `tests/host-dev/docker-compose.yaml`
+- Host-debug logs live in `tests/host-dev/runtime/log`
+- Host-debug reuses runtime data from `tests/manual-v1.3.0/runtime/data`
+- Host-debug long-running host processes are kept alive via `tmux` sessions
+- Host-debug exposes a host Caddy proxy on `http://127.0.0.1:18080`
+- This workflow intentionally runs `server` / `website` / `admin` / `waline` on the host while keeping `postgres` / `redis` in Docker, so hot reload stays fast but storage and service topology remain close to the real stack.
+- When the user wants fast local iteration on this machine, prefer host-debug first.
+- In host-debug mode, most edits under `packages/server`, `packages/website`, and `packages/admin` take effect automatically via dev-server reload/recompile; do not restart the whole stack unless needed.
+- If `tests/host-dev/Caddyfile`, `scripts/host-dev-up.sh`, `scripts/host-dev-down.sh`, `scripts/host-dev-env.sh`, ports, proxy rules, or startup env/args changed, restart with `pnpm host:dev:down && pnpm host:dev:up`.
+- When the issue involves `/admin` subpath routing, static assets, Caddy, WebSocket/HMR proxying, health checks, or other container-only behavior, validate again with the Docker `18080` workflow before concluding.
 
 ## Commit & Pull Request Guidelines
 Recent history uses short, change-focused Chinese subjects, for example: `分类与标签页增加分页并优化公开文章查询。` Match that concise style or use an equally clear English summary.

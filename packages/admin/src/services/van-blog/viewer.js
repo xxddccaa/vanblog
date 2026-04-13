@@ -1,4 +1,4 @@
-import { request } from 'umi';
+import request from '@/services/request';
 
 export async function getViewerData() {
   return request('/api/admin/meta/viewer', {

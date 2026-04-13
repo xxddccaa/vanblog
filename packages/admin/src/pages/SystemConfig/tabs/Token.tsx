@@ -1,9 +1,9 @@
 import { createApiToken, getAllApiTokens, deleteApiToken } from '@/services/van-blog/api';
 import { ModalForm, ProFormText, ProTable } from '@ant-design/pro-components';
+import type { ActionType } from '@ant-design/pro-components';
 import { Button, Card, message, Modal, Space, Typography } from 'antd';
 
 import { useRef } from 'react';
-import { history } from 'umi';
 const columns = [
   { dataIndex: '_id', title: 'ID' },
   { dataIndex: 'name', title: '名称' },
@@ -42,7 +42,7 @@ const columns = [
   },
 ];
 export default function () {
-  const actionRef = useRef();
+  const actionRef = useRef<ActionType>();
   return (
     <>
       <Card

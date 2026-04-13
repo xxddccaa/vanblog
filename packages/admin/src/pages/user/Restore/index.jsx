@@ -3,7 +3,7 @@ import { encryptPwd } from '@/services/van-blog/encryptPwd';
 import ProCard from '@ant-design/pro-card';
 import ProForm, { ProFormText } from '@ant-design/pro-form';
 import { Alert, message } from 'antd';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 import { getAdminAssetPath } from '@/utils/getAssetPath';
 export default function () {
   return (

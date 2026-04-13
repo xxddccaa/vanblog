@@ -6,7 +6,7 @@ export default function () {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const timerRef = useRef<any>();
-  const domRef = useRef();
+  const domRef = useRef<HTMLPreElement>(null);
 
   const fetchLog = async () => {
     try {
@@ -23,7 +23,7 @@ export default function () {
       .then(() => {
         setTimeout(() => {
           if (domRef.current) {
-            domRef.current.scrollTop = domRef.current?.scrollHeight;
+            domRef.current.scrollTop = domRef.current.scrollHeight;
           }
         }, 10);
       })
@@ -48,7 +48,7 @@ export default function () {
                 setLoading(false);
                 setTimeout(() => {
                   if (domRef.current) {
-                    domRef.current.scrollTop = domRef.current?.scrollHeight;
+                    domRef.current.scrollTop = domRef.current.scrollHeight;
                   }
                 }, 10);
               });

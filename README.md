@@ -13,11 +13,13 @@
 
 我的博客地址：<https://www.dong-blog.fun/>
 
+当前仓库开发与发布统一以 `Node.js 24.14.1` + `pnpm 10.33.0` 为基线，根目录也提供了 `.nvmrc` 与 `.node-version` 方便宿主机和 CI 对齐。
+
 ## 项目亮点
 
-- 拆分为 `caddy`、`server`、`website`、`admin`、`waline`、`mongo` 六个服务
+- 拆分为 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis` 七个服务
 - 后台通过 `http://<host>/admin` 子路径访问，不需要直连 `:3002`
-- `mongo` 和 Caddy admin API `2019` 默认不暴露到宿主机
+- `postgres`、`redis` 和 Caddy admin API `2019` 默认不暴露到宿主机
 - 增加自动化部署测试，覆盖初始化、登录、草稿、发文、前台浏览等主流程
 - 支持基于服务名 + 版本 + 镜像 id 的多镜像发布机制
 
@@ -32,7 +34,8 @@
 | `website` | 3001 / 3011 | Next.js 前台站点与控制端点 |
 | `admin` | 3002 | Umi 构建后的后台静态页面 |
 | `waline` | 8360 / 8361 | 评论服务与控制端点 |
-| `mongo` | 27017 | 数据库，仅在 compose 内部网络访问 |
+| `postgres` | 5432 | 主业务数据库，仅在 compose 内部网络访问 |
+| `redis` | 6379 | 缓存与队列数据库，仅在 compose 内部网络访问 |
 
 默认访问地址：
 
@@ -55,7 +58,7 @@ docker compose up -d --build
 查看日志：
 
 ```bash
-docker compose logs -f caddy server website admin waline mongo
+docker compose logs -f caddy server website admin waline postgres redis
 ```
 
 首次启动后，请打开：
@@ -94,6 +97,9 @@ docker compose -f docker-compose.image.yml up -d
 当前仓库已经补上拆分部署后的自动化测试：
 
 ```bash
+# 一键完整回归（推荐）
+pnpm test:full
+
 # 前台单测
 pnpm --filter @vanblog/theme-default test -- --run
 
@@ -107,13 +113,15 @@ pnpm test:deploy
 pnpm test:blog-flow
 ```
 
+`pnpm test:full` 会顺序执行后端单测、前台单测、admin TypeScript 检查、前后台生产构建、部署配置检查和 compose 端到端流程，适合作为升级、发版、合并前的标准回归命令。
+
 `pnpm test:blog-flow` 会自动验证这些关键路径：
 
 - `/admin -> /admin/` 的跳转是否正确
 - 后台 CSS、JS、logo 等静态资源是否能通过 `/admin/` 正常加载
 - 初始化博客、后台登录、创建草稿、发布文章
 - 前台首页、分类页、标签页、文章页是否能访问到已发布文章
-- `mongo` 和 Caddy admin `2019` 是否没有被错误暴露
+- `postgres`、`redis` 和 Caddy admin `2019` 是否没有被错误暴露
 
 ## 开发命令
 
@@ -137,9 +145,7 @@ pnpm build:website
 对应命令：
 
 ```bash
-pnpm build:website
-pnpm build:admin
-pnpm test:blog-flow
+pnpm test:full
 ```
 
 ## 发布机制

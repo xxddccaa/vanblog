@@ -14,6 +14,13 @@ export class PostgresStoreService implements OnModuleInit, OnApplicationShutdown
   });
   private readyPromise: Promise<void> | null = null;
 
+  constructor() {
+    // Prevent idle-client disconnects from crashing the whole Nest process.
+    this.pool.on('error', (error) => {
+      this.logger.error(`PostgreSQL 连接意外中断: ${error?.message || error}`);
+    });
+  }
+
   async onModuleInit() {
     await this.ensureReady();
   }

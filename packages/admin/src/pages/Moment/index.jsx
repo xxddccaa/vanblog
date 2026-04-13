@@ -8,7 +8,7 @@ import { batchDeleteMoments } from '@/services/van-blog/batch';
 import { checkDemo } from '@/services/van-blog/check';
 import moment from 'moment';
 import 'moment/locale/zh-cn';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 
 // 配置 moment 中文语言
 moment.locale('zh-cn');

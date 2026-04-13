@@ -1,12 +1,12 @@
 import MonacoEditor from 'react-monaco-editor';
-import { useModel } from 'umi';
+import { useModel } from '@umijs/max';
 
 export interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   language: string;
   width?: number;
-  height?: number;
+  height?: string | number;
   style?: React.CSSProperties;
 }
 

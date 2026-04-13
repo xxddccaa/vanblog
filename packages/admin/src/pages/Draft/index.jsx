@@ -7,7 +7,7 @@ import { useNum } from '@/services/van-blog/useNum';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
 import RcResizeObserver from 'rc-resize-observer';
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 import { getColumns, draftKeysObj, draftKeysObjSmall } from './columes';
 import { Button, Space, message, Tooltip } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';

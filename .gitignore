@@ -157,5 +157,8 @@ sync_to_remote.sh
 # local runtime data
 data/
 tests/.tmp/
+tests/host-dev/runtime/
+tests/manual-v*/runtime/
+.pnpm-store/
 .codex
 .codex-run/

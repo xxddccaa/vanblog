@@ -1,7 +1,7 @@
 // @ts-ignore
 
 /* eslint-disable */
-import { request } from 'umi';
+import request from '@/services/request';
 import { encodeQuerystring } from './encode';
 
 export async function fetchAllMeta(options) {

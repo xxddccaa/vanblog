@@ -1,4 +1,4 @@
-FROM circleci/node:latest-browsers as BUILD_IMAGE
+FROM node:24.14.1 AS BUILD_IMAGE
 ENV NODE_OPTIONS='--max_old_space_size=4096 --openssl-legacy-provider'
 ENV EEE=production
 WORKDIR /app

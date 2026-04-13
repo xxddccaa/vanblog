@@ -4,8 +4,6 @@ import { useTab } from '@/services/van-blog/useTab';
 import { ProForm } from '@ant-design/pro-components';
 import { Card, message, Modal } from 'antd';
 export default function () {
-  const [tab, setTab] = useTab('basic', 'siteInfoTab');
-  const [form] = ProForm.useForm();
   const tabList = [
     {
       key: 'basic',
@@ -20,6 +18,9 @@ export default function () {
       tab: '布局设置',
     },
   ];
+  const tabKeys = tabList.map((item) => item.key);
+  const [tab, setTab] = useTab('basic', 'siteInfoTab', tabKeys);
+  const [form] = ProForm.useForm();
 
   return (
     <Card tabList={tabList} onTabChange={setTab} activeTabKey={tab}>

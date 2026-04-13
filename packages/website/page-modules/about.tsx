@@ -1,6 +1,5 @@
 import React from "react";
 import dayjs from "dayjs";
-import { useMemo } from "react";
 import { DonateItem } from "../api/getAllData";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
@@ -39,13 +38,10 @@ const getDonateTableMarkdown = (donates: DonateItem[]) => {
   return content;
 };
 const AboutPage = (props: AboutPageProps) => {
-  const content = useMemo(() => {
-    if (props.donates.length == 0 || props.showDonateInfo == "false") {
-      return props.about.content;
-    } else {
-      return `${props.about.content}${getDonateTableMarkdown(props.donates)}`;
-    }
-  }, [props]);
+  const content =
+    props.donates.length == 0 || props.showDonateInfo == "false"
+      ? props.about.content
+      : `${props.about.content}${getDonateTableMarkdown(props.donates)}`;
 
   return (
     <Layout
@@ -54,7 +50,6 @@ const AboutPage = (props: AboutPageProps) => {
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
       <PostCard
-        setContent={() => {}}
         showExpirationReminder={
           props.layoutProps.showExpirationReminder == "true"
         }

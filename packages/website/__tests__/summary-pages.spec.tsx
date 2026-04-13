@@ -53,7 +53,7 @@ describe("summary page cache shells", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const page = await import("../pages/category");
+    const page = await import("../page-modules/category");
     const result = await page.getStaticProps();
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -73,7 +73,7 @@ describe("summary page cache shells", () => {
   });
 
   it("renders the category page as a stable summary shell", async () => {
-    const page = await import("../pages/category");
+    const page = await import("../page-modules/category");
     const html = renderToStaticMarkup(
       React.createElement(page.default as any, {
         layoutProps: {
@@ -99,7 +99,7 @@ describe("summary page cache shells", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const page = await import("../pages/timeline");
+    const page = await import("../page-modules/timeline");
     const result = await page.getStaticProps();
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe("summary page cache shells", () => {
   });
 
   it("renders the timeline page as a stable summary shell", async () => {
-    const page = await import("../pages/timeline");
+    const page = await import("../page-modules/timeline");
     const html = renderToStaticMarkup(
       React.createElement(page.default as any, {
         layoutProps: {

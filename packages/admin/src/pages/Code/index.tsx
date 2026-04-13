@@ -14,7 +14,7 @@ import { DownOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-layout';
 import { Button, Dropdown, Menu, message, Modal, Space, Spin, Tag, Tree } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 import PipelineModal from '../Pipeline/components/PipelineModal';
 import RunCodeModal from '../Pipeline/components/RunCodeModal';
 import './index.less';
@@ -23,16 +23,16 @@ const { DirectoryTree } = Tree;
 export default function () {
   const [value, setValue] = useState('');
   const [currObj, setCurrObj] = useState<any>({});
-  const [node, setNode] = useState();
-  const [selectedKeys, setSelectedKeys] = useState([]);
+  const [node, setNode] = useState<{ title?: string; key?: string; type?: string } | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
   const [pipelineConfig, setPipelineConfig] = useState<any[]>([]);
   const [pathPrefix, setPathPrefix] = useState('');
-  const [treeData, setTreeData] = useState([{ title: 'door', key: '123' }]);
+  const [treeData, setTreeData] = useState<any[]>([{ title: 'door', key: '123' }]);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [editorLoading, setEditorLoading] = useState(false);
   const [treeLoading, setTreeLoading] = useState(true);
   const [editorWidth, setEditorWidth] = useState(400);
-  const [editorHeight, setEditorHeight] = useState('calc(100vh - 82px)');
+  const [editorHeight, setEditorHeight] = useState<string | number>('calc(100vh - 82px)');
   const type = history.location.query?.type;
   const path = history.location.query?.path;
   const id = history.location.query?.id;
@@ -204,8 +204,12 @@ export default function () {
       setEditorLoading(false);
       message.success('当前编辑器内脚本保存成功！');
     } else {
+      if (!node?.key) {
+        message.error('未选择要保存的文件！');
+        return;
+      }
       setEditorLoading(true);
-      await updateCustomPageFileInFolder(path, node?.key, value);
+      await updateCustomPageFileInFolder(path, node.key, value);
       setEditorLoading(false);
       message.success('当前编辑器内文件保存成功！');
       return;

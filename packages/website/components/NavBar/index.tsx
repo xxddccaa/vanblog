@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Headroom from "headroom.js";
 import { useContext, useEffect, useMemo, useState } from "react";
@@ -10,7 +12,7 @@ import { ThemeContext } from "../../utils/themeContext";
 import RssButton from "../RssButton";
 import Item from "./item";
 import { encodeQuerystring } from "../../utils/encode";
-import { useRouter } from "next/router";
+import { usePathname } from "next/navigation";
 
 export default function (props: {
   logo: string;
@@ -32,12 +34,12 @@ export default function (props: {
   const [showSearch, setShowSearch] = useState(false);
   const [headroom, setHeadroom] = useState<Headroom>();
   const { theme } = useContext(ThemeContext);
-  const router = useRouter();
+  const pathname = usePathname();
 
   // Check if we're on the nav page
   const isNavPage = useMemo(() => {
-    return router.pathname === '/nav';
-  }, [router.pathname]);
+    return pathname === "/nav";
+  }, [pathname]);
 
   // If we're on the nav page and 'nav' is not in the menus, add it temporarily
   const displayMenus = useMemo(() => {

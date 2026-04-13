@@ -9,7 +9,8 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 const CodeEditor = lazy(() => import('@/components/CodeEditor'));
 
 export default function () {
-  const [tab, setTab] = useTab('animations', 'customTab');
+  const tabKeys = ['mdTheme', 'animations', 'css', 'script', 'html', 'head'];
+  const [tab, setTab] = useTab('animations', 'customTab', tabKeys);
   const [loading, setLoading] = useState(true);
   const [values, setValues] = useState({
     css: '',

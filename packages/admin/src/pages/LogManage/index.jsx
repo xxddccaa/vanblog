@@ -10,7 +10,8 @@ export default function () {
     pipeline: <Pipeline />,
     system: <System />,
   };
-  const [tab, setTab] = useTab('system', 'tab');
+  const tabKeys = Object.keys(tabMap);
+  const [tab, setTab] = useTab('system', 'tab', tabKeys);
 
   return (
     <PageContainer

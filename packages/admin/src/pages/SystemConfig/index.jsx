@@ -29,7 +29,8 @@ const tabComponentMap = {
 };
 
 export default function () {
-  const [tab, setTab] = useTab('siteInfo', 'tab');
+  const tabKeys = Object.keys(tabComponentMap);
+  const [tab, setTab] = useTab('siteInfo', 'tab', tabKeys);
   const ActiveTab = tabComponentMap[tab] || SiteInfo;
 
   return (

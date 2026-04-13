@@ -6,7 +6,7 @@ import { deleteDraft, getAllCategories, getDraftById, getTags } from '@/services
 import { parseObjToMarkdown } from '@/services/van-blog/parseMarkdownFile';
 import { message, Modal, Tag } from 'antd';
 import { SwapOutlined } from '@ant-design/icons';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 
 export const getColumns = (handleConvertToDocument) => [
   {

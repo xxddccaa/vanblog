@@ -12,7 +12,7 @@ A machine-readable starter config is also available at [docs/cloudflare-cache-ru
 - `packages/server/src/provider/public-cache/public-cache.middleware.ts` emits cache headers, strong `ETag`, `Last-Modified`, anonymous-read cacheability, and `no-store` bypass for auth/write/search/admin-nav responses.
 - `packages/server/src/provider/public-cache/public-cache.middleware.ts` keeps public cacheable responses free of `Vary: Cookie` and `Vary: User-Agent`, and falls back to `no-store` if a public response tries to emit `Set-Cookie`.
 - `packages/server/src/main.ts` and `packages/server/src/utils/staticCacheHeaders.ts` serve `search-index.json`, RSS feeds, and sitemap files as static artifacts with cache headers and cache tags.
-- `packages/website/middleware.ts` strips tracking params from anonymous cacheable public HTML requests before page rendering, while bypassing auth-like headers and authenticated cookies.
+- `packages/website/proxy.ts` strips tracking params from anonymous cacheable public HTML requests before page rendering, while bypassing auth-like headers and authenticated cookies.
 - Public article reads are split into shell and fragments: `/api/public/article/:id`, `/api/public/article/:id/nav`, `/api/public/article/:id/engagement`, `/api/public/article/:id/fragments`, plus `/api/public/site-stats`.
 - Frontend overview pages avoid engagement/comment/viewer fragment reads during SSR, and article detail pages load those fragments asynchronously.
 - Browser-side pageview writes are split away from route rendering: `packages/website/pages/_app.tsx` delegates to `packages/website/utils/pageviewLifecycle.ts`, which records pageviews through `navigator.sendBeacon()` when available and falls back to `fetch(..., { keepalive: true })`.
@@ -131,7 +131,7 @@ Action:
 - If a Worker fallback is used, bypass cache normalization entirely when auth-like cookies such as `token`, `session`, `sessionid`, `connect.sid`, or `next-auth.session-token` are present.
 - If the current Cloudflare plan cannot normalize keys directly, use a Worker or redirect-based URL normalization before cache lookup.
 
-This repo now also includes a Next.js redirect fallback at [packages/website/middleware.ts](/root/vanblog/vanblog_git/vanblog/packages/website/middleware.ts), which strips tracking params from anonymous cacheable public HTML URLs before the request reaches the page renderer, and skips normalization entirely when auth-like headers or authenticated cookies are present.
+This repo now also includes a Next.js redirect fallback at [packages/website/proxy.ts](/root/vanblog/vanblog_git/vanblog/packages/website/proxy.ts), which strips tracking params from anonymous cacheable public HTML URLs before the request reaches the page renderer, and skips normalization entirely when auth-like headers or authenticated cookies are present.
 
 ### Worker Fallback
 

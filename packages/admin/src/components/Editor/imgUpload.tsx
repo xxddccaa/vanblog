@@ -60,11 +60,11 @@ export function imgUploadPlugin(setLoading: (loading: boolean) => void): BytemdP
                     }
                   });
                 } else {
-                  message.warn('剪切板没的图片！');
+                  message.warning('剪切板没的图片！');
                 }
               })
               .catch(() => {
-                message.warn('剪切板图片上传失败！');
+                message.warning('剪切板图片上传失败！');
               })
               .finally(() => {
                 setLoading(false);

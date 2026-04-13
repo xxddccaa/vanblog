@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { ProTable, ProForm, ProFormSwitch, ProFormDigit, ProFormSelect } from '@ant-design/pro-components';
 import { Button, message, Modal, Upload, Card, Row, Col, Space, Switch, Slider, Divider } from 'antd';
 import { UploadOutlined, PlayCircleOutlined, PauseCircleOutlined, DeleteOutlined, SoundOutlined } from '@ant-design/icons';
-import { request } from 'umi';
+import request from '@/services/request';
 
 export default function Music() {
   const [musicList, setMusicList] = useState([]);

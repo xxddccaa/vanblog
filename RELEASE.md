@@ -17,7 +17,7 @@
 推荐的正式发布流程：
 
 1. 在 `master` 上整理代码并提交。
-2. 运行完整测试，至少通过 `pnpm test:blog-flow`。
+2. 运行完整测试，优先通过 `pnpm test:full`。
 3. 确认根目录 `package.json` 的版本号正确，例如 `1.0.0`。
 4. 使用 `scripts/release-images.sh` 构建并推送 5 个镜像。
 5. 记录本次版本号和镜像 id（默认用 Git 短 SHA）。
@@ -93,7 +93,7 @@ kevinchina/deeplearning:vanblog-waline-v1.0.0-<image-id>
 
 ```bash
 pnpm install
-pnpm test:blog-flow
+pnpm test:full
 ```
 
 还需要确认下面几项：
@@ -174,7 +174,7 @@ bash scripts/release-images.sh --help
 - `--repo <repo>`：修改镜像仓库名
 - `--platforms <list>`：用于 `buildx` 推送多架构镜像
 - `--push`：构建后直接推送
-- `--skip-tests`：跳过 `pnpm test:blog-flow`
+- `--skip-tests`：跳过发布脚本内置的 `pnpm test:blog-flow`
 - `--skip-builds`：跳过补充构建步骤，通常只在你明确已有最新产物时使用
 
 ### 5.4 推荐的人工发版顺序
@@ -184,7 +184,7 @@ bash scripts/release-images.sh --help
 git status
 
 # 2) 跑完整测试
-pnpm test:blog-flow
+pnpm test:full
 
 # 3) 看一下版本号
 node -p "require('./package.json').version"
@@ -292,7 +292,7 @@ docker compose -f docker-compose.image.yml up -d
 10. 发版前优先跑：
 
 ```bash
-pnpm test:blog-flow
+pnpm test:full
 ```
 
 ## 9. GitHub Actions 建议
@@ -301,6 +301,7 @@ pnpm test:blog-flow
 
 - `.github/workflows/release.yml`：推送 `v*` tag 时自动构建并发布多镜像
 - `.github/workflows/local-build.yml`：手动触发构建/推送
+- `.github/workflows/ci.yml`：普通 push / PR 时自动运行 `pnpm test:full`
 
 建议做法：
 

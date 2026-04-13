@@ -1,6 +1,6 @@
 import { Article } from "../types/article";
 import { encodeQuerystring } from "../utils/encode";
-import { config } from "../utils/loadConfig";
+import { config, getServerFetchOptions } from "../utils/loadConfig";
 export type SortOrder = "asc" | "desc";
 export interface GetArticleOption {
   page: number;
@@ -123,7 +123,7 @@ export const getArticlesByOption = async (
   const queryString = buildArticleQueryString(option);
   try {
     const url = `${config.baseUrl}api/public/article?${queryString}`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { statusCode, data } = await res.json();
     if (statusCode == 233) {
       return { articles: [], total: 0, totalWordCount: 0 };
@@ -147,7 +147,7 @@ export const getArticlesByOption = async (
 export const getArticlesByTimeLine = async () => {
   try {
     const url = `${config.baseUrl}api/public/timeline`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return data;
   } catch (err) {
@@ -162,7 +162,7 @@ export const getArticlesByTimeLine = async () => {
 export const getTimelineSummary = async (): Promise<TimelineSummaryItem[]> => {
   try {
     const url = `${config.baseUrl}api/public/timeline/summary`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return data || [];
   } catch (err) {
@@ -177,7 +177,7 @@ export const getTimelineSummary = async (): Promise<TimelineSummaryItem[]> => {
 export const getTimelineArticlesByYear = async (year: string): Promise<Article[]> => {
   try {
     const url = `${config.baseUrl}api/public/timeline/${encodeQuerystring(year)}/articles`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return toArticleShellList(data || []);
   } catch (err) {
@@ -192,7 +192,7 @@ export const getTimelineArticlesByYear = async (year: string): Promise<Article[]
 export const getArticlesByCategory = async () => {
   try {
     const url = `${config.baseUrl}api/public/category`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return data;
   } catch (err) {
@@ -207,7 +207,7 @@ export const getArticlesByCategory = async () => {
 export const getCategorySummary = async (): Promise<CategorySummaryItem[]> => {
   try {
     const url = `${config.baseUrl}api/public/category/summary`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return data || [];
   } catch (err) {
@@ -222,7 +222,7 @@ export const getCategorySummary = async (): Promise<CategorySummaryItem[]> => {
 
 const getArchiveSummaryByUrl = async (url: string): Promise<ArchiveSummaryData> => {
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return {
       totalArticles: Number(data?.totalArticles || 0),
@@ -260,7 +260,7 @@ export const getTagArchiveSummary = async (
 
 const getArchiveMonthArticlesByUrl = async (url: string): Promise<Article[]> => {
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return toArticleShellList(data || []);
   } catch (err) {
@@ -303,7 +303,7 @@ export const getCategoryArticles = async (
 ): Promise<Article[]> => {
   try {
     const url = `${config.baseUrl}api/public/category/${encodeQuerystring(category)}/articles`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return toArticleShellList(data || []);
   } catch (err) {
@@ -318,7 +318,7 @@ export const getCategoryArticles = async (
 export const getArticlesByTag = async (tagName: string) => {
   try {
     const url = `${config.baseUrl}api/public/tags/all`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return data;
   } catch (err) {
@@ -333,7 +333,7 @@ export const getArticlesByTag = async (tagName: string) => {
 export const getArticleByIdOrPathname = async (id: string) => {
   try {
     const url = `${config.baseUrl}api/public/article/${id}`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return { article: toArticleShell(data.article) };
   } catch (err) {
@@ -351,7 +351,7 @@ export const getArticleNavByIdOrPathname = async (
 ): Promise<{ pre?: ArticleNavItem; next?: ArticleNavItem }> => {
   try {
     const url = `${config.baseUrl}api/public/article/${id}/nav`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     const result: { pre?: ArticleNavItem; next?: ArticleNavItem } = {};
     if (data?.pre) {
@@ -384,7 +384,7 @@ export const getArticleEngagementByIdOrPathname = async (
 ): Promise<ArticleEngagement> => {
   try {
     const url = `/api/public/article/${id}/engagement`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return {
       viewer: Number(data?.viewer || 0),
@@ -409,7 +409,7 @@ export const getArticleFragmentsByIdOrPathname = async (
 ): Promise<ArticleFragments> => {
   try {
     const url = `/api/public/article/${id}/fragments?limit=${limit}`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { data } = await res.json();
     return {
       commentCount: Number(data?.commentCount || 0),

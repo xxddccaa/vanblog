@@ -2,9 +2,9 @@ import NumSelect from '@/components/NumSelect';
 import TipTitle from '@/components/TipTitle';
 import { getWelcomeData } from '@/services/van-blog/api';
 import { useNum } from '@/services/van-blog/useNum';
-import { Area, Line, Column, Gauge } from '@ant-design/plots';
+import { Area, Line } from '@ant-design/plots';
 import { ProCard, StatisticCard } from '@ant-design/pro-components';
-import { Spin, Progress, Tooltip, Row, Col } from 'antd';
+import { Spin, Progress, Tooltip, Row, Col, Empty } from 'antd';
 import { 
   FileTextOutlined, 
   EyeOutlined, 
@@ -121,57 +121,34 @@ const OverView = () => {
     },
   };
 
-  const productivityGaugeConfig = {
-    percent: interestingMetrics?.productivityScore / 100 || 0,
-    height: 200,
-    color: ['#30BF78', '#FAAD14', '#F4664A'],
-    innerRadius: 0.75,
-    statistic: {
-      title: {
-        formatter: () => '创作指数',
-        style: {
-          fontSize: '14px',
-          color: '#5a6c7d',
-        },
-        offsetY: 10,
-      },
-      content: {
-        style: {
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: '#2c3e50',
-        },
-        formatter: () => `${interestingMetrics?.productivityScore || 0}分`,
-        offsetY: -5,
-      },
-    },
-  };
+  const hasVisitorTrendData = eachData.length >= 2;
+  const hasTotalTrendData = totalData.length >= 2;
+  const hasEnoughOverviewMetrics = Boolean(data);
 
-  const engagementGaugeConfig = {
-    percent: interestingMetrics?.engagementScore / 100 || 0,
-    height: 200,
-    color: ['#30BF78', '#FAAD14', '#F4664A'],
-    innerRadius: 0.75,
-    statistic: {
-      title: {
-        formatter: () => '受欢迎指数',
-        style: {
-          fontSize: '14px',
-          color: '#5a6c7d',
-        },
-        offsetY: 10,
-      },
-      content: {
-        style: {
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: '#2c3e50',
-        },
-        formatter: () => `${interestingMetrics?.engagementScore || 0}分`,
-        offsetY: -5,
-      },
-    },
-  };
+  const renderEmptyChart = (description) => (
+    <div
+      style={{
+        minHeight: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={description} />
+    </div>
+  );
+
+  const renderDashboardProgress = (score, strokeColor) => (
+    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+      <Progress
+        type="dashboard"
+        percent={Math.max(0, Math.min(100, score || 0))}
+        strokeColor={strokeColor}
+        trailColor="#f5f5f5"
+        format={() => `${score || 0}分`}
+      />
+    </div>
+  );
 
   return (
     <div className={style['modern-welcome']}>
@@ -245,7 +222,11 @@ const OverView = () => {
                   </div>
                   <NumSelect d="天" value={num} setValue={setNum} />
                 </div>
-                <Area {...eachConfig} />
+                {hasVisitorTrendData ? (
+                  <Area {...eachConfig} />
+                ) : (
+                  renderEmptyChart('访客趋势数据不足，至少需要 2 天数据')
+                )}
               </div>
             </Col>
             <Col xs={24} lg={12}>
@@ -257,7 +238,11 @@ const OverView = () => {
                   </div>
                   <NumSelect d="天" value={num} setValue={setNum} />
                 </div>
-                <Line {...lineConfig} />
+                {hasTotalTrendData ? (
+                  <Line {...lineConfig} />
+                ) : (
+                  renderEmptyChart('访问趋势数据不足，至少需要 2 天数据')
+                )}
               </div>
             </Col>
           </Row>
@@ -272,7 +257,9 @@ const OverView = () => {
                     创作力评估
                   </div>
                 </div>
-                <Gauge {...productivityGaugeConfig} />
+                {hasEnoughOverviewMetrics
+                  ? renderDashboardProgress(interestingMetrics?.productivityScore || 0, '#30BF78')
+                  : renderEmptyChart('等待概览数据加载')}
                 <div style={{ textAlign: 'center', marginTop: 16, color: '#7f8c8d', fontSize: 12 }}>
                   基于文章数量和字数综合评估
                 </div>
@@ -286,7 +273,9 @@ const OverView = () => {
                     受欢迎程度
                   </div>
                 </div>
-                <Gauge {...engagementGaugeConfig} />
+                {hasEnoughOverviewMetrics
+                  ? renderDashboardProgress(interestingMetrics?.engagementScore || 0, '#f093fb')
+                  : renderEmptyChart('等待概览数据加载')}
                 <div style={{ textAlign: 'center', marginTop: 16, color: '#7f8c8d', fontSize: 12 }}>
                   基于访问量和访客数综合评估
                 </div>
@@ -356,23 +345,25 @@ const OverView = () => {
                   </div>
                   <NumSelect d="天" value={num} setValue={setNum} />
                 </div>
-                <Area 
-                  {...totalData.length > 0 ? {
-                    data: totalData,
-                    xField: 'date',
-                    yField: '访客数',
-                    height: 200,
-                    smooth: true,
-                    color: '#43e97b',
-                    point: { size: 4, color: '#43e97b' },
-                    area: {
+                {hasTotalTrendData ? (
+                  <Area
+                    data={totalData}
+                    xField="date"
+                    yField="访客数"
+                    height={200}
+                    smooth
+                    color="#43e97b"
+                    point={{ size: 4, color: '#43e97b' }}
+                    area={{
                       style: {
                         fill: 'l(270) 0:#ffffff 0.5:#43e97b 1:#38f9d7',
                         fillOpacity: 0.3,
                       },
-                    },
-                  } : { data: [], height: 200 }}
-                />
+                    }}
+                  />
+                ) : (
+                  renderEmptyChart('累计访客趋势数据不足，至少需要 2 天数据')
+                )}
               </div>
             </Col>
             <Col xs={24} lg={12}>
@@ -384,7 +375,11 @@ const OverView = () => {
                   </div>
                   <NumSelect d="天" value={num} setValue={setNum} />
                 </div>
-                <Line {...lineConfig} />
+                {hasTotalTrendData ? (
+                  <Line {...lineConfig} />
+                ) : (
+                  renderEmptyChart('累计访问趋势数据不足，至少需要 2 天数据')
+                )}
               </div>
             </Col>
           </Row>

@@ -1,4 +1,4 @@
-import { request } from 'umi';
+import request from '@/services/request';
 
 // 获取AI打标配置
 export async function getAITaggingConfig() {

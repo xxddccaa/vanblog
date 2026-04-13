@@ -3,7 +3,7 @@ import { fetchInit } from '@/services/van-blog/api';
 import ProCard from '@ant-design/pro-card';
 import { ProFormInstance } from '@ant-design/pro-form';
 import { Alert, Modal } from 'antd';
-import { useHistory } from 'umi';
+import { history } from '@umijs/max';
 //@ts-ignore
 import styles from './index.less';
 
@@ -14,7 +14,6 @@ import { encryptPwd } from '@/services/van-blog/encryptPwd';
 import { useRef } from 'react';
 
 const InitPage = () => {
-  const history = useHistory();
   const formMapRef = useRef<React.MutableRefObject<ProFormInstance<any> | undefined>[]>([]);
   const formRef1 = useRef<ProFormInstance>();
   const formRef2 = useRef<ProFormInstance>();

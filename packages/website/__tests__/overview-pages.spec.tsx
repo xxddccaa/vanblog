@@ -139,7 +139,7 @@ describe("overview and archive page cache shells", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const page = await import("../pages/index");
+    const page = await import("../page-modules/index");
     const result = await page.getStaticProps();
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -154,7 +154,7 @@ describe("overview and archive page cache shells", () => {
   });
 
   it("renders the home page as a stable shell with archive entry CTA", async () => {
-    const page = await import("../pages/index");
+    const page = await import("../page-modules/index");
     const html = renderToStaticMarkup(
       React.createElement(page.default as any, {
         layoutProps: {
@@ -197,7 +197,7 @@ describe("overview and archive page cache shells", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const page = await import("../pages/archive");
+    const page = await import("../page-modules/archive");
     const result = await page.getStaticProps();
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -210,8 +210,8 @@ describe("overview and archive page cache shells", () => {
   });
 
   it("renders archive summary and month routes as stable cache shells", async () => {
-    const archivePage = await import("../pages/archive");
-    const archiveMonthPage = await import("../pages/archive/[year]/[month]");
+    const archivePage = await import("../page-modules/archive");
+    const archiveMonthPage = await import("../page-modules/archive/[year]/[month]");
 
     const archiveHtml = renderToStaticMarkup(
       React.createElement(archivePage.default as any, {

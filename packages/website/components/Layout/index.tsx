@@ -1,4 +1,7 @@
+"use client";
+
 import React from "react";
+import dynamic from "next/dynamic";
 import Head from "next/head";
 import BackToTopBtn from "../BackToTop";
 import NavBar from "../NavBar";
@@ -13,9 +16,12 @@ import { getTheme } from "../../utils/theme";
 import CustomLayout from "../CustomLayout";
 import { Toaster } from "react-hot-toast";
 import Footer from "../Footer";
-import NavBarMobile from "../NavBarMobile";
 import LayoutBody from "../LayoutBody";
 import { checkLoginAsync } from "../../utils/auth";
+
+const NavBarMobile = dynamic(() => import("../NavBarMobile"), {
+  ssr: false,
+});
 export default function (props: {
   option: LayoutProps;
   title: string;

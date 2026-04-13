@@ -18,8 +18,47 @@ import { CaddyProvider } from './provider/caddy/caddy.provider';
 import { initJwt } from './utils/initJwt';
 import { SearchIndexProvider } from './provider/search-index/search-index.provider';
 import { setStaticCacheHeaders } from './utils/staticCacheHeaders';
+import fs from 'fs';
+
+const STDIO_TEE_FLAG = Symbol.for('vanblog.stdio-tee-enabled');
+
+function enableStdioLogMirror(logPath: string) {
+  const runtime = globalThis as typeof globalThis & {
+    [STDIO_TEE_FLAG]?: boolean;
+  };
+
+  if (runtime[STDIO_TEE_FLAG]) {
+    return;
+  }
+
+  checkOrCreate(path.dirname(logPath));
+  const stream = fs.createWriteStream(logPath, { flags: 'a' });
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+  const mirrorWrite =
+    (write: typeof process.stdout.write) =>
+    (
+      chunk: Uint8Array | string,
+      encoding?: BufferEncoding | ((error?: Error | null) => void),
+      callback?: (error?: Error | null) => void,
+    ) => {
+      const nextEncoding = typeof encoding === 'string' ? encoding : undefined;
+      const nextCallback = typeof encoding === 'function' ? encoding : callback;
+      stream.write(chunk, nextEncoding);
+      return write(chunk, nextEncoding, nextCallback);
+    };
+
+  process.stdout.write = mirrorWrite(originalStdoutWrite);
+  process.stderr.write = mirrorWrite(originalStderrWrite);
+  process.on('exit', () => {
+    stream.end();
+  });
+  runtime[STDIO_TEE_FLAG] = true;
+}
 
 async function bootstrap() {
+  enableStdioLogMirror(path.join(globalConfig.log, 'vanblog-stdio.log'));
   const jwtSecret = await initJwt();
   global.jwtSecret = jwtSecret;
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

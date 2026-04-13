@@ -1,10 +1,10 @@
 import Footer from '@/components/Footer';
-import { login, getPublicSiteInfo } from '@/services/van-blog/api';
+import { login, getPublicSiteInfo, fetchAllMeta } from '@/services/van-blog/api';
 import { encryptPwd } from '@/services/van-blog/encryptPwd';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-form';
 import { message } from 'antd';
-import { history, useModel } from 'umi';
+import { history, useModel } from '@umijs/max';
 import { useState, useEffect } from 'react';
 import { getAdminAssetPath } from '@/utils/getAssetPath';
 import styles from './index.less';
@@ -13,6 +13,21 @@ const Login = () => {
   const type = 'account';
   const { initialState, setInitialState } = useModel('@@initialState');
   const [siteInfo, setSiteInfo] = useState(null);
+
+  const redirectToAdmin = (redirect) => {
+    if (!redirect) {
+      window.location.assign('/admin/');
+      return;
+    }
+    if (/^https?:\/\//i.test(redirect)) {
+      window.location.assign(redirect);
+      return;
+    }
+    const normalizedPath = redirect.startsWith('/admin')
+      ? redirect
+      : `/admin${redirect.startsWith('/') ? redirect : `/${redirect}`}`;
+    window.location.assign(normalizedPath);
+  };
 
   // 获取站点信息
   useEffect(() => {
@@ -29,39 +44,46 @@ const Login = () => {
 
   const handleSubmit = async (values) => {
     try {
-      // 登录
       const msg = await login({ ...values, type });
-
-      if (msg.statusCode === 200) {
-        const defaultLoginSuccessMessage = '登录成功！';
-        message.success(defaultLoginSuccessMessage);
-        const token = msg.data.token;
-        const user = {
-          name: msg.data.user.name,
-          id: msg.data.user.id,
-        };
-        window.localStorage.setItem('token', token);
-        await setInitialState((s) => ({
-          ...s,
-          token: token,
-          user: user,
-        }));
-        // 获取一下 init 的数据。
-        const meta = await initialState?.fetchInitData();
-        await setInitialState((s) => ({
-          ...s,
-          token: token,
-          user: user,
-          ...meta,
-        }));
-        /** 此方法会跳转到 redirect 参数所在的位置 */
-        if (!history) return;
-        const { query } = history.location;
-        const { redirect } = query;
-        history.push(redirect || '/');
+      if (msg?.statusCode !== 200 || !msg?.data?.token) {
+        message.error(msg?.message || '登录失败，请检查用户名和密码');
         return;
       }
-    } catch (error) {}
+
+      message.success('登录成功！');
+      const token = msg.data.token;
+      const user = {
+        name: msg.data.user.name,
+        id: msg.data.user.id,
+      };
+
+      window.localStorage.setItem('token', token);
+
+      let meta = {};
+      try {
+        const metaResponse = await fetchAllMeta({ skipErrorHandler: true });
+        if (metaResponse?.statusCode === 200 || metaResponse?.statusCode === 233) {
+          meta = metaResponse?.data || {};
+        }
+      } catch (metaError) {
+        console.error('登录后获取后台初始化数据失败:', metaError);
+      }
+
+      await setInitialState((s) => ({
+        ...s,
+        token,
+        user,
+        ...meta,
+      }));
+
+      const redirect =
+        history?.location?.query?.redirect ||
+        new URLSearchParams(window.location.search).get('redirect');
+      redirectToAdmin(redirect || '/');
+    } catch (error) {
+      console.error('登录请求失败:', error);
+      message.error(error?.message || '登录失败，请稍后重试');
+    }
   };
 
   // 渲染备案信息footer

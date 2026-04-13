@@ -1,28 +1,30 @@
 import Footer from '@/components/Footer';
+import LogoutButton from '@/components/LogoutButton';
+import ThemeButton from '@/components/ThemeButton';
+import { getStoredUser } from '@/utils/getStoredUser';
+import { getAdminAssetPath } from '@/utils/getAssetPath';
 import { 
   HomeOutlined, 
-  LogoutOutlined, 
+  LogoutOutlined,
   ProjectOutlined,
   SmileOutlined,
   FormOutlined,
   MessageOutlined,
   CompassOutlined,
   ContainerOutlined,
+  ApartmentOutlined,
   PictureOutlined,
   ToolOutlined,
   FolderOutlined,
 } from '@ant-design/icons';
-import { PageLoading, SettingDrawer } from '@ant-design/pro-layout';
 import { message, Modal, notification } from 'antd';
 import moment from 'moment';
-import { history, Link } from 'umi';
+import { history, Link } from '@umijs/max';
+import { useEffect } from 'react';
 import defaultSettings from '../config/defaultSettings';
-import LogoutButton from './components/LogoutButton';
-import ThemeButton from './components/ThemeButton';
 import { fetchAllMeta, getAdminLayoutConfig } from './services/van-blog/api';
 import { checkUrl } from './services/van-blog/checkUrl';
-import { beforeSwitchTheme, getInitTheme, mapTheme } from './services/van-blog/theme';
-const isDev = process.env.UMI_ENV === 'dev';
+import { applyThemeToDocument, getInitTheme } from './services/van-blog/theme';
 const loginPath = '/user/login';
 
 // 图标映射
@@ -32,14 +34,256 @@ const iconMapping = {
   message: <MessageOutlined />,
   compass: <CompassOutlined />,
   container: <ContainerOutlined />,
+  apartment: <ApartmentOutlined />,
   picture: <PictureOutlined />,
   tool: <ToolOutlined />,
   folder: <FolderOutlined />,
 };
 /** 获取用户信息比较慢的时候会展示一个 loading */
 
-export const initialStateConfig = {
-  loading: <PageLoading />,
+const ThemeSync = ({ theme, navTheme }) => {
+  useEffect(() => {
+    const nextTheme = theme || getInitTheme() || (navTheme === 'realDark' ? 'dark' : 'light');
+
+    // ProLayout may briefly stamp light-theme markers during mount, so re-apply
+    // the stored theme once the layout and async children have settled.
+    const syncTheme = () => applyThemeToDocument(nextTheme);
+    syncTheme();
+
+    let frameId = null;
+    let timeoutId = null;
+
+    if (typeof window !== 'undefined') {
+      frameId = window.requestAnimationFrame(syncTheme);
+      timeoutId = window.setTimeout(syncTheme, 240);
+    }
+
+    return () => {
+      if (frameId !== null && typeof window !== 'undefined') {
+        window.cancelAnimationFrame(frameId);
+      }
+      if (timeoutId !== null && typeof window !== 'undefined') {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [theme, navTheme]);
+
+  return null;
+};
+
+const WALINE_PREWARM_KEY = 'vanblog.admin.waline-prewarmed';
+const WALINE_PREWARM_RETRY_KEY = 'vanblog.admin.waline-prewarm-retry';
+
+const footerActionButtonStyle = (collapsed) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: collapsed ? 'center' : 'flex-start',
+  width: '100%',
+  minHeight: 38,
+  padding: collapsed ? '8px 0' : '8px 10px',
+  border: 0,
+  borderRadius: 10,
+  background: 'transparent',
+  color: 'inherit',
+  cursor: 'pointer',
+});
+
+const getResolvedThemeMode = (initialState) =>
+  initialState?.settings?.navTheme === 'realDark' ? 'dark' : 'light';
+
+const getLayoutToken = (themeMode) => {
+  if (themeMode === 'dark') {
+    return {
+      layout: {
+        sider: {
+          colorMenuBackground: '#0f172a',
+          colorBgCollapsedButton: '#0f172a',
+          colorTextCollapsedButton: '#e5e7eb',
+          colorTextCollapsedButtonHover: '#f8fafc',
+          colorMenuItemDivider: 'rgba(148, 163, 184, 0.18)',
+          colorTextMenu: '#cbd5e1',
+          colorTextMenuSecondary: '#94a3b8',
+          colorTextMenuTitle: '#f8fafc',
+          colorTextMenuItemHover: '#f8fafc',
+          colorTextMenuActive: '#f8fafc',
+          colorTextMenuSelected: '#f8fafc',
+          colorBgMenuItemHover: 'rgba(148, 163, 184, 0.12)',
+          colorBgMenuItemSelected: 'rgba(59, 130, 246, 0.18)',
+        },
+      },
+    };
+  }
+
+  return {
+    layout: {
+      sider: {
+        colorMenuBackground: '#ffffff',
+        colorBgCollapsedButton: '#ffffff',
+        colorTextCollapsedButton: 'rgba(0, 0, 0, 0.65)',
+        colorTextCollapsedButtonHover: 'rgba(0, 0, 0, 0.88)',
+        colorMenuItemDivider: 'rgba(5, 5, 5, 0.06)',
+        colorTextMenu: 'rgba(0, 0, 0, 0.65)',
+        colorTextMenuSecondary: 'rgba(0, 0, 0, 0.45)',
+        colorTextMenuTitle: 'rgba(0, 0, 0, 0.88)',
+        colorTextMenuItemHover: 'rgba(0, 0, 0, 0.88)',
+        colorTextMenuActive: 'rgba(0, 0, 0, 0.88)',
+        colorTextMenuSelected: '#1772b4',
+        colorBgMenuItemHover: 'rgba(23, 114, 180, 0.08)',
+        colorBgMenuItemSelected: 'rgba(23, 114, 180, 0.12)',
+      },
+    },
+  };
+};
+
+const AdminSiderFooter = ({ collapsed }) => {
+  const labelStyle = collapsed ? { display: 'none' } : { marginLeft: 8 };
+
+  return (
+    <div
+      data-testid="admin-sider-footer-actions"
+      style={{
+        padding: collapsed ? '8px' : '12px',
+      }}
+    >
+      <div style={{ minHeight: 38 }}>
+        <ThemeButton showText={!collapsed} />
+      </div>
+      <LogoutButton
+        trigger={
+          <button
+            type="button"
+            data-testid="admin-logout-button"
+            aria-label="退出后台登录"
+            style={footerActionButtonStyle(collapsed)}
+          >
+            <LogoutOutlined />
+            <span style={labelStyle}>登出</span>
+          </button>
+        }
+      />
+    </div>
+  );
+};
+
+const WalinePrewarm = () => {
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+    if ([loginPath, '/init', '/user/restore'].includes(history.location.pathname)) {
+      return undefined;
+    }
+    if (window.sessionStorage.getItem(WALINE_PREWARM_KEY) === 'full') {
+      return undefined;
+    }
+
+    let frame = null;
+    let disposed = false;
+    let idleHandle = null;
+
+    const cleanup = () => {
+      if (frame?.parentNode) {
+        frame.parentNode.removeChild(frame);
+      }
+      frame = null;
+    };
+
+    const appendHintLink = (rel) => {
+      const link = document.createElement('link');
+      link.rel = rel;
+      link.href = '/api/ui/';
+      link.as = 'document';
+      document.head.appendChild(link);
+      return link;
+    };
+
+    const start = () => {
+      if (disposed || window.sessionStorage.getItem(WALINE_PREWARM_KEY) === 'full') {
+        return;
+      }
+
+      fetch('/api/ui/', { credentials: 'same-origin' })
+        .then(() => {
+          if (!disposed && window.sessionStorage.getItem(WALINE_PREWARM_KEY) !== 'full') {
+            window.sessionStorage.setItem(WALINE_PREWARM_KEY, 'page');
+          }
+        })
+        .catch(() => {
+          window.sessionStorage.setItem(
+            WALINE_PREWARM_RETRY_KEY,
+            String(Number(window.sessionStorage.getItem(WALINE_PREWARM_RETRY_KEY) || 0) + 1),
+          );
+        });
+
+      frame = document.createElement('iframe');
+      frame.src = '/api/ui/';
+      frame.setAttribute('aria-hidden', 'true');
+      frame.setAttribute('tabindex', '-1');
+      frame.style.position = 'fixed';
+      frame.style.left = '-9999px';
+      frame.style.bottom = '0';
+      frame.style.width = '1px';
+      frame.style.height = '1px';
+      frame.style.opacity = '0';
+      frame.style.pointerEvents = 'none';
+      frame.style.border = '0';
+
+      frame.addEventListener(
+        'load',
+        () => {
+          if (disposed) {
+            cleanup();
+            return;
+          }
+          window.sessionStorage.setItem(WALINE_PREWARM_KEY, 'full');
+          window.sessionStorage.removeItem(WALINE_PREWARM_RETRY_KEY);
+          cleanup();
+        },
+        { once: true },
+      );
+
+      frame.addEventListener(
+        'error',
+        () => {
+          window.sessionStorage.setItem(
+            WALINE_PREWARM_RETRY_KEY,
+            String(Number(window.sessionStorage.getItem(WALINE_PREWARM_RETRY_KEY) || 0) + 1),
+          );
+          cleanup();
+        },
+        { once: true },
+      );
+
+      document.body.appendChild(frame);
+    };
+
+    const prefetchLink = appendHintLink('prefetch');
+    const preloadLink = appendHintLink('preload');
+    const kickoff = () => window.setTimeout(start, 300);
+
+    if (typeof window.requestIdleCallback === 'function') {
+      idleHandle = window.requestIdleCallback(kickoff, { timeout: 1200 });
+    } else {
+      idleHandle = kickoff();
+    }
+
+    return () => {
+      disposed = true;
+      if (typeof idleHandle === 'number') {
+        window.clearTimeout(idleHandle);
+      } else if (
+        idleHandle !== null &&
+        typeof window.cancelIdleCallback === 'function'
+      ) {
+        window.cancelIdleCallback(idleHandle);
+      }
+      prefetchLink?.remove();
+      preloadLink?.remove();
+      cleanup();
+    };
+  }, []);
+
+  return null;
 };
 /**
  * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
@@ -169,7 +413,7 @@ export async function getInitialState() {
   }
   // 暗色模式
   const theme = getInitTheme();
-  const sysTheme = mapTheme(theme);
+  const sysTheme = applyThemeToDocument(theme);
   return {
     fetchInitData,
     ...initData,
@@ -180,20 +424,9 @@ export async function getInitialState() {
 } // ProLayout 支持的api https://procomponents.ant.design/components/layout
 
 const handleSizeChange = () => {
-  const headerPoint = 768;
-  const show = window.innerWidth > headerPoint ? false : true;
-  if (show) {
-    const el = document.querySelector('header.ant-layout-header');
-    if (el) {
-      el.style.display = 'block';
-    }
-    // console.log('show');
-  } else {
-    const el = document.querySelector('header.ant-layout-header');
-    if (el) {
-      el.style.display = 'none';
-    }
-    // console.log('hidden');
+  const el = document.querySelector('header.ant-layout-header');
+  if (el) {
+    el.style.display = 'block';
   }
 };
 
@@ -201,6 +434,12 @@ window.onresize = handleSizeChange;
 
 export const layout = ({ initialState, setInitialState }) => {
   handleSizeChange();
+  const sessionUser = initialState?.user || getStoredUser();
+  const themeMode = getResolvedThemeMode(initialState);
+  const siderLinkStyle = {
+    color: themeMode === 'dark' ? '#cbd5e1' : 'rgba(0, 0, 0, 0.65)',
+  };
+  const siderHeaderColor = themeMode === 'dark' ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)';
 
   // 动态菜单渲染函数
   const menuDataRender = (menuList) => {
@@ -246,22 +485,29 @@ export const layout = ({ initialState, setInitialState }) => {
 
   return {
     menuDataRender,
-    rightContentRender: () => {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <ThemeButton showText={false} />
-          <LogoutButton
-            key="logoutRightContent"
-            trigger={
-              <a>
-                <LogoutOutlined />
-                <span style={{ marginLeft: 6 }}>登出</span>
-              </a>
-            }
-          />
-        </div>
-      );
-    },
+    logo: getAdminAssetPath('logo.svg'),
+    menuHeaderRender: (_, __, props) => (
+      <Link
+        to="/"
+        data-testid="admin-sider-logo"
+        style={{ display: 'flex', alignItems: 'center', gap: 12, color: siderHeaderColor }}
+      >
+        <img
+          src={getAdminAssetPath('logo.svg')}
+          alt="VanBlog logo"
+          style={{ width: 32, height: 32, flexShrink: 0 }}
+        />
+        {!props?.collapsed ? (
+          <h1 style={{ margin: 0, fontSize: 18, lineHeight: '32px', color: siderHeaderColor }}>
+            VanBlog
+          </h1>
+        ) : null}
+      </Link>
+    ),
+    rightContentRender: false,
+    menuFooterRender: (props) => (
+      <AdminSiderFooter collapsed={Boolean(props?.collapsed)} />
+    ),
     // disableContentMargin: true,
     footerRender: () => {
       // const { location } = history;
@@ -274,35 +520,25 @@ export const layout = ({ initialState, setInitialState }) => {
     },
     onPageChange: () => {
       const { location } = history; // 如果没有登录，重定向到 login
-      if (location.pathname === '/init' && !initialState?.user) {
+      if (location.pathname === '/init' && !sessionUser) {
         return;
       }
-      if (!initialState?.user && ![loginPath, '/user/restore'].includes(location.pathname)) {
+      if (!sessionUser && ![loginPath, '/user/restore'].includes(location.pathname)) {
         history.push(loginPath);
       }
-      if (location.pathname == loginPath && Boolean(initialState?.user)) {
+      if (location.pathname == loginPath && Boolean(sessionUser)) {
         history.push('/');
       }
     },
     links: [
-      <a key="mainSiste" rel="noreferrer" target="_blank" href={'/'}>
+      <a key="mainSiste" rel="noreferrer" target="_blank" href={'/'} style={siderLinkStyle}>
         <HomeOutlined />
         <span>主站</span>
       </a>,
-      <Link key="AboutLink" to={'/about'}>
+      <Link key="AboutLink" to={'/about'} style={siderLinkStyle}>
         <ProjectOutlined />
         <span>关于</span>
       </Link>,
-      <ThemeButton key="themeBtn" showText={true} />,
-      <LogoutButton
-        key="logoutSider"
-        trigger={
-          <a>
-            <LogoutOutlined />
-            <span>登出</span>
-          </a>
-        }
-      />,
     ],
 
     // 自定义 403 页面
@@ -312,34 +548,16 @@ export const layout = ({ initialState, setInitialState }) => {
       // if (initialState?.loading) return <PageLoading />;
       return (
         <>
+          <ThemeSync
+            theme={initialState?.theme}
+            navTheme={initialState?.settings?.navTheme}
+          />
+          <WalinePrewarm />
           {children}
-          {
-            <SettingDrawer
-              disableUrlParams
-              enableDarkTheme
-              // colorList={false}
-              settings={initialState?.settings}
-              // themeOnly={true}
-              onSettingChange={(settings) => {
-                const user = initialState?.user;
-                const isCollaborator = user?.type && user?.type == 'collaborator';
-                if (isCollaborator) {
-                  settings.title = '协作模式';
-                }
-                if (settings.navTheme != initialState?.settings?.navTheme) {
-                  // 切换了主题
-                  beforeSwitchTheme(settings.navTheme);
-                }
-                setInitialState((preInitialState) => ({
-                  ...preInitialState,
-                  settings,
-                }));
-              }}
-            />
-          }
         </>
       );
     },
+    token: getLayoutToken(themeMode),
     ...initialState?.settings,
   };
 };

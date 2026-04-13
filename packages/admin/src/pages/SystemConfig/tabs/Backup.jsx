@@ -344,6 +344,7 @@ export default function BackupTab() {
       <div style={{ marginBottom: 24 }}>
         <Title level={5}>📤 导出数据范围</Title>
         <List
+          className="admin-tone-panel admin-tone-panel-success"
           size="small"
           dataSource={exportDataTypes}
           renderItem={(item) => (
@@ -359,12 +360,10 @@ export default function BackupTab() {
             </List.Item>
           )}
           style={{
-            background: '#f6ffed',
             padding: '16px',
             borderRadius: '6px',
             maxHeight: '200px',
             overflowY: 'auto',
-            border: '1px solid #b7eb8f',
           }}
         />
       </div>
@@ -372,6 +371,7 @@ export default function BackupTab() {
       <div style={{ marginBottom: 24 }}>
         <Title level={5}>📥 导入处理策略</Title>
         <List
+          className="admin-tone-panel admin-tone-panel-info"
           size="small"
           dataSource={importDataTypes}
           renderItem={(item) => (
@@ -390,12 +390,10 @@ export default function BackupTab() {
             </List.Item>
           )}
           style={{
-            background: '#f0f5ff',
             padding: '16px',
             borderRadius: '6px',
             maxHeight: '220px',
             overflowY: 'auto',
-            border: '1px solid #91d5ff',
           }}
         />
       </div>
@@ -553,7 +551,7 @@ export default function BackupTab() {
         />
       </div>
 
-      <div style={{ marginTop: 24, padding: 16, background: '#f6f8fa', borderRadius: 6 }}>
+      <div className="admin-tone-panel admin-tone-panel-neutral" style={{ marginTop: 24, padding: 16, borderRadius: 6 }}>
         <Title level={5}>💡 使用提示</Title>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
           <li>

@@ -1,4 +1,4 @@
-FROM node:18-alpine AS runner
+FROM node:24.14.1-alpine AS runner
 WORKDIR /app/website
 ARG VANBLOG_IMAGE_NAME="vanblog-website"
 ARG VANBLOG_IMAGE_VERSION="dev"

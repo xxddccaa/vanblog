@@ -25,7 +25,8 @@ export default function () {
     articleManager: <ArticleManager />,
     music: <Music />,
   };
-  const [tab, setTab] = useTab('category', 'tab');
+  const tabKeys = Object.keys(tabMap);
+  const [tab, setTab] = useTab('category', 'tab', tabKeys);
 
   return (
     <PageContainer

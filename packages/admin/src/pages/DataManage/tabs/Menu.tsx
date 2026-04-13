@@ -1,5 +1,6 @@
 import { getMenu, updateMenu, resetMenuToDefault } from '@/services/van-blog/api';
 import { EditableProTable, useRefFunction } from '@ant-design/pro-components';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { message, Modal, Spin, Button, Space } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUpOutlined, ArrowDownOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -33,9 +34,9 @@ const loopDataSourceFilter = (
 
 export default function () {
   const [loading, setLoading] = useState(false);
-  const [editableKeys, setEditableRowKeys] = useState([]);
+  const [editableKeys, setEditableRowKeys] = useState<React.Key[]>([]);
   const [dataSource, setDataSource] = useState<DataSourceType[]>([]);
-  const [expendKeys, setExpendKeys] = useState([]);
+  const [expendKeys, setExpendKeys] = useState<React.Key[]>([]);
   const removeRow = useRefFunction((record: DataSourceType) => {
     const toUpdateData = loopDataSourceFilter(dataSource, record.id);
     setDataSource(toUpdateData);
@@ -43,7 +44,7 @@ export default function () {
     setExpendKeys(expendKeys.filter((e) => e != record.id));
     update(toUpdateData);
   });
-  const actionRef = useRef();
+  const actionRef = useRef<ActionType>();
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -124,7 +125,7 @@ export default function () {
     });
   };
 
-  const columns = [
+  const columns: ProColumns<DataSourceType>[] = [
     {
       title: '排序',
       key: 'sort',
@@ -208,6 +209,8 @@ export default function () {
                 const newId = getNewId();
                 children.push({
                   id: newId,
+                  name: '',
+                  value: '',
                   level: record.level + 1,
                 });
 
@@ -287,7 +290,7 @@ export default function () {
           recordCreatorProps={{
             position: 'bottom',
             newRecordType: 'dataSource',
-            record: () => ({ id: getNewId(), level: 0 }),
+            record: () => ({ id: getNewId(), name: '', value: '', level: 0 }),
           }}
           loading={false}
           columns={columns}

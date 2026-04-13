@@ -1,6 +1,6 @@
 import { logout } from '@/services/van-blog/api';
 import { message } from 'antd';
-import { history, useModel } from 'umi';
+import { history, useModel } from '@umijs/max';
 const loginOut = async () => {
   await logout();
 

@@ -40,7 +40,7 @@ describe("tag page cache shell", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const page = await import("../pages/tag");
+    const page = await import("../page-modules/tag");
     const result = await page.getStaticProps();
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("tag page cache shell", () => {
   });
 
   it("renders tag names without embedding SSR article-count badges", async () => {
-    const page = await import("../pages/tag");
+    const page = await import("../page-modules/tag");
     const html = renderToStaticMarkup(
       React.createElement(page.default as any, {
         layoutProps: {

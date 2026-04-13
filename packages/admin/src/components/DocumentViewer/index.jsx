@@ -10,7 +10,7 @@ import { LinkTarget } from '../Editor/plugins/linkTarget';
 import rawHTML from '../Editor/rawHTML';
 import { Heading } from '../Editor/plugins/heading';
 import { smartCodeBlock } from '../Editor/plugins/smartCodeBlock';
-import { useModel } from 'umi';
+import { useModel } from '@umijs/max';
 import { useMemo, useEffect, useRef } from 'react';
 import 'bytemd/dist/index.css';
 import 'katex/dist/katex.css';

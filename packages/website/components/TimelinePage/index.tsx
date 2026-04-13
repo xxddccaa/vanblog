@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { getTimelineArticlesByYear, TimelineSummaryItem } from "../../api/getArticles";
 import SiteStatsSummary from "../SiteStatsSummary";

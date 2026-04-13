@@ -11,7 +11,8 @@ export default function () {
     categories: <NavCategory />,
     icons: <NavIcon />,
   };
-  const [tab, setTab] = useTab('tools', 'tab');
+  const tabKeys = Object.keys(tabMap);
+  const [tab, setTab] = useTab('tools', 'tab', tabKeys);
 
   return (
     <PageContainer

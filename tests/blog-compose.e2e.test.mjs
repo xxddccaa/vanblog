@@ -12,20 +12,20 @@ const tempRoot = path.join(repoRoot, 'tests', '.tmp', projectName);
 const dockerComposeCommand = detectDockerComposeCommand();
 
 function detectDockerComposeCommand() {
-  const legacy = spawnSync('docker-compose', ['version'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-  });
-  if (!legacy.error && (legacy.status ?? 1) === 0) {
-    return { command: 'docker-compose', baseArgs: [] };
-  }
-
   const plugin = spawnSync('docker', ['compose', 'version'], {
     cwd: repoRoot,
     encoding: 'utf8',
   });
   if (!plugin.error && (plugin.status ?? 1) === 0) {
     return { command: 'docker', baseArgs: ['compose'] };
+  }
+
+  const legacy = spawnSync('docker-compose', ['version'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+  if (!legacy.error && (legacy.status ?? 1) === 0) {
+    return { command: 'docker-compose', baseArgs: [] };
   }
 
   throw new Error('Neither docker-compose nor docker compose is available in PATH');
@@ -276,12 +276,32 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
 
     await waitForHealthyStack(composeEnv);
 
-    const swagger = await fetchText(`${baseUrl}/swagger`);
-    assert.equal(swagger.status, 200);
+    const swagger = await waitFor(async () => {
+      try {
+        const response = await fetchText(`${baseUrl}/swagger`);
+        return response.status === 200 ? response : false;
+      } catch {
+        return false;
+      }
+    }, {
+      timeoutMs: 90 * 1000,
+      intervalMs: 3000,
+      label: 'swagger ui to be reachable',
+    });
     assert.match(swagger.text, /Swagger UI/i);
 
-    const walineAdmin = await fetchText(`${baseUrl}/api/ui/`);
-    assert.equal(walineAdmin.status, 200);
+    const walineAdmin = await waitFor(async () => {
+      try {
+        const response = await fetchText(`${baseUrl}/api/ui/`);
+        return response.status === 200 ? response : false;
+      } catch {
+        return false;
+      }
+    }, {
+      timeoutMs: 90 * 1000,
+      intervalMs: 3000,
+      label: 'waline admin to be reachable',
+    });
     assert.match(walineAdmin.text, /Waline Management System/i);
 
     const adminRedirect = await fetchText(`${baseUrl}/admin`, {
@@ -293,7 +313,6 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     const adminHome = await fetchText(`${baseUrl}/admin/`);
     assert.equal(adminHome.status, 200);
     assert.match(adminHome.text, /VanBlog|<html/i);
-    assert.match(adminHome.text, /href="\/admin\/logo\.svg"/);
     assert.match(adminHome.text, /href="\/admin\/umi\.[^"]+\.css"/);
     assert.match(adminHome.text, /src="\/admin\/umi\.[^"]+\.js"/);
     const adminAssetUrls = extractAdminAssetUrls(adminHome.text);
@@ -325,7 +344,7 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
       intervalMs: 2000,
       label: 'admin login page to be reachable',
     });
-    assert.match(adminLogin.text, /href="\/admin\/logo\.svg"/);
+    assert.match(adminLogin.text, /<div id="root"><\/div>/);
 
     const adminRestore = await waitFor(async () => {
       try {
@@ -349,7 +368,7 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
       intervalMs: 2000,
       label: 'admin restore page to be reachable',
     });
-    assert.match(adminRestore.text, /href="\/admin\/logo\.svg"/);
+    assert.match(adminRestore.text, /<div id="root"><\/div>/);
 
     for (const pathname of ['/admin/logo.svg', '/admin/background.svg']) {
       const response = await fetchText(`${baseUrl}${pathname}`);

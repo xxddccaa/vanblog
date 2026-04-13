@@ -2,7 +2,7 @@ import ProCard from '@ant-design/pro-card';
 import { PageContainer } from '@ant-design/pro-layout';
 import { Image, Space, Spin, Tag } from 'antd';
 import { useMemo } from 'react';
-import { useModel } from 'umi';
+import { useModel } from '@umijs/max';
 import { getAdminAssetPath } from '@/utils/getAssetPath';
 export default function (props) {
   const { initialState } = useModel('@@initialState');
@@ -38,7 +38,7 @@ export default function (props) {
                 <Tag color="cyan">{version}</Tag>
               </div>
             </div>
-            <p align="center">一款简洁实用优雅的高性能个人博客系统</p>
+            <p style={{ textAlign: 'center' }}>一款简洁实用优雅的高性能个人博客系统</p>
 
             <Space>
               <a target={'_blank'} rel="noreferrer" href="https://github.com/xxddccaa/vanblog">

@@ -1,0 +1,150 @@
+{
+  admin off
+  log {
+    output file {$HOST_DEV_LOG_DIR}/caddy.log
+  }
+}
+
+(h) {
+  trusted_proxies private_ranges
+}
+
+(van) {
+  encode zstd gzip
+  log {
+    output file {$HOST_DEV_LOG_DIR}/vanblog-access.log
+    format json
+  }
+
+  handle /ui* {
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /user* {
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /token* {
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /db* {
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /comment* {
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /oauth* {
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /favicon* {
+    uri replace /favicon /static/img/favicon
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /static/* {
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /c/* {
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /custom/* {
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /feed.json {
+    uri replace /feed.json /rss/feed.json
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /feed.xml {
+    uri replace /feed.xml /rss/feed.xml
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /sitemap.xml {
+    uri replace /sitemap.xml /sitemap/sitemap.xml
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /atom.xml {
+    uri replace /atom.xml /rss/atom.xml
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /rss/* {
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /swagger* {
+    reverse_proxy 127.0.0.1:3000
+  }
+  handle /api/user* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/db* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/comment* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/token* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/oauth* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/ui* {
+    uri strip_prefix /api
+    reverse_proxy 127.0.0.1:8360 {
+      import h
+    }
+  }
+  handle /api/* {
+    reverse_proxy 127.0.0.1:3000
+  }
+  @adminDevPing path /__umi_ping
+  handle @adminDevPing {
+    reverse_proxy 127.0.0.1:3002
+  }
+  @adminDevWs {
+    path /
+    header Connection *Upgrade*
+    header Upgrade websocket
+  }
+  handle @adminDevWs {
+    reverse_proxy 127.0.0.1:3002
+  }
+  @adminNoSlash path /admin
+  redir @adminNoSlash /admin/ 308
+  @adminAssets path_regexp adminAssets ^/admin/.*\.[^/]+$
+  handle @adminAssets {
+    reverse_proxy 127.0.0.1:3002
+  }
+  handle /admin* {
+    rewrite * /admin/
+    reverse_proxy 127.0.0.1:3002
+  }
+  reverse_proxy 127.0.0.1:3001
+}
+
+:18080 {
+  import van
+}

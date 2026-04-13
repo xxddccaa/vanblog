@@ -13,7 +13,7 @@ import {
 } from 'antd';
 import { ExclamationCircleOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { getArticlesByOption, cleanupDuplicatePathnames } from '@/services/van-blog/api';
-import { request } from 'umi';
+import request from '@/services/request';
 
 const { Title, Text } = Typography;
 
@@ -247,7 +247,7 @@ export default function ArticleManager() {
           <p><Text strong>重复的路径名：</Text></p>
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
             {duplicatePathnames.map(([pathname, duplicateArticles]) => (
-              <div key={pathname} style={{ marginBottom: 16, padding: 12, background: '#f5f5f5', borderRadius: 4 }}>
+              <div key={pathname} className="admin-tone-panel admin-tone-panel-neutral" style={{ marginBottom: 16, padding: 12, borderRadius: 4 }}>
                 <Text strong>路径名: {pathname}</Text>
                 <div style={{ marginTop: 8 }}>
                   {duplicateArticles.map(article => (
@@ -514,7 +514,7 @@ export default function ArticleManager() {
         />
       </Spin>
 
-      <div style={{ marginTop: 24, padding: 16, background: '#f6f8fa', borderRadius: 6 }}>
+      <div className="admin-tone-panel admin-tone-panel-neutral" style={{ marginTop: 24, padding: 16, borderRadius: 6 }}>
         <Title level={5}>⚠️ 重要提醒</Title>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
           <li><Text strong>数据安全：</Text>执行重排前建议先备份数据库</li>

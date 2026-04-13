@@ -18,6 +18,10 @@ import { addWaterMarkToIMG } from 'src/utils/watermark';
 import { checkTrue } from 'src/utils/checkTrue';
 import { compressImgToWebp } from 'src/utils/webp';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { config } from 'src/config';
+import { StoragePath } from 'src/types/setting.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class StaticProvider {
@@ -42,6 +46,20 @@ export class StaticProvider {
     }
     return this.publicView;
   }
+
+  private decorateStaticItem(item: any) {
+    const payload = { ...(item?._doc || item) };
+    delete payload._id;
+
+    if (payload?.storageType === 'local' && payload?.staticType && payload?.name) {
+      const storagePath = StoragePath[payload.staticType] || StoragePath['img'];
+      const filePath = path.join(config.staticPath, storagePath, payload.name);
+      payload.exists = fs.existsSync(filePath);
+    }
+
+    return payload;
+  }
+
   async upload(
     file: any,
     type: StaticType,
@@ -321,14 +339,7 @@ export class StaticProvider {
   async getByOption(option: SearchStaticOption) {
     const pgResult = await this.structuredDataService?.queryStatics(option);
     if (pgResult && (pgResult.items.length || pgResult.total || this.structuredDataService?.isInitialized())) {
-      const data =
-        option.view === 'public'
-          ? pgResult.items.map((item: any) => {
-              const payload = { ...(item?._doc || item) };
-              delete payload._id;
-              return payload;
-            })
-          : pgResult.items;
+      const data = pgResult.items.map((item: any) => this.decorateStaticItem(item));
       return {
         total: pgResult.total,
         data,
@@ -346,7 +357,7 @@ export class StaticProvider {
       .skip(option.page * option.pageSize - option.pageSize);
     return {
       total,
-      data: items,
+      data: items.map((item) => this.decorateStaticItem(item)),
     };
   }
   async deleteCustomPage(path: string) {

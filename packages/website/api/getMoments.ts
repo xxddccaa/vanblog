@@ -1,5 +1,5 @@
 import { encodeQuerystring } from "../utils/encode";
-import { config } from "../utils/loadConfig";
+import { config, getServerFetchOptions } from "../utils/loadConfig";
 
 export type SortOrder = "asc" | "desc";
 
@@ -36,7 +36,7 @@ export const getMoments = async (
   
   try {
     const url = `${config.baseUrl}api/public/moment?${queryString}`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { statusCode, data } = await res.json();
     if (statusCode == 233) {
       return { moments: [], total: 0 };

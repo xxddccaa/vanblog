@@ -4,9 +4,16 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "baseUrl": ".",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "composite": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@@/*": ["./src/.umi/*"],
+      "umi": ["./src/.umi/core/umiExports"]
     }
-  }
+  },
+  "include": ["src/**/*", "config/**/*"]
 }

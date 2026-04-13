@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -24,7 +26,7 @@ export default function (props: {
   createdAt: Date;
   catelog: string;
   content: string;
-  setContent: (content: string) => void;
+  setContent?: (content: string) => void;
   type: "overview" | "article" | "about";
   pay?: string[];
   payDark?: string[];
@@ -44,7 +46,8 @@ export default function (props: {
   codeMaxLines?: number;
 }) {
   const [lock, setLock] = useState(props.type != "overview" && props.private);
-  const { content, setContent } = props;
+  const { content } = props;
+  const setContent = props.setContent || (() => {});
   const showDonate = useMemo(() => {
     if (lock) {
       return false;

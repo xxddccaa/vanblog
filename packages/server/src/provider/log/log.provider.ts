@@ -4,17 +4,18 @@ import fs from 'fs';
 import { EventType } from './types';
 import { Request } from 'express';
 import { getNetIp, getPlatform } from './utils';
-import lineReader from 'line-reader';
 import { config } from 'src/config';
 import path from 'path';
 import { checkOrCreate } from 'src/utils/checkFolder';
 import { Pipeline } from 'src/scheme/pipeline.schema';
 import { CodeResult } from '../pipeline/pipeline.provider';
+import readline from 'node:readline';
+
 @Injectable()
 export class LogProvider {
   logger = null;
   logPath = path.join(config.log, 'vanblog-event.log');
-  systemLogPath = path.join('/var/log/', 'vanblog-stdio.log');
+  systemLogPath = path.join(config.log, 'vanblog-stdio.log');
   constructor() {
     checkOrCreate(config.log);
     const streams = [
@@ -58,41 +59,87 @@ export class LogProvider {
       success,
     });
   }
+  private getReadableLogPath(eventType: EventType) {
+    const candidates =
+      eventType === EventType.SYSTEM
+        ? [
+            this.systemLogPath,
+            path.join(config.log, 'server.log'),
+            path.join('/var/log', 'vanblog-stdio.log'),
+          ]
+        : [this.logPath];
+
+    return (
+      candidates.find((candidate) => {
+        try {
+          return fs.existsSync(candidate) && fs.statSync(candidate).isFile();
+        } catch (error) {
+          return false;
+        }
+      }) || null
+    );
+  }
+
+  private async readLogFile(filePath: string, eventType: EventType, all: number) {
+    if (!filePath) {
+      return { data: [], total: 0 };
+    }
+
+    return await new Promise<{ data: any[]; total: number }>((resolve) => {
+      const data: any[] = [];
+      let total = 0;
+      let resolved = false;
+      const finish = () => {
+        if (resolved) {
+          return;
+        }
+        resolved = true;
+        resolve({ data, total });
+      };
+
+      const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
+      stream.on('error', finish);
+
+      const reader = readline.createInterface({
+        input: stream,
+        crlfDelay: Infinity,
+      });
+
+      reader.on('line', (line: string) => {
+        const current = line.trim();
+        if (!current) {
+          return;
+        }
+
+        let item: any = current;
+        if (eventType !== EventType.SYSTEM) {
+          try {
+            item = JSON.parse(current);
+          } catch (error) {
+            return;
+          }
+        }
+
+        if (eventType !== EventType.SYSTEM && item?.event !== eventType) {
+          return;
+        }
+
+        total += 1;
+        if (data.length >= all) {
+          data.shift();
+        }
+        data.push(item);
+      });
+
+      reader.on('close', finish);
+      reader.on('error', finish);
+    });
+  }
   async searchLog(page: number, pageSize: number, eventType: EventType) {
     const skip = page * pageSize - pageSize;
     const all = page * pageSize;
-    const readFunc = (eventType) => {
-      return new Promise((resolve) => {
-        const res = [];
-        let total = 0;
-        lineReader.eachLine(
-          eventType == EventType.SYSTEM ? this.systemLogPath : this.logPath,
-          (line: string, last: boolean) => {
-            let data: any = line;
-            if (eventType !== EventType.SYSTEM) {
-              data = JSON.parse(line);
-            }
-            if (eventType === EventType.SYSTEM || data.event == eventType) {
-              total = total + 1;
-              if (res.length >= all) {
-                res.shift();
-              }
-              res.push(data);
-            }
-            if (!line || line.trim() == '' || line == '\n') {
-              resolve({ data: res, total });
-            }
-            if (last) {
-              resolve({ data: res, total });
-            }
-          },
-        );
-      });
-    };
-    let { data, total } = (await readFunc(eventType)) as {
-      data: any[];
-      total: number;
-    };
+    const filePath = this.getReadableLogPath(eventType);
+    let { data, total } = await this.readLogFile(filePath, eventType, all);
     total = total;
     data = data.reverse();
     // 看一下 res 的数量够不够

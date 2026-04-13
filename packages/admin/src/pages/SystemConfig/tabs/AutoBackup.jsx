@@ -593,7 +593,7 @@ export default function AutoBackup() {
         </Spin>
       </Card>
 
-      <div style={{ marginTop: 24, padding: 16, background: '#f6f8fa', borderRadius: 6 }}>
+      <div className="admin-tone-panel admin-tone-panel-neutral" style={{ marginTop: 24, padding: 16, borderRadius: 6 }}>
         <Title level={5}>💡 使用提示</Title>
         <ul style={{ margin: 0, paddingLeft: 20 }}>
           <li><Text strong>自动执行：</Text>启用后系统会在指定时间自动创建备份文件</li>

@@ -1,5 +1,5 @@
 import { Button, Result } from 'antd';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 
 const NoFoundPage = () => (
   <Result

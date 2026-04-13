@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal, Input, Spin, Empty, Tag, message } from 'antd';
 import { SearchOutlined, EyeOutlined, FileTextOutlined, FileOutlined, FolderOutlined } from '@ant-design/icons';
-import { request } from 'umi';
+import request from '@/services/request';
 import './index.less';
 
 const { Search } = Input;

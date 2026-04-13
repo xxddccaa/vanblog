@@ -8,7 +8,7 @@ import {
   EyeOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 import moment from 'moment';
 import { 
   getMindMaps,

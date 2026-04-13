@@ -56,17 +56,7 @@ const ArticleTab = () => {
     colorField: 'type',
     radius: 0.8,
     innerRadius: 0.6,
-    label: {
-      type: 'inner',
-      offset: '-30%',
-      content: ({ percent }) => `${(percent * 100).toFixed(0)}%`,
-      style: {
-        fontSize: 14,
-        textAlign: 'center',
-        fill: 'white',
-        fontWeight: 'bold',
-      },
-    },
+    label: false,
     legend: {
       position: 'bottom',
       flipPage: false,

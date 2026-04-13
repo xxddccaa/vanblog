@@ -1,8 +1,10 @@
+"use client";
+
 import { slide as Menu } from "react-burger-menu";
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
 import { MenuItem } from "../../api/getAllData";
-import { useRouter } from "next/router";
+import { usePathname } from "next/navigation";
 
 export default function (props: {
   isOpen: boolean;
@@ -11,12 +13,12 @@ export default function (props: {
   showAdminButton: "true" | "false";
   menus: MenuItem[];
 }) {
-  const router = useRouter();
+  const pathname = usePathname();
   
   // Check if we're on the nav page
   const isNavPage = useMemo(() => {
-    return router.pathname === '/nav';
-  }, [router.pathname]);
+    return pathname === "/nav";
+  }, [pathname]);
 
   // If we're on the nav page and 'nav' is not in the menus, add it temporarily
   const displayMenus = useMemo(() => {
@@ -91,6 +93,8 @@ export default function (props: {
           disableAutoFocus={true}
           customCrossIcon={false}
           customBurgerIcon={false}
+          styles={{}}
+          itemListElement="nav"
           isOpen={props.isOpen}
           onStateChange={(state) => {
             if (state.isOpen) {

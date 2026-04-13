@@ -6,14 +6,15 @@ import OverView from './tabs/overview';
 import Viewer from './tabs/viewer';
 
 const Welcome = () => {
-  const [tab, setTab] = useTab('overview', 'tab');
-
-  // const { initialState } = useModel('@@initialState');
   const tabMap = {
     overview: <OverView />,
     viewer: <Viewer />,
     article: <Article />,
   };
+  const tabKeys = Object.keys(tabMap);
+  const [tab, setTab] = useTab('overview', 'tab', tabKeys);
+
+  // const { initialState } = useModel('@@initialState');
   // const showCommentBtn = useMemo(() => {
   //   const url = initialState?.walineServerUrl;
   //   if (!url || url == '') {

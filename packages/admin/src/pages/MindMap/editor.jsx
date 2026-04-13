@@ -5,7 +5,7 @@ import {
   SaveOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { history, useLocation } from 'umi';
+import { history, useLocation } from '@umijs/max';
 import {
   getMindMapById,
   updateMindMap,

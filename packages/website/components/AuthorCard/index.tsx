@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { useContext, useEffect, useMemo, useState } from "react";

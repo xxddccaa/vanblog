@@ -78,12 +78,14 @@ export default function (props: {
       {type !== 'document' && <AuthorField />}
       {type !== 'document' && (
         <ProFormSelect
-          mode="tags"
-          tokenSeparators={[',']}
           width="md"
           name="tags"
           label="标签"
           placeholder="请选择或输入标签"
+          fieldProps={{
+            mode: 'tags',
+            tokenSeparators: [','],
+          }}
           request={async () => {
             const msg = await getTags();
             return msg?.data?.map((item) => ({ label: item, value: item })) || [];
@@ -117,8 +119,8 @@ export default function (props: {
         id="createdAt"
         label="创建时间"
         placeholder="不填默认为此刻"
-        showTime={{
-          defaultValue: moment('00:00:00', 'HH:mm:ss'),
+        fieldProps={{
+          showTime: true,
         }}
       />
       {type === 'document' && (

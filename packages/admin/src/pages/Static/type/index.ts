@@ -3,6 +3,7 @@ export interface StaticItem {
   staticType: string;
   fileType: string;
   realPath: string;
+  exists?: boolean;
   meta: any;
   name: string;
   sign: string;

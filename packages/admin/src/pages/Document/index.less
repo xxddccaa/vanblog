@@ -52,6 +52,24 @@
   }
 }
 
+html[data-theme='dark'] {
+  .document-page-container {
+    background-color: #111827 !important;
+
+    .resize-handle {
+      &:hover {
+        background-color: rgba(148, 163, 184, 0.12) !important;
+        color: #93c5fd !important;
+      }
+
+      &:active {
+        background-color: rgba(59, 130, 246, 0.18) !important;
+        color: #bfdbfe !important;
+      }
+    }
+  }
+}
+
 .document-page {
   &-content {
     display: flex;
@@ -166,6 +184,49 @@
   }
 }
 
+html[data-theme='dark'] {
+  .document-page {
+    &-content,
+    &-viewer,
+    &-library-info,
+    &-editor-container {
+      background-color: #111827 !important;
+      color: #e5e7eb !important;
+    }
+
+    &-viewer,
+    &-library-info,
+    &-editor-container {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    &-library-info {
+      h3,
+      p,
+      .ant-typography {
+        color: #e5e7eb !important;
+      }
+    }
+
+    &-content,
+    &-viewer {
+      &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.45);
+
+        &:hover {
+          background: rgba(148, 163, 184, 0.65);
+        }
+      }
+
+      scrollbar-color: rgba(148, 163, 184, 0.45) rgba(255, 255, 255, 0.06);
+    }
+  }
+}
+
 /* 确保卡片内容区域高度正确和背景色统一 */
 .ant-card {
   &.document-tree-card {
@@ -189,6 +250,33 @@
       padding: 0;
       overflow: auto;
       background-color: #fff;
+    }
+  }
+}
+
+html[data-theme='dark'] {
+  .ant-card {
+    &.document-tree-card,
+    &.document-content-card {
+      background-color: #111827 !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+      box-shadow: none;
+    }
+
+    &.document-tree-card {
+      .ant-card-head,
+      .ant-card-body {
+        background-color: #111827 !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
+    }
+
+    &.document-content-card {
+      .ant-card-head,
+      .ant-card-body {
+        background-color: #111827 !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+      }
     }
   }
 }

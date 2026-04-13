@@ -26,15 +26,52 @@ export const getServerBaseUrl = () => {
 const getBrowserBaseUrl = () =>
   normalizeURL(process.env.NEXT_PUBLIC_BASE_URL || "/");
 
+type NextFetchOptions = RequestInit & {
+  next?: {
+    revalidate?: number;
+  };
+};
+
+const getRevalidateSeconds = () => {
+  if (process.env.VAN_BLOG_REVALIDATE !== "true") {
+    return false;
+  }
+  const parsed = Number.parseInt(process.env.VAN_BLOG_REVALIDATE_TIME || "10", 10);
+  return Number.isNaN(parsed) ? 10 : parsed;
+};
+
 // 从环境变量中读取.
 export const config = {
   baseUrl:
     typeof window === "undefined" ? getServerBaseUrl() : getBrowserBaseUrl(),
 };
 
+export const getServerFetchOptions = (
+  init: NextFetchOptions = {}
+): NextFetchOptions => {
+  if (typeof window !== "undefined") {
+    return init;
+  }
+
+  const revalidate = getRevalidateSeconds();
+  if (revalidate === false) {
+    return init;
+  }
+
+  return {
+    ...init,
+    next: {
+      ...init.next,
+      revalidate,
+    },
+  };
+};
+
 // 改为服务端触发 isr
 // export const revalidate = {};
+const configuredRevalidate = getRevalidateSeconds();
+
 export const revalidate =
-  process.env.VAN_BLOG_REVALIDATE == "true"
-    ? { revalidate: parseInt(process.env.VAN_BLOG_REVALIDATE_TIME || "10") }
-    : {};
+  configuredRevalidate === false
+    ? {}
+    : { revalidate: configuredRevalidate };

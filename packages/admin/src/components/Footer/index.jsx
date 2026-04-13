@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { history, useModel } from 'umi';
+import { history, useModel } from '@umijs/max';
 import './index.css';
 const Footer = () => {
   const { initialState } = useModel('@@initialState');

@@ -9,13 +9,13 @@ import {
 } from '@/services/van-blog/api';
 import { useNum } from '@/services/van-blog/useNum';
 import { PageContainer } from '@ant-design/pro-components';
-import { Button, Empty, Image, message, Modal, Pagination, Space, Spin, Table } from 'antd';
+import { Button, Empty, Image, message, Modal, Pagination, Space, Spin, Table, Typography } from 'antd';
 import RcResizeObserver from 'rc-resize-observer';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Item, Menu, Separator, useContextMenu } from 'react-contexify';
 import 'react-contexify/dist/ReactContexify.css';
 import { createPortal } from 'react-dom';
-import { history, useModel } from 'umi';
+import { history, useModel } from '@umijs/max';
 import TipTitle from '../../../components/TipTitle';
 import { useTab } from '../../../services/van-blog/useTab';
 import type { StaticItem } from '../type';
@@ -28,8 +28,18 @@ function Portal({ children }) {
   return createPortal(children, document.querySelector('#root'));
 }
 
+type ArticleLinkHit = {
+  id: number;
+  title: string;
+};
+
+type UploadResult = {
+  src: string;
+  isNew?: boolean;
+};
+
 const ImgPage = () => {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<StaticItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -110,16 +120,17 @@ const ImgPage = () => {
         break;
       case 'searchByLink':
         const { data } = await searchArtclesByLink(getImgLink(clickItem.realPath));
+        const articleHits: ArticleLinkHit[] = data || [];
         Modal.info({
           title: '被引用文章',
 
           content: (
-            <Table
+            <Table<ArticleLinkHit>
               pagination={{
                 hideOnSinglePage: true,
               }}
               rowKey={'id'}
-              dataSource={data || []}
+              dataSource={articleHits}
               size="small"
               columns={[
                 { title: '文章 ID', dataIndex: 'id', key: 'id' },
@@ -127,7 +138,7 @@ const ImgPage = () => {
                 {
                   title: '操作',
                   key: 'action',
-                  render: (val, record) => {
+                  render: (_, record) => {
                     return (
                       <a
                         key={'editable' + record.id}
@@ -250,7 +261,7 @@ const ImgPage = () => {
               message.error('剪切板无图片！');
             }}
             text="剪切板上传"
-            onFinish={(data) => {
+            onFinish={(data: UploadResult) => {
               copyImgLink(
                 data.src,
                 true,
@@ -360,17 +371,45 @@ const ImgPage = () => {
                       width: '100%',
                     }}
                   >
-                    <Image
-                      fallback={errorImg}
-                      // style={{
-                      //   maxHeight: responsive ? 150 : 200,
-                      //   maxWidth: responsive ? 150 : 200,
-                      // }}
-                      style={{ maxHeight: '200px' }}
-                      width={'auto'}
-                      height={'auto'}
-                      src={`${item.realPath}`}
-                    />
+                    {item.exists === false ? (
+                      <div
+                        style={{
+                          width: '100%',
+                          minHeight: 180,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: 12,
+                          border: '1px dashed rgba(148, 163, 184, 0.45)',
+                          borderRadius: 10,
+                          background: 'rgba(148, 163, 184, 0.06)',
+                        }}
+                      >
+                        <Image
+                          preview={false}
+                          fallback={errorImg}
+                          src={errorImg}
+                          style={{ maxHeight: '96px', objectFit: 'contain' }}
+                        />
+                        <Typography.Text type="secondary" style={{ textAlign: 'center' }}>
+                          原图文件不存在，已用占位图代替
+                        </Typography.Text>
+                      </div>
+                    ) : (
+                      <Image
+                        fallback={errorImg}
+                        // style={{
+                        //   maxHeight: responsive ? 150 : 200,
+                        //   maxWidth: responsive ? 150 : 200,
+                        // }}
+                        style={{ maxHeight: '200px' }}
+                        width={'auto'}
+                        height={'auto'}
+                        src={`${item.realPath}`}
+                      />
+                    )}
                   </div>
                 );
               })}

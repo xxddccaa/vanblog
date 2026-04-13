@@ -4,6 +4,7 @@ vi.mock("../utils/loadConfig", () => ({
   config: {
     baseUrl: "https://blog.example.com/",
   },
+  getServerFetchOptions: () => ({}),
 }));
 
 describe("article api fragments", () => {
@@ -32,7 +33,7 @@ describe("article api fragments", () => {
       commentCount: 6,
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/public/article/edge-cache/engagement");
+    expect(fetchMock).toHaveBeenCalledWith("/api/public/article/edge-cache/engagement", {});
   });
 
   it("keeps article shell reads free of dynamic engagement fields", async () => {
@@ -78,7 +79,10 @@ describe("article api fragments", () => {
       },
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("https://blog.example.com/api/public/article/edge-cache");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://blog.example.com/api/public/article/edge-cache",
+      {},
+    );
   });
 
   it("keeps article listing reads free of dynamic engagement fields", async () => {
@@ -141,6 +145,7 @@ describe("article api fragments", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://blog.example.com/api/public/article?page=1&pageSize=5&withPreviewContent=true",
+      {},
     );
   });
 
@@ -171,6 +176,7 @@ describe("article api fragments", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://blog.example.com/api/public/article?page=2&pageSize=5&sortCreatedAt=desc",
+      {},
     );
   });
 
@@ -292,7 +298,7 @@ describe("article api fragments", () => {
       ],
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/public/article/edge-cache/fragments?limit=4");
+    expect(fetchMock).toHaveBeenCalledWith("/api/public/article/edge-cache/fragments?limit=4", {});
   });
 
   it("reads timeline summary data from the dedicated stable fragment endpoint", async () => {
@@ -312,7 +318,10 @@ describe("article api fragments", () => {
       { year: "2025", articleCount: 4 },
     ]);
 
-    expect(fetchMock).toHaveBeenCalledWith("https://blog.example.com/api/public/timeline/summary");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://blog.example.com/api/public/timeline/summary",
+      {},
+    );
   });
 
   it("reads category summary data from the dedicated stable fragment endpoint", async () => {
@@ -332,7 +341,10 @@ describe("article api fragments", () => {
       { name: "Caching", articleCount: 3 },
     ]);
 
-    expect(fetchMock).toHaveBeenCalledWith("https://blog.example.com/api/public/category/summary");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://blog.example.com/api/public/category/summary",
+      {},
+    );
   });
 
   it("reads expanded timeline article lists from their dedicated fragment endpoint and strips dynamic counters", async () => {
@@ -376,7 +388,10 @@ describe("article api fragments", () => {
       },
     ]);
 
-    expect(fetchMock).toHaveBeenCalledWith("https://blog.example.com/api/public/timeline/2026/articles");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://blog.example.com/api/public/timeline/2026/articles",
+      {},
+    );
   });
 
   it("reads expanded category article lists from their dedicated fragment endpoint and strips dynamic counters", async () => {
@@ -422,6 +437,7 @@ describe("article api fragments", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://blog.example.com/api/public/category/System Design/articles",
+      {},
     );
   });
 

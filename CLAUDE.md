@@ -13,7 +13,8 @@ VanBlog 是一个自托管的个人博客平台，采用 pnpm monorepo 架构。
 | `admin` | `packages/admin` | 3002 | Umi 后台静态页面，挂载到 `/admin/` |
 | `waline` | `packages/waline` | 8360 / 8361 | 评论服务 + 控制端点 |
 | `caddy` | `docker/caddy/Caddyfile` | 80 / 443 / 2019(仅内网) | 外部网关与路由 |
-| `mongo` | - | 27017(仅内网) | 数据库，不对外暴露 |
+| `postgres` | - | 5432(仅内网) | 主业务数据库，不对外暴露 |
+| `redis` | - | 6379(仅内网) | 缓存与队列数据库，不对外暴露 |
 
 ## 常用命令
 
@@ -22,7 +23,7 @@ VanBlog 是一个自托管的个人博客平台，采用 pnpm monorepo 架构。
 docker compose up -d --build
 
 # 查看主要服务日志
-docker compose logs -f caddy server website admin waline mongo
+docker compose logs -f caddy server website admin waline postgres redis
 
 # 停止并清理容器
 docker compose down -v
@@ -49,7 +50,7 @@ pnpm release:images:push
 - API 文档：`http://localhost/swagger`
 - 评论前台：`http://localhost/comment/`
 
-注意：`admin`、`website`、`server`、`waline`、`mongo` 默认都不直接映射到宿主机；`mongo` 和 Caddy admin API `2019` 仅允许在 compose 内部网络访问。
+注意：`admin`、`website`、`server`、`waline`、`postgres`、`redis` 默认都不直接映射到宿主机；`postgres`、`redis` 和 Caddy admin API `2019` 仅允许在 compose 内部网络访问。
 
 ## Caddy 路由要点
 
@@ -69,7 +70,8 @@ pnpm release:images:push
 - `src/controller/admin/`: 管理端 API
 - `src/controller/public/`: 公开 API
 - `src/provider/`: 业务逻辑与外部控制同步
-- `src/scheme/`: Mongoose 数据模型
+- `src/scheme/`: 兼容层 schema 定义
+- `src/storage/`: PostgreSQL 存储与结构化数据读写
 - `src/**/*.spec.ts`: 后端单元测试
 
 ### 前台 (`packages/website`)
@@ -93,7 +95,7 @@ pnpm release:images:push
 
 ## 修改时注意
 
-- 不要把 `mongo` 或 Caddy admin `2019` 暴露到 `0.0.0.0`。
+- 不要把 `postgres`、`redis` 或 Caddy admin `2019` 暴露到 `0.0.0.0`。
 - 涉及 `/admin` 的改动要注意静态资源、favicon、manifest、跳转都必须兼容子路径。
 - 涉及 SSR/SSG 的调用要区分构建期 fallback、容器内服务发现、浏览器端相对路径。
 - 拆分部署相关改动后，优先补 deployment / compose 流程测试，而不是只依赖手工验证。

@@ -1,4 +1,4 @@
-FROM node:18-alpine AS base
+FROM node:24.14.1-alpine AS base
 ENV NODE_OPTIONS="--max_old_space_size=7168"
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN apk add --no-cache --update python3 make g++ tzdata \
 
 # Configure pnpm with parallel builds
 RUN corepack enable \
-    && corepack prepare pnpm@9.15.3 --activate \
+    && corepack prepare pnpm@10.33.0 --activate \
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \
@@ -58,7 +58,7 @@ ENV EEE=production
 RUN pnpm build
 
 # Final runtime image
-FROM node:18-alpine AS runner
+FROM node:24.14.1-alpine AS runner
 WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)
@@ -67,7 +67,7 @@ RUN apk add --no-cache --update tzdata caddy nss-tools libwebp-tools wget unzip 
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
     && corepack enable \
-    && corepack prepare pnpm@9.15.3 --activate \
+    && corepack prepare pnpm@10.33.0 --activate \
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \

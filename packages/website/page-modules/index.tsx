@@ -35,7 +35,6 @@ const Home = (props: IndexPageProps) => {
         {props.articles.map((article) => (
           <PostCard
             showEditButton={props.layoutProps.showEditButton === "true"}
-            setContent={() => {}}
             showExpirationReminder={
               props.layoutProps.showExpirationReminder == "true"
             }

@@ -188,8 +188,8 @@ describe("static content and archive detail page cache shells", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const aboutPage = await import("../pages/about");
-    const linkPage = await import("../pages/link");
+    const aboutPage = await import("../page-modules/about");
+    const linkPage = await import("../page-modules/link");
 
     const aboutResult = await aboutPage.getStaticProps();
     const linkResult = await linkPage.getStaticProps();
@@ -210,8 +210,8 @@ describe("static content and archive detail page cache shells", () => {
   });
 
   it("renders the about and link pages without article fragment placeholders", async () => {
-    const aboutPage = await import("../pages/about");
-    const linkPage = await import("../pages/link");
+    const aboutPage = await import("../page-modules/about");
+    const linkPage = await import("../page-modules/link");
 
     const aboutHtml = renderToStaticMarkup(
       React.createElement(aboutPage.default as any, {
@@ -260,7 +260,7 @@ describe("static content and archive detail page cache shells", () => {
   });
 
   it("renders the moment page with the public-facing 动态 title", async () => {
-    const momentPage = await import("../pages/moment");
+    const momentPage = await import("../page-modules/moment");
 
     const html = renderToStaticMarkup(
       React.createElement(momentPage.default as any, {
@@ -318,9 +318,9 @@ describe("static content and archive detail page cache shells", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const summaryPage = await import("../pages/category/[category]");
-    const yearPage = await import("../pages/category/[category]/archive/[year]");
-    const monthPage = await import("../pages/category/[category]/archive/[year]/[month]");
+    const summaryPage = await import("../page-modules/category/[category]");
+    const yearPage = await import("../page-modules/category/[category]/archive/[year]");
+    const monthPage = await import("../page-modules/category/[category]/archive/[year]/[month]");
 
     const summaryResult = await summaryPage.getStaticProps({ params: { category: "Caching" } });
     const yearResult = await yearPage.getStaticProps({ params: { category: "Caching", year: "2026" } });
@@ -342,9 +342,9 @@ describe("static content and archive detail page cache shells", () => {
   });
 
   it("renders category archive routes as stable shells", async () => {
-    const summaryPage = await import("../pages/category/[category]");
-    const yearPage = await import("../pages/category/[category]/archive/[year]");
-    const monthPage = await import("../pages/category/[category]/archive/[year]/[month]");
+    const summaryPage = await import("../page-modules/category/[category]");
+    const yearPage = await import("../page-modules/category/[category]/archive/[year]");
+    const monthPage = await import("../page-modules/category/[category]/archive/[year]/[month]");
 
     const summaryHtml = renderToStaticMarkup(
       React.createElement(summaryPage.default as any, {
@@ -393,9 +393,9 @@ describe("static content and archive detail page cache shells", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const summaryPage = await import("../pages/tag/[tag]");
-    const yearPage = await import("../pages/tag/[tag]/archive/[year]");
-    const monthPage = await import("../pages/tag/[tag]/archive/[year]/[month]");
+    const summaryPage = await import("../page-modules/tag/[tag]");
+    const yearPage = await import("../page-modules/tag/[tag]/archive/[year]");
+    const monthPage = await import("../page-modules/tag/[tag]/archive/[year]/[month]");
 
     const summaryResult = await summaryPage.getStaticProps({ params: { tag: "Cloudflare" } });
     const yearResult = await yearPage.getStaticProps({ params: { tag: "Cloudflare", year: "2026" } });
@@ -417,9 +417,9 @@ describe("static content and archive detail page cache shells", () => {
   });
 
   it("renders tag archive routes as stable shells", async () => {
-    const summaryPage = await import("../pages/tag/[tag]");
-    const yearPage = await import("../pages/tag/[tag]/archive/[year]");
-    const monthPage = await import("../pages/tag/[tag]/archive/[year]/[month]");
+    const summaryPage = await import("../page-modules/tag/[tag]");
+    const yearPage = await import("../page-modules/tag/[tag]/archive/[year]");
+    const monthPage = await import("../page-modules/tag/[tag]/archive/[year]/[month]");
 
     const summaryHtml = renderToStaticMarkup(
       React.createElement(summaryPage.default as any, {

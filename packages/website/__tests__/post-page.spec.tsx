@@ -154,7 +154,7 @@ describe("post page cache shell", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const page = await import("../pages/post/[id]");
+    const page = await import("../page-modules/post/[id]");
     const result = await page.getStaticProps({ params: { id: "edge-cache" } });
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -198,7 +198,7 @@ describe("post page cache shell", () => {
   });
 
   it("renders the post page shell from the article payload while leaving async fragments to the client", async () => {
-    const page = await import("../pages/post/[id]");
+    const page = await import("../page-modules/post/[id]");
     const html = renderToStaticMarkup(
       React.createElement(page.default as any, {
         layoutProps: {
@@ -240,7 +240,7 @@ describe("post page cache shell", () => {
   });
 
   it("keeps post page HTML stable even if dynamic counters change on the article payload", async () => {
-    const page = await import("../pages/post/[id]");
+    const page = await import("../page-modules/post/[id]");
 
     const baseProps = {
       layoutProps: {

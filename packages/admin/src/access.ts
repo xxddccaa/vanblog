@@ -1,6 +1,8 @@
+import { getStoredUser } from '@/utils/getStoredUser';
+
 // src/access.ts
 export default function (initialState) {
-  const user = initialState?.user;
+  const user = initialState?.user || getStoredUser();
   let isAdmin = user?.id == 0;
   if (user?.id != 0 && user?.permissions && user?.permissions?.includes('all')) {
     isAdmin = true;

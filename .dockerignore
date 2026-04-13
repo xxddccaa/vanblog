@@ -27,3 +27,7 @@ logs
 !packages/website/.next/standalone/**
 !packages/website/.next/static
 !packages/website/.next/static/**
+.pnpm-store
+tests/host-dev/runtime
+tests/manual-v1.3.0/runtime
+tests/manual-v1.2.1/runtime

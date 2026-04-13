@@ -41,7 +41,7 @@ export class CollaboratorController {
     const data = await this.userProvider.getAllCollaborators(true);
     return {
       statusCode: 200,
-      data: [adminUser, ...data] || [adminUser],
+      data: [adminUser, ...(data || [])],
     };
   }
   @Delete('/:id')

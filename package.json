@@ -1,7 +1,19 @@
 {
   "name": "root",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "private": true,
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": "^10.33.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "baseline-browser-mapping": "^2.10.18",
+      "browserslist": "^4.28.2",
+      "caniuse-lite": "^1.0.30001787",
+      "giget": "^1.2.3"
+    }
+  },
   "scripts": {
     "clean": "rm -rf node_modules && rm -rf packages/*/node_modules && rm -rf packages/*/dist && rm -rf packages/admin/src/.umi && rm -rf packages/admin/src/.umi-production",
     "build": "pnpm --filter @vanblog/server --filter @vanblog/theme-default --filter @vanblog/admin --parallel build",
@@ -13,8 +25,15 @@
     "dev:server": "pnpm --filter @vanblog/server dev:noweb ",
     "dev:website": "pnpm --filter @vanblog/theme-default dev",
     "dev:admin": "pnpm --filter @vanblog/admin dev",
+    "host:dev:up": "bash scripts/host-dev-up.sh",
+    "host:dev:down": "bash scripts/host-dev-down.sh",
+    "host:dev:status": "bash scripts/host-dev-status.sh",
+    "test:current-stack": "pnpm test:current-stack:api && pnpm test:current-stack:admin",
+    "test:current-stack:api": "node --test tests/current-stack.api.test.mjs",
+    "test:current-stack:admin": "pnpm --filter @vanblog/admin test:current-stack",
     "test:deploy": "node --test tests/deployment-config.test.mjs",
     "test:blog-flow": "pnpm build:website && pnpm build:admin && node --test tests/deployment-config.test.mjs && node --test tests/blog-compose.e2e.test.mjs",
+    "test:full": "pnpm --filter @vanblog/server test && pnpm --filter @vanblog/theme-default exec vitest run && pnpm --filter @vanblog/admin tsc && pnpm build:website && pnpm build:admin && pnpm test:deploy && node --test tests/blog-compose.e2e.test.mjs",
     "docs:build": "pnpm run -r docs:build",
     "docs:dev": "pnpm run -r docs:dev",
     "kill": "sudo bash scripts/kill-all.sh",
@@ -31,7 +50,7 @@
     "release:images:push": "bash scripts/release-images.sh --push",
     "release:images:help": "bash scripts/release-images.sh --help"
   },
-  "packageManager": "pnpm@9.15.3",
+  "packageManager": "pnpm@10.33.0",
   "devDependencies": {
     "cross-env": "^7.0.3",
     "nan": "^2.18.0",

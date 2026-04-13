@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { middleware, config } from "../middleware";
+import { proxy, config } from "../proxy";
 
-describe("website middleware cache normalization", () => {
+describe("website proxy cache normalization", () => {
   it("redirects public html requests to a tracking-param-free url", () => {
-    const result = middleware({
+    const result = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/post/stable-shell?utm_source=x&fbclid=y&page=2"),
     } as any);
@@ -16,7 +16,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("redirects public html requests to a stable query-param order", () => {
-    const result = middleware({
+    const result = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/tag/cloudflare?sort=desc&page=2"),
     } as any);
@@ -28,15 +28,15 @@ describe("website middleware cache normalization", () => {
   });
 
   it("redirects stable public shell routes like about, link, and custom pages", () => {
-    const aboutResult = middleware({
+    const aboutResult = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/about?utm_source=x"),
     } as any);
-    const linkResult = middleware({
+    const linkResult = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/link?gclid=y"),
     } as any);
-    const customPageResult = middleware({
+    const customPageResult = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/c/cloudflare-cache?fbclid=z"),
     } as any);
@@ -52,7 +52,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("passes through api routes without redirecting", () => {
-    const result = middleware({
+    const result = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/api/public/article/1?utm_source=x"),
       headers: new Headers(),
@@ -63,12 +63,12 @@ describe("website middleware cache normalization", () => {
   });
 
   it("passes through non-html aliases and static files without redirecting", () => {
-    const feedResult = middleware({
+    const feedResult = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/feed.xml?utm_source=x"),
       headers: new Headers(),
     } as any);
-    const robotsResult = middleware({
+    const robotsResult = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/robots.txt?utm_source=x"),
       headers: new Headers(),
@@ -81,7 +81,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("passes through clean public html urls", () => {
-    const result = middleware({
+    const result = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/tag/cloudflare?page=2"),
       headers: new Headers(),
@@ -92,7 +92,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("also redirects HEAD requests for cacheable dynamic public html", () => {
-    const result = middleware({
+    const result = proxy({
       method: "HEAD",
       nextUrl: new URL("https://example.com/moment?utm_source=x&gclid=y"),
       headers: new Headers(),
@@ -103,7 +103,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("skips normalization for non-read requests", () => {
-    const result = middleware({
+    const result = proxy({
       method: "POST",
       nextUrl: new URL("https://example.com/post/stable-shell?utm_source=x"),
       headers: new Headers(),
@@ -120,7 +120,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("bypasses normalization when auth-like headers are present", () => {
-    const result = middleware({
+    const result = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/post/stable-shell?utm_source=x"),
       headers: new Headers({
@@ -133,7 +133,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("bypasses normalization when authenticated cookies are present", () => {
-    const result = middleware({
+    const result = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/post/stable-shell?utm_source=x"),
       headers: new Headers({
@@ -146,7 +146,7 @@ describe("website middleware cache normalization", () => {
   });
 
   it("also bypasses normalization when sessionid cookies are present", () => {
-    const result = middleware({
+    const result = proxy({
       method: "GET",
       nextUrl: new URL("https://example.com/post/stable-shell?utm_source=x"),
       headers: new Headers({

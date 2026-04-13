@@ -17,7 +17,7 @@ const publicCacheMiddleware = fs.readFileSync(
   'packages/server/src/provider/public-cache/public-cache.middleware.ts',
   'utf8',
 );
-const websiteApp = fs.readFileSync('packages/website/pages/_app.tsx', 'utf8');
+const websiteProviders = fs.readFileSync('packages/website/app/providers.tsx', 'utf8');
 const websitePageviewApi = fs.readFileSync('packages/website/api/pageview.ts', 'utf8');
 const require = createRequire(import.meta.url);
 const nextConfig = require('../packages/website/next.config.js');
@@ -289,7 +289,7 @@ test('cloudflare cache guide documents the intended rule order and bypass constr
   assert.match(cloudflareDoc, /packages\/website\/next\.config\.js/);
   assert.match(cloudflareDoc, /packages\/server\/src\/provider\/public-cache\/public-cache\.middleware\.ts/);
   assert.match(cloudflareDoc, /packages\/server\/src\/main\.ts/);
-  assert.match(cloudflareDoc, /packages\/website\/middleware\.ts/);
+  assert.match(cloudflareDoc, /packages\/website\/proxy\.ts/);
   assert.match(cloudflareDoc, /anonymous cacheable public HTML requests/i);
   assert.match(cloudflareDoc, /bypassing auth-like headers and authenticated cookies/i);
   assert.match(cloudflareDoc, /Public article reads are split into shell and fragments/i);
@@ -448,16 +448,16 @@ test('cloudflare cache guide keeps implemented TTL families aligned with next an
     /Public viewer aggregate reads \(`\/api\/public\/viewer`\) also stay on the same short-TTL contract, while the corresponding write path remains a non-cacheable browser-side beacon\/fetch call\./,
   );
   assert.match(
-    websiteApp,
-    /import \{ getPageview, recordPageview \} from "\.\.\/api\/pageview";/,
+    websiteProviders,
+    /import \{ getPageview, recordPageview \} from ['"]\.\.\/api\/pageview['"];/,
   );
   assert.match(
-    websiteApp,
+    websiteProviders,
     /createReloadViewer\([\s\S]*getPageview,[\s\S]*recordPageview,[\s\S]*setGlobalState,[\s\S]*\)/,
   );
   assert.match(
-    websiteApp,
-    /return setupPageviewLifecycle\([\s\S]*routerEvents: router\.events,[\s\S]*reloadViewer,[\s\S]*\);/,
+    websiteProviders,
+    /import \{ usePathname \} from 'next\/navigation';[\s\S]*void reloadViewer\(\);/s,
   );
   assert.match(
     websitePageviewApi,

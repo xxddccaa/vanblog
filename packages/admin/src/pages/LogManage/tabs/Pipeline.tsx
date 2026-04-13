@@ -1,18 +1,19 @@
 import { getLog, getPipelineConfig } from '@/services/van-blog/api';
 import { ProTable } from '@ant-design/pro-components';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Modal, Tag } from 'antd';
 import { useEffect, useRef, useState } from 'react';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 
 export default function () {
-  const actionRef = useRef();
+  const actionRef = useRef<ActionType>();
   const [pipelineConfig, setPipelineConfig] = useState<any[]>([]);
   useEffect(() => {
     getPipelineConfig().then(({ data }) => {
       setPipelineConfig(data);
     });
   }, []);
-  const columns = [
+  const columns: ProColumns<any>[] = [
     {
       title: '序号',
       align: 'center',
@@ -113,7 +114,7 @@ export default function () {
         search={false}
         dateFormatter="string"
         actionRef={actionRef}
-        options={true}
+        options={{ reload: true, density: true, setting: true }}
         headerTitle="流水线日志"
         pagination={{
           pageSize: 10,

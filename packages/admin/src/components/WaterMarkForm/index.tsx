@@ -77,7 +77,7 @@ export default function (props: {}) {
         <ProFormSelect
           fieldProps={{
             onChange: (target) => {
-              setEnableWaterMark(target);
+              setEnableWaterMark(Boolean(target));
             },
           }}
           name="enableWaterMark"

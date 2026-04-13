@@ -1,5 +1,5 @@
 import { HeadTag } from "../utils/getLayoutProps";
-import { config } from "../utils/loadConfig";
+import { config, getServerFetchOptions } from "../utils/loadConfig";
 export type SocialType =
   | "bilibili"
   | "email"
@@ -265,7 +265,7 @@ const defaultMeta: MetaProps = {
 export async function getPublicMeta(): Promise<PublicMetaProp> {
   try {
     const url = `${config.baseUrl}api/public/meta`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { statusCode, data } = await res.json();
     if (statusCode == 233) {
       return {
@@ -298,7 +298,7 @@ export async function getPublicMeta(): Promise<PublicMetaProp> {
 export async function getAllCustomPages(): Promise<CustomPageList[]> {
   try {
     const url = `${config.baseUrl}api/public/customPage/all`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { statusCode, data } = await res.json();
     if (statusCode == 200) {
       return data;
@@ -320,7 +320,7 @@ export async function getCustomPageByPath(
 ): Promise<CustomPage | null> {
   try {
     const url = `${config.baseUrl}api/public/customPage?path=${path}`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { statusCode, data } = await res.json();
     if (statusCode == 200) {
       return data;
@@ -353,7 +353,7 @@ export interface IconItem {
 export async function getAllIcons(): Promise<IconItem[]> {
   try {
     const url = `/api/public/icon`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { statusCode, data } = await res.json();
     if (statusCode == 200) {
       return data;
@@ -373,7 +373,7 @@ export async function getAllIcons(): Promise<IconItem[]> {
 export async function getIconByName(name: string): Promise<IconItem | null> {
   try {
     const url = `/api/public/icon/${name}`;
-    const res = await fetch(url);
+    const res = await fetch(url, getServerFetchOptions());
     const { statusCode, data } = await res.json();
     if (statusCode == 200) {
       return data;

@@ -1,4 +1,4 @@
-FROM node:20-alpine AS runner
+FROM node:24.14.1-alpine AS runner
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app/waline
 ARG VANBLOG_IMAGE_NAME="vanblog-waline"
@@ -17,7 +17,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/re
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
     && corepack enable \
-    && corepack prepare pnpm@9.15.3 --activate \
+    && corepack prepare pnpm@10.33.0 --activate \
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \

@@ -1,12 +1,15 @@
 import { getPublicMeta } from "../api/getAllData";
+import { getMoments } from "../api/getMoments";
 import { Article } from "../types/article";
-import { IndexPageProps } from "../pages/index";
-import { TagPageProps } from "../pages/tag";
-import { TimeLinePageProps } from "../pages/timeline";
-import { CategoryPageProps } from "../pages/category";
+import { IndexPageProps } from "../page-modules/index";
+import { TagPageProps } from "../page-modules/tag";
+import { TimeLinePageProps } from "../page-modules/timeline";
+import { CategoryPageProps } from "../page-modules/category";
 import { getAuthorCardShellProps, getLayoutProps } from "./getLayoutProps";
-import { AboutPageProps } from "../pages/about";
-import { PostPagesProps } from "../pages/post/[id]";
+import { AboutPageProps } from "../page-modules/about";
+import { PostPagesProps } from "../page-modules/post/[id]";
+import type { MomentPageProps } from "../page-components/moment";
+import type { NavPageProps } from "../page-components/nav";
 import {
   getArchiveMonthArticles,
   getArchiveSummary,
@@ -19,16 +22,17 @@ import {
   getTagArchiveSummary,
   getTimelineSummary,
 } from "../api/getArticles";
-import { LinkPageProps } from "../pages/link";
-import { ArchivePageProps } from "../pages/archive";
-import { ArchiveYearPageProps } from "../pages/archive/[year]";
-import { ArchiveMonthRouteProps } from "../pages/archive/[year]/[month]";
-import { CategoryArchivePageProps } from "../pages/category/[category]";
-import { CategoryArchiveYearPageProps } from "../pages/category/[category]/archive/[year]";
-import { CategoryArchiveMonthPageProps } from "../pages/category/[category]/archive/[year]/[month]";
-import { TagArchivePageProps } from "../pages/tag/[tag]";
-import { TagArchiveYearPageProps } from "../pages/tag/[tag]/archive/[year]";
-import { TagArchiveMonthPageProps } from "../pages/tag/[tag]/archive/[year]/[month]";
+import { LinkPageProps } from "../page-modules/link";
+import { getServerBaseUrl, getServerFetchOptions } from "./loadConfig";
+import { ArchivePageProps } from "../page-modules/archive";
+import { ArchiveYearPageProps } from "../page-modules/archive/[year]";
+import { ArchiveMonthRouteProps } from "../page-modules/archive/[year]/[month]";
+import { CategoryArchivePageProps } from "../page-modules/category/[category]";
+import { CategoryArchiveYearPageProps } from "../page-modules/category/[category]/archive/[year]";
+import { CategoryArchiveMonthPageProps } from "../page-modules/category/[category]/archive/[year]/[month]";
+import { TagArchivePageProps } from "../page-modules/tag/[tag]";
+import { TagArchiveYearPageProps } from "../page-modules/tag/[tag]/archive/[year]";
+import { TagArchiveMonthPageProps } from "../page-modules/tag/[tag]/archive/[year]/[month]";
 
 const toStableArticleShell = (article: Partial<Article> | null | undefined): Article => ({
   id: Number(article?.id || 0),
@@ -287,5 +291,68 @@ export async function getTagArchiveMonthPageProps(
     year,
     month,
     articles: toStableArticleShellList(articles),
+  };
+}
+
+export async function getMomentPageProps(): Promise<MomentPageProps> {
+  try {
+    const data = await getPublicMeta();
+    const layoutProps = getLayoutProps(data);
+    const authorCardProps = getAuthorCardShellProps(data);
+    const momentData = await getMoments({
+      page: 1,
+      pageSize: 10,
+      sortCreatedAt: "desc",
+    });
+
+    return {
+      ...layoutProps,
+      authorCardProps,
+      initialMoments: momentData.moments || [],
+      initialTotal: momentData.total || 0,
+    };
+  } catch (error) {
+    console.error("Error in getMomentPageProps:", error);
+
+    try {
+      const data = await getPublicMeta();
+      return {
+        ...getLayoutProps(data),
+        authorCardProps: getAuthorCardShellProps(data),
+        initialMoments: [],
+        initialTotal: 0,
+      };
+    } catch {
+      return {
+        initialMoments: [],
+        initialTotal: 0,
+        siteName: "VanBlog",
+        description: "VanBlog",
+        authorCardProps: {},
+      } as MomentPageProps;
+    }
+  }
+}
+
+export async function getNavPageProps(): Promise<NavPageProps> {
+  const data = await getPublicMeta();
+  const layoutProps = getLayoutProps(data);
+  const authorCardProps = getAuthorCardShellProps(data);
+  let initialNavData = { categories: [], tools: [] };
+
+  try {
+    const navResponse = await fetch(`${getServerBaseUrl()}api/public/nav/data`, getServerFetchOptions());
+    const navResult = await navResponse.json();
+    if (navResult.statusCode === 200) {
+      initialNavData = navResult.data;
+    }
+  } catch (error) {
+    console.error("Failed to fetch nav data during build:", error);
+  }
+
+  return {
+    layoutProps,
+    initialNavData,
+    authorCardProps,
   };
 }

@@ -432,7 +432,10 @@ export class BackupController {
       ]);
 
       const rawCollectionCounts = Object.fromEntries(
-        Object.entries(rawCollections).map(([name, docs]) => [name, docs?.length || 0]),
+        Object.entries(rawCollections).map(([name, docs]) => [
+          name,
+          Array.isArray(docs) ? docs.length : 0,
+        ]),
       );
 
       const data = {

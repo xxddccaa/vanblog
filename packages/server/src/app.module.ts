@@ -254,7 +254,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(PublicCacheMiddleware).forRoutes({
-      path: '/api/public/(.*)',
+      path: '/api/public/*path',
       method: RequestMethod.ALL,
     });
 

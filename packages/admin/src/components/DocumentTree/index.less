@@ -9,6 +9,7 @@
   &-header {
     margin-bottom: 12px;
     flex-shrink: 0;
+    background: transparent;
   }
 
   &-tree-wrapper {
@@ -19,6 +20,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    background: #fff;
   }
 
   &-content {
@@ -26,6 +28,7 @@
     overflow: auto;
     padding: 8px;
     min-height: 0;
+    background: #fff;
     
     /* 自定义滚动条样式 */
     &::-webkit-scrollbar {
@@ -53,6 +56,38 @@
 
   &-scroll {
     /* 兼容性类名，实际样式在 &-content 中定义 */
+  }
+}
+
+html[data-theme='dark'] {
+  .document-tree {
+    &-header {
+      background: transparent !important;
+    }
+
+    &-tree-wrapper {
+      background: #111827 !important;
+      border-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    &-content {
+      background: #111827 !important;
+      color: #e5e7eb !important;
+
+      &::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.45);
+
+        &:hover {
+          background: rgba(148, 163, 184, 0.65);
+        }
+      }
+
+      scrollbar-color: rgba(148, 163, 184, 0.45) rgba(255, 255, 255, 0.06);
+    }
   }
 }
 
@@ -84,6 +119,34 @@
   .ant-tree-switcher {
     &:hover {
       background-color: #f5f5f5;
+    }
+  }
+}
+
+html[data-theme='dark'] {
+  .document-tree-container {
+    .ant-tree {
+      background: #111827 !important;
+      color: #e5e7eb !important;
+
+      .ant-tree-treenode:hover,
+      .ant-tree-node-content-wrapper:hover,
+      .ant-tree-switcher:hover {
+        background-color: rgba(148, 163, 184, 0.12) !important;
+      }
+
+      .ant-tree-node-content-wrapper.ant-tree-node-selected {
+        background-color: rgba(59, 130, 246, 0.18) !important;
+      }
+
+      .ant-tree-switcher,
+      .ant-tree-title,
+      .ant-tree-node-content-wrapper,
+      .ant-tree-node-content-wrapper span,
+      .ant-tree-indent-unit,
+      .ant-tree-iconEle {
+        color: #e5e7eb !important;
+      }
     }
   }
 }
@@ -141,6 +204,26 @@
   
   &:hover .document-tree-node-actions {
     opacity: 1;
+  }
+}
+
+html[data-theme='dark'] {
+  .document-tree-node {
+    .document-tree-node-title,
+    .document-tree-node-title span {
+      color: #e5e7eb !important;
+    }
+
+    .document-tree-node-actions {
+      .ant-btn {
+        color: #cbd5e1 !important;
+
+        &:hover {
+          background-color: rgba(148, 163, 184, 0.12) !important;
+          color: #f8fafc !important;
+        }
+      }
+    }
   }
 }
 

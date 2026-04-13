@@ -6,7 +6,7 @@ import {
   stripTrackingSearchParams,
 } from "./utils/cacheKeyNormalization";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (!["GET", "HEAD"].includes(request.method)) {
     return NextResponse.next();
   }

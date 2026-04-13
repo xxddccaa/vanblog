@@ -1,0 +1,151 @@
+services:
+  caddy:
+    image: kevinchina/deeplearning:vanblog-caddy-v1.3.0-5a438e5e
+    restart: always
+    depends_on:
+      server:
+        condition: service_healthy
+      website:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+      waline:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      EMAIL: admin@example.com
+    volumes:
+      - ./runtime/log:/var/log
+      - ./runtime/caddy/config:/root/.config/caddy
+      - ./runtime/caddy/data:/root/.local/share/caddy
+    ports:
+      - "18080:80"
+
+  server:
+    image: kevinchina/deeplearning:vanblog-server-v1.3.0-5a438e5e
+    restart: always
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      VAN_BLOG_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vanblog
+      VAN_BLOG_REDIS_URL: redis://redis:6379
+      VAN_BLOG_WALINE_DB: waline
+      VAN_BLOG_WALINE_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/waline
+      VAN_BLOG_CADDY_MANAGE_HTTPS: "false"
+      VAN_BLOG_DEBUG_SUPER_TOKEN: ${VAN_BLOG_DEBUG_SUPER_TOKEN:-}
+      VAN_BLOG_CLOUDFLARE_API_TOKEN: ""
+      VAN_BLOG_CLOUDFLARE_ZONE_ID: ""
+      VANBLOG_CADDY_API_URL: http://caddy:2019
+      VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
+      VANBLOG_WALINE_CONTROL_URL: http://waline:8361
+      VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
+    volumes:
+      - ./runtime/data/static:/app/static
+      - ./runtime/log:/var/log
+      - ./runtime/aliyunpan/config:/root/.config/aliyunpan
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  website:
+    image: kevinchina/deeplearning:vanblog-website-v1.3.0-5a438e5e
+    restart: always
+    init: true
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      PORT: 3001
+      WEBSITE_CONTROL_PORT: 3011
+      VAN_BLOG_SERVER_URL: http://server:3000
+      VAN_BLOG_REVALIDATE: "false"
+      VAN_BLOG_ALLOW_DOMAINS: pic.mereith.com
+    expose:
+      - "3001"
+      - "3011"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  admin:
+    image: kevinchina/deeplearning:vanblog-admin-v1.3.0-5a438e5e
+    restart: always
+    expose:
+      - "3002"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  waline:
+    image: kevinchina/deeplearning:vanblog-waline-v1.3.0-5a438e5e
+    restart: always
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      PORT: 8360
+      WALINE_CONTROL_PORT: 8361
+      PG_HOST: postgres
+      PG_PORT: 5432
+      PG_DB: waline
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      JWT_TOKEN: vanblog-change-me
+    expose:
+      - "8360"
+      - "8361"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_DB: vanblog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./runtime/data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vanblog"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - ./runtime/data/redis:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 10s

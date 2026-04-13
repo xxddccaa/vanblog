@@ -1,8 +1,7 @@
-import { useHistory, useLocation } from 'umi';
+import { history, useLocation } from '@umijs/max';
 
 export const useQuery = () => {
   const { query } = useLocation();
-  const history = useHistory();
   const setQuery = (setObj) => {
     const basePath = history.location.pathname;
     const newQuery = {};

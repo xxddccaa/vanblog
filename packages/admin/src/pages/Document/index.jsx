@@ -8,7 +8,7 @@ import {
   DragOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { history } from 'umi';
+import { history } from '@umijs/max';
 import DocumentViewer from '@/components/DocumentViewer';
 import DocumentTree from '@/components/DocumentTree';
 import NewDocumentModal from '@/components/NewDocumentModal';

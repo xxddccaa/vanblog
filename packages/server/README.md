@@ -22,17 +22,25 @@ pnpm --filter @vanblog/server test:e2e
 
 ## 数据库配置
 
-默认数据库连接可通过环境变量 `VAN_BLOG_DATABASE_URL` 控制；当前 compose 默认使用：
+默认主数据库连接可通过环境变量 `VAN_BLOG_DATABASE_URL` 控制；当前 compose 默认使用：
 
 ```text
-mongodb://mongo:27017/vanBlog?authSource=admin
+postgresql://postgres:postgres@postgres:5432/vanblog
+```
+
+缓存连接可通过 `VAN_BLOG_REDIS_URL` 控制；当前 compose 默认使用：
+
+```text
+redis://redis:6379
 ```
 
 开发时如果需要覆盖，也可以在 `packages/server` 目录下新建 `config.yaml`：
 
 ```yaml
 database:
-  url: mongodb://somemongo:27017/vanBlog?authSource=admin
+  url: postgresql://postgres:postgres@127.0.0.1:5432/vanblog
+redis:
+  url: redis://127.0.0.1:6379
 static:
   path: /path/to/staticFolder
 ```

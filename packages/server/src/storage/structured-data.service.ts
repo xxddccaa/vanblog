@@ -480,6 +480,36 @@ export class StructuredDataService implements OnModuleInit {
     return parsed.toISOString();
   }
 
+  private dedupeRecords<T>(
+    records: T[],
+    label: string,
+    getKey: (record: T) => string | null | undefined,
+  ): T[] {
+    const deduped = new Map<string, T>();
+    for (const record of records || []) {
+      const key = getKey(record);
+      if (!key) {
+        continue;
+      }
+      deduped.set(String(key), record);
+    }
+    if (deduped.size !== (records || []).length) {
+      this.logger.warn(`检测到重复${label}，已按最新记录覆盖旧记录: ${(records || []).length - deduped.size} 条`);
+    }
+    return Array.from(deduped.values());
+  }
+
+  private normalizeNumericId(value: any) {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    if (typeof value === 'string' && value.trim() === '') {
+      return null;
+    }
+    const normalized = Number(value);
+    return Number.isFinite(normalized) ? normalized : null;
+  }
+
   private mapUserRow(row: any) {
     if (!row) {
       return null;
@@ -1059,8 +1089,16 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceUsers(users: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_users RESTART IDENTITY CASCADE');
-    for (const user of users) {
+    for (const user of this.dedupeRecords(
+      users,
+      '用户 ID',
+      (user) => String(this.normalizeNumericId(user?.id) ?? ''),
+    )) {
       if (user?.id === undefined || !user?.name) {
+        continue;
+      }
+      const userId = this.normalizeNumericId(user.id);
+      if (userId === null) {
         continue;
       }
       await this.store.query(
@@ -1070,7 +1108,7 @@ export class StructuredDataService implements OnModuleInit {
           ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)
         `,
         [
-          user.id,
+          userId,
           user.name,
           user.password || '',
           this.asDate(user.createdAt),
@@ -1086,7 +1124,7 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceSettings(settings: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_settings CASCADE');
-    for (const setting of settings) {
+    for (const setting of this.dedupeRecords(settings, '设置类型', (setting) => setting?.type)) {
       if (!setting?.type) {
         continue;
       }
@@ -1143,7 +1181,7 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceViewers(viewers: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_viewers CASCADE');
-    for (const viewer of viewers) {
+    for (const viewer of this.dedupeRecords(viewers, '浏览统计日期', (viewer) => viewer?.date)) {
       if (!viewer?.date) {
         continue;
       }
@@ -1166,7 +1204,11 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceVisits(visits: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_visits CASCADE');
-    for (const visit of visits) {
+    for (const visit of this.dedupeRecords(
+      visits,
+      '访问统计键',
+      (visit) => (visit?.date && visit?.pathname ? `${visit.date}::${visit.pathname}` : ''),
+    )) {
       if (!visit?.date || !visit?.pathname) {
         continue;
       }
@@ -1191,8 +1233,16 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceCategories(categories: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_categories CASCADE');
-    for (const category of categories) {
+    for (const category of this.dedupeRecords(
+      categories,
+      '分类 ID',
+      (category) => String(this.normalizeNumericId(category?.id) ?? ''),
+    )) {
       if (category?.id === undefined || !category?.name) {
+        continue;
+      }
+      const categoryId = this.normalizeNumericId(category.id);
+      if (categoryId === null) {
         continue;
       }
       await this.store.query(
@@ -1203,7 +1253,7 @@ export class StructuredDataService implements OnModuleInit {
           ) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10)
         `,
         [
-          category.id,
+          categoryId,
           category.name,
           category.type || 'category',
           Boolean(category.private),
@@ -1221,8 +1271,16 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceArticles(articles: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_article_tags');
     await this.store.query('TRUNCATE TABLE vanblog_articles CASCADE');
-    for (const article of articles) {
+    for (const article of this.dedupeRecords(
+      articles,
+      '文章 ID',
+      (article) => String(this.normalizeNumericId(article?.id) ?? ''),
+    )) {
       if (article?.id === undefined || !article?.title) {
+        continue;
+      }
+      const articleId = this.normalizeNumericId(article.id);
+      if (articleId === null) {
         continue;
       }
       await this.store.query(
@@ -1238,7 +1296,7 @@ export class StructuredDataService implements OnModuleInit {
           )
         `,
         [
-          article.id,
+          articleId,
           article.title,
           article.content || '',
           article.category || null,
@@ -1261,7 +1319,7 @@ export class StructuredDataService implements OnModuleInit {
       for (const tag of article.tags || []) {
         await this.store.query(
           'INSERT INTO vanblog_article_tags (article_id, tag_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [article.id, tag],
+          [articleId, tag],
         );
       }
     }
@@ -1270,8 +1328,16 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceDrafts(drafts: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_drafts CASCADE');
-    for (const draft of drafts) {
+    for (const draft of this.dedupeRecords(
+      drafts,
+      '草稿 ID',
+      (draft) => String(this.normalizeNumericId(draft?.id) ?? ''),
+    )) {
       if (draft?.id === undefined || !draft?.title) {
+        continue;
+      }
+      const draftId = this.normalizeNumericId(draft.id);
+      if (draftId === null) {
         continue;
       }
       await this.store.query(
@@ -1282,7 +1348,7 @@ export class StructuredDataService implements OnModuleInit {
           ) VALUES ($1,$2,$3,$4::text[],$5,$6,$7,$8,$9,$10)
         `,
         [
-          draft.id,
+          draftId,
           draft.title,
           draft.content || '',
           (draft.tags || []).filter(Boolean),
@@ -1299,7 +1365,7 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceCustomPages(customPages: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_custom_pages CASCADE');
-    for (const page of customPages) {
+    for (const page of this.dedupeRecords(customPages, '自定义页面路径', (page) => page?.path)) {
       if (!page?.path || !page?.name) {
         continue;
       }
@@ -1324,7 +1390,11 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceNavCategories(categories: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_nav_categories CASCADE');
-    for (const category of categories) {
+    for (const category of this.dedupeRecords(
+      categories,
+      '导航分类 ID',
+      (category) => String(category?._id || category?.id || ''),
+    )) {
       const id = String(category?._id || category?.id || '');
       if (!id || !category?.name) {
         continue;
@@ -1351,7 +1421,11 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceNavTools(tools: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_nav_tools CASCADE');
-    for (const tool of tools) {
+    for (const tool of this.dedupeRecords(
+      tools,
+      '导航工具 ID',
+      (tool) => String(tool?._id || tool?.id || ''),
+    )) {
       const id = String(tool?._id || tool?.id || '');
       if (!id || !tool?.name || !tool?.url || !tool?.categoryId) {
         continue;
@@ -1384,7 +1458,7 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceIcons(icons: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_icons CASCADE');
-    for (const icon of icons) {
+    for (const icon of this.dedupeRecords(icons, '图标名称', (icon) => icon?.name)) {
       if (!icon?.name || !icon?.type || !icon?.iconUrl) {
         continue;
       }
@@ -1413,8 +1487,16 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replacePipelines(pipelines: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_pipelines CASCADE');
-    for (const pipeline of pipelines) {
+    for (const pipeline of this.dedupeRecords(
+      pipelines,
+      '流水线 ID',
+      (pipeline) => String(this.normalizeNumericId(pipeline?.id) ?? ''),
+    )) {
       if (pipeline?.id === undefined || !pipeline?.name || !pipeline?.eventName) {
+        continue;
+      }
+      const pipelineId = this.normalizeNumericId(pipeline.id);
+      if (pipelineId === null) {
         continue;
       }
       await this.store.query(
@@ -1425,7 +1507,7 @@ export class StructuredDataService implements OnModuleInit {
           ) VALUES ($1,$2,$3,$4,$5,$6::text[],$7,$8,$9,$10,$11,$12)
         `,
         [
-          pipeline.id,
+          pipelineId,
           pipeline.name,
           pipeline.eventType || null,
           pipeline.description || null,
@@ -1444,7 +1526,7 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceTokens(tokens: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_tokens CASCADE');
-    for (const token of tokens) {
+    for (const token of this.dedupeRecords(tokens, 'Token', (token) => token?.token)) {
       if (!token?.token) {
         continue;
       }
@@ -1453,6 +1535,13 @@ export class StructuredDataService implements OnModuleInit {
           INSERT INTO vanblog_tokens (
             token, user_id, name, expires_in, created_at, disabled, source_record_id
           ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+          ON CONFLICT (token) DO UPDATE SET
+            user_id = EXCLUDED.user_id,
+            name = EXCLUDED.name,
+            expires_in = EXCLUDED.expires_in,
+            created_at = EXCLUDED.created_at,
+            disabled = EXCLUDED.disabled,
+            source_record_id = EXCLUDED.source_record_id
         `,
         [
           token.token,
@@ -1469,7 +1558,7 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceStatics(items: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_statics CASCADE');
-    for (const item of items) {
+    for (const item of this.dedupeRecords(items, '静态资源 sign', (item) => item?.sign)) {
       if (!item?.sign || !item?.realPath || !item?.name) {
         continue;
       }
@@ -1496,8 +1585,16 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceDocuments(documents: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_documents CASCADE');
-    for (const document of documents) {
+    for (const document of this.dedupeRecords(
+      documents,
+      '文档 ID',
+      (document) => String(this.normalizeNumericId(document?.id) ?? ''),
+    )) {
       if (document?.id === undefined || !document?.title) {
+        continue;
+      }
+      const documentId = this.normalizeNumericId(document.id);
+      if (documentId === null) {
         continue;
       }
       await this.store.query(
@@ -1508,7 +1605,7 @@ export class StructuredDataService implements OnModuleInit {
           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13)
         `,
         [
-          document.id,
+          documentId,
           document.title,
           document.content || '',
           document.author || null,
@@ -1528,8 +1625,16 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceMoments(moments: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_moments CASCADE');
-    for (const moment of moments) {
+    for (const moment of this.dedupeRecords(
+      moments,
+      '动态 ID',
+      (moment) => String(this.normalizeNumericId(moment?.id) ?? ''),
+    )) {
       if (moment?.id === undefined || !moment?.content) {
+        continue;
+      }
+      const momentId = this.normalizeNumericId(moment.id);
+      if (momentId === null) {
         continue;
       }
       await this.store.query(
@@ -1539,7 +1644,7 @@ export class StructuredDataService implements OnModuleInit {
           ) VALUES ($1,$2,$3,$4,$5,$6)
         `,
         [
-          moment.id,
+          momentId,
           moment.content,
           Boolean(moment.deleted),
           this.asDate(moment.createdAt),
@@ -1552,7 +1657,11 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceMindMaps(mindMaps: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_mindmaps CASCADE');
-    for (const mindMap of mindMaps) {
+    for (const mindMap of this.dedupeRecords(
+      mindMaps,
+      '脑图 ID',
+      (mindMap) => String(mindMap?._id || mindMap?.id || ''),
+    )) {
       const id = String(mindMap?._id || mindMap?.id || '');
       if (!id || !mindMap?.title) {
         continue;
