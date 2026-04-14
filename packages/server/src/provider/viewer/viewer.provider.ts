@@ -13,6 +13,13 @@ export class ViewerProvider {
     private readonly structuredDataService: StructuredDataService,
   ) {}
 
+  private getViewerUpdateFilter(viewer: any) {
+    if (viewer?._id) {
+      return { _id: viewer._id };
+    }
+    return { date: viewer?.date };
+  }
+
   async create(createViewerDto: createViewerDto): Promise<Viewer> {
     const createdData = new this.viewerModel(createViewerDto);
     const saved = await createdData.save();
@@ -143,16 +150,17 @@ export class ViewerProvider {
 
   async import(data: Viewer[]) {
     for (const each of data) {
-      const oldData = await this.viewerModel.findOne({
-        date: each.date,
-      });
+      const oldData = await this.findByDate(each.date);
       if (oldData) {
-        await this.viewerModel.updateOne({ _id: oldData._id }, each);
+        await this.viewerModel.updateOne(this.getViewerUpdateFilter(oldData), each);
       } else {
         const newData = new this.viewerModel(each);
         await newData.save();
       }
+      await this.structuredDataService.upsertViewer({
+        ...(oldData?.toObject?.() || each),
+        ...each,
+      });
     }
-    await this.structuredDataService.refreshViewersFromRecordStore();
   }
 }

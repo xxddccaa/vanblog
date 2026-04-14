@@ -29,6 +29,14 @@ export class MindMapController {
     private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get('/')
   async getByOption(
     @Query('page') page: number,
@@ -40,8 +48,8 @@ export class MindMapController {
     @Query('endTime') endTime?: string,
   ) {
     const option = {
-      page,
-      pageSize,
+      page: this.normalizePositiveInt(page, 1, 100000),
+      pageSize: this.normalizePositiveInt(pageSize, 10, 100),
       title,
       author,
       sortCreatedAt,
@@ -102,7 +110,7 @@ export class MindMapController {
 
   @Delete('/:id')
   async delete(@Param('id') id: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止删除思维导图！',

@@ -123,6 +123,8 @@ describe('BackupController import mode', () => {
     const staticProvider = {
       exportAll: jest.fn().mockResolvedValue([]),
       importItems: jest.fn().mockResolvedValue(undefined),
+      deleteCustomPage: jest.fn().mockResolvedValue(undefined),
+      deleteOneBySign: jest.fn().mockResolvedValue(undefined),
       staticModel: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -136,6 +138,10 @@ describe('BackupController import mode', () => {
     };
     const customPageProvider = {
       getAll: jest.fn().mockResolvedValue([]),
+      getCustomPageByPath: jest.fn().mockResolvedValue(null),
+      createCustomPage: jest.fn().mockResolvedValue(undefined),
+      updateCustomPage: jest.fn().mockResolvedValue(undefined),
+      deleteByPath: jest.fn().mockResolvedValue(undefined),
       customPageModal: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -143,6 +149,9 @@ describe('BackupController import mode', () => {
     };
     const pipelineProvider = {
       getAll: jest.fn().mockResolvedValue([]),
+      getPipelineById: jest.fn().mockResolvedValue(null),
+      createPipeline: jest.fn().mockResolvedValue(undefined),
+      updatePipelineById: jest.fn().mockResolvedValue(undefined),
       pipelineModel: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -158,6 +167,8 @@ describe('BackupController import mode', () => {
     };
     const navToolProvider = {
       getAllTools: jest.fn().mockResolvedValue([]),
+      createTool: jest.fn().mockResolvedValue(undefined),
+      updateTool: jest.fn().mockResolvedValue(undefined),
       navToolModel: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -165,6 +176,8 @@ describe('BackupController import mode', () => {
     };
     const navCategoryProvider = {
       getAllCategories: jest.fn().mockResolvedValue([]),
+      createCategory: jest.fn().mockResolvedValue(undefined),
+      updateCategory: jest.fn().mockResolvedValue(undefined),
       navCategoryModel: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -172,6 +185,9 @@ describe('BackupController import mode', () => {
     };
     const iconProvider = {
       getAllIcons: jest.fn().mockResolvedValue([]),
+      getIconByName: jest.fn().mockResolvedValue(null),
+      createIcon: jest.fn().mockResolvedValue(undefined),
+      updateIcon: jest.fn().mockResolvedValue(undefined),
       iconModel: {
         deleteMany: jest.fn().mockResolvedValue(undefined),
       },
@@ -300,8 +316,16 @@ describe('BackupController import mode', () => {
         categoryProvider: {
           getAllCategories: jest.fn().mockResolvedValue([{ id: 1, name: 'Tech' }]),
         },
+        customPageProvider: {
+          getAll: jest.fn().mockResolvedValue([{ path: '/landing', type: 'folder' }]),
+        },
         tagProvider: {
           getAllTagRecords: jest.fn().mockResolvedValue([{ name: 'cloudflare', articleCount: 3 }]),
+        },
+        staticProvider: {
+          exportAll: jest.fn().mockResolvedValue([
+            { sign: 'img-1', storageType: 'local', staticType: 'img' },
+          ]),
         },
         tokenProvider: {
           getAllTokens: jest.fn().mockResolvedValue([
@@ -326,22 +350,31 @@ describe('BackupController import mode', () => {
     expect(tagProvider.getAllTagRecords).toHaveBeenCalled();
     expect(tokenProvider.getAllTokens).toHaveBeenCalled();
     expect(mongoBackupProvider.exportAllCollections).toHaveBeenCalled();
-    expect(exportedJson.tokens).toEqual([
-      expect.objectContaining({ token: 'api-token', userId: 666666 }),
-      expect.objectContaining({ token: 'login-token', userId: 0 }),
-    ]);
+    expect(exportedJson.tokens).toEqual([]);
     expect(exportedJson.rawCollections).toEqual({
       articles: [{ id: 1, title: 'post' }],
-      tokens: [{ token: 'login-token', userId: 0 }],
+      tokens: [],
     });
     expect(exportedJson.mongoCollections).toEqual(exportedJson.rawCollections);
     expect(exportedJson.backupInfo.rawCollectionCounts).toEqual({
       articles: 1,
-      tokens: 1,
+      tokens: 0,
     });
     expect(exportedJson.backupInfo.mongoCollectionCounts).toEqual(
       exportedJson.backupInfo.rawCollectionCounts,
     );
+    expect(exportedJson.backupInfo.credentialWarnings).toEqual({
+      tokensExcluded: true,
+      message:
+        '为避免凭证泄露，JSON 备份不会导出登录会话 Token 或 API Token；恢复后需重新登录并重新创建 API Token。',
+    });
+    expect(exportedJson.backupInfo.artifactWarnings).toEqual({
+      embedded: false,
+      localStaticFiles: 1,
+      customPageFolders: 1,
+      message:
+        '当前 JSON 备份不会内嵌本地静态文件和 folder 型自定义页面的实际文件内容；恢复时只会导入数据库记录。',
+    });
     expect(download).toHaveBeenCalledWith(
       expect.stringMatching(/^vanblog-backup-\d{4}-\d{2}-\d{2}-\d{6}\.json$/),
       expect.any(Function),
@@ -395,10 +428,18 @@ describe('BackupController import mode', () => {
       settingProvider,
       articleProvider,
       structuredDataService,
-    } =
-      createController({
+      tokenProvider,
+      customPageProvider,
+      staticProvider,
+    } = createController({
       articleProvider: {
         getTotalNum: jest.fn().mockResolvedValue(1),
+      },
+      customPageProvider: {
+        getAll: jest.fn().mockResolvedValue([{ path: '/landing', type: 'folder' }]),
+      },
+      staticProvider: {
+        exportAll: jest.fn().mockResolvedValue([{ sign: 'img-1' }]),
       },
     });
 
@@ -407,6 +448,7 @@ describe('BackupController import mode', () => {
         JSON.stringify({
           backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
           users: [{ id: 0, name: 'admin', password: 'hash', salt: 'salt' }],
+          tokens: [{ token: 'stale-admin-token', userId: 0 }],
           meta: {
             siteInfo: { siteName: 'Should Keep Current Site' },
             links: [{ name: 'demo', url: 'https://example.com' }],
@@ -418,6 +460,8 @@ describe('BackupController import mode', () => {
 
     expect(result.statusCode).toBe(200);
     expect(articleProvider.articleModel.deleteMany).toHaveBeenCalled();
+    expect(staticProvider.deleteCustomPage).toHaveBeenCalledWith('/landing');
+    expect(staticProvider.deleteOneBySign).toHaveBeenCalledWith('img-1');
     expect(userProvider.userModel.deleteMany).toHaveBeenCalledWith({ id: { $ne: 0 } });
     expect(structuredDataService.clearStructuredDataForRestore).toHaveBeenCalledWith([0]);
     expect(userProvider.importUsers).toHaveBeenCalledWith([
@@ -440,6 +484,7 @@ describe('BackupController import mode', () => {
       [{ type: 'menu', value: { data: [] } }],
       true,
     );
+    expect(tokenProvider.importTokens).not.toHaveBeenCalled();
     expect(structuredDataService.refreshAllFromRecordStore).toHaveBeenCalledWith('backup-import');
     expect(structuredDataService.refreshCollectionsFromRecordStore).not.toHaveBeenCalled();
   });
@@ -532,9 +577,7 @@ describe('BackupController import mode', () => {
       expect.arrayContaining([{ type: 'menu', value: { data: [] } }]),
       true,
     );
-    expect(tokenProvider.importTokens).toHaveBeenCalledWith([
-      expect.objectContaining({ token: 'login-token', userId: 0 }),
-    ]);
+    expect(tokenProvider.importTokens).not.toHaveBeenCalled();
   });
 
   it('clears existing content and restores moments, documents and mind maps for a full-site import', async () => {
@@ -644,80 +687,157 @@ describe('BackupController import mode', () => {
     );
   });
 
-  it('clears site initialization state and structured data when clear-all is requested', async () => {
-    const { controller, userProvider, metaProvider, settingProvider, structuredDataService } =
+  it('fails synchronously when required article categories cannot be recreated during restore', async () => {
+    const { controller, structuredDataService } = createController({
+      categoryProvider: {
+        getAllCategories: jest.fn().mockResolvedValue([]),
+        addOne: jest.fn().mockRejectedValue(new Error('duplicate key')),
+      },
+    });
+
+    const result = await controller.importAllSync({
+      buffer: Buffer.from(
+        JSON.stringify({
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
+          articles: [{ id: 1, title: 'Article A', content: 'alpha', category: 'Tech', tags: [] }],
+        }),
+      ),
+    } as any);
+
+    expect(result.statusCode).toBe(500);
+    expect((result as any).message).toContain('articles 分类 恢复不完整');
+    expect(structuredDataService.refreshAllFromRecordStore).not.toHaveBeenCalled();
+    expect(structuredDataService.refreshCollectionsFromRecordStore).not.toHaveBeenCalled();
+  });
+
+  it('fails the restore instead of reporting success when a custom page import is only partially applied', async () => {
+    const { controller, customPageProvider, backupImportJobProvider, structuredDataService } =
       createController({
-        articleProvider: {
-          findAll: jest.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]),
-        },
-        draftProvider: {
-          getAll: jest.fn().mockResolvedValue([{ id: 3 }]),
-        },
-        momentProvider: {
-          getByOption: jest.fn().mockResolvedValue({ total: 2, moments: [{ id: 4 }, { id: 5 }] }),
-        },
         customPageProvider: {
-          getAll: jest.fn().mockResolvedValue([]),
-        },
-        navToolProvider: {
-          getAllTools: jest.fn().mockResolvedValue([]),
-          deleteTool: jest.fn().mockResolvedValue(undefined),
-        },
-        navCategoryProvider: {
-          getAllCategories: jest.fn().mockResolvedValue([]),
-          deleteCategory: jest.fn().mockResolvedValue(undefined),
-        },
-        iconProvider: {
-          deleteAllIcons: jest.fn().mockResolvedValue(undefined),
-        },
-        pipelineProvider: {
-          getAll: jest.fn().mockResolvedValue([]),
-          deletePipelineById: jest.fn().mockResolvedValue(undefined),
-        },
-        documentProvider: {
-          getByOption: jest.fn().mockResolvedValue({ total: 1, documents: [{ id: 6 }] }),
-        },
-        mindMapProvider: {
-          getByOption: jest.fn().mockResolvedValue({ total: 1, mindMaps: [{ _id: 'mind-1' }] }),
-          mindMapModel: {
-            deleteMany: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        viewerProvider: {
-          getAll: jest.fn().mockResolvedValue([{ id: 7 }]),
-          viewerModel: {
-            deleteMany: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        visitProvider: {
-          getAll: jest.fn().mockResolvedValue([{ id: 8 }]),
-          visitModel: {
-            deleteMany: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        staticProvider: {
-          exportAll: jest.fn().mockResolvedValue([{ id: 9 }]),
-          staticModel: {
-            deleteMany: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        tokenProvider: {
-          disableAllAdmin: jest.fn().mockResolvedValue(undefined),
-          tokenModel: {
-            deleteMany: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        categoryProvider: {
-          getAllCategories: jest.fn().mockResolvedValue([]),
-        },
-        tagProvider: {
-          syncTagsFromArticles: jest.fn().mockResolvedValue(undefined),
-          getAllTags: jest.fn().mockResolvedValue([]),
-          tagModel: {
-            deleteMany: jest.fn().mockResolvedValue(undefined),
-          },
+          getCustomPageByPath: jest
+            .fn()
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce(null),
+          createCustomPage: jest
+            .fn()
+            .mockResolvedValueOnce(undefined)
+            .mockRejectedValueOnce(new Error('disk write failed')),
         },
       });
+
+    const importResult = await controller.importAll(
+      {
+        buffer: Buffer.from(
+          JSON.stringify({
+            backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
+            customPages: [
+              { path: '/ok', title: 'ok', html: '<p>ok</p>' },
+              { path: '/broken', title: 'broken', html: '<p>bad</p>' },
+            ],
+          }),
+        ),
+      } as any,
+      {},
+    );
+
+    expect(importResult.statusCode).toBe(202);
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(customPageProvider.createCustomPage).toHaveBeenCalledTimes(2);
+
+    const failedJobCall = backupImportJobProvider.failJob.mock.calls[0];
+    expect(failedJobCall[0]).toBe('job-1');
+    expect(failedJobCall[1]).toContain('自定义页面 恢复不完整');
+    expect(failedJobCall[1]).toContain('/broken');
+
+    expect(backupImportJobProvider.completeJob).not.toHaveBeenCalled();
+    expect(structuredDataService.refreshAllFromRecordStore).not.toHaveBeenCalled();
+    expect(structuredDataService.refreshCollectionsFromRecordStore).not.toHaveBeenCalled();
+  });
+
+  it('clears site initialization state, persisted files, and structured data when clear-all is requested', async () => {
+    const {
+      controller,
+      userProvider,
+      metaProvider,
+      settingProvider,
+      structuredDataService,
+      tokenProvider,
+      customPageProvider,
+      staticProvider,
+    } = createController({
+      articleProvider: {
+        findAll: jest.fn().mockResolvedValue([{ id: 1 }, { id: 2 }]),
+      },
+      draftProvider: {
+        getAll: jest.fn().mockResolvedValue([{ id: 3 }]),
+      },
+      momentProvider: {
+        getByOption: jest.fn().mockResolvedValue({ total: 2, moments: [{ id: 4 }, { id: 5 }] }),
+      },
+      customPageProvider: {
+        getAll: jest.fn().mockResolvedValue([{ path: '/landing', type: 'folder' }]),
+      },
+      navToolProvider: {
+        getAllTools: jest.fn().mockResolvedValue([]),
+        deleteTool: jest.fn().mockResolvedValue(undefined),
+      },
+      navCategoryProvider: {
+        getAllCategories: jest.fn().mockResolvedValue([]),
+        deleteCategory: jest.fn().mockResolvedValue(undefined),
+      },
+      iconProvider: {
+        deleteAllIcons: jest.fn().mockResolvedValue(undefined),
+      },
+      pipelineProvider: {
+        getAll: jest.fn().mockResolvedValue([]),
+        deletePipelineById: jest.fn().mockResolvedValue(undefined),
+      },
+      documentProvider: {
+        getByOption: jest.fn().mockResolvedValue({ total: 1, documents: [{ id: 6 }] }),
+      },
+      mindMapProvider: {
+        getByOption: jest.fn().mockResolvedValue({ total: 1, mindMaps: [{ _id: 'mind-1' }] }),
+        mindMapModel: {
+          deleteMany: jest.fn().mockResolvedValue(undefined),
+        },
+      },
+      viewerProvider: {
+        getAll: jest.fn().mockResolvedValue([{ id: 7 }]),
+        viewerModel: {
+          deleteMany: jest.fn().mockResolvedValue(undefined),
+        },
+      },
+      visitProvider: {
+        getAll: jest.fn().mockResolvedValue([{ id: 8 }]),
+        visitModel: {
+          deleteMany: jest.fn().mockResolvedValue(undefined),
+        },
+      },
+      staticProvider: {
+        exportAll: jest.fn().mockResolvedValue([{ id: 9, sign: 'static-1' }]),
+        staticModel: {
+          deleteMany: jest.fn().mockResolvedValue(undefined),
+        },
+      },
+      tokenProvider: {
+        disableAll: jest.fn().mockResolvedValue(undefined),
+        tokenModel: {
+          deleteMany: jest.fn().mockResolvedValue(undefined),
+        },
+      },
+      categoryProvider: {
+        getAllCategories: jest.fn().mockResolvedValue([]),
+      },
+      tagProvider: {
+        syncTagsFromArticles: jest.fn().mockResolvedValue(undefined),
+        getAllTags: jest.fn().mockResolvedValue([]),
+        tagModel: {
+          deleteMany: jest.fn().mockResolvedValue(undefined),
+        },
+      },
+    });
 
     const result = await controller.clearAllData();
 
@@ -725,6 +845,10 @@ describe('BackupController import mode', () => {
     expect(metaProvider.metaModel.deleteMany).toHaveBeenCalledWith({});
     expect(userProvider.userModel.deleteMany).toHaveBeenCalledWith({});
     expect(settingProvider.settingModel.deleteMany).toHaveBeenCalledWith({});
+    expect(staticProvider.deleteCustomPage).toHaveBeenCalledWith('/landing');
+    expect(customPageProvider.deleteByPath).toHaveBeenCalledWith('/landing');
+    expect(staticProvider.deleteOneBySign).toHaveBeenCalledWith('static-1');
+    expect(tokenProvider.disableAll).toHaveBeenCalled();
     expect(structuredDataService.deleteUsersExcept).toHaveBeenCalledWith([]);
     expect(structuredDataService.deleteAllSettings).toHaveBeenCalled();
     expect(structuredDataService.refreshAllFromRecordStore).toHaveBeenCalledWith('clear-all');

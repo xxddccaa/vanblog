@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { InitProvider } from './init.provider';
 
 describe('InitProvider', () => {
@@ -48,6 +49,11 @@ describe('InitProvider', () => {
     const structuredDataService = {
       upsertUser: jest.fn().mockResolvedValue(undefined),
       upsertMeta: jest.fn().mockResolvedValue(undefined),
+      getUserById: jest.fn().mockResolvedValue(options.existingAdmin ?? null),
+      getMeta: jest.fn().mockResolvedValue(options.existingMeta ?? null),
+      listCategories: jest.fn().mockResolvedValue([]),
+      upsertCategory: jest.fn().mockResolvedValue(undefined),
+      isInitialized: jest.fn().mockReturnValue(true),
     };
 
     const provider = new InitProvider(
@@ -175,6 +181,52 @@ describe('InitProvider', () => {
     expect(structuredDataService.upsertUser).toHaveBeenCalledWith(
       expect.objectContaining({ id: 0, name: 'current-admin' }),
     );
+    expect(userState.model.findOne).not.toHaveBeenCalled();
+  });
+
+  it('updates the fallback legacy admin snapshot without re-reading the model after update', async () => {
+    const existingAdmin = {
+      id: 0,
+      name: 'legacy-admin',
+      password: 'legacy-password',
+      salt: 'legacy-salt',
+      nickname: 'Legacy',
+      type: 'admin',
+    };
+    const { provider, userState, structuredDataService } = createProvider({
+      existingAdmin,
+      existingMeta: {
+        siteInfo: { siteName: 'Legacy Blog' },
+        links: [],
+        socials: [],
+        menus: [],
+        rewards: [],
+        about: { updatedAt: new Date(), content: '' },
+        categories: [],
+        viewer: 0,
+        visited: 0,
+        totalWordCount: 0,
+      },
+    });
+    structuredDataService.getUserById.mockResolvedValue(null);
+    structuredDataService.isInitialized.mockReturnValue(false);
+
+    await provider.init({
+      user: {
+        username: 'current-admin',
+        password: 'encrypted-password',
+        nickname: 'Current',
+      },
+      siteInfo: {
+        siteName: 'Restored Site',
+      },
+    } as any);
+
+    expect(userState.model.findOne).toHaveBeenCalledTimes(1);
+    expect(userState.model.findOne).toHaveBeenCalledWith({ id: 0 });
+    expect(structuredDataService.upsertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 0, name: 'current-admin', nickname: 'Current' }),
+    );
   });
 
   it('reports initialization state based on whether a user exists', async () => {
@@ -188,6 +240,28 @@ describe('InitProvider', () => {
       },
     });
     expect(await initialized.provider.checkHasInited()).toBe(true);
+  });
+
+  it('checks fallback initialization state with the admin id instead of any arbitrary user', async () => {
+    const fresh = createProvider();
+    fresh.structuredDataService.isInitialized.mockReturnValue(false);
+
+    await fresh.provider.checkHasInited();
+
+    expect(fresh.userState.model.findOne).toHaveBeenCalledWith({ id: 0 });
+  });
+
+  it('uses structured PG state when checking whether the site has been initialized', async () => {
+    const { provider, structuredDataService, userState } = createProvider({
+      existingAdmin: {
+        id: 0,
+        name: 'pg-admin',
+      },
+    });
+
+    expect(await provider.checkHasInited()).toBe(true);
+    expect(structuredDataService.getUserById).toHaveBeenCalledWith(0);
+    expect(userState.model.findOne).not.toHaveBeenCalled();
   });
 
   it('fills safe defaults when optional site info is omitted during initialization', async () => {
@@ -224,5 +298,105 @@ describe('InitProvider', () => {
         }),
       }),
     );
+  });
+
+  it('updates existing meta without re-reading the model after update', async () => {
+    const existingMeta = {
+      siteInfo: { siteName: 'Legacy Blog', author: 'Legacy' },
+      links: [],
+      socials: [],
+      menus: [],
+      rewards: [],
+      about: { updatedAt: new Date('2026-04-01T00:00:00.000Z'), content: '' },
+      categories: [],
+      viewer: 2,
+      visited: 1,
+      totalWordCount: 12,
+    };
+    const { provider, metaState, structuredDataService } = createProvider({
+      existingMeta,
+    });
+
+    await provider.init({
+      user: {
+        username: 'meta-admin',
+        password: 'encrypted-password',
+        nickname: 'Meta Admin',
+      },
+      siteInfo: {
+        siteName: 'Current Blog',
+      },
+    } as any);
+
+    expect(metaState.model.findOne).not.toHaveBeenCalled();
+    expect(structuredDataService.upsertMeta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        siteInfo: expect.objectContaining({
+          siteName: 'Current Blog',
+          author: 'Meta Admin',
+        }),
+        viewer: 2,
+        visited: 1,
+      }),
+    );
+  });
+
+  it('updates the fallback legacy meta snapshot without re-reading the model after update', async () => {
+    const existingMeta = {
+      siteInfo: { siteName: 'Legacy Blog', author: 'Legacy' },
+      links: [],
+      socials: [],
+      menus: [],
+      rewards: [],
+      about: { updatedAt: new Date('2026-04-01T00:00:00.000Z'), content: '' },
+      categories: [],
+      viewer: 2,
+      visited: 1,
+      totalWordCount: 12,
+    };
+    const { provider, metaState, structuredDataService } = createProvider({
+      existingMeta,
+    });
+    structuredDataService.getMeta.mockResolvedValue(null);
+    structuredDataService.isInitialized.mockReturnValue(false);
+
+    await provider.init({
+      user: {
+        username: 'meta-admin',
+        password: 'encrypted-password',
+        nickname: 'Meta Admin',
+      },
+      siteInfo: {
+        siteName: 'Current Blog',
+      },
+    } as any);
+
+    expect(metaState.model.findOne).toHaveBeenCalledTimes(1);
+    expect(structuredDataService.upsertMeta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        siteInfo: expect.objectContaining({
+          siteName: 'Current Blog',
+          author: 'Meta Admin',
+        }),
+        viewer: 2,
+        visited: 1,
+      }),
+    );
+  });
+
+  it('does not print the raw restore key into application logs', async () => {
+    const { provider, cacheProvider } = createProvider();
+    const warnSpy = jest.spyOn(provider.logger, 'warn').mockImplementation(() => undefined);
+    const writeSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => undefined as any);
+
+    await provider.initRestoreKey();
+
+    expect(cacheProvider.set).toHaveBeenCalledWith('restoreKey', expect.any(String));
+    const issuedKey = cacheProvider.set.mock.calls[0]?.[1];
+    expect(writeSpy).toHaveBeenCalledWith('/var/log/restore.key', issuedKey, { encoding: 'utf-8' });
+    const logMessages = warnSpy.mock.calls.map((call) => String(call[0] || ''));
+    expect(
+      logMessages.some((message) => message.includes(String(issuedKey || ''))),
+    ).toBe(false);
   });
 });

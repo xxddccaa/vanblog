@@ -2478,6 +2478,25 @@ export class StructuredDataService implements OnModuleInit {
     await this.store.query('DELETE FROM vanblog_nav_categories WHERE id = $1', [id]);
   }
 
+  async updateNavCategorySorts(
+    categories: Array<{ id: string; sort: number }>,
+    updatedAt = new Date(),
+  ) {
+    for (const category of categories || []) {
+      if (!category?.id) {
+        continue;
+      }
+      await this.store.query(
+        `
+          UPDATE vanblog_nav_categories
+          SET sort_order = $2, updated_at = $3
+          WHERE id = $1
+        `,
+        [category.id, category.sort || 0, this.asDate(updatedAt)],
+      );
+    }
+  }
+
   async countNavToolsByCategory(categoryId: string) {
     const result = await this.store.query<{ total: string }>(
       `
@@ -2603,6 +2622,22 @@ export class StructuredDataService implements OnModuleInit {
 
   async deleteNavToolById(id: string) {
     await this.store.query('DELETE FROM vanblog_nav_tools WHERE id = $1', [id]);
+  }
+
+  async updateNavToolSorts(tools: Array<{ id: string; sort: number }>, updatedAt = new Date()) {
+    for (const tool of tools || []) {
+      if (!tool?.id) {
+        continue;
+      }
+      await this.store.query(
+        `
+          UPDATE vanblog_nav_tools
+          SET sort_order = $2, updated_at = $3
+          WHERE id = $1
+        `,
+        [tool.id, tool.sort || 0, this.asDate(updatedAt)],
+      );
+    }
   }
 
   async upsertIcon(icon: any) {
@@ -3101,6 +3136,34 @@ export class StructuredDataService implements OnModuleInit {
         LIMIT 1
       `,
       [title],
+    );
+    return this.mapArticleRow(result.rows[0]);
+  }
+
+  async getAdjacentArticle(
+    article: { id: number; createdAt: Date | string },
+    direction: 'prev' | 'next',
+    includeHidden = false,
+  ) {
+    if (!article?.id || !article?.createdAt) {
+      return null;
+    }
+    const comparator = direction === 'prev' ? '<' : '>';
+    const orderDirection = direction === 'prev' ? 'DESC' : 'ASC';
+    const idComparator = direction === 'prev' ? '<' : '>';
+    const result = await this.store.query(
+      `
+        ${this.getArticleSelectSql()}
+        WHERE a.deleted = FALSE
+          AND ($3::boolean OR a.hidden = FALSE)
+          AND (
+            a.created_at ${comparator} $1
+            OR (a.created_at = $1 AND a.id ${idComparator} $2)
+          )
+        ORDER BY a.created_at ${orderDirection}, a.id ${orderDirection}
+        LIMIT 1
+      `,
+      [this.asDate(article.createdAt), article.id, includeHidden],
     );
     return this.mapArticleRow(result.rows[0]);
   }
@@ -3702,6 +3765,52 @@ export class StructuredDataService implements OnModuleInit {
     return result.rows.map((row) => this.mapTagRow(row)).filter(Boolean);
   }
 
+  private async refreshTagAggregates(tagNames: string[]) {
+    const normalizedNames = [...new Set((tagNames || []).map((item) => item?.trim()).filter(Boolean))];
+    if (!normalizedNames.length) {
+      return;
+    }
+    await this.store.query(`DELETE FROM vanblog_tags WHERE name = ANY($1::text[])`, [normalizedNames]);
+    await this.store.query(
+      `
+        INSERT INTO vanblog_tags (name, article_count, created_at, updated_at)
+        SELECT t.tag_name, COUNT(*)::int, NOW(), NOW()
+        FROM vanblog_article_tags t
+        INNER JOIN vanblog_articles a ON a.id = t.article_id
+        WHERE a.deleted = FALSE
+          AND t.tag_name = ANY($1::text[])
+        GROUP BY t.tag_name
+      `,
+      [normalizedNames],
+    );
+  }
+
+  async renameTagInArticles(oldName: string, newName: string) {
+    if (!oldName || !newName || oldName === newName) {
+      return;
+    }
+    await this.store.query(
+      `
+        INSERT INTO vanblog_article_tags (article_id, tag_name)
+        SELECT article_id, $2
+        FROM vanblog_article_tags
+        WHERE tag_name = $1
+        ON CONFLICT DO NOTHING
+      `,
+      [oldName, newName],
+    );
+    await this.store.query('DELETE FROM vanblog_article_tags WHERE tag_name = $1', [oldName]);
+    await this.refreshTagAggregates([oldName, newName]);
+  }
+
+  async removeTagFromArticles(name: string) {
+    if (!name) {
+      return;
+    }
+    await this.store.query('DELETE FROM vanblog_article_tags WHERE tag_name = $1', [name]);
+    await this.store.query('DELETE FROM vanblog_tags WHERE name = $1', [name]);
+  }
+
   async getTagPage(
     page: number,
     pageSize: number,
@@ -4084,6 +4193,37 @@ export class StructuredDataService implements OnModuleInit {
       [ids],
     );
     return result.rows.map((row) => this.mapDocumentRow(row)).filter(Boolean);
+  }
+
+  async getDocumentSubtree(rootId: number, includeDeleted = false) {
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_documents
+        WHERE (
+          id = $1
+          OR path @> to_jsonb(ARRAY[$1]::bigint[])
+        )
+        ${includeDeleted ? '' : 'AND deleted = FALSE'}
+        ORDER BY jsonb_array_length(path) ASC, sort_order ASC, created_at DESC
+      `,
+      [rootId],
+    );
+    return result.rows.map((row) => this.mapDocumentRow(row)).filter(Boolean);
+  }
+
+  async markDocumentsDeleted(ids: number[], updatedAt = new Date()) {
+    if (!ids.length) {
+      return;
+    }
+    await this.store.query(
+      `
+        UPDATE vanblog_documents
+        SET deleted = TRUE, updated_at = $2
+        WHERE id = ANY($1::bigint[])
+      `,
+      [ids, this.asDate(updatedAt)],
+    );
   }
 
   async getMaxDocumentId() {
@@ -4574,6 +4714,23 @@ export class StructuredDataService implements OnModuleInit {
       [name],
     );
     return this.mapCategoryRow(result.rows[0]);
+  }
+
+  async getCategoriesByNames(names: string[]) {
+    const normalizedNames = [...new Set((names || []).map((item) => item?.trim()).filter(Boolean))];
+    if (!normalizedNames.length) {
+      return [];
+    }
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_categories
+        WHERE name = ANY($1::text[])
+        ORDER BY sort_order ASC, id ASC
+      `,
+      [normalizedNames],
+    );
+    return result.rows.map((row) => this.mapCategoryRow(row)).filter(Boolean);
   }
 
   async getMaxCategoryId() {

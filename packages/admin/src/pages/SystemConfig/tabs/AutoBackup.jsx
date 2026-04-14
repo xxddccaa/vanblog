@@ -297,7 +297,7 @@ export default function AutoBackup() {
           description={
             <div>
               <p><strong>备份内容：</strong>与手动导出功能完全一致，包含所有文章、草稿、私密文档库、设置等数据。</p>
-              <p><strong>备份位置：</strong>文件保存在 <code>/static/blog-json/</code> 目录下。</p>
+              <p><strong>备份位置：</strong>文件保存在服务端日志目录下的 <code>backups/</code> 子目录，不再通过公网静态目录暴露。</p>
               <p><strong>文件清理：</strong>系统会自动清理旧备份，只保留最新的指定数量文件。</p>
             </div>
           }
@@ -598,7 +598,7 @@ export default function AutoBackup() {
         <ul style={{ margin: 0, paddingLeft: 20 }}>
           <li><Text strong>自动执行：</Text>启用后系统会在指定时间自动创建备份文件</li>
           <li><Text strong>文件命名：</Text>备份文件采用 vanblog-backup-YYYY-MM-DD-HHmmss.json 格式命名</li>
-          <li><Text strong>存储位置：</Text>备份文件保存在 /static/blog-json/ 目录，可通过文件系统直接访问</li>
+          <li><Text strong>存储位置：</Text>备份文件保存在服务端日志目录下的 backups/ 子目录，只能通过文件系统或容器内部访问</li>
           <li><Text strong>自动清理：</Text>系统会自动删除旧备份文件，只保留最新的指定数量（按修改时间排序）</li>
           <li><Text strong>数据恢复：</Text>备份文件可以通过"备份恢复"页面的导入功能进行恢复</li>
           <li><Text strong>立即备份：</Text>点击"立即备份"可以不等待定时任务，马上创建一个备份</li>

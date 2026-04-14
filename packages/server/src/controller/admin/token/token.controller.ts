@@ -23,7 +23,7 @@ export class TokenController {
 
   @Post()
   async createApiToken(@Body() body: { name: string }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -38,7 +38,7 @@ export class TokenController {
 
   @Delete('/:id')
   async deleteApiTokenByName(@Param('id') id: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 
 const compose = fs.readFileSync('docker-compose.yml', 'utf8');
 const composeImage = fs.readFileSync('docker-compose.image.yml', 'utf8');
+const manualCompose = fs.readFileSync('tests/manual-v1.3.0/docker-compose.yaml', 'utf8');
 const caddyfile = fs.readFileSync('docker/caddy/Caddyfile', 'utf8');
 const caddyfileHttps = fs.readFileSync('docker/caddy/Caddyfile.https', 'utf8');
 const deployDoc = fs.readFileSync('DEPLOY.md', 'utf8');
@@ -151,8 +152,24 @@ test('docker compose wires cross-container control endpoints', () => {
   );
   assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_API_TOKEN:\s+\$\{VAN_BLOG_CLOUDFLARE_API_TOKEN:-\}/);
   assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_ZONE_ID:\s+\$\{VAN_BLOG_CLOUDFLARE_ZONE_ID:-\}/);
+  assert.match(compose, /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}/);
   assert.match(compose, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}/);
-  assert.match(composeImage, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}/);
+  assert.match(
+    composeImage,
+    /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
+  );
+  assert.match(
+    composeImage,
+    /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
+  );
+  assert.match(
+    manualCompose,
+    /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
+  );
+  assert.match(
+    manualCompose,
+    /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
+  );
 });
 
 test('waline service is configured to use standalone postgres credentials', () => {
@@ -185,6 +202,8 @@ test('release env example and deploy guide document optional Cloudflare purge cr
   assert.match(releaseEnv, /WALINE_JWT_TOKEN=replace-with-a-long-random-string/);
   assert.match(deployDoc, /VAN_BLOG_WALINE_DATABASE_URL/);
   assert.match(deployDoc, /VANBLOG_WALINE_CONTROL_URL/);
+  assert.match(deployDoc, /缺失 `WALINE_JWT_TOKEN` 时，镜像 compose 会直接拒绝启动/);
+  assert.match(releaseDoc, /缺失 `WALINE_JWT_TOKEN` 时，Waline 相关容器会拒绝启动/);
 });
 
 test('caddy routes requests to the split services', () => {
@@ -197,6 +216,17 @@ test('caddy routes requests to the split services', () => {
   assert.match(caddyfile, /redir @adminNoSlash \/admin\/ 308/);
   assert.match(caddyfile, /rewrite \* \/admin\//);
   assert.match(caddyfile, /handle \/admin\*/);
+});
+
+test('swagger is only exposed to private clients at the caddy layer', () => {
+  for (const file of [caddyfile, caddyfileHttps]) {
+    assert.match(
+      file,
+      /@swaggerPrivate \{[\s\S]*path \/swagger\*[\s\S]*remote_ip private_ranges[\s\S]*\}/,
+    );
+    assert.match(file, /handle @swaggerPrivate \{[\s\S]*reverse_proxy server:3000[\s\S]*\}/);
+    assert.match(file, /handle \/swagger\* \{[\s\S]*respond "Not Found" 404[\s\S]*\}/);
+  }
 });
 
 test('caddy exposes root-level feed and sitemap aliases in both http and https configs', () => {

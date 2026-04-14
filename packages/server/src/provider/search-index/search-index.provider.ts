@@ -121,7 +121,7 @@ export class SearchIndexProvider {
   async generateSearchIndexFn(info?: string) {
     this.logger.log(`${info || ''}重新生成搜索索引`);
 
-    const articles = await this.articleProvider.getAll('admin', false, false);
+    const articles = await this.articleProvider.getPublicSearchIndexArticles();
     const searchIndex: SearchIndexItem[] = articles.map((article) => {
       const preview = buildArticlePreview(article.content || '', 280);
       const tags = article.tags || [];

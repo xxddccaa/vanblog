@@ -3,6 +3,7 @@ import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { CustomPage, CustomPageDocument } from 'src/scheme/customPage.schema';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { normalizeCustomPageRoutePath } from 'src/utils/customPagePath';
 
 @Injectable()
 export class CustomPageProvider {
@@ -24,24 +25,33 @@ export class CustomPageProvider {
   }
 
   async createCustomPage(dto: CustomPage) {
-    const old = await this.customPageModal.findOne({ path: dto.path });
+    const normalizedPath = normalizeCustomPageRoutePath(dto.path);
+    const payload = {
+      ...dto,
+      path: normalizedPath,
+    };
+    const old = await this.customPageModal.findOne({ path: normalizedPath });
     if (old) {
       throw new ForbiddenException('已有此路由的自定义页面！无法重复创建！');
     }
-    const created = await this.customPageModal.create(dto);
-    await this.structuredDataService.upsertCustomPage(created.toObject ? created.toObject() : created);
+    const created = await this.customPageModal.create(payload);
+    await this.structuredDataService.upsertCustomPage(
+      created.toObject ? created.toObject() : created,
+    );
     return created;
   }
 
   async updateCustomPage(dto: CustomPage) {
-    const current = await this.getCustomPageByPath(dto.path);
+    const normalizedPath = normalizeCustomPageRoutePath(dto.path);
+    const current = await this.getCustomPageByPath(normalizedPath);
     const payload = {
       ...(current?._doc || current || {}),
       ...dto,
+      path: normalizedPath,
       updatedAt: new Date(),
       _id: current?._id,
     };
-    const result = await this.customPageModal.updateOne({ path: dto.path }, payload);
+    const result = await this.customPageModal.updateOne({ path: normalizedPath }, payload);
     if (current) {
       await this.structuredDataService.upsertCustomPage(payload);
     }
@@ -49,11 +59,12 @@ export class CustomPageProvider {
   }
 
   async getCustomPageByPath(path: string) {
-    const page = await this.structuredDataService.getCustomPageByPath(path);
+    const normalizedPath = normalizeCustomPageRoutePath(path);
+    const page = await this.structuredDataService.getCustomPageByPath(normalizedPath);
     if (page || this.structuredDataService.isInitialized()) {
       return page as any;
     }
-    return await this.customPageModal.findOne({ path });
+    return await this.customPageModal.findOne({ path: normalizedPath });
   }
 
   async getAll(includeHtml = false) {
@@ -65,8 +76,9 @@ export class CustomPageProvider {
   }
 
   async deleteByPath(path: string) {
-    const result = await this.customPageModal.deleteOne({ path });
-    await this.structuredDataService.deleteCustomPageByPath(path);
+    const normalizedPath = normalizeCustomPageRoutePath(path);
+    const result = await this.customPageModal.deleteOne({ path: normalizedPath });
+    await this.structuredDataService.deleteCustomPageByPath(normalizedPath);
     return result;
   }
 }

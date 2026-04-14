@@ -27,7 +27,7 @@ export class LinkMetaController {
 
   @Put()
   async update(@Body() updateLinkDto: LinkDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -43,7 +43,7 @@ export class LinkMetaController {
 
   @Post()
   async create(@Body() updateLinkDto: LinkDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -58,7 +58,7 @@ export class LinkMetaController {
   }
   @Delete('/:name')
   async delete(@Param('name') name: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

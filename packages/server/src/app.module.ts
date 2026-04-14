@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
+import { MulterModule } from '@nestjs/platform-express';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from 'src/storage/mongoose-compat';
@@ -152,6 +153,12 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
             expiresIn: 3600 * 24 * 7,
           },
         };
+      },
+    }),
+    MulterModule.register({
+      limits: {
+        fileSize: 50 * 1024 * 1024,
+        files: 1,
       },
     }),
     ScheduleModule.forRoot(),

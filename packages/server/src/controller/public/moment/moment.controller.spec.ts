@@ -23,16 +23,9 @@ describe('PublicMomentController', () => {
       }),
     } as any);
 
-    const result = await controller.getByOption(
-      1,
-      10,
-      undefined,
-      undefined,
-      undefined,
-      {
-        setHeader: (key: string, value: string) => headers.set(key, value),
-      } as any,
-    );
+    const result = await controller.getByOption(1, 10, undefined, undefined, undefined, {
+      setHeader: (key: string, value: string) => headers.set(key, value),
+    } as any);
 
     expect(result).toEqual({
       statusCode: 200,
@@ -55,5 +48,32 @@ describe('PublicMomentController', () => {
       },
     });
     expect(headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
+  });
+
+  it('clamps oversized public moment pagination before querying the provider', async () => {
+    const getByOption = jest.fn().mockResolvedValue({
+      total: 0,
+      moments: [],
+    });
+    const controller = new PublicMomentController({
+      getByOption,
+    } as any);
+
+    await controller.getByOption(
+      '0' as any,
+      '999' as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
+
+    expect(getByOption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 50,
+      }),
+      true,
+    );
   });
 });

@@ -32,8 +32,38 @@ export class ArticleController {
     private readonly tagProvider: TagProvider,
   ) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
+  private sanitizeArticlePayloadForRequester(request: any, payload: any) {
+    if (request?.user?.id === 0 || !payload) {
+      return payload;
+    }
+
+    if (Array.isArray(payload?.articles)) {
+      return {
+        ...payload,
+        articles: payload.articles.map((article: any) => ({
+          ...(article || {}),
+          password: undefined,
+        })),
+      };
+    }
+
+    return {
+      ...(payload || {}),
+      password: undefined,
+    };
+  }
+
   @Get('/')
   async getByOption(
+    @Req() req: any,
     @Query('page') page: number,
     @Query('pageSize') pageSize = 5,
     @Query('toListView') toListView = false,
@@ -48,8 +78,8 @@ export class ArticleController {
     @Query('endTime') endTime?: string,
   ) {
     const option = {
-      page: parseInt(page as any),
-      pageSize: parseInt(pageSize as any),
+      page: this.normalizePositiveInt(page, 1, 100000),
+      pageSize: this.normalizePositiveInt(pageSize, 5, 100),
       category,
       tags,
       title,
@@ -64,7 +94,7 @@ export class ArticleController {
     const data = await this.articleProvider.getByOption(option, false);
     return {
       statusCode: 200,
-      data,
+      data: this.sanitizeArticlePayloadForRequester(req, data),
     };
   }
 
@@ -81,17 +111,17 @@ export class ArticleController {
   }
 
   @Get('/:id')
-  async getOneByIdOrPathname(@Param('id') id: string) {
+  async getOneByIdOrPathname(@Req() req: any, @Param('id') id: string) {
     const data = await this.articleProvider.getByIdOrPathname(id, 'admin');
     return {
       statusCode: 200,
-      data,
+      data: this.sanitizeArticlePayloadForRequester(req, data),
     };
   }
 
   @Put('/:id')
   async updateArticle(@Param('id') id: number, @Body() updateArticleDto: UpdateArticleDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -135,7 +165,7 @@ export class ArticleController {
 
   @Post()
   async createArticle(@Body() createArticleDto: CreateArticleDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -186,7 +216,7 @@ export class ArticleController {
 
   @Delete('/:id')
   async deleteArticle(@Param('id') id: number) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -211,7 +241,7 @@ export class ArticleController {
 
   @Post('/reorder')
   async reorderArticles() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -241,7 +271,7 @@ export class ArticleController {
 
   @Post('/fix-negative-ids')
   async fixNegativeIds() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -268,7 +298,7 @@ export class ArticleController {
 
   @Post('/cleanup-temp-ids')
   async cleanupTempIds() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -295,7 +325,7 @@ export class ArticleController {
 
   @Post('/cleanup-duplicate-pathnames')
   async cleanupDuplicatePathnames() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

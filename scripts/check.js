@@ -1,84 +1,74 @@
-// 我自己用的清洗 more 标记的脚本
-const { MongoClient } = require('mongodb');
+// PG-aware helper for inserting a `<!-- more -->` marker into article content.
+const { Client } = require('pg');
 const fs = require('fs');
 const yaml = require('yaml');
-// Replace the uri string with your connection string.
+
 const data = yaml.parse(fs.readFileSync('config.yaml', { encoding: 'utf-8' }));
 
 if (!data || !data.url) {
   console.log("cant's parse url");
-  return;
+  process.exit(1);
 }
-const url = data.url;
-const client = new MongoClient(url);
+
+const url = String(data.url || '');
+if (!url.startsWith('postgres://') && !url.startsWith('postgresql://')) {
+  console.error('scripts/check.js 现在仅支持 PostgreSQL 连接串');
+  process.exit(1);
+}
+
+const client = new Client({
+  connectionString: url,
+});
+
+const addMoreMarker = (content) => {
+  const text = String(content || '');
+  if (text.includes('<!-- more -->')) {
+    return null;
+  }
+  if (text.includes('# ')) {
+    if (text.includes('## ')) {
+      const p = text.indexOf('## ');
+      return `${text.substring(0, p - 1)}\n<!-- more -->\n${text.substring(p)}`;
+    }
+    return `${text}\n<!-- more -->\n`;
+  }
+  return `${text}\n<!-- more -->\n`;
+};
 
 async function run() {
+  await client.connect();
   try {
-    const database = client.db('vanBlog');
-    const collection = database.collection('articles');
+    const { rows: articles } = await client.query(
+      `
+        SELECT id, title, content
+        FROM vanblog_articles
+        WHERE deleted = FALSE
+        ORDER BY id ASC
+      `,
+    );
 
-    // Query for a movie that has the title 'Back to the Future'
-    const query = {
-      $or: [
-        {
-          deleted: false,
-        },
-        {
-          deleted: { $exists: false },
-        },
-      ],
-      // content: { $not: { $regex: `<!-- more -->` } },
-    };
-    const articles = await collection.find(query).toArray();
-    const as = [];
-    for (const a of articles) {
-      if (!a.content.includes('<!-- more -->')) {
-        as.push(a);
-        // console.log(a.title);
+    for (const article of articles) {
+      const newContent = addMoreMarker(article.content);
+      if (!newContent) {
+        continue;
       }
+      console.log(article.title);
+      const result = await client.query(
+        `
+          UPDATE vanblog_articles
+          SET content = $2, updated_at = NOW()
+          WHERE id = $1
+        `,
+        [article.id, newContent],
+      );
+      console.log(result.rowCount);
     }
-
-    for (const a of as) {
-      if (a.content.includes('# ')) {
-        const str = a.content + '';
-        // 区分一下
-        if (str.includes('## ')) {
-          console.log(a.title);
-          const p = str.indexOf('## ');
-          const newContent = `${str.substring(0, p - 1)}\n<!-- more -->\n${str.substring(p)}`;
-          const r = await collection.updateOne({ _id: a._id }, { $set: { content: newContent } });
-          console.log(r);
-          // 二级标题nod
-        } else if (str.includes('# ')) {
-          const newContent = `${str}\n<!-- more -->\n`;
-          const r = await collection.updateOne({ _id: a._id }, { $set: { content: newContent } });
-          console.log(r);
-          console.log('************************');
-        } else {
-          console.log(a.title);
-        }
-
-        //     // 自己加上吧。
-        //     // const newContent = a.content + "\n<!-- more -->\n";
-        //     // const r = await collection.updateOne(
-        //     //   { _id: a._id },
-        //     //   { $set: {content: newContent} }
-        //     // );
-        //     // console.log(a.title, des);
-      } else {
-        const newContent = `${a.content}\n<!-- more -->\n`;
-        const r = await collection.updateOne({ _id: a._id }, { $set: { content: newContent } });
-        console.log(r);
-        console.log(a.title, a.content.length);
-      }
-    }
-    // articles.forEach((t) => {
-    //   console.log(`${t.id}\t${t.title}`);
-    // });
-    // console.log(articles.length);
   } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+    await client.end();
   }
 }
-run().catch(console.dir);
+
+run().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

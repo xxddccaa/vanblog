@@ -239,4 +239,38 @@ describe('NavController', () => {
     expect(navCategoryProvider.getAllCategories).not.toHaveBeenCalled();
     expect(headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
   });
+
+  it('does not expose hidden nav entries through the public admin-data endpoint', async () => {
+    const cacheProvider = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+    };
+    const controller = new NavController(
+      {
+        getAllTools: jest.fn().mockResolvedValue([
+          { _id: 'tool-1', categoryId: 'cat-1', hide: false },
+          { _id: 'tool-2', categoryId: 'cat-2', hide: true },
+        ]),
+      } as any,
+      {
+        getAllCategories: jest.fn().mockResolvedValue([
+          { _id: 'cat-1', hide: false },
+          { _id: 'cat-2', hide: false },
+          { _id: 'cat-3', hide: true },
+        ]),
+      } as any,
+      {} as any,
+      cacheProvider as any,
+    );
+
+    const result = await controller.getAdminNavData();
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: {
+        categories: [{ _id: 'cat-1', hide: false }],
+        tools: [{ _id: 'tool-1', categoryId: 'cat-1', hide: false }],
+      },
+    });
+  });
 });

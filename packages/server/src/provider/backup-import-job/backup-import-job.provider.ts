@@ -207,6 +207,9 @@ export class BackupImportJobProvider {
 
   async completeJob(jobId: string, result?: Record<string, any>, message = '导入完成') {
     const job = await this.updateJob(jobId, (current) => {
+      if (current.status === 'completed' || current.status === 'failed') {
+        return current;
+      }
       current.status = 'completed';
       current.progress = 100;
       current.message = message;
@@ -225,6 +228,9 @@ export class BackupImportJobProvider {
 
   async failJob(jobId: string, error: string) {
     const job = await this.updateJob(jobId, (current) => {
+      if (current.status === 'completed' || current.status === 'failed') {
+        return current;
+      }
       current.status = 'failed';
       current.message = `导入失败：${error}`;
       current.error = error;

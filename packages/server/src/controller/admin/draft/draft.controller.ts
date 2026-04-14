@@ -39,6 +39,14 @@ export class DraftController {
     private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get('/')
   async getByOption(
     @Query('page') page: number,
@@ -52,8 +60,8 @@ export class DraftController {
     @Query('endTime') endTime?: string,
   ) {
     const option = {
-      page,
-      pageSize,
+      page: this.normalizePositiveInt(page, 1, 100000),
+      pageSize: this.normalizePositiveInt(pageSize, 5, 100),
       category,
       tags,
       title,
@@ -141,7 +149,7 @@ export class DraftController {
   }
   @Post('/publish')
   async publish(@Query('id') id: number, @Body() publishDto: PublishDraftDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止发布草稿！',
@@ -222,7 +230,7 @@ export class DraftController {
 
   @Post('/:id/convert-to-document')
   async convertToDocument(@Param('id') id: number, @Body() body: { libraryId: number; parentId?: number }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止此操作！',

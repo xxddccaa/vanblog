@@ -90,6 +90,80 @@ describe('ArticleController', () => {
     expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
   });
 
+  it('clamps oversized admin article pagination before querying the provider', async () => {
+    const { controller, articleProvider } = createController({
+      articleProvider: {
+        getByOption: jest.fn().mockResolvedValue({ articles: [], total: 0 }),
+      },
+    });
+
+    await controller.getByOption(
+      { user: { id: 0 } } as any,
+      '0' as any,
+      '999' as any,
+      false as any,
+      true as any,
+    );
+
+    expect(articleProvider.getByOption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 100,
+      }),
+      false,
+    );
+  });
+
+  it('strips article passwords from collaborator-visible list responses', async () => {
+    const { controller } = createController({
+      articleProvider: {
+        getByOption: jest.fn().mockResolvedValue({
+          total: 1,
+          articles: [{ id: 7, title: 'Secret', password: 'article-pass' }],
+        }),
+      },
+    });
+
+    const result = await controller.getByOption(
+      { user: { id: 2 } } as any,
+      1 as any,
+      10 as any,
+      false as any,
+      true as any,
+    );
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: {
+        total: 1,
+        articles: [{ id: 7, title: 'Secret', password: undefined }],
+      },
+    });
+  });
+
+  it('strips article passwords from collaborator-visible detail responses', async () => {
+    const { controller } = createController({
+      articleProvider: {
+        getByIdOrPathname: jest.fn().mockResolvedValue({
+          id: 7,
+          title: 'Secret',
+          password: 'article-pass',
+        }),
+      },
+    });
+
+    const result = await controller.getOneByIdOrPathname({ user: { id: 2 } } as any, '7');
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: {
+        id: 7,
+        title: 'Secret',
+        password: undefined,
+      },
+    });
+  });
+
   it('uses precise article invalidation for creates', async () => {
     const { controller, articleProvider, isrProvider, tagProvider } = createController({
       articleProvider: {

@@ -71,4 +71,20 @@ describe('BackupImportJobProvider', () => {
     expect(third.created).toBe(true);
     expect(third.job.id).not.toBe(first.job.id);
   });
+
+  it('keeps terminal jobs immutable so later duplicate updates cannot overwrite the final state', async () => {
+    const { provider } = createProvider();
+
+    const created = await provider.createJob([{ key: 'meta', label: '恢复站点信息', total: 1 }]);
+    await provider.markRunning(created.job.id, '开始导入');
+    await provider.completeJob(created.job.id, { imported: true }, '导入完成');
+    await provider.failJob(created.job.id, '迟到的失败');
+    await provider.completeJob(created.job.id, { imported: false }, '重复完成');
+
+    const finished = await provider.getJob(created.job.id);
+    expect(finished?.status).toBe('completed');
+    expect(finished?.message).toBe('导入完成');
+    expect(finished?.result).toEqual({ imported: true });
+    expect(finished?.error).toBeUndefined();
+  });
 });

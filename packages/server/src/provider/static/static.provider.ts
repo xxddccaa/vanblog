@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable, NotImplementedException, Optional } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotImplementedException,
+  Optional,
+} from '@nestjs/common';
 import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { SearchStaticOption, StaticType, StorageType } from 'src/types/setting.dto';
@@ -22,6 +28,13 @@ import { config } from 'src/config';
 import { StoragePath } from 'src/types/setting.dto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { normalizeSafeOutboundHttpUrl } from 'src/utils/aiRequestUrl';
+import {
+  sanitizeStorageFileStem,
+  splitSafeUploadFileName,
+} from 'src/utils/uploadFileName';
+
+const ALLOWED_IMAGE_TYPES = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico', 'avif']);
 
 @Injectable()
 export class StaticProvider {
@@ -47,6 +60,13 @@ export class StaticProvider {
     return this.publicView;
   }
 
+  private getStaticUpdateFilter(item: any) {
+    if (item?._id) {
+      return { _id: item._id };
+    }
+    return { sign: item?.sign };
+  }
+
   private decorateStaticItem(item: any) {
     const payload = { ...(item?._doc || item) };
     delete payload._id;
@@ -60,6 +80,23 @@ export class StaticProvider {
     return payload;
   }
 
+  private getAllowedImageMeta(buffer: Buffer) {
+    const meta = imageSize(buffer);
+    const detectedType = String(meta?.type || '').toLowerCase();
+
+    if (!detectedType || !ALLOWED_IMAGE_TYPES.has(detectedType)) {
+      throw new HttpException(
+        '不支持的图片格式，仅支持 PNG、JPG、JPEG、WEBP、GIF、BMP、ICO、AVIF',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return {
+      meta,
+      detectedType,
+    };
+  }
+
   async upload(
     file: any,
     type: StaticType,
@@ -68,16 +105,21 @@ export class StaticProvider {
     updateConfig?: UploadConfig,
   ) {
     const { buffer } = file;
-    const arr = file.originalname.split('.');
-    const fileType = arr[arr.length - 1];
+    const { extension: originalFileType, nameWithoutExtension } = splitSafeUploadFileName(
+      file.originalname,
+    );
+    let fileType = originalFileType;
     let buf = buffer;
     let currentSign = encryptFileMD5(buf);
     const staticConfigInDB = await this.settingProvider.getStaticSetting();
     let compressSuccess = true;
+    let uploadBaseName = sanitizeStorageFileStem(nameWithoutExtension, type === 'music' ? 'music' : 'image');
     if (type == 'img') {
+      const { detectedType } = this.getAllowedImageMeta(buffer);
+      fileType = detectedType;
       try {
         // 用加过水印的 buf 做计算，看看是不是有文件的。
-        if (updateConfig && updateConfig.withWaterMark && fileType != 'gif') {
+        if (updateConfig && updateConfig.withWaterMark && detectedType != 'gif') {
           // 双保险，只有这里开启水印并且设置中也开启了才有效。
           const waterMarkConfigInDB = staticConfigInDB;
           if (waterMarkConfigInDB && checkTrue(waterMarkConfigInDB?.enableWaterMark)) {
@@ -120,23 +162,29 @@ export class StaticProvider {
       }
     }
 
-    const pureFileName = arr.slice(0, arr.length - 1).join('.');
-    let fileName = currentSign + '.' + file.originalname;
+    let fileName = `${currentSign}.${uploadBaseName}.${fileType || 'bin'}`;
     if (type == 'customPage') {
       fileName = customPathname + '/' + file.originalname;
     }
-    if (type == 'img' && checkTrue(staticConfigInDB.enableWebp) && compressSuccess && !updateConfig?.skipCompress) {
-      fileName = currentSign + '.' + pureFileName + '.webp';
+    if (
+      type == 'img' &&
+      checkTrue(staticConfigInDB.enableWebp) &&
+      compressSuccess &&
+      !updateConfig?.skipCompress
+    ) {
+      fileName = `${currentSign}.${uploadBaseName}.webp`;
+      fileType = 'webp';
     }
     if (type == 'music') {
       // 对于音乐文件，保持原始文件名以支持中文
       // 确保正确的 UTF-8 编码处理
       try {
-        const originalName = decodeURIComponent(escape(file.originalname));
-        fileName = currentSign + '.' + originalName;
+        const originalName = decodeURIComponent(escape(nameWithoutExtension));
+        uploadBaseName = sanitizeStorageFileStem(originalName, 'music');
+        fileName = `${currentSign}.${uploadBaseName}${fileType ? `.${fileType}` : ''}`;
       } catch (error) {
         // 如果解码失败，使用原始文件名
-        fileName = currentSign + '.' + file.originalname;
+        fileName = `${currentSign}.${uploadBaseName}${fileType ? `.${fileType}` : ''}`;
       }
     }
     const realPath = await this.saveFile(
@@ -161,22 +209,26 @@ export class StaticProvider {
       await this.staticModel.deleteMany({});
       await this.structuredDataService?.deleteAllStatics();
     }
-    
+
     for (const each of items) {
       const oldItem = await this.getOneBySign(each.sign);
       if (!oldItem) {
         await this.createInDB(each);
       } else {
-        await this.staticModel.updateOne({ _id: oldItem._id }, each);
+        await this.staticModel.updateOne(this.getStaticUpdateFilter(oldItem), each);
+        await this.structuredDataService?.upsertStatic({
+          ...(oldItem?._doc || oldItem),
+          ...each,
+        });
       }
     }
-    await this.structuredDataService?.refreshStaticsFromRecordStore();
   }
   async fetchImg(link: string): Promise<Buffer | null> {
     try {
+      const safeLink = normalizeSafeOutboundHttpUrl(link, '图片地址');
       const res = await axios({
         method: 'GET',
-        url: encodeURI(link),
+        url: encodeURI(safeLink),
         responseType: 'arraybuffer',
       });
 
@@ -338,7 +390,10 @@ export class StaticProvider {
   }
   async getByOption(option: SearchStaticOption) {
     const pgResult = await this.structuredDataService?.queryStatics(option);
-    if (pgResult && (pgResult.items.length || pgResult.total || this.structuredDataService?.isInitialized())) {
+    if (
+      pgResult &&
+      (pgResult.items.length || pgResult.total || this.structuredDataService?.isInitialized())
+    ) {
       const data = pgResult.items.map((item: any) => this.decorateStaticItem(item));
       return {
         total: pgResult.total,
@@ -382,9 +437,18 @@ export class StaticProvider {
     return this.localProvider.updateCustomPageFileContent(pathname, filePath, content);
   }
 
+  resolveCustomPageAssetPath(pathname: string, subPath?: string) {
+    return this.localProvider.resolveCustomPageAssetPath(pathname, subPath);
+  }
+
   async deleteOneBySign(sign: string) {
     // 先删除实际上的。
-    const toDeleteData = await this.staticModel.findOne({ sign }).exec();
+    const toDeleteData = await this.getOneBySign(sign);
+    if (!toDeleteData) {
+      const result = await this.staticModel.deleteOne({ sign });
+      await this.structuredDataService?.deleteStaticBySign(sign);
+      return result;
+    }
     const storageType = toDeleteData.storageType;
     switch (storageType) {
       case 'local':
@@ -401,18 +465,18 @@ export class StaticProvider {
     // 获取站点信息，确定哪些图片需要保留
     const siteInfo = await this.metaProvider.getSiteInfo();
     const all = await this.getAll('img', 'admin');
-    
+
     let deletedCount = 0;
     let skippedCount = 0;
-    
+
     for (const each of all) {
       let shouldSkip = false;
-      
+
       // 检查是否是网站图标（favicon）
       if (each.name && each.name.startsWith('favicon.')) {
         shouldSkip = true;
       }
-      
+
       // 检查是否是用户头像（authorLogo）
       if (siteInfo?.authorLogo && each.realPath) {
         // 从 authorLogo URL 中提取文件名进行比较
@@ -422,7 +486,7 @@ export class StaticProvider {
           shouldSkip = true;
         }
       }
-      
+
       // 检查是否是站点 Logo
       if (siteInfo?.siteLogo && each.realPath) {
         const siteLogoFileName = siteInfo.siteLogo.split('/').pop();
@@ -431,7 +495,7 @@ export class StaticProvider {
           shouldSkip = true;
         }
       }
-      
+
       if (shouldSkip) {
         skippedCount++;
         console.log(`跳过删除必要图片: ${each.name || each.realPath}`);
@@ -440,11 +504,11 @@ export class StaticProvider {
         deletedCount++;
       }
     }
-    
+
     return {
       deletedCount,
       skippedCount,
-      message: `成功删除 ${deletedCount} 张图片，跳过 ${skippedCount} 张必要图片（网站图标、用户头像、站点Logo）`
+      message: `成功删除 ${deletedCount} 张图片，跳过 ${skippedCount} 张必要图片（网站图标、用户头像、站点Logo）`,
     };
   }
 }

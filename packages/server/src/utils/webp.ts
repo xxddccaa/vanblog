@@ -1,15 +1,26 @@
-import { execSync } from 'child_process';
-import { writeFileSync, readFileSync, rmSync } from 'fs';
+import { spawnSync } from 'child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+
 export const compressImgToWebp = async (srcImage: Buffer) => {
-  const filenameTemp = `temp${Date.now()}`;
-  const p = `/tmp/${filenameTemp}`;
-  const o = `/tmp/${filenameTemp}.webp`;
-  writeFileSync(p, srcImage);
+  const workDir = mkdtempSync(join(tmpdir(), 'vanblog-webp-'));
+  const srcPath = join(workDir, 'input');
+  const outPath = join(workDir, 'output.webp');
 
-  execSync(`cwebp -q 80 ${p} -o ${o}`);
+  try {
+    writeFileSync(srcPath, srcImage);
+    const result = spawnSync('cwebp', ['-q', '80', srcPath, '-o', outPath], {
+      stdio: 'pipe',
+    });
 
-  const f = readFileSync(o);
-  rmSync(p);
-  rmSync(o);
-  return f;
+    if (result.status !== 0) {
+      const stderr = result.stderr?.toString?.().trim();
+      throw new Error(stderr || 'cwebp 压缩失败');
+    }
+
+    return readFileSync(outPath);
+  } finally {
+    rmSync(workDir, { recursive: true, force: true });
+  }
 };

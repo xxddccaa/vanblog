@@ -15,7 +15,7 @@ describe('SearchIndexProvider', () => {
 
   it('writes a static search index with normalized search text', async () => {
     const articleProvider = {
-      getAll: jest.fn().mockResolvedValue([
+      getPublicSearchIndexArticles: jest.fn().mockResolvedValue([
         {
           id: 1,
           pathname: 'stable-html',
@@ -54,7 +54,7 @@ describe('SearchIndexProvider', () => {
     );
     await provider.generateSearchIndexFn('测试');
 
-    expect(articleProvider.getAll).toHaveBeenCalledWith('admin', false, false);
+    expect(articleProvider.getPublicSearchIndexArticles).toHaveBeenCalledTimes(1);
     expect(fs.mkdirSync).toHaveBeenCalled();
     expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
     expect(momentProvider.getByOption).not.toHaveBeenCalled();
@@ -78,9 +78,51 @@ describe('SearchIndexProvider', () => {
     expect(parsed[0].searchText).toContain('cloudflare cache');
   });
 
+  it('builds the public static index from sanitized public articles so private content never lands in the file', async () => {
+    const articleProvider = {
+      getPublicSearchIndexArticles: jest.fn().mockResolvedValue([
+        {
+          id: 2,
+          pathname: 'locked-post',
+          title: 'Locked Post',
+          category: 'Members',
+          tags: ['Secret'],
+          content: undefined,
+          private: true,
+          createdAt: new Date('2024-01-03T00:00:00.000Z'),
+          updatedAt: new Date('2024-01-04T00:00:00.000Z'),
+        },
+      ]),
+    };
+
+    const provider = new SearchIndexProvider(
+      articleProvider as any,
+      { searchByString: jest.fn().mockResolvedValue([]) } as any,
+      { searchByString: jest.fn().mockResolvedValue([]) } as any,
+      { searchByString: jest.fn().mockResolvedValue([]) } as any,
+      { searchByString: jest.fn().mockResolvedValue([]) } as any,
+    );
+
+    await provider.generateSearchIndexFn('测试');
+
+    const [, content] = (fs.writeFileSync as jest.Mock).mock.calls[0];
+    const parsed = JSON.parse(content as string);
+
+    expect(parsed).toEqual([
+      expect.objectContaining({
+        id: 2,
+        title: 'Locked Post',
+        preview: '',
+        searchText: 'locked post members secret',
+      }),
+    ]);
+    expect(parsed[0].searchText).not.toContain('private');
+    expect(parsed[0].searchText).not.toContain('content');
+  });
+
   it('falls back to provider search when elasticsearch has no hits', async () => {
     const articleProvider = {
-      getAll: jest.fn(),
+      getPublicSearchIndexArticles: jest.fn(),
       searchByString: jest.fn().mockResolvedValue([
         {
           id: 1,

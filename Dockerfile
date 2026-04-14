@@ -128,13 +128,15 @@ COPY ./scripts/start.js ./
 COPY ./scripts/fix-waline-dashboard.js ./scripts/
 COPY ./entrypoint.sh ./
 
-# Set production environment variables
+# Set production environment variables.
+# This legacy single-image Dockerfile now defaults to the PostgreSQL-based runtime.
 ENV NODE_ENV=production
 ENV VAN_BLOG_SERVER_URL="http://127.0.0.1:3000"
 ENV VAN_BLOG_ALLOW_DOMAINS="pic.mereith.com"
-ENV VAN_BLOG_DATABASE_URL="mongodb://mongo:27017/vanBlog?authSource=admin"
+ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
 ENV EMAIL="vanblog@mereith.com"
 ENV VAN_BLOG_WALINE_DB="waline"
+ENV VAN_BLOG_WALINE_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/waline"
 ENV PORT=3001
 ARG VAN_BLOG_VERSIONS
 ENV VAN_BLOG_VERSION=${VAN_BLOG_VERSIONS}

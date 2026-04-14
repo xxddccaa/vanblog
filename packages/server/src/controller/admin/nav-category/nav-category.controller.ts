@@ -73,7 +73,7 @@ export class NavCategoryController {
 
   @Post()
   async createCategory(@Body() categoryDto: CreateNavCategoryDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止创建导航分类！',
@@ -95,7 +95,7 @@ export class NavCategoryController {
 
   @Put(':id')
   async updateCategory(@Param('id') id: string, @Body() categoryDto: UpdateNavCategoryDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改导航分类！',
@@ -117,7 +117,7 @@ export class NavCategoryController {
 
   @Delete(':id')
   async deleteCategory(@Param('id') id: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止删除导航分类！',
@@ -138,7 +138,7 @@ export class NavCategoryController {
 
   @Put('/sort/update')
   async updateCategoriesSort(@Body() body: { categories: Array<{ id: string; sort: number }> }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改排序！',

@@ -1,8 +1,10 @@
+import axios from 'axios';
 import { ISRProvider } from './isr.provider';
 
 describe('ISRProvider', () => {
   const oldEnv = process.env['VANBLOG_WEBSITE_ISR_BASE'];
   const oldDisableWebsite = process.env['VANBLOG_DISABLE_WEBSITE'];
+  const oldIsrToken = process.env['VANBLOG_ISR_TOKEN'];
   const originalSetTimeout = global.setTimeout;
 
   const createCloudflareCacheProvider = () => ({
@@ -28,6 +30,11 @@ describe('ISRProvider', () => {
 
   afterEach(() => {
     delete process.env['VANBLOG_DISABLE_WEBSITE'];
+    if (oldIsrToken === undefined) {
+      delete process.env['VANBLOG_ISR_TOKEN'];
+    } else {
+      process.env['VANBLOG_ISR_TOKEN'] = oldIsrToken;
+    }
     jest.restoreAllMocks();
   });
 
@@ -59,6 +66,34 @@ describe('ISRProvider', () => {
     );
 
     expect(provider.base).toBe('http://website:3001/api/revalidate?path=');
+  });
+
+  it('sends the shared ISR token header when probing or triggering website revalidation', async () => {
+    process.env['VANBLOG_ISR_TOKEN'] = 'isr-secret';
+    const getSpy = jest.spyOn(axios, 'get').mockResolvedValue({} as any);
+    const provider = new ISRProvider(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      createCloudflareCacheProvider() as any,
+    );
+
+    await provider.testConn();
+    await provider.activeUrl('/post/edge', false);
+
+    expect(getSpy).toHaveBeenNthCalledWith(1, `${provider.base}/`, {
+      headers: {
+        'x-vanblog-isr-token': 'isr-secret',
+      },
+    });
+    expect(getSpy).toHaveBeenNthCalledWith(2, `${provider.base}/post/edge`, {
+      headers: {
+        'x-vanblog-isr-token': 'isr-secret',
+      },
+    });
   });
 
   it('revalidates the current article plus affected archive urls for a title-only update', async () => {
@@ -272,7 +307,9 @@ describe('ISRProvider', () => {
 
     const purgeUrls = cloudflareCacheProvider.purgeByTagsAndUrls.mock.calls[0][1] as string[];
     const purgeTags = cloudflareCacheProvider.purgeByTagsAndUrls.mock.calls[0][0] as string[];
-    expect(purgeUrls).toEqual(expect.arrayContaining(['/archive', '/archive/2024', '/archive/2024/01']));
+    expect(purgeUrls).toEqual(
+      expect.arrayContaining(['/archive', '/archive/2024', '/archive/2024/01']),
+    );
     expect(purgeUrls).not.toContain('/timeline');
     expect(purgeUrls).not.toContain('/tag');
     expect(purgeUrls).not.toContain('/category');
@@ -284,7 +321,11 @@ describe('ISRProvider', () => {
   });
 
   it('keeps create invalidation scoped to new article, entry pages, and archive routes without page pagination urls', async () => {
-    const article = createArticle({ id: 8, pathname: 'new-edge-post', createdAt: new Date('2024-02-07T00:00:00.000Z') });
+    const article = createArticle({
+      id: 8,
+      pathname: 'new-edge-post',
+      createdAt: new Date('2024-02-07T00:00:00.000Z'),
+    });
     const articleProvider = {
       getByIdOrPathnameWithPreNext: jest.fn().mockResolvedValue({ article }),
       getByOption: jest.fn().mockResolvedValue({
@@ -340,9 +381,15 @@ describe('ISRProvider', () => {
       ]),
       false,
     );
-    expect(searchIndexProvider.generateSearchIndex).toHaveBeenCalledWith('文章 create 触发搜索索引更新', 1000);
+    expect(searchIndexProvider.generateSearchIndex).toHaveBeenCalledWith(
+      '文章 create 触发搜索索引更新',
+      1000,
+    );
     expect(rssProvider.generateRssFeed).toHaveBeenCalledWith('文章 create 触发 RSS 更新', 1000);
-    expect(sitemapProvider.generateSiteMap).toHaveBeenCalledWith('文章 create 触发 SiteMap 更新', 1000);
+    expect(sitemapProvider.generateSiteMap).toHaveBeenCalledWith(
+      '文章 create 触发 SiteMap 更新',
+      1000,
+    );
 
     const purgeUrls = cloudflareCacheProvider.purgeByTagsAndUrls.mock.calls[0][1] as string[];
     expect(purgeUrls).toEqual(
@@ -378,7 +425,10 @@ describe('ISRProvider', () => {
 
     await provider.activeAllFn('manual');
 
-    expect(activeUrls).toHaveBeenCalledWith(['/', '/archive', '/category', '/tag', '/timeline', '/about', '/link'], false);
+    expect(activeUrls).toHaveBeenCalledWith(
+      ['/', '/archive', '/category', '/tag', '/timeline', '/about', '/link'],
+      false,
+    );
     expect(activePath).toHaveBeenCalledWith('post', undefined);
     expect(activePath).toHaveBeenCalledWith('archive');
     expect(activePath).toHaveBeenCalledWith('category');
@@ -416,9 +466,20 @@ describe('ISRProvider', () => {
     expect(publicDataCacheProvider.clearAllPublicData).toHaveBeenCalledTimes(1);
     expect(rssProvider.generateRssFeed).toHaveBeenCalledWith('disabled-mode', undefined);
     expect(sitemapProvider.generateSiteMap).toHaveBeenCalledWith('disabled-mode', undefined);
-    expect(searchIndexProvider.generateSearchIndex).toHaveBeenCalledWith('disabled-mode', undefined);
+    expect(searchIndexProvider.generateSearchIndex).toHaveBeenCalledWith(
+      'disabled-mode',
+      undefined,
+    );
     expect(cloudflareCacheProvider.purgeByTagsAndUrls).toHaveBeenCalledWith(
-      ['html-public', 'html-post', 'html-listing', 'public-api', 'artifact:feed', 'artifact:sitemap', 'artifact:search-index'],
+      [
+        'html-public',
+        'html-post',
+        'html-listing',
+        'public-api',
+        'artifact:feed',
+        'artifact:sitemap',
+        'artifact:search-index',
+      ],
       ['/feed.xml', '/feed.json', '/atom.xml', '/sitemap.xml', '/static/search-index.json'],
       'disabled-mode',
     );
@@ -456,11 +517,13 @@ describe('ISRProvider', () => {
       cloudflareCacheProvider as any,
     );
     const activeAllFn = jest.spyOn(provider, 'activeAllFn').mockResolvedValue(undefined);
-    const activeWithRetry = jest.spyOn(provider, 'activeWithRetry').mockImplementation(async (fn) => {
-      if (typeof fn === 'function') {
-        await fn();
-      }
-    });
+    const activeWithRetry = jest
+      .spyOn(provider, 'activeWithRetry')
+      .mockImplementation(async (fn) => {
+        if (typeof fn === 'function') {
+          await fn();
+        }
+      });
 
     await provider.activeAll('full-refresh', 500, { forceActice: true });
 
@@ -471,7 +534,15 @@ describe('ISRProvider', () => {
     expect(activeWithRetry).toHaveBeenCalledTimes(1);
     expect(activeAllFn).toHaveBeenCalledWith('full-refresh', { forceActice: true });
     expect(cloudflareCacheProvider.purgeByTagsAndUrls).toHaveBeenCalledWith(
-      ['html-public', 'html-post', 'html-listing', 'public-api', 'artifact:feed', 'artifact:sitemap', 'artifact:search-index'],
+      [
+        'html-public',
+        'html-post',
+        'html-listing',
+        'public-api',
+        'artifact:feed',
+        'artifact:sitemap',
+        'artifact:search-index',
+      ],
       ['/feed.xml', '/feed.json', '/atom.xml', '/sitemap.xml', '/static/search-index.json'],
       'full-refresh',
     );

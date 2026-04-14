@@ -12,6 +12,14 @@ import { ApiToken } from 'src/provider/swagger/token';
 export class AnalysisController {
   constructor(private readonly analysisProvider: AnalysisProvider) {}
 
+  private normalizePositiveInt(value: number | string | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get()
   async getWelcomePageData(
     @Query('tab') tab: WelcomeTab,
@@ -21,9 +29,9 @@ export class AnalysisController {
   ) {
     const data = await this.analysisProvider.getWelcomePageData(
       tab,
-      parseInt(overviewDataNum as any),
-      parseInt(viewerDataNum as any),
-      parseInt(articleTabDataNum as any),
+      this.normalizePositiveInt(overviewDataNum, 5, 100),
+      this.normalizePositiveInt(viewerDataNum, 5, 100),
+      this.normalizePositiveInt(articleTabDataNum, 5, 100),
     );
     return {
       statusCode: 200,

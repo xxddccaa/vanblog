@@ -181,14 +181,15 @@ export class NavToolProvider {
   }
 
   async updateToolsSort(tools: Array<{ id: string; sort: number }>): Promise<void> {
+    const updatedAt = new Date();
     const bulkOps = tools.map(tool => ({
       updateOne: {
         filter: { _id: tool.id },
-        update: { sort: tool.sort, updatedAt: new Date() }
+        update: { sort: tool.sort, updatedAt }
       }
     }));
 
     await this.navToolModel.bulkWrite(bulkOps);
-    await this.structuredDataService.refreshNavToolsFromRecordStore();
+    await this.structuredDataService.updateNavToolSorts(tools, updatedAt);
   }
 } 

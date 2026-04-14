@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Card,
   Row,
@@ -71,6 +71,7 @@ export default function AITagging() {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [batchCancelled, setBatchCancelled] = useState(false);
   const [isrLoading, setIsrLoading] = useState(false);
+  const batchCancelledRef = useRef(false);
 
   // 获取配置
   const fetchConfig = useCallback(async () => {
@@ -225,6 +226,7 @@ export default function AITagging() {
 
   // 取消批量打标
   const handleCancelBatch = () => {
+    batchCancelledRef.current = true;
     setBatchCancelled(true);
   };
 
@@ -255,8 +257,11 @@ export default function AITagging() {
       content: (
         <div>
           <p>确定要为 <strong>{articlesWithoutTags.length} 篇</strong> 无标签文章进行AI打标吗？</p>
-          <div style={{ background: '#f6f6f6', padding: '12px', borderRadius: '6px', marginTop: '12px' }}>
-            <p style={{ margin: 0, fontWeight: 'bold', color: '#d46b08' }}>⚠️ 重要提示：</p>
+          <div
+            className="admin-modal-note admin-modal-note-warning"
+            style={{ padding: '12px', borderRadius: '6px', marginTop: '12px' }}
+          >
+            <p style={{ margin: 0, fontWeight: 'bold' }}>⚠️ 重要提示：</p>
             <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
               <li>此操作 <strong>无法撤销</strong>，每篇文章打标后立即生效</li>
               <li>如果中途关闭网页，已处理的文章标签会保留，未处理的文章会停止</li>
@@ -269,6 +274,7 @@ export default function AITagging() {
       width: 500,
       onOk: async () => {
         setBatchGenerating(true);
+        batchCancelledRef.current = false;
         setBatchCancelled(false);
         setBatchProgress({ current: 0, total: articlesWithoutTags.length });
         let successCount = 0;
@@ -276,7 +282,7 @@ export default function AITagging() {
 
         for (let i = 0; i < articlesWithoutTags.length; i++) {
           // 检查是否用户取消了操作
-          if (batchCancelled) {
+          if (batchCancelledRef.current) {
             message.info(`批量打标已取消。已处理 ${successCount} 篇文章。`);
             break;
           }
@@ -324,11 +330,13 @@ export default function AITagging() {
           }
         }
 
+        const wasCancelled = batchCancelledRef.current;
         setBatchGenerating(false);
         setBatchProgress({ current: 0, total: 0 });
+        batchCancelledRef.current = false;
         setBatchCancelled(false);
         
-        if (!batchCancelled) {
+        if (!wasCancelled) {
           message.success(`批量打标完成！成功：${successCount} 篇，失败：${failCount} 篇`);
         }
         

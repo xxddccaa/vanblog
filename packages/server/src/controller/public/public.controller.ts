@@ -17,6 +17,7 @@ import { StaticProvider } from 'src/provider/static/static.provider';
 import { CacheProvider } from 'src/provider/cache/cache.provider';
 import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 import { WalineProvider } from 'src/provider/waline/waline.provider';
+import { normalizeCustomPageRoutePath } from 'src/utils/customPagePath';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -107,6 +108,14 @@ export class PublicController {
     return latest?.raw;
   }
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   private unwrapCachedPayload<T>(
     res: Response | undefined,
     payload:
@@ -133,9 +142,7 @@ export class PublicController {
     return payload as T;
   }
 
-  private getArchiveSummaryLastModified(summary: {
-    latestTimestamp?: string | null;
-  }) {
+  private getArchiveSummaryLastModified(summary: { latestTimestamp?: string | null }) {
     return summary?.latestTimestamp || null;
   }
 
@@ -161,7 +168,11 @@ export class PublicController {
   }
   @Get('/customPage')
   async getOneByPath(@Query('path') path: string, @Res({ passthrough: true }) res?: Response) {
-    const data = await this.getCachedPublicPayload(`public:customPage:${path}`, 300, async () =>
+    const normalizedPath = normalizeCustomPageRoutePath(path);
+    const data = await this.getCachedPublicPayload(
+      `public:customPage:${normalizedPath}`,
+      300,
+      async () =>
       this.customPageProvider.getCustomPageByPath(path),
     );
     this.setLastModified(res, data?.updatedAt, data?.createdAt);
@@ -203,10 +214,7 @@ export class PublicController {
   }
 
   @Get('/article/:id/engagement')
-  async getArticleEngagement(
-    @Param('id') id: string,
-    @Res({ passthrough: true }) res?: Response,
-  ) {
+  async getArticleEngagement(@Param('id') id: string, @Res({ passthrough: true }) res?: Response) {
     const cacheKey = `public:article:engagement:${id}`;
     const payload = await this.getCachedPublicPayload(cacheKey, 60, async () => {
       const article = await this.articleProvider.getPublicArticleByIdOrPathname(id, 'list');
@@ -339,8 +347,8 @@ export class PublicController {
     @Param('id') id: number | string,
     @Body() body: { token: string },
   ) {
-    // 验证token是否有效
-    const isValidToken = await this.tokenProvider.checkToken(body?.token);
+    // 仅允许超管登录会话 token，避免长期 API Token 落到前台公开解锁链
+    const isValidToken = await this.tokenProvider.checkSuperAdminSessionToken(body?.token);
     if (!isValidToken) {
       return {
         statusCode: 401,
@@ -368,8 +376,7 @@ export class PublicController {
 
   @Post('/verify-admin-token')
   async verifyAdminToken(@Body() body: { token: string }) {
-    // 验证token是否有效
-    const isValidToken = await this.tokenProvider.checkToken(body?.token);
+    const isValidToken = await this.tokenProvider.checkSuperAdminSessionToken(body?.token);
     return {
       statusCode: isValidToken ? 200 : 401,
       data: { valid: isValidToken },
@@ -380,12 +387,13 @@ export class PublicController {
   @Get('/search')
   async searchArticle(@Query('value') search: string) {
     const data = await this.articleProvider.searchByString(search, false);
+    const limited = data.slice(0, 100);
 
     return {
       statusCode: 200,
       data: {
         total: data.length,
-        data: this.articleProvider.toSearchResult(data),
+        data: this.articleProvider.toSearchResult(limited),
       },
     };
   }
@@ -436,7 +444,10 @@ export class PublicController {
 
   @Get('/viewer')
   async getViewer(@Res({ passthrough: true }) res?: Response) {
-    const [data, meta] = await Promise.all([this.metaProvider.getViewer(), this.metaProvider.getAll()]);
+    const [data, meta] = await Promise.all([
+      this.metaProvider.getViewer(),
+      this.metaProvider.getAll(),
+    ]);
     this.setLastModified(res, (meta as any)?.updatedAt);
     return {
       statusCode: 200,
@@ -527,9 +538,11 @@ export class PublicController {
     @Query('sortTop') sortTop?: SortOrder,
     @Res({ passthrough: true }) res?: Response,
   ) {
+    const safePage = this.normalizePositiveInt(page as any, 1, 10_000);
+    const safePageSize = this.normalizePositiveInt(pageSize as any, 5, 100);
     const option = {
-      page: parseInt(page as any),
-      pageSize: parseInt(pageSize as any),
+      page: safePage,
+      pageSize: safePageSize,
       category,
       tags,
       toListView,
@@ -765,7 +778,7 @@ export class PublicController {
     @Query('limit') limit: string = '20',
     @Res({ passthrough: true }) res?: Response,
   ) {
-    const data = await this.tagProvider.getHotTags(parseInt(limit));
+    const data = await this.tagProvider.getHotTags(this.normalizePositiveInt(limit, 20, 50));
     const latestTag = (data || []).reduce((latest: any, tag: any) => {
       if (!latest) {
         return tag;
@@ -792,9 +805,11 @@ export class PublicController {
     @Query('search') search?: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
+    const safePage = this.normalizePositiveInt(page, 1, 10_000);
+    const safePageSize = this.normalizePositiveInt(pageSize, 50, 100);
     const data = await this.tagProvider.getTagsPaginated(
-      parseInt(page),
-      parseInt(pageSize),
+      safePage,
+      safePageSize,
       sortBy,
       sortOrder,
       search,
@@ -843,18 +858,22 @@ export class PublicController {
     @Res({ passthrough: true }) res?: Response,
   ) {
     const tagName = decodeURIComponent(name);
-    const payload = await this.getCachedPublicPayload(`public:tag:archive:summary:${tagName}`, 300, async () => {
-      const summary = await this.articleProvider.getArchiveSummary({
-        tag: tagName,
-      });
-      return {
-        __lastModified: this.getArchiveSummaryLastModified(summary),
-        data: {
-          totalArticles: summary.totalArticles,
-          years: summary.years,
-        },
-      };
-    });
+    const payload = await this.getCachedPublicPayload(
+      `public:tag:archive:summary:${tagName}`,
+      300,
+      async () => {
+        const summary = await this.articleProvider.getArchiveSummary({
+          tag: tagName,
+        });
+        return {
+          __lastModified: this.getArchiveSummaryLastModified(summary),
+          data: {
+            totalArticles: summary.totalArticles,
+            years: summary.years,
+          },
+        };
+      },
+    );
     const data = this.unwrapCachedPayload(res, payload);
 
     return {
@@ -871,15 +890,19 @@ export class PublicController {
     @Res({ passthrough: true }) res?: Response,
   ) {
     const tagName = decodeURIComponent(name);
-    const payload = await this.getCachedPublicPayload(`public:tag:archive:${tagName}:${year}:${month}`, 300, async () => {
-      const result = await this.articleProvider.getArchiveMonthArticles(year, month, {
-        tag: tagName,
-      });
-      return {
-        __lastModified: result.latestTimestamp,
-        data: result.articles.map((article: any) => this.toArticleShell(article)),
-      };
-    });
+    const payload = await this.getCachedPublicPayload(
+      `public:tag:archive:${tagName}:${year}:${month}`,
+      300,
+      async () => {
+        const result = await this.articleProvider.getArchiveMonthArticles(year, month, {
+          tag: tagName,
+        });
+        return {
+          __lastModified: result.latestTimestamp,
+          data: result.articles.map((article: any) => this.toArticleShell(article)),
+        };
+      },
+    );
     const data = this.unwrapCachedPayload(res, payload);
 
     return {
@@ -943,7 +966,12 @@ export class PublicController {
       ...(layoutRes ? { layout: layoutRes } : {}),
     };
     await this.cacheProvider.set(cacheKey, data, 30);
-    this.setLastModified(res, data?.meta?.updatedAt, data?.meta?.about?.updatedAt, data?.meta?.siteInfo?.updatedAt);
+    this.setLastModified(
+      res,
+      data?.meta?.updatedAt,
+      data?.meta?.about?.updatedAt,
+      data?.meta?.siteInfo?.updatedAt,
+    );
     return {
       statusCode: 200,
       data,

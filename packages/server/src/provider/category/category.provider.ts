@@ -13,6 +13,22 @@ export class CategoryProvider {
     private readonly articleProvider: ArticleProvider,
     private readonly structuredDataService: StructuredDataService,
   ) {}
+
+  private async getCategoryByName(name: string) {
+    const category = await this.structuredDataService.getCategoryByName(name);
+    if (category || this.structuredDataService.isInitialized()) {
+      return category as any;
+    }
+    return await this.categoryModal.findOne({ name }).lean().exec();
+  }
+
+  private toCategorySnapshot(category: any) {
+    return {
+      ...(category?._doc || category || {}),
+      ...(category || {}),
+    };
+  }
+
   async getCategoriesWithArticle(includeHidden: boolean) {
     const categories = await this.getAllCategories();
     const data = {};
@@ -95,20 +111,19 @@ export class CategoryProvider {
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       throw new NotAcceptableException('分类名称不能为空或只包含空格！');
     }
-    
+
     // 使用trim后的名称
     const trimmedName = name.trim();
-    
-    const existData = await this.categoryModal.findOne({
-      name: trimmedName,
-    });
+
+    const existData = await this.getCategoryByName(trimmedName);
     if (existData) {
       throw new NotAcceptableException('分类名重复，无法创建！');
     } else {
-      // 获取当前最大排序值
-      const maxSortCategory = await this.categoryModal.findOne({}).sort({ sort: -1 });
-      const newSort = maxSortCategory ? maxSortCategory.sort + 1 : 0;
-      
+      const categories = await this.getAllCategories(true);
+      const newSort = categories.length
+        ? Math.max(...categories.map((item: any) => Number(item?.sort || 0))) + 1
+        : 0;
+
       const created = await this.categoryModal.create({
         id: await this.getNewId(),
         name: trimmedName,
@@ -140,7 +155,7 @@ export class CategoryProvider {
     if (Object.keys(dto).length == 0) {
       throw new NotAcceptableException('无有效信息，无法修改！');
     }
-    
+
     // 如果要修改名称，验证新名称不能为空或只包含空格
     if (dto.name !== undefined) {
       if (!dto.name || typeof dto.name !== 'string' || dto.name.trim().length === 0) {
@@ -149,11 +164,9 @@ export class CategoryProvider {
       // 使用trim后的名称
       dto.name = dto.name.trim();
     }
-    
+
     if (dto.name && name != dto.name) {
-      const existData = await this.categoryModal.findOne({
-        name: dto.name,
-      });
+      const existData = await this.getCategoryByName(dto.name);
       if (existData) {
         throw new NotAcceptableException('分类名重复，无法修改！');
       }
@@ -167,6 +180,7 @@ export class CategoryProvider {
         }
       }
     }
+    const currentCategory = await this.getCategoryByName(name);
     await this.categoryModal.updateOne(
       {
         name: name,
@@ -175,63 +189,111 @@ export class CategoryProvider {
         ...dto,
       },
     );
-    const latest = await this.categoryModal.findOne({ name: dto.name || name }).lean();
-    if (latest) {
-      await this.structuredDataService.upsertCategory(latest);
+    if (currentCategory) {
+      await this.structuredDataService.upsertCategory({
+        ...(currentCategory?._doc || currentCategory),
+        ...currentCategory,
+        ...dto,
+        name: dto.name || currentCategory.name,
+      });
     }
   }
 
   async updateCategoriesSort(dto: UpdateCategorySortDto) {
     const { categories } = dto;
-    
+
     // 验证 categories 是否存在且为数组
     if (!categories || !Array.isArray(categories)) {
       throw new NotAcceptableException('categories must be a valid array');
     }
-    
+
     // 验证数组不为空
     if (categories.length === 0) {
       throw new NotAcceptableException('categories array cannot be empty');
     }
-    
-    for (const categoryUpdate of categories) {
+
+    const normalizedUpdates = categories.map((categoryUpdate) => {
       // 验证每个分类项的格式
-      if (!categoryUpdate || typeof categoryUpdate.name !== 'string' || typeof categoryUpdate.sort !== 'number') {
-        throw new NotAcceptableException('Invalid category format: each category must have a valid name (string) and sort (number)');
+      if (
+        !categoryUpdate ||
+        typeof categoryUpdate.name !== 'string' ||
+        typeof categoryUpdate.sort !== 'number'
+      ) {
+        throw new NotAcceptableException(
+          'Invalid category format: each category must have a valid name (string) and sort (number)',
+        );
       }
-      
+
       // 验证分类名称不能为空或只包含空格
-      if (categoryUpdate.name.trim().length === 0) {
+      const trimmedName = categoryUpdate.name.trim();
+      if (trimmedName.length === 0) {
         throw new NotAcceptableException('分类名称不能为空或只包含空格！');
       }
-      
-      await this.categoryModal.updateOne(
-        { name: categoryUpdate.name },
-        { sort: categoryUpdate.sort }
-      );
-      const latest = await this.categoryModal.findOne({ name: categoryUpdate.name }).lean();
-      if (latest) {
-        await this.structuredDataService.upsertCategory(latest);
+
+      return {
+        name: trimmedName,
+        sort: categoryUpdate.sort,
+      };
+    });
+
+    const categorySnapshot = await this.getAllCategories(true);
+    const categoryMap = new Map<string, any>(
+      (categorySnapshot as any[]).map((item) => {
+        const snapshot = this.toCategorySnapshot(item);
+        return [snapshot.name, snapshot];
+      }),
+    );
+    const nextSnapshots: any[] = [];
+
+    for (const categoryUpdate of normalizedUpdates) {
+      const existing = categoryMap.get(categoryUpdate.name);
+      if (existing) {
+        const nextSnapshot = {
+          ...existing,
+          sort: categoryUpdate.sort,
+        };
+        categoryMap.set(categoryUpdate.name, nextSnapshot);
+        nextSnapshots.push(nextSnapshot);
       }
     }
+
+    await Promise.all(
+      normalizedUpdates.map((categoryUpdate) =>
+        this.categoryModal.updateOne({ name: categoryUpdate.name }, { sort: categoryUpdate.sort }),
+      ),
+    );
+    await Promise.all(
+      nextSnapshots.map((snapshot) => this.structuredDataService.upsertCategory(snapshot)),
+    );
   }
 
   // 初始化现有分类的排序字段
   async initializeCategoriesSort() {
-    const categories = await this.categoryModal.find({}).sort({ id: 1 });
-    
-    for (let i = 0; i < categories.length; i++) {
-      const category = categories[i];
-      if (category.sort === undefined || category.sort === null) {
-        await this.categoryModal.updateOne(
-          { _id: category._id },
-          { sort: i }
-        );
-        const latest = await this.categoryModal.findOne({ _id: category._id }).lean();
-        if (latest) {
-          await this.structuredDataService.upsertCategory(latest);
-        }
-      }
-    }
+    const categories = (await this.getAllCategories(true)).map((item: any) =>
+      this.toCategorySnapshot(item),
+    );
+    const categoriesNeedingSort = categories
+      .map((category, index) => ({
+        currentSort: category.sort,
+        nextSnapshot: {
+          ...category,
+          sort: category.sort ?? index,
+        },
+      }))
+      .filter((category) => category.currentSort === undefined || category.currentSort === null);
+
+    await Promise.all(
+      categoriesNeedingSort.map((category) =>
+        this.categoryModal.updateOne(
+          { name: category.nextSnapshot.name },
+          { sort: category.nextSnapshot.sort },
+        ),
+      ),
+    );
+    await Promise.all(
+      categoriesNeedingSort.map((category) =>
+        this.structuredDataService.upsertCategory(category.nextSnapshot),
+      ),
+    );
   }
 }

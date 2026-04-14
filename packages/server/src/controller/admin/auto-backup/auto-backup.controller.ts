@@ -48,7 +48,7 @@ export class AutoBackupController {
 
   @Put('setting')
   async updateSetting(@Body() dto: AutoBackupSetting) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -82,7 +82,7 @@ export class AutoBackupController {
 
   @Post('trigger')
   async triggerBackup() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止执行此操作！',
@@ -147,7 +147,7 @@ export class AutoBackupController {
 
   @Post('aliyunpan/login')
   async startAliyunpanLogin() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止执行此操作！',
@@ -219,7 +219,7 @@ export class AutoBackupController {
 
   @Post('aliyunpan/logout')
   async logoutAliyunpan() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止执行此操作！',
@@ -262,7 +262,7 @@ export class AutoBackupController {
 
   @Post('aliyunpan/sync')
   async triggerAliyunpanSync() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止执行此操作！',

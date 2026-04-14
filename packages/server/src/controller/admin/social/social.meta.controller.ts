@@ -37,7 +37,7 @@ export class SocialMetaController {
 
   @Put()
   async update(@Body() updateDto: SocialDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -53,7 +53,7 @@ export class SocialMetaController {
 
   @Post()
   async create(@Body() updateDto: SocialDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -69,7 +69,7 @@ export class SocialMetaController {
 
   @Delete('/:type')
   async delete(@Param('type') type: SocialType) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

@@ -9,6 +9,14 @@ import { MomentProvider } from 'src/provider/moment/moment.provider';
 export class PublicMomentController {
   constructor(private readonly momentProvider: MomentProvider) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get('/')
   async getByOption(
     @Query('page') page: number = 1,
@@ -18,9 +26,11 @@ export class PublicMomentController {
     @Query('endTime') endTime?: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
+    const safePage = this.normalizePositiveInt(page as any, 1, 10_000);
+    const safePageSize = this.normalizePositiveInt(pageSize as any, 10, 50);
     const option = {
-      page: parseInt(page as any),
-      pageSize: parseInt(pageSize as any),
+      page: safePage,
+      pageSize: safePageSize,
       sortCreatedAt,
       startTime,
       endTime,
@@ -38,4 +48,4 @@ export class PublicMomentController {
       data,
     };
   }
-} 
+}

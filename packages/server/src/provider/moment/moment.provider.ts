@@ -4,6 +4,7 @@ import { Model } from 'src/storage/mongoose-compat';
 import { CreateMomentDto, SearchMomentOption, UpdateMomentDto } from 'src/types/moment.dto';
 import { Moment, MomentDocument } from 'src/scheme/moment.schema';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { escapeRegExp } from 'src/utils/escapeRegExp';
 
 export type MomentView = 'admin' | 'public';
 
@@ -191,17 +192,22 @@ export class MomentProvider {
   }
 
   async searchByString(str: string): Promise<Moment[]> {
+    const normalizedSearch = String(str || '').trim();
+    if (!normalizedSearch) {
+      return [];
+    }
     const pgMoments = await this.structuredDataService.searchMoments(str);
     if (pgMoments.length || this.structuredDataService.isInitialized()) {
       return pgMoments.map((moment: any) => this.projectMomentForView(moment, 'admin')) as any;
     }
+    const safePattern = escapeRegExp(normalizedSearch);
 
     const moments = await this.momentModel
       .find({
         $and: [
           {
             $or: [
-              { content: { $regex: `${str}`, $options: 'i' } },
+              { content: { $regex: safePattern, $options: 'i' } },
             ],
           },
           {

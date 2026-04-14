@@ -14,6 +14,33 @@ export class WalineProvider {
   logger = new Logger(WalineProvider.name);
   env = {};
   private readonly controlUrl = process.env['VANBLOG_WALINE_CONTROL_URL'];
+  private readonly reservedWalineEnvKeys = new Set([
+    'AUTHOR_EMAIL',
+    'JWT_TOKEN',
+    'LOGIN',
+    'MONGO_AUTHSOURCE',
+    'MONGO_DB',
+    'MONGO_HOST',
+    'MONGO_PASSWORD',
+    'MONGO_PORT',
+    'MONGO_USER',
+    'PG_DB',
+    'PG_HOST',
+    'PG_PASSWORD',
+    'PG_PORT',
+    'PG_SSL',
+    'PG_USER',
+    'PORT',
+    'SITE_NAME',
+    'SITE_URL',
+    'SMTP_HOST',
+    'SMTP_PASS',
+    'SMTP_PORT',
+    'SMTP_USER',
+    'SENDER_EMAIL',
+    'SENDER_NAME',
+    'WEBHOOK',
+  ]);
   constructor(
     private metaProvider: MetaProvider,
     private readonly settingProvider: SettingProvider,
@@ -45,7 +72,15 @@ export class WalineProvider {
           try {
             const data = JSON.parse(config.otherConfig);
             for (const [k, v] of Object.entries(data)) {
-              result[k] = v;
+              const normalizedKey = String(k || '').trim();
+              if (!normalizedKey) {
+                continue;
+              }
+              if (this.reservedWalineEnvKeys.has(normalizedKey)) {
+                this.logger.warn(`已忽略保留的 Waline 自定义环境变量: ${normalizedKey}`);
+                continue;
+              }
+              result[normalizedKey] = v;
             }
           } catch (err) {}
         }
@@ -79,7 +114,19 @@ export class WalineProvider {
   }
   private compactEnv(target: Record<string, any>) {
     return Object.fromEntries(
-      Object.entries(target).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+      Object.entries(target).filter(
+        ([, value]) => value !== undefined && value !== null && value !== '',
+      ),
+    );
+  }
+
+  private maskEnvForLog(target: Record<string, any>) {
+    const sensitiveKeyPattern = /(PASS|PASSWORD|TOKEN|SECRET|KEY)/i;
+    return Object.fromEntries(
+      Object.entries(target || {}).map(([key, value]) => [
+        key,
+        sensitiveKeyPattern.test(key) ? '***' : value,
+      ]),
     );
   }
 
@@ -89,6 +136,7 @@ export class WalineProvider {
   }
 
   private buildMongoEnv(url?: URL) {
+    // Legacy Mongo compatibility only. PostgreSQL-backed Waline is the primary path now.
     if (url) {
       return this.compactEnv({
         MONGO_HOST: url.hostname,
@@ -114,6 +162,10 @@ export class WalineProvider {
     return null;
   }
 
+  private logLegacyMongoCompatibility(reason: string) {
+    this.logger.warn(`Waline MongoDB 仅保留 legacy 兼容支持，非默认推荐路径：${reason}`);
+  }
+
   private buildPostgresEnv(url: URL) {
     return this.compactEnv({
       PG_HOST: url.hostname,
@@ -135,6 +187,7 @@ export class WalineProvider {
       }
 
       if (protocol === 'mongodb' || protocol === 'mongodb+srv') {
+        this.logLegacyMongoCompatibility('检测到 MongoDB 数据库地址，继续沿用兼容路径');
         return this.buildMongoEnv(url);
       }
 
@@ -142,7 +195,11 @@ export class WalineProvider {
       return null;
     }
 
-    return this.buildMongoEnv();
+    const legacyMongoEnv = this.buildMongoEnv();
+    if (legacyMongoEnv) {
+      this.logLegacyMongoCompatibility('未配置 Waline 数据库地址，回退到旧版 Mongo 环境变量');
+    }
+    return legacyMongoEnv;
   }
   async loadEnv() {
     const storageEnv = this.buildStorageEnv();
@@ -164,7 +221,9 @@ export class WalineProvider {
       ...otherEnv,
       ...walineConfigEnv,
     });
-    this.logger.log(`waline 配置： ${JSON.stringify(this.env, null, 2)}`);
+    this.logger.log(
+      `waline 配置： ${JSON.stringify(this.maskEnvForLog(this.env), null, 2)}`,
+    );
   }
   async init() {
     this.run();
@@ -231,10 +290,21 @@ export class WalineProvider {
   private getControlBaseUrl() {
     return this.controlUrl?.replace(/\/$/, '');
   }
+  private getControlToken() {
+    return process.env['VANBLOG_WALINE_CONTROL_TOKEN'] || process.env['WALINE_JWT_TOKEN'] || '';
+  }
   private async postToExternalControl(pathname: string, payload: Record<string, any> = {}) {
+    const controlToken = this.getControlToken();
+    if (!controlToken) {
+      throw new Error('未配置 Waline 控制令牌，拒绝同步外部 Waline');
+    }
     return await withRetry(
       async () => {
-        await axios.post(`${this.getControlBaseUrl()}${pathname}`, payload);
+        await axios.post(`${this.getControlBaseUrl()}${pathname}`, payload, {
+          headers: {
+            'x-vanblog-control-token': controlToken,
+          },
+        });
       },
       {
         attempts: 20,

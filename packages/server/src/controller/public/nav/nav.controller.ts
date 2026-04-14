@@ -138,12 +138,22 @@ export class NavController {
         this.navCategoryProvider.getAllCategories(),
         this.navToolProvider.getAllTools(),
       ]);
+      const visibleTools = tools.filter((tool) => !tool.hide);
+      const categoriesWithTools = new Set();
+      visibleTools.forEach((tool) => {
+        if (tool.categoryId) {
+          categoriesWithTools.add(tool.categoryId);
+        }
+      });
+      const visibleCategories = categories.filter(
+        (category) => !category.hide && categoriesWithTools.has(category._id.toString()),
+      );
       const data = {
-        categories,
-        tools,
+        categories: visibleCategories,
+        tools: visibleTools,
       };
       await this.cacheProvider.set(cacheKey, this.buildCachedEnvelope(data), 120);
-      this.setLastModified(res, [...categories, ...tools]);
+      this.setLastModified(res, [...visibleCategories, ...visibleTools]);
 
       return {
         statusCode: 200,

@@ -238,6 +238,7 @@ docker compose -f docker-compose.image.yml up -d
 - `WALINE_JWT_TOKEN`
 
 当前官方拓扑默认让 `server` 通过 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361` 管理独立 Waline 容器，并让 Waline 使用同一个 PostgreSQL 实例里的独立 `waline` 数据库。
+缺失 `WALINE_JWT_TOKEN` 时，Waline 相关容器会拒绝启动，避免生产环境回退到弱默认密钥。
 
 ### 6.2 使用版本别名或 latest
 

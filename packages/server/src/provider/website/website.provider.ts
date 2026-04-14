@@ -25,6 +25,15 @@ export class WebsiteProvider {
     private metaProvider: MetaProvider,
     private settingProvider: SettingProvider,
   ) {}
+  private maskEnvForLog(target: Record<string, any>) {
+    const sensitiveKeyPattern = /(PASS|PASSWORD|TOKEN|SECRET|KEY)/i;
+    return Object.fromEntries(
+      Object.entries(target || {}).map(([key, value]) => [
+        key,
+        sensitiveKeyPattern.test(key) ? '***' : value,
+      ]),
+    );
+  }
   async init() {
     this.run();
   }
@@ -40,7 +49,11 @@ export class WebsiteProvider {
         : {
             VAN_BLOG_REVALIDATE: 'false',
           };
-    if (!meta?.siteInfo) return { ...isrEnv };
+    const sharedIsrEnv = {
+      VANBLOG_ISR_TOKEN: process.env['VANBLOG_ISR_TOKEN'] || process.env['WALINE_JWT_TOKEN'] || '',
+      WALINE_JWT_TOKEN: process.env['WALINE_JWT_TOKEN'] || '',
+    };
+    if (!meta?.siteInfo) return { ...sharedIsrEnv, ...isrEnv };
     const siteinfo = meta.siteInfo;
     const socials = meta.socials || [];
     const urls = [];
@@ -73,7 +86,11 @@ export class WebsiteProvider {
     if (wechatDarkItem) {
       addEach(wechatDarkItem?.value);
     }
-    return { VAN_BLOG_ALLOW_DOMAINS: urls.join(','), ...isrEnv };
+    return {
+      VAN_BLOG_ALLOW_DOMAINS: urls.join(','),
+      ...sharedIsrEnv,
+      ...isrEnv,
+    };
   }
   async restart(reason: string) {
     this.logger.log(`${reason}重启 website`);
@@ -113,10 +130,26 @@ export class WebsiteProvider {
   private getControlBaseUrl() {
     return this.controlUrl?.replace(/\/$/, '');
   }
+  private getControlToken() {
+    return (
+      process.env['VANBLOG_WEBSITE_CONTROL_TOKEN'] ||
+      process.env['VANBLOG_ISR_TOKEN'] ||
+      process.env['WALINE_JWT_TOKEN'] ||
+      ''
+    );
+  }
   private async postToExternalControl(pathname: string, payload: Record<string, any> = {}) {
+    const controlToken = this.getControlToken();
+    if (!controlToken) {
+      throw new Error('未配置 website 控制令牌，拒绝同步外部 website');
+    }
     return await withRetry(
       async () => {
-        await axios.post(`${this.getControlBaseUrl()}${pathname}`, payload);
+        await axios.post(`${this.getControlBaseUrl()}${pathname}`, payload, {
+          headers: {
+            'x-vanblog-control-token': controlToken,
+          },
+        });
       },
       {
         attempts: 20,
@@ -150,7 +183,7 @@ export class WebsiteProvider {
       args = ['./packages/website/server.js'];
     }
     const loadEnvs = await this.loadEnv();
-    this.logger.log(JSON.stringify(loadEnvs, null, 2));
+    this.logger.log(JSON.stringify(this.maskEnvForLog(loadEnvs), null, 2));
     if (this.ctx == null) {
       this.ctx = spawn(cmd, args, {
         env: {

@@ -34,19 +34,24 @@ export class CollaboratorController {
     const siteInfo = await this.metaProvider.getSiteInfo();
     const admin = await this.userProvider.getUser(true);
     const adminUser = {
-      name: admin.name,
-      nickname: siteInfo.author,
       id: 0,
+      nickname: siteInfo.author || admin?.nickname || 'VanBlog',
     };
     const data = await this.userProvider.getAllCollaborators(true);
     return {
       statusCode: 200,
-      data: [adminUser, ...(data || [])],
+      data: [
+        adminUser,
+        ...((data || []).map((item: any) => ({
+          id: item.id,
+          nickname: item.nickname || '协作者',
+        })) as any[]),
+      ],
     };
   }
   @Delete('/:id')
   async deleteCollaboratorById(@Param('id') id: number) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -61,7 +66,7 @@ export class CollaboratorController {
   }
   @Post()
   async createCollaborator(@Body() dto: Collaborator) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -75,7 +80,7 @@ export class CollaboratorController {
   }
   @Put()
   async updateCollaborator(@Body() dto: Collaborator) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

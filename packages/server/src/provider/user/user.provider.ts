@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { UpdateUserDto } from 'src/types/user.dto';
@@ -16,7 +22,10 @@ export class UserProvider {
   ) {}
   async getUser(isList?: boolean) {
     const user = await this.structuredDataService.getUserById(0);
-    if (user) {
+    if (user || this.structuredDataService.isInitialized()) {
+      if (!user) {
+        return null;
+      }
       if (isList) {
         return {
           id: user.id,
@@ -33,7 +42,7 @@ export class UserProvider {
   }
   async getAllUsers() {
     const users = await this.structuredDataService.listUsers();
-    if (users.length) {
+    if (users.length || this.structuredDataService.isInitialized()) {
       return users;
     }
     return await this.userModel.find({}).lean().exec();
@@ -80,19 +89,27 @@ export class UserProvider {
   }
 
   async validateUser(name: string, password: string) {
+    const pgUser = await this.structuredDataService.getUserByName(name);
     const user =
-      (await this.structuredDataService.getUserByName(name)) ||
-      (await this.userModel.findOne({ name }).lean().exec());
+      pgUser ||
+      (!this.structuredDataService.isInitialized()
+        ? await this.userModel.findOne({ name }).lean().exec()
+        : null);
     if (!user) {
       return null;
     } else {
       const encryptedPassword = encryptPassword(name, password, user.salt);
-      const result =
-        user.password === encryptedPassword
-          ? user
-          : await this.userModel.findOne({ name, password: encryptedPassword }).exec();
+      const result = user.password === encryptedPassword
+        ? user
+        : !this.structuredDataService.isInitialized()
+          ? await this.userModel.findOne({ name, password: encryptedPassword }).exec()
+          : null;
       if (result) {
-        this.updateSalt(result, password);
+        try {
+          await this.updateSalt(result, password);
+        } catch (error) {
+          this.logger.warn(`登录后刷新用户盐值失败: ${error?.message || error}`);
+        }
       }
       return result;
     }
@@ -117,6 +134,17 @@ export class UserProvider {
   }
 
   async updateUser(updateUserDto: UpdateUserDto) {
+    if (
+      !updateUserDto?.name ||
+      typeof updateUserDto.name !== 'string' ||
+      updateUserDto.name.trim().length === 0 ||
+      !updateUserDto?.password ||
+      typeof updateUserDto.password !== 'string' ||
+      updateUserDto.password.trim().length === 0
+    ) {
+      throw new BadRequestException('用户名和密码不能为空');
+    }
+
     const currUser = await this.getUser();
 
     if (!currUser) {
@@ -148,6 +176,9 @@ export class UserProvider {
     if (collaborator?.type === 'collaborator') {
       return collaborator;
     }
+    if (this.structuredDataService.isInitialized()) {
+      return null;
+    }
     return await this.userModel.findOne({ name: name, type: 'collaborator' });
   }
   async getCollaboratorById(id: number) {
@@ -155,11 +186,14 @@ export class UserProvider {
     if (collaborator?.type === 'collaborator') {
       return collaborator;
     }
+    if (this.structuredDataService.isInitialized()) {
+      return null;
+    }
     return await this.userModel.findOne({ id, type: 'collaborator' });
   }
   async getAllCollaborators(isList?: boolean) {
     const collaborators = await this.structuredDataService.getUsersByType('collaborator');
-    if (collaborators.length) {
+    if (collaborators.length || this.structuredDataService.isInitialized()) {
       if (isList) {
         return collaborators.map((item) => ({
           id: item.id,

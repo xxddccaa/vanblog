@@ -79,8 +79,15 @@
   handle /rss/* {
     reverse_proxy server:3000
   }
-  handle /swagger* {
+  @swaggerPrivate {
+    path /swagger*
+    remote_ip private_ranges
+  }
+  handle @swaggerPrivate {
     reverse_proxy server:3000
+  }
+  handle /swagger* {
+    respond "Not Found" 404
   }
   handle /api/user* {
     uri strip_prefix /api

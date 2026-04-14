@@ -30,6 +30,7 @@ RUN pnpm install --prod --ignore-scripts \
 WORKDIR /app
 COPY scripts/fix-waline-dashboard.js ./scripts/fix-waline-dashboard.js
 COPY docker/waline/entrypoint.sh ./waline/entrypoint.sh
+COPY docker/waline/control-auth.cjs ./waline/control-auth.cjs
 COPY docker/waline/runner.cjs ./waline/runner.cjs
 RUN node ./scripts/fix-waline-dashboard.js
 

@@ -197,6 +197,17 @@ export class BackupController {
     return false;
   }
 
+  private sanitizeTokensForBackup(_tokens: any[]) {
+    return [];
+  }
+
+  private sanitizeRawCollectionsForBackup(rawCollections: Record<string, any[]>) {
+    return {
+      ...(rawCollections || {}),
+      tokens: [],
+    };
+  }
+
   private buildImportSummary(prepared: PreparedImportPayload) {
     return {
       backupVersion: prepared.backupVersion,
@@ -222,7 +233,11 @@ export class BackupController {
       stages.push({ key: 'cleanupExisting', label: '清理现有站点数据', total: 1 });
     }
     if ((prepared.users?.length || 0) > 0 || prepared.currentAdmin?.id !== undefined) {
-      stages.push({ key: 'users', label: '恢复管理员账号', total: Math.max(prepared.users?.length || 0, 1) });
+      stages.push({
+        key: 'users',
+        label: '恢复管理员账号',
+        total: Math.max(prepared.users?.length || 0, 1),
+      });
     }
     if (prepared.meta) {
       stages.push({ key: 'meta', label: '恢复站点信息', total: 1 });
@@ -247,10 +262,18 @@ export class BackupController {
       stages.push({ key: 'moments', label: '恢复动态', total: prepared.moments.length });
     }
     if (prepared.customPages.length > 0) {
-      stages.push({ key: 'customPages', label: '恢复自定义页面', total: prepared.customPages.length });
+      stages.push({
+        key: 'customPages',
+        label: '恢复自定义页面',
+        total: prepared.customPages.length,
+      });
     }
     if (prepared.navCategories.length > 0) {
-      stages.push({ key: 'navCategories', label: '恢复导航分类', total: prepared.navCategories.length });
+      stages.push({
+        key: 'navCategories',
+        label: '恢复导航分类',
+        total: prepared.navCategories.length,
+      });
     }
     if (prepared.navTools.length > 0) {
       stages.push({ key: 'navTools', label: '恢复导航工具', total: prepared.navTools.length });
@@ -265,7 +288,11 @@ export class BackupController {
       stages.push({ key: 'tokens', label: '恢复 Token', total: prepared.tokens.length });
     }
     if (prepared.staticItems.length > 0) {
-      stages.push({ key: 'staticItems', label: '恢复静态文件记录', total: prepared.staticItems.length });
+      stages.push({
+        key: 'staticItems',
+        label: '恢复静态文件记录',
+        total: prepared.staticItems.length,
+      });
     }
     stages.push({
       key: 'analytics',
@@ -328,7 +355,9 @@ export class BackupController {
       settings: this.sanitizeArray(data.settings, false),
       layoutSetting: data.layoutSetting,
       aiTaggingConfig: data.aiTaggingConfig,
-      categories: Array.isArray(data.categories) ? data.categories.map((item: any) => ({ ...item })) : [],
+      categories: Array.isArray(data.categories)
+        ? data.categories.map((item: any) => ({ ...item }))
+        : [],
       tags: Array.isArray(data.tags) ? data.tags.map((item: any) => ({ ...item })) : [],
       articles: this.sanitizeArray(data.articles),
       drafts: this.sanitizeArray(data.drafts),
@@ -338,7 +367,7 @@ export class BackupController {
       moments: this.sanitizeArray(data.moments),
       customPages: this.sanitizeArray(data.customPages),
       pipelines: this.sanitizeArray(data.pipelines),
-      tokens: this.sanitizeArray(data.tokens),
+      tokens: [],
       navTools: this.sanitizeArray(data.navTools),
       navCategories: this.sanitizeArray(data.navCategories),
       icons: this.sanitizeArray(data.icons),
@@ -366,6 +395,9 @@ export class BackupController {
     if (prepared.meta) {
       delete prepared.meta._id;
       delete prepared.meta.__v;
+    }
+    if (Array.isArray(data?.tokens) && data.tokens.length > 0) {
+      this.logger.warn('检测到备份文件包含 Token，出于安全原因已忽略这些凭证数据');
     }
     return prepared;
   }
@@ -431,12 +463,22 @@ export class BackupController {
         this.mongoBackupProvider.exportAllCollections(),
       ]);
 
+      const safeTokens = this.sanitizeTokensForBackup(tokens);
+      const safeRawCollections = this.sanitizeRawCollectionsForBackup(rawCollections);
       const rawCollectionCounts = Object.fromEntries(
-        Object.entries(rawCollections).map(([name, docs]) => [
+        Object.entries(safeRawCollections).map(([name, docs]) => [
           name,
           Array.isArray(docs) ? docs.length : 0,
         ]),
       );
+      const localStaticArtifactCount = (staticItems || []).filter(
+        (item: any) => item?.storageType === 'local',
+      ).length;
+      const customPageFolderArtifactCount = (customPages || []).filter(
+        (page: any) => page?.type === 'folder',
+      ).length;
+      const hasUnembeddedArtifacts =
+        localStaticArtifactCount > 0 || customPageFolderArtifactCount > 0;
 
       const data = {
         articles,
@@ -454,7 +496,7 @@ export class BackupController {
         moments,
         customPages,
         pipelines,
-        tokens,
+        tokens: safeTokens,
         navTools,
         navCategories,
         icons,
@@ -462,8 +504,8 @@ export class BackupController {
         aiTaggingConfig,
         documents,
         mindMaps,
-        rawCollections,
-        mongoCollections: rawCollections,
+        rawCollections: safeRawCollections,
+        mongoCollections: safeRawCollections,
         backupInfo: {
           version: '4.0.0',
           formatVersion: '4.0.0',
@@ -506,7 +548,7 @@ export class BackupController {
             tags: tags?.length || 0,
             customPages: customPages?.length || 0,
             pipelines: pipelines?.length || 0,
-            tokens: tokens?.length || 0,
+            tokens: safeTokens?.length || 0,
             navTools: navTools?.length || 0,
             navCategories: navCategories?.length || 0,
             icons: icons?.length || 0,
@@ -521,8 +563,28 @@ export class BackupController {
           rawCollectionCounts,
           mongoCollectionCounts: rawCollectionCounts,
           legacyFields: ['mongoCollections'],
+          credentialWarnings: {
+            tokensExcluded: true,
+            message:
+              '为避免凭证泄露，JSON 备份不会导出登录会话 Token 或 API Token；恢复后需重新登录并重新创建 API Token。',
+          },
+          artifactWarnings: hasUnembeddedArtifacts
+            ? {
+                embedded: false,
+                localStaticFiles: localStaticArtifactCount,
+                customPageFolders: customPageFolderArtifactCount,
+                message:
+                  '当前 JSON 备份不会内嵌本地静态文件和 folder 型自定义页面的实际文件内容；恢复时只会导入数据库记录。',
+              }
+            : undefined,
         },
       };
+
+      if (hasUnembeddedArtifacts) {
+        this.logger.warn(
+          `检测到未内嵌到 JSON 备份中的本地文件资产：static=${localStaticArtifactCount}, customPageFolders=${customPageFolderArtifactCount}`,
+        );
+      }
 
       this.logger.log(
         `数据导出完成，共包含 ${Object.keys(data.backupInfo.counts).length} 种数据类型`,
@@ -548,10 +610,19 @@ export class BackupController {
     }
   }
 
+  private throwIfImportFailures(stageLabel: string, failures: string[]) {
+    if (!failures.length) {
+      return;
+    }
+    const preview = failures.slice(0, 3).join('；');
+    const suffix = failures.length > 3 ? `；另有 ${failures.length - 3} 条失败` : '';
+    throw new Error(`${stageLabel} 恢复不完整，失败 ${failures.length} 条：${preview}${suffix}`);
+  }
+
   @Post('/import')
   @UseInterceptors(FileInterceptor('file'))
   async importAll(@UploadedFile() file: Express.Multer.File, @Body() body: any) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -730,8 +801,7 @@ export class BackupController {
 
       if (prepared.categories.length > 0) {
         await startStage('categories', '正在恢复分类');
-        await this.importCategoriesWithRebuild(prepared.categories);
-        importResults.categories = prepared.categories.length;
+        importResults.categories = await this.importCategoriesWithRebuild(prepared.categories);
         this.logger.log(`分类数据导入完成: ${importResults.categories} 条`);
         await completeStage('categories', `已恢复 ${importResults.categories} 个分类`);
       }
@@ -781,16 +851,14 @@ export class BackupController {
 
       if (prepared.customPages.length > 0) {
         await startStage('customPages', '正在恢复自定义页面');
-        await this.importCustomPagesEnhanced(prepared.customPages);
-        importResults.customPages = prepared.customPages.length;
+        importResults.customPages = await this.importCustomPagesEnhanced(prepared.customPages);
         this.logger.log(`自定义页面导入完成: ${importResults.customPages} 条`);
         await completeStage('customPages', `已恢复 ${importResults.customPages} 个自定义页面`);
       }
 
       if (prepared.navCategories.length > 0) {
         await startStage('navCategories', '正在恢复导航分类');
-        await this.importNavCategoriesEnhanced(prepared.navCategories);
-        importResults.navCategories = prepared.navCategories.length;
+        importResults.navCategories = await this.importNavCategoriesEnhanced(prepared.navCategories);
         this.logger.log(`导航分类导入完成: ${importResults.navCategories} 条`);
         await completeStage('navCategories', `已恢复 ${importResults.navCategories} 个导航分类`);
       }
@@ -798,34 +866,36 @@ export class BackupController {
       if (prepared.navTools.length > 0) {
         await startStage('navTools', '正在恢复导航工具');
         await this.autoCreateNavCategoriesFromTools(prepared.navTools);
-        await this.importNavToolsEnhanced(prepared.navTools);
-        importResults.navTools = prepared.navTools.length;
+        importResults.navTools = await this.importNavToolsEnhanced(prepared.navTools);
         this.logger.log(`导航工具导入完成: ${importResults.navTools} 条`);
         await completeStage('navTools', `已恢复 ${importResults.navTools} 个导航工具`);
       }
 
       if (prepared.icons.length > 0) {
         await startStage('icons', '正在恢复图标');
-        await this.importIconsEnhanced(prepared.icons);
-        importResults.icons = prepared.icons.length;
+        importResults.icons = await this.importIconsEnhanced(prepared.icons);
         this.logger.log(`图标数据导入完成: ${importResults.icons} 条`);
         await completeStage('icons', `已恢复 ${importResults.icons} 个图标`);
       }
 
       if (prepared.pipelines.length > 0) {
         await startStage('pipelines', '正在恢复流水线');
-        await this.importPipelinesEnhanced(prepared.pipelines);
-        importResults.pipelines = prepared.pipelines.length;
+        importResults.pipelines = await this.importPipelinesEnhanced(prepared.pipelines);
         this.logger.log(`流水线数据导入完成: ${importResults.pipelines} 条`);
         await completeStage('pipelines', `已恢复 ${importResults.pipelines} 条流水线配置`);
       }
 
       if (prepared.tokens.length > 0) {
-        await startStage('tokens', '正在恢复 Token');
-        await this.importTokensEnhanced(prepared.tokens);
-        importResults.tokens = prepared.tokens.length;
-        this.logger.log(`Token数据导入完成: ${importResults.tokens} 条`);
-        await completeStage('tokens', `已恢复 ${importResults.tokens} 条 Token`);
+        if (!prepared.canRestoreProtectedData) {
+          this.logger.warn('目标站点已有数据，跳过恢复备份 Token，避免旧凭证在当前站点继续生效');
+          await skipStage('tokens', '目标站点已有数据时不恢复备份 Token，避免旧凭证继续有效');
+        } else {
+          await startStage('tokens', '正在恢复 Token');
+          await this.importTokensEnhanced(prepared.tokens);
+          importResults.tokens = prepared.tokens.length;
+          this.logger.log(`Token数据导入完成: ${importResults.tokens} 条`);
+          await completeStage('tokens', `已恢复 ${importResults.tokens} 条 Token`);
+        }
       }
 
       if (prepared.staticItems.length > 0) {
@@ -964,7 +1034,7 @@ export class BackupController {
 
   @Post('/clear-all')
   async clearAllData() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -1053,6 +1123,7 @@ export class BackupController {
       // 2. 清空自定义页面
       try {
         const customPages = await this.customPageProvider.getAll(true);
+        await this.purgePersistedFiles(customPages, []);
         for (const page of customPages) {
           await this.customPageProvider.deleteByPath(page.path);
         }
@@ -1167,7 +1238,7 @@ export class BackupController {
       // 8. 清空静态文件记录数据
       try {
         const staticItems = await this.staticProvider.exportAll();
-        // 使用MongoDB的deleteMany进行批量物理删除
+        await this.purgePersistedFiles([], staticItems);
         await this.staticProvider['staticModel'].deleteMany({});
         await this.structuredDataService.deleteAllStatics();
         clearResults.staticItems = staticItems?.length || 0;
@@ -1176,12 +1247,12 @@ export class BackupController {
         this.logger.error('清空静态文件记录失败:', error.message);
       }
 
-      // 9. 清空API Token（保留用户登录token）
+      // 9. 禁用所有仍可用的 Token，避免清库后继续使用旧凭证访问后台
       try {
-        await this.tokenProvider.disableAllAdmin();
-        this.logger.log('清空API Token完成');
+        await this.tokenProvider.disableAll();
+        this.logger.log('禁用所有 Token 完成');
       } catch (error) {
-        this.logger.error('清空API Token失败:', error.message);
+        this.logger.error('禁用所有 Token 失败:', error.message);
       }
 
       // 10. 完全清空meta表、用户表和settings表，让网站回到未初始化状态
@@ -1229,6 +1300,8 @@ export class BackupController {
   }
 
   private async importCategoriesWithRebuild(categories: any[]) {
+    let successCount = 0;
+    const failures: string[] = [];
     for (const category of categories) {
       try {
         // 处理分类数据，支持字符串和对象两种格式
@@ -1244,12 +1317,14 @@ export class BackupController {
           categoryData = category;
         } else {
           this.logger.warn(`跳过无效分类数据: ${JSON.stringify(category)}`);
+          failures.push(JSON.stringify(category));
           continue;
         }
 
         // 验证分类名称
         if (!categoryName || categoryName.trim() === '') {
           this.logger.warn(`跳过空分类名称: ${JSON.stringify(category)}`);
+          failures.push(JSON.stringify(category));
           continue;
         }
 
@@ -1274,10 +1349,14 @@ export class BackupController {
             });
           }
         }
+        successCount++;
       } catch (error) {
         this.logger.warn(`分类 ${category} 导入失败: ${error.message}`);
+        failures.push(typeof category === 'string' ? category : category?.name || JSON.stringify(category));
       }
     }
+    this.throwIfImportFailures('分类', failures);
+    return successCount;
   }
 
   private async importDraftsEnhanced(
@@ -1328,9 +1407,7 @@ export class BackupController {
         },
       );
 
-      this.logger.log(
-        `草稿快速恢复完成: 创建 ${payloads.length} 个, 重新分配ID ${newIdCount} 个`,
-      );
+      this.logger.log(`草稿快速恢复完成: 创建 ${payloads.length} 个, 重新分配ID ${newIdCount} 个`);
     } catch (error) {
       this.logger.error('批量导入草稿失败:', error.message);
       throw error;
@@ -1393,6 +1470,8 @@ export class BackupController {
   }
 
   private async importCustomPagesEnhanced(customPages: any[]) {
+    let successCount = 0;
+    const failures: string[] = [];
     for (const page of customPages) {
       try {
         const existingPage = await this.customPageProvider.getCustomPageByPath(page.path);
@@ -1401,13 +1480,19 @@ export class BackupController {
         } else {
           await this.customPageProvider.createCustomPage(page);
         }
+        successCount++;
       } catch (error) {
         this.logger.warn(`自定义页面 ${page.path} 导入失败: ${error.message}`);
+        failures.push(page?.path || 'unknown');
       }
     }
+    this.throwIfImportFailures('自定义页面', failures);
+    return successCount;
   }
 
   private async importNavCategoriesEnhanced(navCategories: any[]) {
+    let successCount = 0;
+    const failures: string[] = [];
     for (const category of navCategories) {
       try {
         // 获取所有导航分类
@@ -1426,13 +1511,19 @@ export class BackupController {
             updatedAt: category.updatedAt || new Date(),
           });
         }
+        successCount++;
       } catch (error) {
         this.logger.warn(`导航分类 ${category.name} 导入失败: ${error.message}`);
+        failures.push(category?.name || 'unknown');
       }
     }
+    this.throwIfImportFailures('导航分类', failures);
+    return successCount;
   }
 
   private async importNavToolsEnhanced(navTools: any[]) {
+    let successCount = 0;
+    const failures: string[] = [];
     for (const tool of navTools) {
       try {
         // 根据 categoryName 查找分类，而不是 categoryId
@@ -1441,6 +1532,7 @@ export class BackupController {
 
         if (!category) {
           this.logger.warn(`导航工具 ${tool.name} 的分类 ${tool.categoryName} 不存在，跳过导入`);
+          failures.push(tool?.name || 'unknown');
           continue;
         }
 
@@ -1462,13 +1554,19 @@ export class BackupController {
             createdAt: tool.createdAt || new Date(),
           });
         }
+        successCount++;
       } catch (error) {
         this.logger.warn(`导航工具 ${tool.name} 导入失败: ${error.message}`);
+        failures.push(tool?.name || 'unknown');
       }
     }
+    this.throwIfImportFailures('导航工具', failures);
+    return successCount;
   }
 
   private async importIconsEnhanced(icons: any[]) {
+    let successCount = 0;
+    const failures: string[] = [];
     for (const icon of icons) {
       try {
         const existing = await this.iconProvider.getIconByName(icon.name);
@@ -1484,13 +1582,19 @@ export class BackupController {
             updatedAt: icon.updatedAt || new Date(),
           });
         }
+        successCount++;
       } catch (error) {
         this.logger.warn(`图标 ${icon.name} 导入失败: ${error.message}`);
+        failures.push(icon?.name || 'unknown');
       }
     }
+    this.throwIfImportFailures('图标', failures);
+    return successCount;
   }
 
   private async importPipelinesEnhanced(pipelines: any[]) {
+    let successCount = 0;
+    const failures: string[] = [];
     for (const pipeline of pipelines) {
       try {
         const { id, ...createDto } = pipeline;
@@ -1512,10 +1616,14 @@ export class BackupController {
             updatedAt: createDto.updatedAt || new Date(),
           });
         }
+        successCount++;
       } catch (error) {
         this.logger.warn(`流水线 ${pipeline.name || 'unknown'} 导入失败: ${error.message}`);
+        failures.push(pipeline?.name || 'unknown');
       }
     }
+    this.throwIfImportFailures('流水线', failures);
+    return successCount;
   }
 
   private async importTokensEnhanced(tokens: any[]) {
@@ -1523,6 +1631,20 @@ export class BackupController {
       return;
     }
     await this.tokenProvider.importTokens(tokens);
+  }
+
+  private async purgePersistedFiles(customPages: any[], staticItems: any[]) {
+    for (const page of customPages || []) {
+      if (page?.type === 'folder' && page?.path) {
+        await this.staticProvider.deleteCustomPage(page.path);
+      }
+    }
+
+    for (const item of staticItems || []) {
+      if (item?.sign) {
+        await this.staticProvider.deleteOneBySign(item.sign);
+      }
+    }
   }
 
   private async canRestoreProtectedData() {
@@ -1565,6 +1687,12 @@ export class BackupController {
 
   private async prepareForFullRestore(currentAdmin?: any) {
     const keepAdminId = currentAdmin?.id;
+    const [customPages, staticItems] = await Promise.all([
+      this.customPageProvider.getAll(true),
+      this.staticProvider.exportAll(),
+    ]);
+
+    await this.purgePersistedFiles(customPages, staticItems);
 
     await Promise.all([
       this.articleProvider['articleModel']?.deleteMany?.({}),
@@ -1701,9 +1829,7 @@ export class BackupController {
         },
       );
 
-      this.logger.log(
-        `文章快速恢复完成: 创建 ${payloads.length} 篇, 重新分配ID ${newIdCount} 篇`,
-      );
+      this.logger.log(`文章快速恢复完成: 创建 ${payloads.length} 篇, 重新分配ID ${newIdCount} 篇`);
       await this.metaProvider.updateTotalWords('增量导入文章');
     } catch (error) {
       this.logger.error('批量导入文章失败:', error.message);
@@ -1731,6 +1857,7 @@ export class BackupController {
       const existingCategoryNames = new Set(existingCategories);
 
       let createdCount = 0;
+      const failures: string[] = [];
       for (const categoryName of categoryNames) {
         if (!existingCategoryNames.has(categoryName)) {
           try {
@@ -1739,13 +1866,16 @@ export class BackupController {
             this.logger.log(`自动创建分类: ${categoryName}`);
           } catch (error) {
             this.logger.warn(`创建分类 ${categoryName} 失败: ${error.message}`);
+            failures.push(categoryName);
           }
         }
       }
 
+      this.throwIfImportFailures(`${contentType} 分类`, failures);
       this.logger.log(`${contentType} 分类自动创建完成: 新建 ${createdCount} 个分类`);
     } catch (error) {
       this.logger.error(`自动创建${contentType}分类失败:`, error.message);
+      throw error;
     }
   }
 
@@ -1775,6 +1905,7 @@ export class BackupController {
       const existingCategoryNames = new Set(existingCategories.map((c) => c.name));
 
       let createdCount = 0;
+      const failures: string[] = [];
       for (const categoryName of categoryNames) {
         if (!existingCategoryNames.has(categoryName)) {
           try {
@@ -1788,13 +1919,16 @@ export class BackupController {
             this.logger.log(`自动创建导航分类: ${categoryName}`);
           } catch (error) {
             this.logger.warn(`创建导航分类 ${categoryName} 失败: ${error.message}`);
+            failures.push(categoryName);
           }
         }
       }
 
+      this.throwIfImportFailures('导航分类自动创建', failures);
       this.logger.log(`导航分类自动创建完成: 新建 ${createdCount} 个分类`);
     } catch (error) {
       this.logger.error('自动创建导航分类失败:', error.message);
+      throw error;
     }
   }
 

@@ -17,6 +17,7 @@ import { HttpsSetting } from 'src/types/setting.dto';
 import { CaddyProvider } from 'src/provider/caddy/caddy.provider';
 import { isIpv4 } from 'src/utils/ip';
 import { ApiToken } from 'src/provider/swagger/token';
+import { MetaProvider } from 'src/provider/meta/meta.provider';
 
 @ApiTags('caddy')
 @ApiToken
@@ -26,7 +27,21 @@ export class CaddyController {
   constructor(
     private readonly settingProvider: SettingProvider,
     private readonly caddyProvider: CaddyProvider,
+    private readonly metaProvider: MetaProvider,
   ) {}
+
+  private async getAllowedOnDemandHosts() {
+    const baseUrl = String((await this.metaProvider.getSiteInfo())?.baseUrl || '').trim();
+    if (!baseUrl) {
+      return new Set<string>();
+    }
+
+    try {
+      return new Set([new URL(baseUrl).hostname.toLowerCase()]);
+    } catch {
+      return new Set<string>();
+    }
+  }
   @UseGuards(...AdminGuard)
   @Get('https')
   async getHttpsConfig() {
@@ -42,11 +57,20 @@ export class CaddyController {
 
   @Get('ask')
   async askOnDemand(@Query('domain') domain: string) {
-    // console.log(is);
-    const is = isIpv4(domain);
-    // console.log(domain, is);
+    const candidate = String(domain || '').trim().toLowerCase();
+    const is = isIpv4(candidate);
+    const allowedHosts = await this.getAllowedOnDemandHosts();
+
+    if (!this.caddyProvider.isHttpsManagedByVanblog()) {
+      this.logger.warn('内置 HTTPS 管理未开启，拒绝按需证书请求');
+      throw new BadRequestException();
+    }
     if (!is) {
-      return 'is Domain, on damand https';
+      if (allowedHosts.has(candidate)) {
+        return 'is Domain, on damand https';
+      }
+      this.logger.warn(`拒绝未授权域名的按需证书请求: ${candidate}`);
+      throw new BadRequestException();
     } else {
       // 增加到 subjects 中
       this.logger.log('试图通过 ip + https 访问，已驳回');
@@ -57,7 +81,7 @@ export class CaddyController {
   @UseGuards(...AdminGuard)
   @Delete('log')
   async clearLog() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -90,7 +114,7 @@ export class CaddyController {
   @UseGuards(...AdminGuard)
   @Put('https')
   async updateHttpsConfig(@Body() dto: HttpsSetting) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

@@ -1,14 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { MindMap, MindMapDocument } from 'src/scheme/mindmap.schema';
 import { CreateMindMapDto, UpdateMindMapDto, SearchMindMapOption } from 'src/types/mindmap.dto';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { escapeRegExp } from 'src/utils/escapeRegExp';
 
 export type MindMapView = 'admin' | 'public' | 'list';
 
 @Injectable()
 export class MindMapProvider {
+  private readonly logger = new Logger(MindMapProvider.name);
+
   constructor(
     @InjectModel(MindMap.name)
     private mindMapModel: Model<MindMapDocument>,
@@ -79,15 +82,18 @@ export class MindMapProvider {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    
+
     const saved = await createdData.save();
-    await this.structuredDataService.upsertMindMap(saved.toObject());
+    await this.syncMindMapToStructuredStore(saved.toObject());
     return saved;
   }
 
   async getByOption(option: SearchMindMapOption): Promise<{ mindMaps: MindMap[]; total: number }> {
-    const pgResult = await this.structuredDataService.queryMindMaps(option);
-    if (pgResult.mindMaps.length || pgResult.total || this.structuredDataService.isInitialized()) {
+    const pgResult = await this.queryMindMapsFromStructuredStore(option);
+    if (
+      pgResult &&
+      (pgResult.mindMaps.length || pgResult.total || this.structuredDataService.isInitialized())
+    ) {
       return {
         total: pgResult.total,
         mindMaps: pgResult.mindMaps.map((mindMap: any) =>
@@ -98,17 +104,15 @@ export class MindMapProvider {
     const query: any = {};
     const $and: any = [
       {
-        $or: [
-          { deleted: false },
-          { deleted: { $exists: false } },
-        ],
+        $or: [{ deleted: false }, { deleted: { $exists: false } }],
       },
     ];
 
     if (option.title) {
+      const safeTitlePattern = escapeRegExp(String(option.title).trim());
       $and.push({
         title: {
-          $regex: new RegExp(option.title, 'i'),
+          $regex: new RegExp(safeTitlePattern, 'i'),
         },
       });
     }
@@ -142,7 +146,7 @@ export class MindMapProvider {
     }
 
     const total = await this.mindMapModel.countDocuments(query);
-    
+
     const page = option.page || 1;
     const pageSize = option.pageSize || 10;
     const skip = (page - 1) * pageSize;
@@ -163,7 +167,7 @@ export class MindMapProvider {
   }
 
   async findById(id: string, view: MindMapView = 'admin'): Promise<MindMap> {
-    const mindMap = await this.structuredDataService.getMindMapById(id);
+    const mindMap = await this.getMindMapFromStructuredStore(id);
     if (mindMap) {
       return this.projectMindMapForView(mindMap, view) as any;
     }
@@ -178,10 +182,10 @@ export class MindMapProvider {
       ...updateDto,
       updatedAt: new Date(),
     };
-    
+
     const updated = await this.mindMapModel.findByIdAndUpdate(id, updateData, { new: true });
     if (updated) {
-      await this.structuredDataService.upsertMindMap(updated.toObject ? updated.toObject() : updated);
+      await this.syncMindMapToStructuredStore(updated.toObject ? updated.toObject() : updated);
     }
     return updated;
   }
@@ -193,34 +197,36 @@ export class MindMapProvider {
       { new: true },
     );
     if (deleted) {
-      await this.structuredDataService.upsertMindMap(deleted.toObject ? deleted.toObject() : deleted);
+      await this.syncMindMapToStructuredStore(deleted.toObject ? deleted.toObject() : deleted);
     }
     return deleted;
   }
 
   async searchByString(search: string): Promise<MindMap[]> {
-    const pgResults = await this.structuredDataService.searchMindMaps(search);
-    if (pgResults.length || this.structuredDataService.isInitialized()) {
+    const normalizedSearch = String(search || '').trim();
+    if (!normalizedSearch) {
+      return [];
+    }
+    const pgResults = await this.searchMindMapsFromStructuredStore(search);
+    if (pgResults && (pgResults.length || this.structuredDataService.isInitialized())) {
       return pgResults.map((mindMap: any) => this.projectMindMapForView(mindMap, 'list')) as any;
     }
+    const safePattern = escapeRegExp(normalizedSearch);
     const query = {
       $and: [
         {
-          $or: [
-            { deleted: false },
-            { deleted: { $exists: false } },
-          ],
+          $or: [{ deleted: false }, { deleted: { $exists: false } }],
         },
         {
           $or: [
             {
               title: {
-                $regex: new RegExp(search, 'i'),
+                $regex: new RegExp(safePattern, 'i'),
               },
             },
             {
               description: {
-                $regex: new RegExp(search, 'i'),
+                $regex: new RegExp(safePattern, 'i'),
               },
             },
           ],
@@ -235,13 +241,13 @@ export class MindMapProvider {
     await this.mindMapModel.findByIdAndUpdate(id, { $inc: { viewer: 1 } });
     const latest = await this.mindMapModel.findById(id).lean().exec();
     if (latest) {
-      await this.structuredDataService.upsertMindMap(latest);
+      await this.syncMindMapToStructuredStore(latest);
     }
   }
 
   async getAllForBackup() {
-    const items = await this.structuredDataService.listMindMaps(true);
-    if (items.length || this.structuredDataService.isInitialized()) {
+    const items = await this.listMindMapsFromStructuredStore(true);
+    if (items && (items.length || this.structuredDataService.isInitialized())) {
       return items;
     }
     return await this.mindMapModel.find({}).lean().exec();
@@ -257,7 +263,57 @@ export class MindMapProvider {
       delete payload.__v;
       const query = mindMap._id ? { _id: mindMap._id } : { title: mindMap.title };
       await this.mindMapModel.updateOne(query, payload, { upsert: true });
+      await this.syncMindMapToStructuredStore(payload);
     }
-    await this.structuredDataService.refreshMindMapsFromRecordStore();
+  }
+
+  private async queryMindMapsFromStructuredStore(option: SearchMindMapOption) {
+    try {
+      return await this.structuredDataService.queryMindMaps(option);
+    } catch (error) {
+      this.logger.warn(
+        `queryMindMaps failed, fallback to record store: ${error?.message || error}`,
+      );
+      return null;
+    }
+  }
+
+  private async getMindMapFromStructuredStore(id: string) {
+    try {
+      return await this.structuredDataService.getMindMapById(id);
+    } catch (error) {
+      this.logger.warn(
+        `getMindMapById failed, fallback to record store: ${error?.message || error}`,
+      );
+      return null;
+    }
+  }
+
+  private async searchMindMapsFromStructuredStore(search: string) {
+    try {
+      return await this.structuredDataService.searchMindMaps(search);
+    } catch (error) {
+      this.logger.warn(
+        `searchMindMaps failed, fallback to record store: ${error?.message || error}`,
+      );
+      return null;
+    }
+  }
+
+  private async listMindMapsFromStructuredStore(includeDelete = false) {
+    try {
+      return await this.structuredDataService.listMindMaps(includeDelete);
+    } catch (error) {
+      this.logger.warn(`listMindMaps failed, fallback to record store: ${error?.message || error}`);
+      return null;
+    }
+  }
+
+  private async syncMindMapToStructuredStore(mindMap: any) {
+    try {
+      await this.structuredDataService.upsertMindMap(mindMap);
+    } catch (error) {
+      this.logger.warn(`upsertMindMap failed, skip structured sync: ${error?.message || error}`);
+    }
   }
 }

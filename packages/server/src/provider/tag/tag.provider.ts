@@ -209,7 +209,7 @@ export class TagProvider {
       { tags: oldName },
       { $set: { 'tags.$': newName } },
     );
-    await this.structuredDataService.refreshArticlesFromRecordStore('rename-tag');
+    await this.structuredDataService.renameTagInArticles(oldName, newName);
 
     await this.clearTagCache();
     return { message: '更新成功！', total: tag.articleCount };
@@ -229,7 +229,7 @@ export class TagProvider {
       { tags: name },
       { $pull: { tags: name } },
     );
-    await this.structuredDataService.refreshArticlesFromRecordStore('delete-tag');
+    await this.structuredDataService.removeTagFromArticles(name);
 
     await this.clearTagCache();
     return { message: '删除成功！', total: tag.articleCount };

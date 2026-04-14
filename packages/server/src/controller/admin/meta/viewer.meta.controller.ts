@@ -23,6 +23,22 @@ export class ViewerMetaController {
     private readonly publicDataCacheProvider: PublicDataCacheProvider,
   ) {}
 
+  private normalizeNonNegativeInt(value: number | string | undefined, fallback = 0, max = 1000000000) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
+  private normalizeArticleId(value: number | string | undefined) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      throw new Error('文章 ID 非法');
+    }
+    return parsed;
+  }
+
   private async refreshViewerFacingPages() {
     await this.publicDataCacheProvider.clearViewerData();
     this.isrProvider.activeUrl('/', false);
@@ -54,7 +70,7 @@ export class ViewerMetaController {
 
   @Put('/site')
   async updateSite(@Body() updateDto: UpdateSiteViewerDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -62,8 +78,8 @@ export class ViewerMetaController {
     }
     
     await this.metaProvider.update({
-      viewer: updateDto.viewer,
-      visited: updateDto.visited,
+      viewer: this.normalizeNonNegativeInt(updateDto.viewer),
+      visited: this.normalizeNonNegativeInt(updateDto.visited),
     });
     await this.refreshViewerFacingPages();
     
@@ -75,22 +91,26 @@ export class ViewerMetaController {
 
   @Put('/article')
   async updateArticle(@Body() updateDto: { id: number; viewer: number; visited: number }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
       };
     }
     
+    const articleId = this.normalizeArticleId(updateDto.id);
+    const viewer = this.normalizeNonNegativeInt(updateDto.viewer);
+    const visited = this.normalizeNonNegativeInt(updateDto.visited);
+
     // 更新Article表中的浏览量
-    await this.articleProvider.updateById(updateDto.id, {
-      viewer: updateDto.viewer,
-      visited: updateDto.visited,
+    await this.articleProvider.updateById(articleId, {
+      viewer,
+      visited,
     });
     
     // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-    const pathname = `/post/${updateDto.id}`;
-    await this.visitProvider.rewriteToday(pathname, updateDto.viewer, updateDto.visited);
+    const pathname = `/post/${articleId}`;
+    await this.visitProvider.rewriteToday(pathname, viewer, visited);
     await this.refreshViewerFacingPages();
     
     return {
@@ -101,7 +121,7 @@ export class ViewerMetaController {
 
   @Put('/batch')
   async batchUpdate(@Body() updateDto: BatchUpdateViewerDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -110,21 +130,24 @@ export class ViewerMetaController {
     
     // 更新网站总浏览量
     await this.metaProvider.update({
-      viewer: updateDto.siteViewer,
-      visited: updateDto.siteVisited,
+      viewer: this.normalizeNonNegativeInt(updateDto.siteViewer),
+      visited: this.normalizeNonNegativeInt(updateDto.siteVisited),
     });
     
     // 批量更新文章浏览量
-    for (const article of updateDto.articles) {
+    for (const article of (updateDto.articles || []).slice(0, 500)) {
+      const articleId = this.normalizeArticleId(article.id);
+      const viewer = this.normalizeNonNegativeInt(article.viewer);
+      const visited = this.normalizeNonNegativeInt(article.visited);
       // 更新Article表
-      await this.articleProvider.updateById(article.id, {
-        viewer: article.viewer,
-        visited: article.visited,
+      await this.articleProvider.updateById(articleId, {
+        viewer,
+        visited,
       });
       
       // 同时更新Visit表中的浏览量（这是前端显示的数据源）
-      const pathname = `/post/${article.id}`;
-      await this.visitProvider.rewriteToday(pathname, article.viewer, article.visited);
+      const pathname = `/post/${articleId}`;
+      await this.visitProvider.rewriteToday(pathname, viewer, visited);
     }
     await this.refreshViewerFacingPages();
     
@@ -141,7 +164,7 @@ export class ViewerMetaController {
     siteMultiplier: number;
     articlesOnly?: boolean;
   }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -149,6 +172,10 @@ export class ViewerMetaController {
     }
     
     const { minIncrease, maxIncrease, siteMultiplier, articlesOnly = false } = boostConfig;
+    const safeMinIncrease = this.normalizeNonNegativeInt(minIncrease, 0, 1000000);
+    const safeMaxIncrease = this.normalizeNonNegativeInt(maxIncrease, safeMinIncrease, 1000000);
+    const normalizedMaxIncrease = Math.max(safeMinIncrease, safeMaxIncrease);
+    const safeSiteMultiplier = this.normalizeNonNegativeInt(siteMultiplier, 0, 1000);
     
     // 获取所有文章
     const articles = await this.articleProvider.getAll('list', true);
@@ -159,7 +186,8 @@ export class ViewerMetaController {
     
     // 随机提升每篇文章的浏览量
     for (const article of validArticles) {
-      const viewerIncrease = Math.floor(Math.random() * (maxIncrease - minIncrease + 1)) + minIncrease;
+      const viewerIncrease =
+        Math.floor(Math.random() * (normalizedMaxIncrease - safeMinIncrease + 1)) + safeMinIncrease;
       const visitedIncrease = Math.floor(viewerIncrease * (0.3 + Math.random() * 0.4)); // 访客数是访问量的30%-70%
       
       const newViewer = (article.viewer || 0) + viewerIncrease;
@@ -182,8 +210,8 @@ export class ViewerMetaController {
     // 更新网站总浏览量（考虑到非文章页面的访问）
     if (!articlesOnly) {
       const currentSite = await this.metaProvider.getViewer();
-      const siteViewerIncrease = Math.floor(totalViewerIncrease * siteMultiplier);
-      const siteVisitedIncrease = Math.floor(totalVisitedIncrease * siteMultiplier);
+      const siteViewerIncrease = Math.floor(totalViewerIncrease * safeSiteMultiplier);
+      const siteVisitedIncrease = Math.floor(totalVisitedIncrease * safeSiteMultiplier);
       
       await this.metaProvider.update({
         viewer: currentSite.viewer + siteViewerIncrease,

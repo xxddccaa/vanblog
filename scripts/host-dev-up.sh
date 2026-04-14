@@ -96,8 +96,13 @@ post_restart() {
   local name="$2"
   local payload="${3:-{}}"
   echo "[host-dev] requesting ${name} restart"
-  curl -fsS -X POST "${url}" \
-    -H 'content-type: application/json' \
+  local curl_args=(-fsS -X POST "${url}" -H 'content-type: application/json')
+  if [[ "${name}" == "waline" ]]; then
+    curl_args+=(-H "x-vanblog-control-token: ${WALINE_JWT_TOKEN}")
+  elif [[ "${name}" == "website" ]]; then
+    curl_args+=(-H "x-vanblog-control-token: ${VANBLOG_ISR_TOKEN:-${WALINE_JWT_TOKEN}}")
+  fi
+  curl "${curl_args[@]}" \
     -d "${payload}" >/dev/null
 }
 

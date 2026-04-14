@@ -26,7 +26,7 @@ export class AboutMetaController {
 
   @Put()
   async updateAbout(@Body() updateAboutDto: { content: string }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

@@ -1,6 +1,12 @@
 import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 
-import { pathPermissionMap, permissionRoutes, publicRoutes } from 'src/types/access/access';
+import {
+  pathPermissionMap,
+  permissionRoutes,
+  publicRoutes,
+  relatedPermissionRouteMap,
+  superAdminOnlyRoutePrefixes,
+} from 'src/types/access/access';
 
 @Injectable()
 export class AccessGuard implements CanActivate {
@@ -24,6 +30,9 @@ export class AccessGuard implements CanActivate {
         // 超管为 0
         return true;
       } else {
+        if (superAdminOnlyRoutePrefixes.some((prefix) => key.startsWith(prefix))) {
+          return false;
+        }
         if (publicRoutes.includes(key)) {
           return true;
         }
@@ -40,6 +49,10 @@ export class AccessGuard implements CanActivate {
               const p = pathPermissionMap[key];
 
               return permissions.includes(p);
+            } else if (relatedPermissionRouteMap[key]?.length) {
+              return relatedPermissionRouteMap[key].some((permission) =>
+                permissions.includes(permission),
+              );
             } else {
               return false;
             }

@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { Document, DocumentDocument } from 'src/scheme/document.schema';
 import { CreateDocumentDto, UpdateDocumentDto, SearchDocumentOption, MoveDocumentDto } from 'src/types/document.dto';
 import { DraftProvider } from '../draft/draft.provider';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { escapeRegExp } from 'src/utils/escapeRegExp';
 
 export type DocumentView = 'admin' | 'public' | 'list';
 
@@ -87,6 +88,58 @@ export class DocumentProvider {
     return payload;
   }
 
+  private isPathPrefixed(path: number[] = [], prefix: number[] = []) {
+    if (prefix.length > path.length) {
+      return false;
+    }
+    return prefix.every((item, index) => path[index] === item);
+  }
+
+  private replacePathPrefix(path: number[] = [], prefix: number[] = [], replacement: number[] = []) {
+    if (!this.isPathPrefixed(path, prefix)) {
+      return [...path];
+    }
+    return [...replacement, ...path.slice(prefix.length)];
+  }
+
+  private async getDocumentSubtree(id: number) {
+    const pgDocuments = await this.structuredDataService.getDocumentSubtree(id, true);
+    if (pgDocuments.length || this.structuredDataService.isInitialized()) {
+      return pgDocuments as any[];
+    }
+    const documents = await this.documentModel.find({}).lean().exec();
+    const byParent = new Map<number, any[]>();
+    for (const document of documents) {
+      if (document.parent_id === null || document.parent_id === undefined) {
+        continue;
+      }
+      if (!byParent.has(document.parent_id)) {
+        byParent.set(document.parent_id, []);
+      }
+      byParent.get(document.parent_id)?.push(document);
+    }
+
+    const subtree: any[] = [];
+    const queue = documents.filter(
+      (document) => document.id === id || (Array.isArray(document.path) && document.path.includes(id)),
+    );
+    const seen = new Set<number>();
+
+    while (queue.length) {
+      const current = queue.shift();
+      if (!current || seen.has(current.id)) {
+        continue;
+      }
+      seen.add(current.id);
+      subtree.push(current);
+      for (const child of byParent.get(current.id) || []) {
+        queue.push(child);
+      }
+    }
+
+    return subtree;
+  }
+
   async create(createDocumentDto: CreateDocumentDto): Promise<Document> {
     const newId = await this.getNewId();
     const path = await this.calculatePath(createDocumentDto.parent_id, createDocumentDto.library_id);
@@ -131,8 +184,9 @@ export class DocumentProvider {
     }
 
     if (option.title) {
+      const safeTitlePattern = escapeRegExp(option.title);
       $and.push({
-        title: { $regex: `${option.title}`, $options: 'i' },
+        title: { $regex: safeTitlePattern, $options: 'i' },
       });
     }
 
@@ -149,8 +203,9 @@ export class DocumentProvider {
     }
 
     if (option.author) {
+      const safeAuthorPattern = escapeRegExp(option.author);
       $and.push({
-        author: { $regex: `${option.author}`, $options: 'i' },
+        author: { $regex: safeAuthorPattern, $options: 'i' },
       });
     }
 
@@ -200,14 +255,12 @@ export class DocumentProvider {
   }
 
   async updateById(id: number, updateDocumentDto: UpdateDocumentDto) {
-    // 如果更新了父级，需要重新计算路径
-    if (updateDocumentDto.parent_id !== undefined || updateDocumentDto.library_id !== undefined) {
-      const currentDoc = await this.getById(id);
-      const newPath = await this.calculatePath(
-        updateDocumentDto.parent_id !== undefined ? updateDocumentDto.parent_id : currentDoc.parent_id,
-        updateDocumentDto.library_id !== undefined ? updateDocumentDto.library_id : currentDoc.library_id
-      );
-      updateDocumentDto.path = newPath;
+    if (
+      updateDocumentDto.parent_id !== undefined ||
+      updateDocumentDto.library_id !== undefined ||
+      updateDocumentDto.path !== undefined
+    ) {
+      throw new BadRequestException('文档位置调整请使用移动接口，避免子文档路径不一致');
     }
 
     const result = await this.documentModel.updateOne(
@@ -222,20 +275,37 @@ export class DocumentProvider {
   }
 
   async deleteById(id: number) {
-    // 删除文档及其所有子文档
     const doc = await this.getById(id);
     if (doc) {
-      await this.deleteDocumentAndChildren(id);
-      await this.structuredDataService.refreshDocumentsFromRecordStore();
+      const subtree = await this.getDocumentSubtree(id);
+      const ids = subtree.map((item: any) => item.id);
+      const updatedAt = new Date();
+      if (ids.length) {
+        await this.documentModel.updateMany(
+          { id: { $in: ids } },
+          { deleted: true, updatedAt },
+        );
+        await this.structuredDataService.markDocumentsDeleted(ids, updatedAt);
+      }
     }
     return true;
   }
 
   async moveDocument(id: number, moveDto: MoveDocumentDto) {
+    const currentDoc = await this.getById(id);
+    if (!currentDoc) {
+      throw new Error('文档不存在');
+    }
+    const subtree = await this.getDocumentSubtree(id);
+    const subtreeIds = new Set(subtree.map((document: any) => document.id));
+    if (moveDto.target_parent_id !== undefined && subtreeIds.has(moveDto.target_parent_id)) {
+      throw new BadRequestException('不能将文档移动到自己或子文档下面');
+    }
+
     const newPath = await this.calculatePath(moveDto.target_parent_id, moveDto.target_library_id);
-    
+    const updatedAt = new Date();
     const updateData: any = {
-      updatedAt: new Date(),
+      updatedAt,
       path: newPath,
     };
 
@@ -251,8 +321,46 @@ export class DocumentProvider {
       updateData.sort_order = moveDto.sort_order;
     }
 
-    const result = await this.documentModel.updateOne({ id }, updateData);
-    await this.structuredDataService.refreshDocumentsFromRecordStore();
+    const rootPrefix = [...(currentDoc.path || []), currentDoc.id];
+    const nextPrefix = [...newPath, currentDoc.id];
+    const updates = subtree.map((document: any) => {
+      if (document.id === id) {
+        return {
+          ...(document?._doc || document),
+          ...updateData,
+          parent_id:
+            moveDto.target_parent_id !== undefined ? moveDto.target_parent_id : document.parent_id,
+          library_id:
+            moveDto.target_library_id !== undefined ? moveDto.target_library_id : document.library_id,
+          sort_order:
+            moveDto.sort_order !== undefined ? moveDto.sort_order : document.sort_order,
+          updatedAt,
+        };
+      }
+      return {
+        ...(document?._doc || document),
+        path: this.replacePathPrefix(document.path || [], rootPrefix, nextPrefix),
+        updatedAt,
+      };
+    });
+
+    const bulkOps = updates.map((document: any) => ({
+      updateOne: {
+        filter: { id: document.id },
+        update: {
+          parent_id: document.parent_id,
+          library_id: document.library_id,
+          sort_order: document.sort_order,
+          path: document.path,
+          updatedAt,
+        },
+      },
+    }));
+
+    const result = await this.documentModel.bulkWrite(bulkOps);
+    for (const document of updates) {
+      await this.structuredDataService.upsertDocument(document);
+    }
     return result;
   }
 
@@ -372,17 +480,6 @@ export class DocumentProvider {
     return content;
   }
 
-  private async deleteDocumentAndChildren(id: number) {
-    // 递归删除所有子文档
-    const children = await this.documentModel.find({ parent_id: id, deleted: false });
-    for (const child of children) {
-      await this.deleteDocumentAndChildren(child.id);
-    }
-    
-    // 删除当前文档
-    await this.documentModel.updateOne({ id }, { deleted: true });
-  }
-
   private async calculatePath(parentId: number, libraryId: number): Promise<number[]> {
     const path: number[] = [];
     
@@ -488,6 +585,10 @@ export class DocumentProvider {
   }
 
   async searchByString(str: string): Promise<Document[]> {
+    const normalizedSearch = String(str || '').trim();
+    if (!normalizedSearch) {
+      return [];
+    }
     const pgDocuments = await this.structuredDataService.searchDocuments(str);
     if (pgDocuments.length || this.structuredDataService.isInitialized()) {
       const relatedIds = new Set<number>();
@@ -506,11 +607,12 @@ export class DocumentProvider {
         isSearchResult: searchResultIds.has(doc.id),
       })) as any;
     }
+    const safePattern = escapeRegExp(normalizedSearch);
     const $and: any = [
       {
         $or: [
-          { content: { $regex: `${str}`, $options: 'i' } },
-          { title: { $regex: `${str}`, $options: 'i' } },
+          { content: { $regex: safePattern, $options: 'i' } },
+          { title: { $regex: safePattern, $options: 'i' } },
         ],
       },
       {

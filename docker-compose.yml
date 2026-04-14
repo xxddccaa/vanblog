@@ -47,18 +47,20 @@ services:
       VAN_BLOG_DEBUG_SUPER_TOKEN: ${VAN_BLOG_DEBUG_SUPER_TOKEN:-}
       VAN_BLOG_CLOUDFLARE_API_TOKEN: ${VAN_BLOG_CLOUDFLARE_API_TOKEN:-}
       VAN_BLOG_CLOUDFLARE_ZONE_ID: ${VAN_BLOG_CLOUDFLARE_ZONE_ID:-}
+      VANBLOG_ISR_TOKEN: ${VANBLOG_ISR_TOKEN:-}
       VANBLOG_CADDY_API_URL: http://caddy:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
       VANBLOG_WALINE_CONTROL_URL: http://waline:8361
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
+      WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
     volumes:
       - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
       - ${VANBLOG_ALIYUNPAN_CONFIG_DIR:-./aliyunpan/config}:/root/.config/aliyunpan
     expose:
-      - "3000"
+      - '3000'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -79,13 +81,15 @@ services:
       PORT: 3001
       WEBSITE_CONTROL_PORT: 3011
       VAN_BLOG_SERVER_URL: http://server:3000
-      VAN_BLOG_REVALIDATE: "false"
+      VAN_BLOG_REVALIDATE: 'false'
       VAN_BLOG_ALLOW_DOMAINS: ${VAN_BLOG_ALLOW_DOMAINS:-pic.mereith.com}
+      VANBLOG_ISR_TOKEN: ${VANBLOG_ISR_TOKEN:-}
+      WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
     expose:
-      - "3001"
-      - "3011"
+      - '3001'
+      - '3011'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -97,9 +101,9 @@ services:
       dockerfile: docker/admin.Dockerfile
     restart: always
     expose:
-      - "3002"
+      - '3002'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -126,10 +130,10 @@ services:
       PG_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
     expose:
-      - "8360"
-      - "8361"
+      - '8360'
+      - '8361'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -146,7 +150,7 @@ services:
     volumes:
       - ${VANBLOG_POSTGRES_DIR:-./data/postgres}:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vanblog}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vanblog}']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -157,9 +161,9 @@ services:
     restart: always
     volumes:
       - ${VANBLOG_REDIS_DIR:-./data/redis}:/data
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 15s
       timeout: 10s
       retries: 10

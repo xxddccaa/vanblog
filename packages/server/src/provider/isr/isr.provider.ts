@@ -23,6 +23,8 @@ export class ISRProvider {
     (process.env.NODE_ENV === 'production'
       ? 'http://website:3001/api/revalidate?path='
       : 'http://127.0.0.1:3001/api/revalidate?path=');
+  private readonly isrToken =
+    process.env['VANBLOG_ISR_TOKEN'] || process.env['WALINE_JWT_TOKEN'] || '';
   logger = new Logger(ISRProvider.name);
   timer = null;
   constructor(
@@ -37,6 +39,17 @@ export class ISRProvider {
 
   private getArtifactUrls() {
     return ['/feed.xml', '/feed.json', '/atom.xml', '/sitemap.xml', '/static/search-index.json'];
+  }
+
+  private getIsrRequestConfig() {
+    if (!this.isrToken) {
+      return undefined;
+    }
+    return {
+      headers: {
+        'x-vanblog-isr-token': this.isrToken,
+      },
+    };
   }
 
   async activeAllFn(info?: string, activeConfig?: ActiveConfig) {
@@ -113,7 +126,7 @@ export class ISRProvider {
 
   async testConn() {
     try {
-      await axios.get(encodeURI(this.base + '/'));
+      await axios.get(encodeURI(this.base + '/'), this.getIsrRequestConfig());
       return true;
     } catch {
       return false;
@@ -184,7 +197,11 @@ export class ISRProvider {
     );
   }
 
-  private didSummaryShapeChange(event: 'create' | 'delete' | 'update', beforeObj?: Article, article?: Article) {
+  private didSummaryShapeChange(
+    event: 'create' | 'delete' | 'update',
+    beforeObj?: Article,
+    article?: Article,
+  ) {
     if (event !== 'update') {
       return true;
     }
@@ -228,7 +245,12 @@ export class ISRProvider {
     const urls: string[] = [];
     for (const each of article.tags || []) {
       const encodedTag = encodeQuerystring(each);
-      const pageUrl = await this.getListingPageUrl(article.id, { tags: each }, `/tag/${encodedTag}`, `/tag/${encodedTag}/page`);
+      const pageUrl = await this.getListingPageUrl(
+        article.id,
+        { tags: each },
+        `/tag/${encodedTag}`,
+        `/tag/${encodedTag}/page`,
+      );
       if (pageUrl) {
         urls.push(pageUrl);
       }
@@ -362,18 +384,30 @@ export class ISRProvider {
     }
     if (article.category) {
       cacheTags.add(toCacheTag('category-archive-summary', article.category));
-      cacheTags.add(toCacheTag('category-archive-month', `${article.category}-${this.getArchiveMonthKey(article)}`));
+      cacheTags.add(
+        toCacheTag(
+          'category-archive-month',
+          `${article.category}-${this.getArchiveMonthKey(article)}`,
+        ),
+      );
     }
     for (const tag of article.tags || []) {
       cacheTags.add(toCacheTag('tag-archive-summary', tag));
       cacheTags.add(toCacheTag('tag-archive-month', `${tag}-${this.getArchiveMonthKey(article)}`));
     }
     if (beforeObj?.category) {
-      cacheTags.add(toCacheTag('category-archive-month', `${beforeObj.category}-${this.getArchiveMonthKey(beforeObj)}`));
+      cacheTags.add(
+        toCacheTag(
+          'category-archive-month',
+          `${beforeObj.category}-${this.getArchiveMonthKey(beforeObj)}`,
+        ),
+      );
     }
     for (const tag of beforeObj?.tags || []) {
       cacheTags.add(toCacheTag('tag-archive-summary', tag));
-      cacheTags.add(toCacheTag('tag-archive-month', `${tag}-${this.getArchiveMonthKey(beforeObj)}`));
+      cacheTags.add(
+        toCacheTag('tag-archive-month', `${tag}-${this.getArchiveMonthKey(beforeObj)}`),
+      );
     }
     if (summaryShapeChanged) {
       cacheTags.add('category-summary');
@@ -386,9 +420,7 @@ export class ISRProvider {
       cacheTags.add('timeline-list');
     }
 
-    const tags = [
-      ...cacheTags,
-    ];
+    const tags = [...cacheTags];
 
     if (beforeObj?.pathname && beforeObj.pathname !== article.pathname) {
       htmlUrls.push(`/post/${beforeObj.pathname}`);
@@ -432,7 +464,7 @@ export class ISRProvider {
   async activeArticleById(id: number, event: 'create' | 'delete' | 'update', beforeObj?: Article) {
     await this.publicDataCacheProvider.clearArticleRelatedData();
     let article;
-    
+
     if (event === 'delete' && beforeObj) {
       // 删除事件时使用删除前的文章信息，避免查询已删除的文章
       article = beforeObj;
@@ -461,8 +493,10 @@ export class ISRProvider {
     }
 
     const summaryShapeChanged = this.didSummaryShapeChange(event, beforeObj, article);
-    const paginationShapeChanged = event !== 'update' || this.didPaginationShapeChange(beforeObj, article);
-    const listingContentChanged = event !== 'update' || this.didListingContentChange(beforeObj, article);
+    const paginationShapeChanged =
+      event !== 'update' || this.didPaginationShapeChange(beforeObj, article);
+    const listingContentChanged =
+      event !== 'update' || this.didListingContentChange(beforeObj, article);
 
     const affectedUrls = new Set<string>(['/archive']);
     const pushAffectedUrls = (urls: string[]) => {
@@ -527,7 +561,11 @@ export class ISRProvider {
       this.logger.log(info);
       this.activeUrl(`/about`, false);
     }, info);
-    await this.cloudflareCacheProvider.purgeByTagsAndUrls(['public-meta'], ['/about'], 'about-page-update');
+    await this.cloudflareCacheProvider.purgeByTagsAndUrls(
+      ['public-meta'],
+      ['/about'],
+      'about-page-update',
+    );
   }
   async activeLink(info: string) {
     await this.publicDataCacheProvider.clearMetaData();
@@ -535,12 +573,16 @@ export class ISRProvider {
       this.logger.log(info);
       this.activeUrl(`/link`, false);
     }, info);
-    await this.cloudflareCacheProvider.purgeByTagsAndUrls(['public-meta'], ['/link'], 'link-page-update');
+    await this.cloudflareCacheProvider.purgeByTagsAndUrls(
+      ['public-meta'],
+      ['/link'],
+      'link-page-update',
+    );
   }
 
   async activeUrl(url: string, log: boolean) {
     try {
-      await axios.get(encodeURI(this.base + url));
+      await axios.get(encodeURI(this.base + url), this.getIsrRequestConfig());
       if (log) {
         this.logger.log(`触发增量渲染成功！ ${url}`);
       }

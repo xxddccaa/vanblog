@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { StaticType, StoragePath } from 'src/types/setting.dto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -13,15 +13,56 @@ import { checkOrCreate, checkOrCreateByFilePath } from 'src/utils/checkFolder';
 import { rmDir } from 'src/utils/deleteFolder';
 import { readDirs } from 'src/utils/readFileList';
 import { checkOrCreateFile } from 'src/utils/checkFile';
+import { getSafeUploadFileName } from 'src/utils/uploadFileName';
 @Injectable()
 export class LocalProvider {
+  private getCustomPageRoot() {
+    return path.resolve(config.staticPath, StoragePath['customPage']);
+  }
+
+  private resolvePathInsideRoot(root: string, ...segments: Array<string | undefined>) {
+    const normalizedSegments = segments
+      .filter((item) => item !== undefined && item !== null && item !== '')
+      .map((item) => String(item).replace(/^\/+/, ''));
+    const resolved = path.resolve(root, ...normalizedSegments);
+    if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) {
+      throw new BadRequestException('自定义页面路径非法');
+    }
+    return resolved;
+  }
+
+  private resolveCustomPagePath(pathname?: string) {
+    const root = this.getCustomPageRoot();
+    return this.resolvePathInsideRoot(root, pathname);
+  }
+
+  private resolveCustomPageChildPath(pathname?: string, subPath?: string) {
+    const basePath = this.resolveCustomPagePath(pathname);
+    return this.resolvePathInsideRoot(basePath, subPath);
+  }
+
+  resolveCustomPageAssetPath(pathname?: string, subPath?: string) {
+    return this.resolveCustomPageChildPath(pathname, subPath);
+  }
+
+  private resolveFlatStaticFile(type: StaticType, fileName: string) {
+    const storagePath = StoragePath[type] || StoragePath['img'];
+    const safeFileName = getSafeUploadFileName(fileName);
+
+    return {
+      safeFileName,
+      storagePath,
+      srcPath: path.join(config.staticPath, storagePath, safeFileName),
+    };
+  }
+
   async saveFile(fileName: string, buffer: Buffer, type: StaticType, toRootPath?: boolean) {
     if (type == 'img') {
       return await this.saveImg(fileName, buffer, type, toRootPath);
     } else if (type == 'customPage') {
       const storagePath = StoragePath[type];
       const realName = fileName;
-      const srcPath = path.join(config.staticPath, storagePath, realName);
+      const srcPath = this.resolveCustomPagePath(realName);
       // 创建文件夹。
       const byteLength = buffer.byteLength;
       const realPath = `/static/${storagePath}/${realName}`;
@@ -33,22 +74,21 @@ export class LocalProvider {
         realPath,
       };
     } else if (type == 'music') {
-      const storagePath = StoragePath[type];
-      const srcPath = path.join(config.staticPath, storagePath, fileName);
-      let realPath = `/static/${type}/${fileName}`;
+      const { safeFileName, srcPath } = this.resolveFlatStaticFile(type, fileName);
+      let realPath = `/static/${type}/${safeFileName}`;
 
       if (isProd()) {
         if (toRootPath) {
-          realPath = `/${fileName}`;
+          realPath = `/${safeFileName}`;
         }
       }
-      
+
       // 确保音乐目录存在
       checkOrCreateByFilePath(srcPath);
-      
+
       const byteLength = buffer.byteLength;
       fs.writeFileSync(srcPath, buffer);
-      
+
       const meta = { size: formatBytes(byteLength) };
       return {
         meta,
@@ -58,57 +98,36 @@ export class LocalProvider {
   }
 
   async getFolderFiles(p: string) {
-    const storagePath = StoragePath['customPage'];
-    const absPath = path.join(config.staticPath, storagePath, p.replace('/', ''));
+    const absPath = this.resolveCustomPagePath(p);
     const res = readDirs(absPath, absPath);
     return res;
   }
   async createFile(p: string, subPath: string) {
-    const storagePath = StoragePath['customPage'];
-    let absPath = '';
-    if (subPath && subPath != '') {
-      absPath = path.join(config.staticPath, storagePath, p.replace('/', ''), subPath);
-    } else {
-      absPath = path.join(config.staticPath, storagePath, p.replace('/', ''));
-    }
+    const absPath = this.resolveCustomPageChildPath(p, subPath);
     checkOrCreateFile(absPath);
   }
   async createFolder(p: string, subPath: string) {
-    const storagePath = StoragePath['customPage'];
-    let absPath = '';
-    if (subPath && subPath != '') {
-      absPath = path.join(config.staticPath, storagePath, p.replace('/', ''), subPath);
-    } else {
-      absPath = path.join(config.staticPath, storagePath, p.replace('/', ''));
-    }
+    const absPath = this.resolveCustomPageChildPath(p, subPath);
     checkOrCreate(absPath);
   }
   async getFileContent(p: string, subPath: string) {
-    const storagePath = StoragePath['customPage'];
-    let absPath = '';
-    if (subPath && subPath != '') {
-      absPath = path.join(config.staticPath, storagePath, p.replace('/', ''), subPath);
-    } else {
-      absPath = path.join(config.staticPath, storagePath, p.replace('/', ''));
-    }
+    const absPath = this.resolveCustomPageChildPath(p, subPath);
 
     const r = fs.readFileSync(absPath, { encoding: 'utf-8' });
     return r;
   }
   async updateCustomPageFileContent(pathname: string, filePath: string, content: string) {
-    const storagePath = StoragePath['customPage'];
-    const absPath = path.join(config.staticPath, storagePath, pathname.replace('/', ''), filePath);
+    const absPath = this.resolveCustomPageChildPath(pathname, filePath);
     fs.writeFileSync(absPath, content, { encoding: 'utf-8' });
   }
 
   async saveImg(fileName: string, buffer: Buffer, type: StaticType, toRootPath?: boolean) {
-    const storagePath = StoragePath[type] || StoragePath['img'];
-    const srcPath = path.join(config.staticPath, storagePath, fileName);
-    let realPath = `/static/${type}/${fileName}`;
+    const { safeFileName, srcPath } = this.resolveFlatStaticFile(type, fileName);
+    let realPath = `/static/${type}/${safeFileName}`;
 
     if (isProd()) {
       if (toRootPath) {
-        realPath = `/${fileName}`;
+        realPath = `/${safeFileName}`;
       }
     }
     const result = imageSize(buffer);
@@ -123,8 +142,7 @@ export class LocalProvider {
   }
 
   async deleteCustomPageFolder(name: string) {
-    const storagePath = StoragePath['customPage'];
-    const srcPath = path.join(config.staticPath, storagePath, name);
+    const srcPath = this.resolveCustomPagePath(name);
     try {
       rmDir(srcPath);
     } catch (err) {
@@ -134,8 +152,7 @@ export class LocalProvider {
 
   async deleteFile(fileName: string, type: StaticType) {
     try {
-      const storagePath = StoragePath[type] || StoragePath['img'];
-      const srcPath = path.join(config.staticPath, storagePath, fileName);
+      const { srcPath } = this.resolveFlatStaticFile(type, fileName);
       fs.rmSync(srcPath);
     } catch (err) {
       console.log('删除实际文件失败：', fileName, '可能是更新版本后没映射静态文件目录导致的');

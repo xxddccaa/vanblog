@@ -1,5 +1,6 @@
 const http = require('http');
 const { spawn } = require('child_process');
+const { isAuthorizedControlRequest } = require('./control-auth.cjs');
 
 const controlPort = parseInt(process.env.WEBSITE_CONTROL_PORT || '3011', 10);
 const childPort = process.env.PORT || '3001';
@@ -98,6 +99,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && req.url === '/restart') {
+      if (!isAuthorizedControlRequest(req)) {
+        sendJson(res, 401, { ok: false, message: 'unauthorized' });
+        return;
+      }
       const body = await parseBody(req);
       await restartChild(body.env || {});
       sendJson(res, 200, { ok: true, running: true });
@@ -105,6 +110,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && req.url === '/stop') {
+      if (!isAuthorizedControlRequest(req)) {
+        sendJson(res, 401, { ok: false, message: 'unauthorized' });
+        return;
+      }
       await stopChild();
       sendJson(res, 200, { ok: true, running: false });
       return;

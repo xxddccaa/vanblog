@@ -55,7 +55,7 @@ test('current 18080 stack serves core public and admin APIs', async () => {
   assert.equal(home.status, 200);
 
   const swagger = await fetch(`${baseUrl}/swagger`);
-  assert.equal(swagger.status, 200);
+  assert.equal(swagger.status, 404);
 
   const waline = await fetch(`${baseUrl}/api/ui/`);
   assert.equal(waline.status, 200);

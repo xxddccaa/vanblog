@@ -24,6 +24,15 @@ import { ApiToken } from 'src/provider/swagger/token';
 @Controller('/api/admin/img')
 export class ImgController {
   constructor(private readonly staticProvider: StaticProvider) {}
+
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async upload(
@@ -61,7 +70,7 @@ export class ImgController {
 
   @Post('scan')
   async scanImgsOfArticles() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -83,7 +92,7 @@ export class ImgController {
   }
   @Delete('/all/delete')
   async deleteALL() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -97,7 +106,7 @@ export class ImgController {
   }
   @Delete('/:sign')
   async delete(@Param('sign') sign: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -112,8 +121,8 @@ export class ImgController {
   @Get('')
   async getByOption(@Query('page') page: number, @Query('pageSize') pageSize = 5) {
     const option: SearchStaticOption = {
-      page,
-      pageSize,
+      page: this.normalizePositiveInt(page, 1, 100000),
+      pageSize: this.normalizePositiveInt(pageSize, 5, 100),
       staticType: 'img',
       view: 'public',
     };

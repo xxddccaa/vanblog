@@ -336,6 +336,14 @@ body .ant-page-header-heading-title {
 }
 
 html[data-theme='dark'] {
+  --admin-modal-bg: #111827;
+  --admin-modal-bg-subtle: #1f2937;
+  --admin-modal-border: rgba(255, 255, 255, 0.08);
+  --admin-modal-text: #e5e7eb;
+  --admin-modal-text-secondary: #cbd5e1;
+  --admin-modal-warning-bg: rgba(217, 119, 6, 0.14);
+  --admin-modal-warning-text: #fbbf24;
+
   .admin-tone-panel {
     background: #111827 !important;
     border-color: rgba(255, 255, 255, 0.08) !important;
@@ -510,21 +518,95 @@ html[data-theme='dark'] {
   .ant-pro-card,
   .ant-modal-content,
   .ant-modal-header,
+  .ant-modal-body,
+  .ant-modal-footer,
   .ant-modal-confirm .ant-modal-content,
+  .ant-modal-confirm-body-wrapper,
+  .ant-modal-confirm-paragraph,
+  .ant-modal-confirm-btns,
   .ant-dropdown-menu,
   .ant-popover-inner,
   .ant-popconfirm-inner-content {
-    background: #111827 !important;
-    border-color: rgba(255, 255, 255, 0.08) !important;
+    background: var(--admin-modal-bg) !important;
+    border-color: var(--admin-modal-border) !important;
   }
 
   .ant-modal-content,
   .ant-modal-header,
+  .ant-modal-body,
+  .ant-modal-footer,
   .ant-modal-confirm-body,
+  .ant-modal-confirm-body-wrapper,
+  .ant-modal-confirm-paragraph,
+  .ant-modal-confirm-btns,
   .ant-dropdown-menu-item:hover,
   .ant-dropdown-menu-submenu-title:hover,
   .ant-popover-inner {
     color: #e5e7eb !important;
+  }
+
+  .ant-modal-root .ant-modal-mask {
+    background: rgba(2, 6, 23, 0.72) !important;
+  }
+
+  .ant-modal-root .ant-modal-content,
+  .ant-modal-root .ant-modal-header,
+  .ant-modal-root .ant-modal-body,
+  .ant-modal-root .ant-modal-footer,
+  .ant-modal-root .ant-modal-confirm-body,
+  .ant-modal-root .ant-modal-confirm-body-wrapper,
+  .ant-modal-root .ant-modal-confirm-paragraph {
+    background: var(--admin-modal-bg) !important;
+    color: var(--admin-modal-text) !important;
+    box-shadow: none !important;
+  }
+
+  .ant-modal-root .ant-modal-header,
+  .ant-modal-root .ant-modal-footer,
+  .ant-modal-root .ant-modal-content {
+    border-color: var(--admin-modal-border) !important;
+  }
+
+  .ant-modal-root .ant-modal-title,
+  .ant-modal-root .ant-modal-close,
+  .ant-modal-root .ant-modal-confirm-title,
+  .ant-modal-root .ant-modal-confirm-content,
+  .ant-modal-root .ant-modal-body,
+  .ant-modal-root .ant-modal-body p,
+  .ant-modal-root .ant-modal-body li,
+  .ant-modal-root .ant-modal-body span,
+  .ant-modal-root .ant-modal-body strong,
+  .ant-modal-root .ant-modal-confirm-content p,
+  .ant-modal-root .ant-modal-confirm-content li,
+  .ant-modal-root .ant-modal-confirm-content span,
+  .ant-modal-root .ant-modal-confirm-content strong,
+  .ant-modal-root .ant-typography {
+    color: var(--admin-modal-text) !important;
+  }
+
+  .ant-modal-root .ant-modal-confirm-content,
+  .ant-modal-root .ant-modal-body .ant-typography-secondary,
+  .ant-modal-root .ant-modal-confirm-content .ant-typography-secondary {
+    color: var(--admin-modal-text-secondary) !important;
+  }
+
+  .ant-modal-root .admin-modal-note {
+    background: var(--admin-modal-bg-subtle) !important;
+    border: 1px solid var(--admin-modal-border) !important;
+    color: var(--admin-modal-text) !important;
+  }
+
+  .ant-modal-root .admin-modal-note-warning {
+    background: var(--admin-modal-warning-bg) !important;
+    border-color: rgba(251, 191, 36, 0.2) !important;
+  }
+
+  .ant-modal-root .admin-modal-note-warning,
+  .ant-modal-root .admin-modal-note-warning p,
+  .ant-modal-root .admin-modal-note-warning li,
+  .ant-modal-root .admin-modal-note-warning span,
+  .ant-modal-root .admin-modal-note-warning strong {
+    color: var(--admin-modal-warning-text) !important;
   }
 
   .ant-table-tbody > tr.ant-table-row:hover > td,

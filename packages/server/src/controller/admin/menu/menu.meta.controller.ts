@@ -30,7 +30,7 @@ export class MenuMetaController {
 
   @Put()
   async update(@Body() dto: MenuSetting) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -46,7 +46,7 @@ export class MenuMetaController {
 
   @Post('/reset')
   async resetToDefault() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

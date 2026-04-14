@@ -4,7 +4,10 @@ describe('PublicController', () => {
   const createController = () => {
     const articleProvider = {
       getTotalNum: jest.fn().mockResolvedValue(12),
+      searchByString: jest.fn().mockResolvedValue([]),
+      toSearchResult: jest.fn().mockImplementation((items) => items),
       getPublicArticleByIdOrPathname: jest.fn(),
+      getByIdOrPathname: jest.fn(),
       getArticleNavByIdOrPathname: jest.fn(),
       getByIdOrPathnameWithPreNext: jest.fn(),
       getByOption: jest.fn(),
@@ -17,18 +20,20 @@ describe('PublicController', () => {
           updatedAt: '2026-04-10T00:00:00.000Z',
         },
       ]),
-      getTimeLineSummary: jest.fn().mockResolvedValue([
-        { year: '2026', articleCount: 1, updatedAt: '2026-04-10T00:00:00.000Z' },
-      ]),
+      getTimeLineSummary: jest
+        .fn()
+        .mockResolvedValue([
+          { year: '2026', articleCount: 1, updatedAt: '2026-04-10T00:00:00.000Z' },
+        ]),
       getTimeLineArticlesByYear: jest.fn(),
       getTimeLineInfo: jest.fn().mockResolvedValue({
-        "2026": [
+        '2026': [
           {
             id: 9,
-            title: "Timeline Article",
-            pathname: "timeline-article",
-            createdAt: "2026-04-08T00:00:00.000Z",
-            updatedAt: "2026-04-10T00:00:00.000Z",
+            title: 'Timeline Article',
+            pathname: 'timeline-article',
+            createdAt: '2026-04-08T00:00:00.000Z',
+            updatedAt: '2026-04-10T00:00:00.000Z',
           },
         ],
       }),
@@ -36,17 +41,19 @@ describe('PublicController', () => {
     const categoryProvider = {
       getAllCategories: jest.fn().mockResolvedValue(['System Design', 'NestJS']),
       getArticlesByCategory: jest.fn(),
-      getCategorySummaries: jest.fn().mockResolvedValue([
-        { name: 'Architecture', articleCount: 1, updatedAt: '2026-04-11T00:00:00.000Z' },
-      ]),
+      getCategorySummaries: jest
+        .fn()
+        .mockResolvedValue([
+          { name: 'Architecture', articleCount: 1, updatedAt: '2026-04-11T00:00:00.000Z' },
+        ]),
       getCategoriesWithArticle: jest.fn().mockResolvedValue({
         Architecture: [
           {
             id: 8,
-            title: "Category Article",
-            pathname: "category-article",
-            createdAt: "2026-04-08T00:00:00.000Z",
-            updatedAt: "2026-04-11T00:00:00.000Z",
+            title: 'Category Article',
+            pathname: 'category-article',
+            createdAt: '2026-04-08T00:00:00.000Z',
+            updatedAt: '2026-04-11T00:00:00.000Z',
           },
         ],
       }),
@@ -67,8 +74,16 @@ describe('PublicController', () => {
         },
       ]),
       getAllTagRecords: jest.fn().mockResolvedValue([
-        { name: 'Cloudflare', createdAt: '2026-04-09T00:00:00.000Z', updatedAt: '2026-04-10T00:00:00.000Z' },
-        { name: 'Caching', createdAt: '2026-04-10T00:00:00.000Z', updatedAt: '2026-04-11T00:00:00.000Z' },
+        {
+          name: 'Cloudflare',
+          createdAt: '2026-04-09T00:00:00.000Z',
+          updatedAt: '2026-04-10T00:00:00.000Z',
+        },
+        {
+          name: 'Caching',
+          createdAt: '2026-04-10T00:00:00.000Z',
+          updatedAt: '2026-04-11T00:00:00.000Z',
+        },
       ]),
       getHotTags: jest.fn().mockResolvedValue([
         { name: 'Cloudflare', articleCount: 6, updatedAt: '2026-04-10T00:00:00.000Z' },
@@ -181,10 +196,20 @@ describe('PublicController', () => {
     const visitProvider = {
       getByArticleId: jest.fn().mockResolvedValue({ viewer: 0, visited: 0 }),
     };
+    const tokenProvider = {
+      checkAdminToken: jest.fn().mockResolvedValue(true),
+      checkSuperAdminSessionToken: jest.fn().mockResolvedValue(true),
+    };
     const iconProvider = {
-      getAllIcons: jest.fn().mockResolvedValue([
-        { name: 'github', createdAt: '2026-04-08T00:00:00.000Z', updatedAt: '2026-04-10T00:00:00.000Z' },
-      ]),
+      getAllIcons: jest
+        .fn()
+        .mockResolvedValue([
+          {
+            name: 'github',
+            createdAt: '2026-04-08T00:00:00.000Z',
+            updatedAt: '2026-04-10T00:00:00.000Z',
+          },
+        ]),
       getIconByName: jest.fn().mockResolvedValue({
         name: 'github',
         createdAt: '2026-04-08T00:00:00.000Z',
@@ -210,7 +235,7 @@ describe('PublicController', () => {
       visitProvider as any,
       settingProvider as any,
       customPageProvider as any,
-      {} as any,
+      tokenProvider as any,
       iconProvider as any,
       staticProvider as any,
       cacheProvider as any,
@@ -228,6 +253,7 @@ describe('PublicController', () => {
       staticProvider,
       customPageProvider,
       visitProvider,
+      tokenProvider,
       iconProvider,
       cacheProvider,
       walineProvider,
@@ -271,6 +297,72 @@ describe('PublicController', () => {
     expect(metaProvider.addViewer).not.toHaveBeenCalled();
   });
 
+  it('rejects collaborator-like tokens for admin article preview access', async () => {
+    const { controller, articleProvider, tokenProvider } = createController();
+    tokenProvider.checkSuperAdminSessionToken.mockResolvedValue(false);
+
+    const result = await controller.getArticleByIdOrPathnameWithAdminToken('draft-post', {
+      token: 'collaborator-token',
+    });
+
+    expect(result).toEqual({
+      statusCode: 401,
+      data: null,
+      message: 'Invalid token',
+    });
+    expect(articleProvider.getByIdOrPathname).not.toHaveBeenCalled();
+  });
+
+  it('reports admin token validity only for admin-capable tokens', async () => {
+    const { controller, tokenProvider } = createController();
+    tokenProvider.checkSuperAdminSessionToken.mockResolvedValue(false);
+
+    const result = await controller.verifyAdminToken({ token: 'collaborator-token' });
+
+    expect(result).toEqual({
+      statusCode: 401,
+      data: { valid: false },
+      message: 'Invalid token',
+    });
+  });
+
+  it('caps public article search payloads so broad queries cannot return unbounded result sets', async () => {
+    const { controller, articleProvider } = createController();
+    const searchHits = Array.from({ length: 120 }, (_, index) => ({
+      id: index + 1,
+      title: `Article ${index + 1}`,
+      category: 'Tech',
+      tags: [],
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-02T00:00:00.000Z',
+    }));
+    articleProvider.searchByString.mockResolvedValue(searchHits);
+
+    const result = await controller.searchArticle('tech');
+
+    expect(result.statusCode).toBe(200);
+    expect(result.data.total).toBe(120);
+    expect(result.data.data).toHaveLength(100);
+    expect(articleProvider.searchByString).toHaveBeenCalledWith('tech', false);
+    expect(articleProvider.toSearchResult).toHaveBeenCalledWith(searchHits.slice(0, 100));
+  });
+
+  it('does not treat API tokens as valid admin preview sessions', async () => {
+    const { controller, tokenProvider, articleProvider } = createController();
+    tokenProvider.checkSuperAdminSessionToken.mockResolvedValue(false);
+
+    const result = await controller.getArticleByIdOrPathnameWithAdminToken('draft-post', {
+      token: 'long-lived-api-token',
+    });
+
+    expect(result).toEqual({
+      statusCode: 401,
+      data: null,
+      message: 'Invalid token',
+    });
+    expect(articleProvider.getByIdOrPathname).not.toHaveBeenCalled();
+  });
+
   it('records the decoded referer pathname when referer is valid', async () => {
     const { controller, metaProvider } = createController();
 
@@ -297,14 +389,24 @@ describe('PublicController', () => {
     expect(first).toEqual({
       statusCode: 200,
       data: [
-        { name: 'github', createdAt: '2026-04-08T00:00:00.000Z', updatedAt: '2026-04-10T00:00:00.000Z' },
+        {
+          name: 'github',
+          createdAt: '2026-04-08T00:00:00.000Z',
+          updatedAt: '2026-04-10T00:00:00.000Z',
+        },
       ],
     });
     expect(second).toEqual(first);
     expect(iconProvider.getAllIcons).toHaveBeenCalledTimes(1);
     expect(cacheProvider.set).toHaveBeenCalledWith(
       'public:icon:all',
-      [{ name: 'github', createdAt: '2026-04-08T00:00:00.000Z', updatedAt: '2026-04-10T00:00:00.000Z' }],
+      [
+        {
+          name: 'github',
+          createdAt: '2026-04-08T00:00:00.000Z',
+          updatedAt: '2026-04-10T00:00:00.000Z',
+        },
+      ],
       300,
     );
     expect(res.headers.get('Last-Modified')).toBe('Fri, 10 Apr 2026 00:00:00 GMT');
@@ -448,6 +550,21 @@ describe('PublicController', () => {
     });
     expect(customPageProvider.getCustomPageByPath).toHaveBeenCalledWith('/c/edge');
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
+  });
+
+  it('normalizes custom page cache keys so equivalent path variants do not create duplicate entries', async () => {
+    const { controller, cacheProvider } = createController();
+    const res = createRes();
+
+    await controller.getOneByPath('edge', res as any);
+
+    expect(cacheProvider.set).toHaveBeenCalledWith(
+      'public:customPage:/edge',
+      expect.objectContaining({
+        path: '/c/edge',
+      }),
+      300,
+    );
   });
 
   it('sets Last-Modified for public meta payloads even when served from cache', async () => {
@@ -620,13 +737,13 @@ describe('PublicController', () => {
     expect(result).toEqual({
       statusCode: 200,
       data: {
-        "2026": [
+        '2026': [
           {
             id: 9,
-            title: "Timeline Article",
-            pathname: "timeline-article",
-            createdAt: "2026-04-08T00:00:00.000Z",
-            updatedAt: "2026-04-10T00:00:00.000Z",
+            title: 'Timeline Article',
+            pathname: 'timeline-article',
+            createdAt: '2026-04-08T00:00:00.000Z',
+            updatedAt: '2026-04-10T00:00:00.000Z',
           },
         ],
       },
@@ -679,10 +796,10 @@ describe('PublicController', () => {
         Architecture: [
           {
             id: 8,
-            title: "Category Article",
-            pathname: "category-article",
-            createdAt: "2026-04-08T00:00:00.000Z",
-            updatedAt: "2026-04-11T00:00:00.000Z",
+            title: 'Category Article',
+            pathname: 'category-article',
+            createdAt: '2026-04-08T00:00:00.000Z',
+            updatedAt: '2026-04-11T00:00:00.000Z',
           },
         ],
       },
@@ -695,8 +812,16 @@ describe('PublicController', () => {
     const { controller, categoryProvider } = createController();
     const res = createRes();
     categoryProvider.getAllCategories.mockResolvedValue([
-      { name: 'Architecture', createdAt: '2026-04-09T00:00:00.000Z', updatedAt: '2026-04-11T00:00:00.000Z' },
-      { name: 'Caching', createdAt: '2026-04-08T00:00:00.000Z', updatedAt: '2026-04-10T00:00:00.000Z' },
+      {
+        name: 'Architecture',
+        createdAt: '2026-04-09T00:00:00.000Z',
+        updatedAt: '2026-04-11T00:00:00.000Z',
+      },
+      {
+        name: 'Caching',
+        createdAt: '2026-04-08T00:00:00.000Z',
+        updatedAt: '2026-04-10T00:00:00.000Z',
+      },
     ]);
 
     const result = await controller.getCategorySummary(res as any);
@@ -714,8 +839,16 @@ describe('PublicController', () => {
     const { controller, categoryProvider } = createController();
     const res = createRes();
     categoryProvider.getAllCategories.mockResolvedValue([
-      { name: 'Architecture', createdAt: '2026-04-09T00:00:00.000Z', updatedAt: '2026-04-11T00:00:00.000Z' },
-      { name: 'Caching', createdAt: '2026-04-08T00:00:00.000Z', updatedAt: '2026-04-10T00:00:00.000Z' },
+      {
+        name: 'Architecture',
+        createdAt: '2026-04-09T00:00:00.000Z',
+        updatedAt: '2026-04-11T00:00:00.000Z',
+      },
+      {
+        name: 'Caching',
+        createdAt: '2026-04-08T00:00:00.000Z',
+        updatedAt: '2026-04-10T00:00:00.000Z',
+      },
     ]);
 
     const first = await controller.getCategorySummary(res as any);
@@ -818,7 +951,14 @@ describe('PublicController', () => {
       },
     };
 
-    const result = await controller.getTagsPaginated('1', '50', 'articleCount', 'desc', '', res as any);
+    const result = await controller.getTagsPaginated(
+      '1',
+      '50',
+      'articleCount',
+      'desc',
+      '',
+      res as any,
+    );
 
     expect(result).toEqual({
       statusCode: 200,
@@ -835,6 +975,17 @@ describe('PublicController', () => {
     });
     expect(tagProvider.getTagsPaginated).toHaveBeenCalledWith(1, 50, 'articleCount', 'desc', '');
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
+  });
+
+  it('clamps oversized public tag limits and pagination sizes before querying providers', async () => {
+    const { controller, tagProvider } = createController();
+    const res = createRes();
+
+    await controller.getHotTags('999', res as any);
+    await controller.getTagsPaginated('0', '999', 'articleCount', 'desc', '', res as any);
+
+    expect(tagProvider.getHotTags).toHaveBeenCalledWith(50);
+    expect(tagProvider.getTagsPaginated).toHaveBeenCalledWith(1, 100, 'articleCount', 'desc', '');
   });
 
   it('sets Last-Modified for the complete tag listing payload', async () => {
@@ -893,7 +1044,10 @@ describe('PublicController', () => {
         },
       },
     });
-    expect(articleProvider.getPublicArticleByIdOrPathname).toHaveBeenCalledWith('edge-cache', 'public');
+    expect(articleProvider.getPublicArticleByIdOrPathname).toHaveBeenCalledWith(
+      'edge-cache',
+      'public',
+    );
     expect(articleProvider.getByIdOrPathnameWithPreNext).not.toHaveBeenCalled();
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
   });
@@ -935,7 +1089,10 @@ describe('PublicController', () => {
         },
       },
     });
-    expect(articleProvider.getArticleNavByIdOrPathname).toHaveBeenCalledWith('edge-cache', 'public');
+    expect(articleProvider.getArticleNavByIdOrPathname).toHaveBeenCalledWith(
+      'edge-cache',
+      'public',
+    );
     expect(articleProvider.getPublicArticleByIdOrPathname).not.toHaveBeenCalled();
     expect(articleProvider.getByIdOrPathnameWithPreNext).not.toHaveBeenCalled();
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
@@ -1185,6 +1342,37 @@ describe('PublicController', () => {
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
   });
 
+  it('caps oversized public article page sizes before querying the article provider', async () => {
+    const { controller, articleProvider } = createController();
+    const res = createRes();
+    articleProvider.getByOption.mockResolvedValue({
+      total: 0,
+      articles: [],
+    });
+
+    await controller.getByOption(
+      '0' as any,
+      '999' as any,
+      false as any,
+      false as any,
+      false as any,
+      false as any,
+      undefined as any,
+      undefined as any,
+      undefined as any,
+      undefined as any,
+      res as any,
+    );
+
+    expect(articleProvider.getByOption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        page: 1,
+        pageSize: 100,
+      }),
+      true,
+    );
+  });
+
   it('returns category expansion payloads as stable shells without viewer counters', async () => {
     const { controller, categoryProvider } = createController();
     const res = {
@@ -1272,34 +1460,30 @@ describe('PublicController', () => {
       category: 'Architecture',
       updatedAt: '2026-04-09T00:00:00.000Z',
     });
-    articleProvider.getRelatedPublicArticles = jest
-      .fn()
-      .mockResolvedValue([
-        {
-          id: 2,
-          title: 'related',
-          viewer: 10,
-          visited: 8,
-          commentCount: 5,
-          likeCount: 1,
-          lastVisitedTime: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-04-10T00:00:00.000Z',
-        },
-      ]);
-    articleProvider.getLatestPublicArticles = jest
-      .fn()
-      .mockResolvedValue([
-        {
-          id: 3,
-          title: 'latest',
-          viewer: 7,
-          visited: 6,
-          commentCount: 4,
-          likeCount: 2,
-          lastVisitedTime: '2026-01-02T00:00:00.000Z',
-          updatedAt: '2026-04-12T00:00:00.000Z',
-        },
-      ]);
+    articleProvider.getRelatedPublicArticles = jest.fn().mockResolvedValue([
+      {
+        id: 2,
+        title: 'related',
+        viewer: 10,
+        visited: 8,
+        commentCount: 5,
+        likeCount: 1,
+        lastVisitedTime: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-04-10T00:00:00.000Z',
+      },
+    ]);
+    articleProvider.getLatestPublicArticles = jest.fn().mockResolvedValue([
+      {
+        id: 3,
+        title: 'latest',
+        viewer: 7,
+        visited: 6,
+        commentCount: 4,
+        likeCount: 2,
+        lastVisitedTime: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+      },
+    ]);
     articleProvider.getHotPublicArticles = jest.fn().mockResolvedValue([
       {
         id: 4,

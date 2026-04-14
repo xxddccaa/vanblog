@@ -11,6 +11,7 @@ import {
 import { Draft, DraftDocument } from 'src/scheme/draft.schema';
 import { ArticleProvider } from '../article/article.provider';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { escapeRegExp } from 'src/utils/escapeRegExp';
 
 export type DraftView = 'admin' | 'public' | 'list';
 
@@ -107,7 +108,6 @@ export class DraftProvider {
         await this.create(createDto);
       }
     }
-    await this.structuredDataService.refreshDraftsFromRecordStore();
   }
 
   async getByOption(option: SearchDraftOption): Promise<{ drafts: Draft[]; total: number }> {
@@ -244,17 +244,22 @@ export class DraftProvider {
   }
 
   async searchByString(str: string): Promise<Draft[]> {
+    const normalizedSearch = String(str || '').trim();
+    if (!normalizedSearch) {
+      return [];
+    }
     const drafts = await this.structuredDataService.searchDrafts(str);
     if (drafts.length || this.structuredDataService.isInitialized()) {
       return drafts as any;
     }
+    const safePattern = escapeRegExp(normalizedSearch);
     const $and: any = [
       {
         $or: [
-          { content: { $regex: `${str}`, $options: 'i' } },
-          { title: { $regex: `${str}`, $options: 'i' } },
-          { category: { $regex: `${str}`, $options: 'i' } },
-          { tags: { $regex: `${str}`, $options: 'i' } },
+          { content: { $regex: safePattern, $options: 'i' } },
+          { title: { $regex: safePattern, $options: 'i' } },
+          { category: { $regex: safePattern, $options: 'i' } },
+          { tags: { $regex: safePattern, $options: 'i' } },
         ],
       },
       {

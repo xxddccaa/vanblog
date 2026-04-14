@@ -29,6 +29,14 @@ export class DocumentController {
     private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get('/')
   async getByOption(
     @Query('page') page: number,
@@ -44,8 +52,8 @@ export class DocumentController {
     @Query('endTime') endTime?: string,
   ) {
     const option = {
-      page,
-      pageSize,
+      page: this.normalizePositiveInt(page, 1, 100000),
+      pageSize: this.normalizePositiveInt(pageSize, 5, 100),
       title,
       library_id,
       parent_id,
@@ -146,7 +154,7 @@ export class DocumentController {
 
   @Put('/:id/move')
   async move(@Param('id') id: number, @Body() moveDto: MoveDocumentDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止移动文档！',
@@ -172,7 +180,7 @@ export class DocumentController {
 
   @Post('/:id/convert-to-draft')
   async convertToDraft(@Param('id') id: number, @Body() body: { category: string }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止此操作！',

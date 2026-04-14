@@ -14,6 +14,16 @@ export class VisitProvider {
     private readonly structuredDataService: StructuredDataService,
   ) {}
 
+  private getVisitUpdateFilter(visit: any) {
+    if (visit?._id) {
+      return { _id: visit._id };
+    }
+    return {
+      pathname: visit?.pathname,
+      date: visit?.date,
+    };
+  }
+
   async add(createViewerDto: createVisitDto): Promise<any> {
     // 先找一下有没有今天的，有的话就在今天的基础上加1。
     const { isNew, pathname } = createViewerDto;
@@ -144,17 +154,17 @@ export class VisitProvider {
 
   async import(data: Visit[]) {
     for (const each of data) {
-      const oldData = await this.visitModel.findOne({
-        pathname: each.pathname,
-        date: each.date,
-      });
+      const oldData = await this.findByDateAndPath(each.date, each.pathname);
       if (oldData) {
-        await this.visitModel.updateOne({ _id: oldData._id }, each);
+        await this.visitModel.updateOne(this.getVisitUpdateFilter(oldData), each);
       } else {
         const newData = new this.visitModel(each);
         await newData.save();
       }
+      await this.structuredDataService.upsertVisit({
+        ...(oldData?.toObject?.() || each),
+        ...each,
+      });
     }
-    await this.structuredDataService.refreshVisitsFromRecordStore();
   }
 }

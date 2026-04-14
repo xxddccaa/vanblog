@@ -11,6 +11,7 @@ import { sleep } from 'src/utils/sleep';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { buildArticlePreview } from 'src/utils/articlePreview';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { escapeRegExp } from 'src/utils/escapeRegExp';
 
 export type ArticleView = 'admin' | 'public' | 'list';
 
@@ -142,6 +143,73 @@ export class ArticleProvider {
     return articles.filter((article) => article.id !== excludeId).slice(0, limit);
   }
 
+  private async applyPublicPrivacyToArticles(articles: any[]) {
+    if (!Array.isArray(articles) || articles.length === 0) {
+      return [];
+    }
+
+    const categoryNames = [
+      ...new Set(
+        articles
+          .map((article) => article?._doc?.category || article?.category)
+          .filter(Boolean),
+      ),
+    ];
+    let categoryDocs = await this.structuredDataService.getCategoriesByNames(categoryNames);
+    if (!categoryDocs.length && !this.structuredDataService.isInitialized()) {
+      categoryDocs = await this.categoryModal
+        .find({ name: { $in: categoryNames } })
+        .lean()
+        .exec();
+    }
+    const categoryPrivateMap = new Map(categoryDocs.map((category: any) => [category.name, Boolean(category?.private)]));
+
+    return articles.map((article) => {
+      const payload = { ...(article?._doc || article) };
+      const isPrivateInArticle = Boolean(payload.private);
+      const isPrivateInCategory = Boolean(categoryPrivateMap.get(payload.category));
+      delete payload.password;
+
+      if (isPrivateInArticle || isPrivateInCategory) {
+        return {
+          ...payload,
+          content: undefined,
+          private: true,
+        };
+      }
+
+      return payload;
+    });
+  }
+
+  private matchesSanitizedSearch(article: any, search: string) {
+    if (!search) {
+      return true;
+    }
+
+    const haystacks = [
+      article?.title,
+      article?.content,
+      article?.category,
+      ...(Array.isArray(article?.tags) ? article.tags : []),
+    ]
+      .filter(Boolean)
+      .map((item) => String(item).toLocaleLowerCase());
+
+    return haystacks.some((item) => item.includes(search));
+  }
+
+  private async getCategoryByName(name?: string) {
+    if (!name) {
+      return null;
+    }
+    const category = await this.structuredDataService.getCategoryByName(name);
+    if (category || this.structuredDataService.isInitialized()) {
+      return category as any;
+    }
+    return await this.categoryModal.findOne({ name }).lean().exec();
+  }
+
   async create(
     createArticleDto: CreateArticleDto,
     skipUpdateWordCount?: boolean,
@@ -158,9 +226,23 @@ export class ArticleProvider {
     return res;
   }
   async searchArticlesByLink(link: string) {
+    const normalizedLink = String(link || '').trim().toLowerCase();
+    if (!normalizedLink) {
+      return [];
+    }
+    const pgArticles = await this.structuredDataService.listArticles({
+      includeHidden: true,
+      includeDelete: false,
+    });
+    if (pgArticles.length || this.structuredDataService.isInitialized()) {
+      return pgArticles
+        .filter((article) => (article.content || '').toLowerCase().includes(normalizedLink))
+        .map((article) => this.projectArticleForView(article, 'list')) as any;
+    }
+    const safePattern = escapeRegExp(normalizedLink);
     const artciles = await this.articleModel.find(
       {
-        content: { $regex: link, $options: 'i' },
+        content: { $regex: safePattern, $options: 'i' },
         $or: [
           {
             deleted: false,
@@ -176,16 +258,23 @@ export class ArticleProvider {
   }
   async getAllImageLinks() {
     const res = [];
-    const articles = await this.articleModel.find({
-      $or: [
-        {
-          deleted: false,
-        },
-        {
-          deleted: { $exists: false },
-        },
-      ],
+    const pgArticles = await this.structuredDataService.listArticles({
+      includeHidden: true,
+      includeDelete: false,
     });
+    const articles =
+      pgArticles.length || this.structuredDataService.isInitialized()
+        ? (pgArticles as any)
+        : await this.articleModel.find({
+            $or: [
+              {
+                deleted: false,
+              },
+              {
+                deleted: { $exists: false },
+              },
+            ],
+          });
     for (const article of articles) {
       const eachLinks = parseImgLinksOfMarkdown(article.content || '');
       res.push({
@@ -818,6 +907,18 @@ export class ArticleProvider {
     };
   }
 
+  async getPublicSearchIndexArticles(): Promise<Article[]> {
+    const { articles } = await this.getByOption(
+      {
+        page: 1,
+        pageSize: -1,
+        regMatch: false,
+      },
+      true,
+    );
+    return articles;
+  }
+
   async getByOption(
     option: SearchArticleOption,
     isPublic: boolean,
@@ -831,7 +932,6 @@ export class ArticleProvider {
     }
     // 过滤私有文章
     if (isPublic) {
-      // 批量查询分类，避免 N+1 问题
       const categoryNames = [
         ...new Set(
           articles
@@ -839,10 +939,13 @@ export class ArticleProvider {
             .filter(Boolean),
         ),
       ];
-      const categoriesDocs = await this.categoryModal
-        .find({ name: { $in: categoryNames } })
-        .lean()
-        .exec();
+      let categoriesDocs = await this.structuredDataService.getCategoriesByNames(categoryNames);
+      if (!categoriesDocs.length && !this.structuredDataService.isInitialized()) {
+        categoriesDocs = await this.categoryModal
+          .find({ name: { $in: categoryNames } })
+          .lean()
+          .exec();
+      }
       const categoryPrivateMap = new Map(
         categoriesDocs.map((c) => [c.name, c?.private || false]),
       );
@@ -1195,10 +1298,13 @@ export class ArticleProvider {
     if (!article) {
       return null;
     }
-    const category =
-      (await this.categoryModal.findOne({
-        name: article.category,
-      })) || ({} as any);
+    if (article.hidden) {
+      const siteInfo = await this.metaProvider.getSiteInfo();
+      if (!siteInfo?.allowOpenHiddenPostByUrl || siteInfo?.allowOpenHiddenPostByUrl == 'false') {
+        return null;
+      }
+    }
+    const category = ((await this.getCategoryByName(article.category)) || {}) as any;
 
     const categoryPassword = category.private ? category.password : undefined;
     const targetPassword = categoryPassword ? categoryPassword : article.password;
@@ -1245,9 +1351,7 @@ export class ArticleProvider {
     }
 
     // 检查分类是不是加密了
-    const category = await this.categoryModal.findOne({
-      name: curArticle.category,
-    });
+    const category = await this.getCategoryByName(curArticle.category);
     if (category && category.private) {
       curArticle.private = true;
       curArticle.content = undefined;
@@ -1271,6 +1375,10 @@ export class ArticleProvider {
     };
   }
   async getPreArticleByArticle(article: Article, view: ArticleView, includeHidden?: boolean) {
+    const pgArticle = await this.structuredDataService.getAdjacentArticle(article, 'prev', Boolean(includeHidden));
+    if (pgArticle || this.structuredDataService.isInitialized()) {
+      return pgArticle ? (this.projectArticleForView(pgArticle, view) as any) : null;
+    }
     const $and: any = [
       {
         $or: [
@@ -1311,6 +1419,10 @@ export class ArticleProvider {
     return null;
   }
   async getNextArticleByArticle(article: Article, view: ArticleView, includeHidden?: boolean) {
+    const pgArticle = await this.structuredDataService.getAdjacentArticle(article, 'next', Boolean(includeHidden));
+    if (pgArticle || this.structuredDataService.isInitialized()) {
+      return pgArticle ? (this.projectArticleForView(pgArticle, view) as any) : null;
+    }
     const $and: any = [
       {
         $or: [
@@ -1371,55 +1483,68 @@ export class ArticleProvider {
   }
 
   async searchByString(str: string, includeHidden: boolean): Promise<Article[]> {
+    const normalizedSearch = String(str || '').trim().toLocaleLowerCase();
+    if (!normalizedSearch) {
+      return [];
+    }
     const pgResults = await this.structuredDataService.searchArticles(str, includeHidden);
+    let sortedData: any[];
+
     if (pgResults.length || this.structuredDataService.isInitialized()) {
-      return pgResults as any;
+      sortedData = pgResults as any;
+    } else {
+      const safePattern = escapeRegExp(normalizedSearch);
+      const $and: any = [
+        {
+          $or: [
+            { content: { $regex: safePattern, $options: 'i' } },
+            { title: { $regex: safePattern, $options: 'i' } },
+            { category: { $regex: safePattern, $options: 'i' } },
+            { tags: { $regex: safePattern, $options: 'i' } },
+          ],
+        },
+        {
+          $or: [
+            {
+              deleted: false,
+            },
+            {
+              deleted: { $exists: false },
+            },
+          ],
+        },
+      ];
+      if (!includeHidden) {
+        $and.push({
+          $or: [
+            {
+              hidden: false,
+            },
+            {
+              hidden: { $exists: false },
+            },
+          ],
+        });
+      }
+      const rawData = await this.articleModel
+        .find({
+          $and,
+        })
+        .exec();
+      const titleData = rawData.filter((each) => each.title.toLocaleLowerCase().includes(normalizedSearch));
+      const contentData = rawData.filter((each) => each.content.toLocaleLowerCase().includes(normalizedSearch));
+      const categoryData = rawData.filter((each) => each.category.toLocaleLowerCase().includes(normalizedSearch));
+      const tagData = rawData.filter((each) =>
+        each.tags.map((t) => t.toLocaleLowerCase()).includes(normalizedSearch),
+      );
+      sortedData = [...titleData, ...contentData, ...tagData, ...categoryData];
     }
-    const $and: any = [
-      {
-        $or: [
-          { content: { $regex: `${str}`, $options: 'i' } },
-          { title: { $regex: `${str}`, $options: 'i' } },
-          { category: { $regex: `${str}`, $options: 'i' } },
-          { tags: { $regex: `${str}`, $options: 'i' } },
-        ],
-      },
-      {
-        $or: [
-          {
-            deleted: false,
-          },
-          {
-            deleted: { $exists: false },
-          },
-        ],
-      },
-    ];
+
     if (!includeHidden) {
-      $and.push({
-        $or: [
-          {
-            hidden: false,
-          },
-          {
-            hidden: { $exists: false },
-          },
-        ],
-      });
+      sortedData = await this.applyPublicPrivacyToArticles(sortedData);
+      sortedData = sortedData.filter((article) => this.matchesSanitizedSearch(article, normalizedSearch));
     }
-    const rawData = await this.articleModel
-      .find({
-        $and,
-      })
-      .exec();
-    const s = str.toLocaleLowerCase();
-    const titleData = rawData.filter((each) => each.title.toLocaleLowerCase().includes(s));
-    const contentData = rawData.filter((each) => each.content.toLocaleLowerCase().includes(s));
-    const categoryData = rawData.filter((each) => each.category.toLocaleLowerCase().includes(s));
-    const tagData = rawData.filter((each) =>
-      each.tags.map((t) => t.toLocaleLowerCase()).includes(s),
-    );
-    const sortedData = [...titleData, ...contentData, ...tagData, ...categoryData];
+
     const resData = [];
     for (const e of sortedData) {
       if (!resData.includes(e)) {
@@ -1430,6 +1555,13 @@ export class ArticleProvider {
   }
 
   async findAll(): Promise<Article[]> {
+    const articles = await this.structuredDataService.listArticles({
+      includeHidden: true,
+      includeDelete: true,
+    });
+    if (articles.length || this.structuredDataService.isInitialized()) {
+      return articles as any;
+    }
     return this.articleModel.find({}).exec();
   }
   async deleteById(id: number) {

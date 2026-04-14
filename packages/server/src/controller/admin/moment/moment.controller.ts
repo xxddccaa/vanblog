@@ -61,7 +61,7 @@ export class MomentController {
 
   @Put('/:id')
   async update(@Param('id') id: number, @Body() updateDto: UpdateMomentDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改动态！',
@@ -77,7 +77,7 @@ export class MomentController {
 
   @Post()
   async create(@Body() createDto: CreateMomentDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止创建动态！',
@@ -93,7 +93,7 @@ export class MomentController {
 
   @Delete('/:id')
   async delete(@Param('id') id: number) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return { statusCode: 401, message: '演示站禁止删除动态！' };
     }
     await this.momentProvider.deleteById(id);

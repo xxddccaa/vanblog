@@ -62,6 +62,7 @@ async function bootstrap() {
   const jwtSecret = await initJwt();
   global.jwtSecret = jwtSecret;
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
   app.use(json({ limit: '50mb' }));
 

@@ -22,6 +22,7 @@ import { CacheProvider } from 'src/provider/cache/cache.provider';
 import { InitProvider } from 'src/provider/init/init.provider';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
+import { getNetIp } from 'src/provider/log/utils';
 
 @ApiTags('tag')
 @Controller('/api/admin/auth/')
@@ -36,6 +37,29 @@ export class AuthController {
     private readonly pipelineProvider: PipelineProvider,
   ) {}
 
+  private async clearLoginRetryCounter(request: any) {
+    try {
+      const { ip } = await getNetIp(request);
+      const normalizedIp = String(ip || '').trim();
+      if (!normalizedIp) {
+        return;
+      }
+      await this.cacheProvider.del(`login-${normalizedIp}`);
+    } catch {
+      // Login must still succeed even if retry counters cannot be cleared.
+    }
+  }
+
+  private async ensureSensitiveRecoveryRequestIsPrivate(request: any) {
+    const { ip } = await getNetIp(request);
+    if (String(ip || '').trim()) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: '敏感恢复入口仅允许在受信任网络中使用',
+      });
+    }
+  }
+
   @UseGuards(LoginGuard, AuthGuard('local'))
   @Post('/login')
   async login(@Request() request: any) {
@@ -48,6 +72,7 @@ export class AuthController {
     }
     // 能到这里登陆就成功了
     this.logProvider.login(request, true);
+    await this.clearLoginRetryCounter(request);
     const data = await this.authProvider.login(request.user);
     this.pipelineProvider.dispatchEvent('login', data);
     return {
@@ -80,6 +105,7 @@ export class AuthController {
     @Request() request: Request,
     @Body() body: { key: string; name: string; password: string },
   ) {
+    await this.ensureSensitiveRecoveryRequestIsPrivate(request);
     const token = body.key;
     const keyInCache = await this.cacheProvider.get('restoreKey');
     if (!token || token != keyInCache) {
@@ -124,12 +150,9 @@ export class AuthController {
 
   @Get('/debug-token')
   async debugToken(@Request() request: any) {
+    await this.ensureSensitiveRecoveryRequestIsPrivate(request);
     const secret = config.debugSuperToken;
-    const provided =
-      request.get?.('x-debug-super-token') ||
-      request.query?.debugSuperToken ||
-      request.query?.key ||
-      request.body?.key;
+    const provided = request.get?.('x-debug-super-token');
 
     if (!secret) {
       throw new UnauthorizedException({

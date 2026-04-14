@@ -28,4 +28,22 @@ describe('MomentProvider', () => {
     expect(query.skip).not.toHaveBeenCalled();
     expect(query.limit).not.toHaveBeenCalled();
   });
+
+  it('returns no moments for blank searches without issuing a fallback query', async () => {
+    const momentModel = {
+      find: jest.fn(),
+    };
+    const provider = new MomentProvider(
+      momentModel as any,
+      {
+        searchMoments: jest.fn().mockResolvedValue([]),
+        isInitialized: jest.fn().mockReturnValue(false),
+      } as any,
+    );
+
+    const result = await provider.searchByString('   ');
+
+    expect(result).toEqual([]);
+    expect(momentModel.find).not.toHaveBeenCalled();
+  });
 });

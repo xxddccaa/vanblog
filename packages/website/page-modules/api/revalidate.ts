@@ -1,5 +1,14 @@
+import {
+  isRevalidateRequestAuthorized,
+  isRevalidateTokenConfigured,
+} from "../../utils/revalidateAuth";
+
 export default async function handler(req: any, res: any) {
-  // 因为 /api 只会暴露 server 的，这个不会暴漏到容器外，就不验证了。
+  const providedToken = req.headers?.["x-vanblog-isr-token"];
+  if (!isRevalidateRequestAuthorized(providedToken)) {
+    const status = isRevalidateTokenConfigured() ? 401 : 503;
+    return res.status(status).json({ revalidated: false, message: "ISR token invalid" });
+  }
 
   const path = req.query?.path;
   // console.log("触发增量渲染", path);

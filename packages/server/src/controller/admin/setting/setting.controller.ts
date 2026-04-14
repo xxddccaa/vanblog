@@ -31,7 +31,7 @@ export class SettingController {
 
   @Put('static')
   async updateStaticSetting(@Body() body: Partial<StaticSetting>) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -45,7 +45,7 @@ export class SettingController {
   }
   @Put('waline')
   async updateWalineSetting(@Body() body: WalineSetting) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -60,7 +60,7 @@ export class SettingController {
   }
   @Get('waline')
   async getWalineSetting() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 200,
         data: null,
@@ -74,7 +74,7 @@ export class SettingController {
   }
   @Put('layout')
   async updateLayoutSetting(@Body() body: LayoutSetting) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改定制化设置！',
@@ -97,7 +97,7 @@ export class SettingController {
   }
   @Put('login')
   async updateLoginSetting(@Body() body: LoginSetting) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改登录安全策略设置！',
@@ -127,7 +127,7 @@ export class SettingController {
   }
   @Put('adminLayout')
   async updateAdminLayoutSetting(@Body() body: AdminLayoutSetting) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改定制化设置！',
@@ -143,7 +143,7 @@ export class SettingController {
 
   @Post('adminLayout/reset')
   async resetAdminLayoutToDefault() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

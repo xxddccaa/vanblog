@@ -44,8 +44,8 @@ export class TokenProvider {
       delete payload.__v;
 
       await this.tokenModel.updateOne({ token: token.token }, payload, { upsert: true });
+      await this.structuredDataService.upsertToken(payload);
     }
-    await this.structuredDataService.refreshTokensFromRecordStore();
   }
 
   async disableAPIToken(token: string) {
@@ -132,15 +132,69 @@ export class TokenProvider {
     });
     return result;
   }
-  async checkToken(token: string) {
+
+  async getValidTokenPayload(token: string) {
+    if (!token || typeof token !== 'string') {
+      return null;
+    }
+
     const pgToken = await this.structuredDataService.getTokenByToken(token);
     if (pgToken || this.structuredDataService.isInitialized()) {
-      return Boolean(pgToken && !pgToken.disabled);
+      if (!pgToken || pgToken.disabled) {
+        return null;
+      }
+      try {
+        return await this.jwtService.verifyAsync(token, { secret: global.jwtSecret });
+      } catch {
+        return null;
+      }
     }
+
     const result = await this.tokenModel.findOne({ token, disabled: false });
-    if (!result) {
+    if (!result?.token) {
+      return null;
+    }
+    try {
+      return await this.jwtService.verifyAsync(token, { secret: global.jwtSecret });
+    } catch {
+      return null;
+    }
+  }
+
+  async checkToken(token: string) {
+    return Boolean(await this.getValidTokenPayload(token));
+  }
+
+  private async getActiveTokenRecord(token: string) {
+    const pgToken = await this.structuredDataService.getTokenByToken(token);
+    if (pgToken || this.structuredDataService.isInitialized()) {
+      if (!pgToken || pgToken.disabled) {
+        return null;
+      }
+      return pgToken as any;
+    }
+
+    const result = await this.tokenModel.findOne({ token, disabled: false }).lean().exec();
+    return result || null;
+  }
+
+  async checkAdminToken(token: string) {
+    const payload = await this.getValidTokenPayload(token);
+    if (!payload) {
       return false;
     }
-    return true;
+    return payload.sub === 0 || payload.type === 'admin' || payload.role === 'admin';
+  }
+
+  async checkSuperAdminSessionToken(token: string) {
+    const tokenRecord = await this.getActiveTokenRecord(token);
+    if (!tokenRecord || tokenRecord.userId !== 0) {
+      return false;
+    }
+    const payload = await this.getValidTokenPayload(token);
+    if (!payload) {
+      return false;
+    }
+    return payload.sub === 0 || payload.type === 'admin';
   }
 }

@@ -41,6 +41,8 @@ cp .env.release.example .env
 - `VANBLOG_RELEASE_SUFFIX`
 - `WALINE_JWT_TOKEN`
 
+未设置 `WALINE_JWT_TOKEN` 时，`docker-compose.image.yml` 会直接报错退出，避免 Waline 以默认弱密钥启动。
+
 ### 2. 启动服务
 
 ```bash
@@ -69,8 +71,9 @@ http://<你的域名或 IP>/admin/init
 
 - 前台首页：`http://<你的域名或 IP>/`
 - 后台管理：`http://<你的域名或 IP>/admin`
-- API 文档：`http://<你的域名或 IP>/swagger`
 - 评论管理：`http://<你的域名或 IP>/api/ui/`
+
+默认公网入口不会暴露 Swagger。若需查看 API 文档，请在受信任网络内访问 `http://<你的域名或 IP>/swagger`，或直接通过容器/主机本地入口访问。
 
 ## 下一步建议
 

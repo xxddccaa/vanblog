@@ -168,7 +168,7 @@ export class NavCategoryProvider {
       updatedCategory.toObject ? updatedCategory.toObject() : updatedCategory,
     );
 
-    const toolCount = await this.navToolModel.countDocuments({ categoryId: id }).exec();
+    const toolCount = await this.structuredDataService.countNavToolsByCategory(id);
 
     return {
       _id: updatedCategory._id.toString(),
@@ -199,14 +199,15 @@ export class NavCategoryProvider {
   }
 
   async updateCategoriesSort(categories: Array<{ id: string; sort: number }>): Promise<void> {
+    const updatedAt = new Date();
     const bulkOps = categories.map(category => ({
       updateOne: {
         filter: { _id: category.id },
-        update: { sort: category.sort, updatedAt: new Date() }
+        update: { sort: category.sort, updatedAt }
       }
     }));
 
     await this.navCategoryModel.bulkWrite(bulkOps);
-    await this.structuredDataService.refreshNavCategoriesFromRecordStore();
+    await this.structuredDataService.updateNavCategorySorts(categories, updatedAt);
   }
 } 

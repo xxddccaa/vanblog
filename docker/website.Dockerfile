@@ -21,6 +21,7 @@ COPY packages/website/next.config.js ./packages/website/next.config.js
 COPY packages/website/public ./packages/website/public
 COPY packages/website/package.json ./packages/website/package.json
 COPY packages/website/.next/static ./packages/website/.next/static
+COPY docker/website/control-auth.cjs ./control-auth.cjs
 COPY docker/website/runner.cjs ./runner.cjs
 
 ENV NODE_ENV=production

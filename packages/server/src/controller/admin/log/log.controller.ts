@@ -11,14 +11,23 @@ import { ApiToken } from 'src/provider/swagger/token';
 export class LogController {
   constructor(private readonly logProvider: LogProvider) {}
 
+  private normalizePositiveInt(value: number | string | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get()
   async get(
     @Query('page') page: number,
     @Query('pageSize') pageSize: number,
     @Query('event') event: EventType,
   ) {
-    // console.log(event, page, pageSize);
-    const data = await this.logProvider.searchLog(page, pageSize, event);
+    const safePage = this.normalizePositiveInt(page, 1, 100000);
+    const safePageSize = this.normalizePositiveInt(pageSize, 20, 200);
+    const data = await this.logProvider.searchLog(safePage, safePageSize, event);
     return {
       statusCode: 200,
       data,

@@ -4,8 +4,10 @@ import {
   HttpException,
   Post,
   Query,
+  Request,
   UploadedFile,
   UseInterceptors,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
@@ -14,6 +16,7 @@ import { InitProvider } from 'src/provider/init/init.provider';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { StaticProvider } from 'src/provider/static/static.provider';
 import { ApiToken } from 'src/provider/swagger/token';
+import { getNetIp } from 'src/provider/log/utils';
 
 @ApiTags('init')
 @ApiToken
@@ -25,12 +28,23 @@ export class InitController {
     private readonly isrProvider: ISRProvider,
   ) {}
 
+  private async ensureInitRequestIsPrivate(request: any) {
+    const { ip } = await getNetIp(request);
+    if (String(ip || '').trim()) {
+      throw new UnauthorizedException({
+        statusCode: 401,
+        message: '初始化入口仅允许在受信任网络中使用',
+      });
+    }
+  }
+
   @Post('/init')
-  async initSystem(@Body() initDto: InitDto) {
+  async initSystem(@Request() request: any, @Body() initDto: InitDto) {
     const hasInit = await this.initProvider.checkHasInited();
     if (hasInit) {
       throw new HttpException('已初始化', 500);
     }
+    await this.ensureInitRequestIsPrivate(request);
     await this.initProvider.init(initDto);
     this.isrProvider.activeAll('初始化触发增量渲染！', undefined, {
       forceActice: true,
@@ -43,11 +57,16 @@ export class InitController {
 
   @Post('/init/upload')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadImg(@UploadedFile() file: any, @Query('favicon') favicon: string) {
+  async uploadImg(
+    @Request() request: any,
+    @UploadedFile() file: any,
+    @Query('favicon') favicon: string,
+  ) {
     const hasInit = await this.initProvider.checkHasInited();
     if (hasInit) {
       throw new HttpException('已初始化', 500);
     }
+    await this.ensureInitRequestIsPrivate(request);
     let isFavicon = false;
     if (favicon && favicon == 'true') {
       isFavicon = true;

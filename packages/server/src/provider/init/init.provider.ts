@@ -53,8 +53,23 @@ export class InitProvider {
     return { ...normalized, since: new Date() };
   }
 
+  private mergeSnapshot<T extends Record<string, any>>(
+    current: T | null | undefined,
+    next: Partial<T>,
+  ) {
+    return {
+      ...((current as any)?._doc || current || {}),
+      ...(current || {}),
+      ...(next || {}),
+    } as T;
+  }
+
   private async upsertAdminUser(user: InitDto['user']) {
-    const existingAdmin = await this.userModel.findOne({ id: 0 }).exec();
+    const existingAdmin =
+      (await this.structuredDataService.getUserById(0)) ||
+      (!this.structuredDataService.isInitialized()
+        ? await this.userModel.findOne({ id: 0 }).exec()
+        : null);
     const salt = makeSalt();
     const payload = {
       id: 0,
@@ -64,12 +79,12 @@ export class InitProvider {
       type: 'admin' as const,
       salt,
     };
+    const nextAdmin = this.mergeSnapshot(existingAdmin as any, payload);
 
     if (existingAdmin) {
       await this.userModel.updateOne({ id: 0 }, payload);
-      const latestAdmin = await this.userModel.findOne({ id: 0 }).lean().exec();
-      await this.structuredDataService.upsertUser(latestAdmin);
-      return latestAdmin;
+      await this.structuredDataService.upsertUser(nextAdmin);
+      return nextAdmin;
     }
 
     const admin = await this.userModel.create(payload);
@@ -79,7 +94,11 @@ export class InitProvider {
   }
 
   private async upsertMeta(siteInfo: InitDto['siteInfo']) {
-    const existingMeta = await this.metaModel.findOne().lean().exec();
+    const existingMeta =
+      (await this.structuredDataService.getMeta()) ||
+      (!this.structuredDataService.isInitialized()
+        ? await this.metaModel.findOne().lean().exec()
+        : null);
     const payload = {
       siteInfo: {
         ...(existingMeta?.siteInfo || {}),
@@ -98,12 +117,12 @@ export class InitProvider {
       visited: existingMeta?.visited || 0,
       totalWordCount: existingMeta?.totalWordCount || 0,
     };
+    const nextMeta = this.mergeSnapshot(existingMeta as any, payload);
 
     if (existingMeta) {
       await this.metaModel.updateOne({}, payload);
-      const latestMeta = await this.metaModel.findOne().lean().exec();
-      await this.structuredDataService.upsertMeta(latestMeta);
-      return latestMeta;
+      await this.structuredDataService.upsertMeta(nextMeta);
+      return nextMeta;
     }
 
     const meta = await this.metaModel.create(payload);
@@ -143,11 +162,12 @@ export class InitProvider {
   }
 
   async checkHasInited() {
-    const user = await this.userModel.findOne({}).exec();
-    if (!user) {
-      return false;
-    }
-    return true;
+    const user =
+      (await this.structuredDataService.getUserById(0)) ||
+      (!this.structuredDataService.isInitialized()
+        ? await this.userModel.findOne({ id: 0 }).exec()
+        : null);
+    return Boolean(user);
   }
   async initRestoreKey() {
     const key = makeSalt();
@@ -159,7 +179,7 @@ export class InitProvider {
       this.logger.error('写入恢复密钥到文件失败！');
     }
     this.logger.warn(
-      `忘记密码恢复密钥为： ${key}\n 注意此密钥也会同时写入到日志目录中的 restore.key 文件中，每次重启 vanblog 或老密钥被使用时都会重新生成此密钥`,
+      '已生成忘记密码恢复密钥，并写入日志目录中的 restore.key 文件；每次重启 vanblog 或恢复流程使用后都会自动轮换。',
     );
   }
 
@@ -176,7 +196,7 @@ export class InitProvider {
   }
 
   async washCustomPage() {
-    // 老版本的 custom 表没带 type，洗一下加上
+    // Legacy migration only: older custom page records may not have a type.
     const all = await this.customPageModal.find({
       type: {
         $exists: false,
@@ -200,23 +220,27 @@ export class InitProvider {
   async washCategory() {
     //! 因为新增了 category 的表，所以需要清洗数据。
     // 条件： meta.category 有数据，但 category 表为空。
-    const meta = await this.metaModel.findOne();
+    const meta =
+      (await this.structuredDataService.getMeta()) ||
+      (!this.structuredDataService.isInitialized() ? await this.metaModel.findOne() : null);
     const categoryInMeta = meta?.categories || [];
-    const data = await this.categoryModal.find({});
+    const data = await this.structuredDataService.listCategories();
     if (!data.length && !!categoryInMeta.length) {
       this.logger.warn('版本升级，自动清洗分类数据！');
-      let i = 1;
-      for (const c of categoryInMeta) {
-        await this.categoryModal.create({
-          id: i,
+      for (const [index, c] of categoryInMeta.entries()) {
+        const created = await this.categoryModal.create({
+          id: index + 1,
           name: c,
           type: 'category',
           private: false,
           password: '',
+          sort: index,
         });
-        i = i + 1;
+        await this.structuredDataService.upsertCategory(
+          created.toObject ? created.toObject() : created,
+        );
       }
-      this.logger.warn(`清洗完成！共 ${i} 条！`);
+      this.logger.warn(`清洗完成！共 ${categoryInMeta.length} 条！`);
     }
   }
   async initVersion() {

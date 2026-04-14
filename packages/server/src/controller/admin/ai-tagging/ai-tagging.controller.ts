@@ -29,7 +29,7 @@ export class AITaggingController {
 
   @Put('/config')
   async updateConfig(@Body() body: any) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -53,7 +53,7 @@ export class AITaggingController {
 
   @Post('/generate')
   async generateTags(@Body() body: any) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -68,7 +68,7 @@ export class AITaggingController {
 
   @Put('/article/:id/tags')
   async updateArticleTags(@Param('id') id: string, @Body() body: any) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

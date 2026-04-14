@@ -165,7 +165,7 @@ export async function createCustomFile(path, subPath) {
   });
 }
 export async function createCustomFolder(path, subPath) {
-  return request(`/api/admin/customPage/file?path=${path}&subPath=${subPath}`, {
+  return request(`/api/admin/customPage/folder?path=${path}&subPath=${subPath}`, {
     method: 'POST',
   });
 }

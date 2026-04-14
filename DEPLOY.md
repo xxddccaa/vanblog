@@ -51,6 +51,8 @@ cp .env.release.example .env
 - `WALINE_JWT_TOKEN`：替换成高强度随机字符串
 - 目录挂载项：按你的服务器实际目录调整
 
+缺失 `WALINE_JWT_TOKEN` 时，镜像 compose 会直接拒绝启动，避免 Waline 以弱默认密钥上线。
+
 可选但和本文这轮缓存改造直接相关的配置：
 
 - `VAN_BLOG_CLOUDFLARE_API_TOKEN`
@@ -189,8 +191,8 @@ docker compose -f docker-compose.image.yml -f docker-compose.https.yml up -d
 
 - `http://<host>/`
 - `http://<host>/admin`
-- `http://<host>/swagger`
 - `http://<host>/api/ui/`
+- `http://<host>/swagger` 应返回 `404`
 
 建议进一步确认：
 
@@ -199,6 +201,7 @@ docker compose -f docker-compose.image.yml -f docker-compose.https.yml up -d
 - 前台首页能打开
 - 文章页能正常访问
 - 评论管理页能正常打开
+- Swagger 只在受信任网络或容器内可访问，不对公网暴露
 
 ## 8. AI 部署规则
 

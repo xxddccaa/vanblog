@@ -22,6 +22,7 @@ export interface CodeResult {
 export class PipelineProvider {
   logger = new Logger(PipelineProvider.name);
   runnerPath = config.codeRunnerPath;
+  private readonly pipelineRunTimeoutMs = 30000;
   constructor(
     @InjectModel('Pipeline')
     private pipelineModel: Model<PipelineDocument>,
@@ -182,22 +183,72 @@ export class PipelineProvider {
 
   async runCodeByPipelineId(id: number, data: any): Promise<CodeResult> {
     const pipeline = await this.getPipelineById(id);
-    if (!pipeline) {
+    if (!pipeline || pipeline.deleted) {
       throw new NotFoundException('Pipeline not found');
     }
     const traceId = new Date().getTime();
     this.logger.log(`[${traceId}]开始运行流水线: ${id} ${JSON.stringify(data, null, 2)}`);
-    const run = new Promise((resolve, reject) => {
+    const run = new Promise<CodeResult>((resolve, reject) => {
       const subProcess = fork(this.getPathById(id));
-      subProcess.send(data || {});
+      let settled = false;
+      const cleanup = () => {
+        clearTimeout(timeout);
+        subProcess.removeAllListeners('message');
+        subProcess.removeAllListeners('error');
+        subProcess.removeAllListeners('exit');
+        try {
+          subProcess.disconnect();
+        } catch (error) {}
+        try {
+          if (!subProcess.killed) {
+            subProcess.kill('SIGINT');
+          }
+        } catch (error) {}
+      };
+      const finish = (handler: (value: CodeResult) => void, payload: CodeResult) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        handler(payload);
+      };
+      const timeout = setTimeout(() => {
+        finish(reject, {
+          status: 'error',
+          output: {
+            message: `流水线执行超时，已强制终止（>${this.pipelineRunTimeoutMs}ms）`,
+          },
+          logs: [],
+        });
+      }, this.pipelineRunTimeoutMs);
+
       subProcess.on('message', (msg: CodeResult) => {
         if (msg.status === 'error') {
-          subProcess.kill('SIGINT');
-          reject(msg);
+          finish(reject, msg);
         } else {
-          resolve(msg);
+          finish(resolve, msg);
         }
       });
+      subProcess.on('error', (error: Error) => {
+        finish(reject, {
+          status: 'error',
+          output: {
+            message: error?.message || '流水线子进程启动失败',
+          },
+          logs: [],
+        });
+      });
+      subProcess.on('exit', (code: number | null, signal: NodeJS.Signals | null) => {
+        finish(reject, {
+          status: 'error',
+          output: {
+            message: `流水线子进程异常退出（code=${code ?? 'null'}, signal=${signal ?? 'null'}）`,
+          },
+          logs: [],
+        });
+      });
+      subProcess.send(data || {});
     });
     try {
       const result = (await run) as CodeResult;

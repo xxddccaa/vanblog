@@ -18,6 +18,14 @@ export class TagController {
     private readonly publicDataCacheProvider: PublicDataCacheProvider,
   ) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get('/all')
   @ApiOperation({ summary: '获取所有标签名称' })
   async getAllTags() {
@@ -43,8 +51,8 @@ export class TagController {
     @Query('search') search?: string,
   ) {
     const data = await this.tagProvider.getTagsPaginated(
-      parseInt(page),
-      parseInt(pageSize),
+      this.normalizePositiveInt(page, 1, 100000),
+      this.normalizePositiveInt(pageSize, 50, 100),
       sortBy,
       sortOrder,
       search,
@@ -59,7 +67,7 @@ export class TagController {
   @ApiOperation({ summary: '获取热门标签' })
   @ApiQuery({ name: 'limit', required: false, description: '数量限制，默认20' })
   async getHotTags(@Query('limit') limit: string = '20') {
-    const data = await this.tagProvider.getHotTags(parseInt(limit));
+    const data = await this.tagProvider.getHotTags(this.normalizePositiveInt(limit, 20, 50));
     return {
       statusCode: 200,
       data,
@@ -74,7 +82,10 @@ export class TagController {
     @Query('keyword') keyword: string,
     @Query('limit') limit: string = '20',
   ) {
-    const data = await this.tagProvider.searchTags(keyword, parseInt(limit));
+    const data = await this.tagProvider.searchTags(
+      keyword,
+      this.normalizePositiveInt(limit, 20, 50),
+    );
     return {
       statusCode: 200,
       data,
@@ -84,7 +95,7 @@ export class TagController {
   @Post('/sync')
   @ApiOperation({ summary: '同步标签数据' })
   async syncTags() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -122,7 +133,7 @@ export class TagController {
   @Put('/:name')
   @ApiOperation({ summary: '重命名标签' })
   async updateTagByName(@Param('name') name: string, @Query('value') newName: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -148,7 +159,7 @@ export class TagController {
   @Delete('/:name')
   @ApiOperation({ summary: '删除标签' })
   async deleteTagByName(@Param('name') name: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

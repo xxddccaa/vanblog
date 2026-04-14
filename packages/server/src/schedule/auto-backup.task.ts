@@ -25,16 +25,28 @@ import { AliyunpanProvider } from 'src/provider/aliyunpan/aliyunpan.provider';
 import { DocumentProvider } from 'src/provider/document/document.provider';
 import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
 import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
+import { config } from 'src/config';
 
 @Injectable()
 export class AutoBackupTask {
   private readonly logger = new Logger(AutoBackupTask.name);
-  private readonly backupDir = '/app/static/blog-json';
+  private readonly backupDir = path.join(config.log, 'backups');
 
   // 添加执行状态控制
   private isBackupRunning = false;
   private readonly lockFile = '/tmp/vanblog-backup.lock';
   private readonly instanceId = `backup-${Date.now()}-${Math.random().toString(36).substring(2)}`;
+
+  private sanitizeTokensForBackup(_tokens: any[]) {
+    return [];
+  }
+
+  private sanitizeRawCollectionsForBackup(rawCollections: Record<string, any[]>) {
+    return {
+      ...(rawCollections || {}),
+      tokens: [],
+    };
+  }
 
   constructor(
     private readonly articleProvider: ArticleProvider,
@@ -310,8 +322,10 @@ export class AutoBackupTask {
         this.mongoBackupProvider.exportAllCollections(),
       ]);
 
+      const safeTokens = this.sanitizeTokensForBackup(tokens);
+      const safeRawCollections = this.sanitizeRawCollectionsForBackup(rawCollections);
       const rawCollectionCounts = Object.fromEntries(
-        Object.entries(rawCollections).map(([name, docs]) => [
+        Object.entries(safeRawCollections).map(([name, docs]) => [
           name,
           Array.isArray(docs) ? docs.length : 0,
         ]),
@@ -333,7 +347,7 @@ export class AutoBackupTask {
         moments,
         customPages,
         pipelines,
-        tokens,
+        tokens: safeTokens,
         navTools,
         navCategories,
         icons,
@@ -341,8 +355,8 @@ export class AutoBackupTask {
         aiTaggingConfig,
         documents,
         mindMaps,
-        rawCollections,
-        mongoCollections: rawCollections,
+        rawCollections: safeRawCollections,
+        mongoCollections: safeRawCollections,
         backupInfo: {
           version: '4.0.0',
           formatVersion: '4.0.0',
@@ -386,7 +400,7 @@ export class AutoBackupTask {
             tags: tags?.length || 0,
             customPages: customPages?.length || 0,
             pipelines: pipelines?.length || 0,
-            tokens: tokens?.length || 0,
+            tokens: safeTokens?.length || 0,
             navTools: navTools?.length || 0,
             navCategories: navCategories?.length || 0,
             icons: icons?.length || 0,
@@ -401,6 +415,11 @@ export class AutoBackupTask {
           rawCollectionCounts,
           mongoCollectionCounts: rawCollectionCounts,
           legacyFields: ['mongoCollections'],
+          credentialWarnings: {
+            tokensExcluded: true,
+            message:
+              '为避免凭证泄露，自动 JSON 备份不会导出登录会话 Token 或 API Token；恢复后需重新登录并重新创建 API Token。',
+          },
         },
       };
 

@@ -19,7 +19,7 @@ services:
       - ./runtime/caddy/config:/root/.config/caddy
       - ./runtime/caddy/data:/root/.local/share/caddy
     ports:
-      - "18080:80"
+      - '18080:80'
 
   server:
     image: kevinchina/deeplearning:vanblog-server-v1.3.0-5a438e5e
@@ -37,22 +37,24 @@ services:
       VAN_BLOG_REDIS_URL: redis://redis:6379
       VAN_BLOG_WALINE_DB: waline
       VAN_BLOG_WALINE_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/waline
-      VAN_BLOG_CADDY_MANAGE_HTTPS: "false"
+      VAN_BLOG_CADDY_MANAGE_HTTPS: 'false'
       VAN_BLOG_DEBUG_SUPER_TOKEN: ${VAN_BLOG_DEBUG_SUPER_TOKEN:-}
-      VAN_BLOG_CLOUDFLARE_API_TOKEN: ""
-      VAN_BLOG_CLOUDFLARE_ZONE_ID: ""
+      VAN_BLOG_CLOUDFLARE_API_TOKEN: ''
+      VAN_BLOG_CLOUDFLARE_ZONE_ID: ''
+      VANBLOG_ISR_TOKEN: ${VANBLOG_ISR_TOKEN:-}
       VANBLOG_CADDY_API_URL: http://caddy:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
       VANBLOG_WALINE_CONTROL_URL: http://waline:8361
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
+      WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:?WALINE_JWT_TOKEN is required}
     volumes:
       - ./runtime/data/static:/app/static
       - ./runtime/log:/var/log
       - ./runtime/aliyunpan/config:/root/.config/aliyunpan
     expose:
-      - "3000"
+      - '3000'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -68,13 +70,15 @@ services:
       PORT: 3001
       WEBSITE_CONTROL_PORT: 3011
       VAN_BLOG_SERVER_URL: http://server:3000
-      VAN_BLOG_REVALIDATE: "false"
+      VAN_BLOG_REVALIDATE: 'false'
       VAN_BLOG_ALLOW_DOMAINS: pic.mereith.com
+      VANBLOG_ISR_TOKEN: ${VANBLOG_ISR_TOKEN:-}
+      WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:?WALINE_JWT_TOKEN is required}
     expose:
-      - "3001"
-      - "3011"
+      - '3001'
+      - '3011'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -84,9 +88,9 @@ services:
     image: kevinchina/deeplearning:vanblog-admin-v1.3.0-5a438e5e
     restart: always
     expose:
-      - "3002"
+      - '3002'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -109,12 +113,12 @@ services:
       PG_DB: waline
       PG_USER: postgres
       PG_PASSWORD: postgres
-      JWT_TOKEN: vanblog-change-me
+      JWT_TOKEN: ${WALINE_JWT_TOKEN:?WALINE_JWT_TOKEN is required}
     expose:
-      - "8360"
-      - "8361"
+      - '8360'
+      - '8361'
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
+      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -131,7 +135,7 @@ services:
     volumes:
       - ./runtime/data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d vanblog"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d vanblog']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -142,9 +146,9 @@ services:
     restart: always
     volumes:
       - ./runtime/data/redis:/data
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 15s
       timeout: 10s
       retries: 10

@@ -1,35 +1,15 @@
 import { MetaProvider } from './meta.provider';
 
 describe('MetaProvider', () => {
-  const createFindOne = (...responses: any[]) => {
-    const exec = jest.fn();
-    responses.forEach((response) => exec.mockResolvedValueOnce(response));
-    return {
-      exec,
-      lean: jest.fn(() => ({ exec })),
-    };
-  };
-
-  it('stamps siteInfo.updatedAt when site info changes', async () => {
+  it('stamps siteInfo.updatedAt when site info changes without re-reading the model', async () => {
     const existingMeta = {
       siteInfo: {
         siteName: 'VanBlog',
         baseUrl: 'https://old.example.com',
       },
     };
-    const latestMeta = {
-      siteInfo: {
-        siteName: 'Edge Cache Blog',
-        baseUrl: 'https://example.com',
-        updatedAt: new Date('2026-04-11T10:00:00.000Z'),
-      },
-    };
-    const findOne = jest
-      .fn()
-      .mockImplementationOnce(() => createFindOne(existingMeta))
-      .mockImplementationOnce(() => createFindOne(latestMeta));
     const metaModel = {
-      findOne,
+      findOne: jest.fn(),
       updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
       create: jest.fn(),
     };
@@ -63,6 +43,15 @@ describe('MetaProvider', () => {
         }),
       }),
     );
-    expect(structuredDataService.upsertMeta).toHaveBeenCalledWith(latestMeta);
+    expect(structuredDataService.upsertMeta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        siteInfo: expect.objectContaining({
+          siteName: 'Edge Cache Blog',
+          baseUrl: 'https://example.com',
+          updatedAt: expect.any(Date),
+        }),
+      }),
+    );
+    expect(metaModel.findOne).not.toHaveBeenCalled();
   });
 });

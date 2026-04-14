@@ -20,6 +20,7 @@ import { config } from 'src/config';
 import { ApiToken } from 'src/provider/swagger/token';
 import { MusicSetting } from 'src/types/setting.dto';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
+import { splitSafeUploadFileName } from 'src/utils/uploadFileName';
 
 @ApiTags('music')
 @UseGuards(...AdminGuard)
@@ -32,24 +33,37 @@ export class MusicController {
     private readonly isrProvider: ISRProvider,
   ) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async upload(@UploadedFile() file: any) {
-    // 处理文件名编码问题
-    if (file && file.originalname) {
-      try {
-        // 确保文件名是正确的 UTF-8 编码
-        file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
-      } catch (error) {
-        // 如果编码转换失败，保持原文件名
-        console.warn('文件名编码转换失败:', error);
-      }
+    if (!file?.originalname) {
+      return {
+        statusCode: 400,
+        message: '文件名非法',
+      };
     }
-    
+    // 处理文件名编码问题
+    try {
+      // 确保文件名是正确的 UTF-8 编码
+      file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    } catch (error) {
+      // 如果编码转换失败，保持原文件名
+      console.warn('文件名编码转换失败:', error);
+    }
+
     // 验证文件类型
     const allowedTypes = ['.mp3', '.wav', '.ogg', '.m4a', '.flac'];
-    const fileExtension = '.' + file.originalname.split('.').pop().toLowerCase();
-    
+    const { extension } = splitSafeUploadFileName(file.originalname);
+    const fileExtension = extension ? `.${extension}` : '';
+
     if (!allowedTypes.includes(fileExtension)) {
       return {
         statusCode: 400,
@@ -77,8 +91,8 @@ export class MusicController {
   @Get('')
   async getByOption(@Query('page') page: number, @Query('pageSize') pageSize = 10) {
     const data = await this.staticProvider.getByOption({
-      page,
-      pageSize,
+      page: this.normalizePositiveInt(page, 1, 100000),
+      pageSize: this.normalizePositiveInt(pageSize, 10, 100),
       staticType: 'music',
       view: 'public',
     });
@@ -90,7 +104,7 @@ export class MusicController {
 
   @Delete('/:sign')
   async delete(@Param('sign') sign: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -115,7 +129,7 @@ export class MusicController {
 
   @Put('setting')
   async updateMusicSetting(@Body() body: Partial<MusicSetting>) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -131,20 +145,20 @@ export class MusicController {
 
   @Post('playlist/update')
   async updatePlaylist(@Body() body: { playlist: string[]; currentIndex?: number }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
       };
     }
-    
+
     const currentSetting = await this.settingProvider.getMusicSetting();
     const updatedSetting = {
       ...currentSetting,
       currentPlaylist: body.playlist,
       currentIndex: body.currentIndex || 0,
     };
-    
+
     const res = await this.settingProvider.updateMusicSetting(updatedSetting);
     this.isrProvider.activeAll('更新音乐播放列表触发增量渲染！');
     return {
@@ -152,4 +166,4 @@ export class MusicController {
       data: res,
     };
   }
-} 
+}

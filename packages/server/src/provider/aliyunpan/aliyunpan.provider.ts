@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,6 +11,60 @@ export class AliyunpanProvider {
   private readonly logger = new Logger(AliyunpanProvider.name);
   private readonly configDir = '/root/.config/aliyunpan';
   private readonly configFile = path.join(this.configDir, 'config.json');
+  private readonly commandTimeoutMs = 3 * 60 * 60 * 1000;
+
+  private redactSensitiveCliOutput(output: string) {
+    return String(output || '')
+      .replace(/https:\/\/openapi\.alipan\.com[^\s\n]+/g, '[REDACTED_LOGIN_URL]')
+      .trim();
+  }
+
+  private async runAliyunpanCommand(
+    args: string[],
+    timeoutMs = this.commandTimeoutMs,
+  ): Promise<{ stdout: string; stderr: string }> {
+    return await new Promise((resolve, reject) => {
+      const child = spawn('aliyunpan', args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stdout = '';
+      let stderr = '';
+      let settled = false;
+
+      const finish = (handler: () => void) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeout);
+        handler();
+      };
+
+      const timeout = setTimeout(() => {
+        child.kill('SIGTERM');
+        finish(() => reject(new Error('阿里云盘命令执行超时')));
+      }, timeoutMs);
+
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      child.on('error', (error) => {
+        finish(() => reject(error));
+      });
+      child.on('close', (code) => {
+        finish(() => {
+          if (code === 0) {
+            resolve({ stdout, stderr });
+            return;
+          }
+          reject(new Error(stderr.trim() || stdout.trim() || `aliyunpan 退出码: ${code}`));
+        });
+      });
+    });
+  }
 
   // 获取登录状态
   async getLoginStatus(): Promise<{ isLoggedIn: boolean; userInfo?: any }> {
@@ -63,7 +117,10 @@ export class AliyunpanProvider {
 
          this.loginProcess.stdout.on('data', (data) => {
            const output = data.toString();
-           this.logger.log('aliyunpan login 输出:', output);
+           const sanitizedOutput = this.redactSensitiveCliOutput(output);
+           if (sanitizedOutput) {
+             this.logger.log(`aliyunpan login 输出已收到: ${sanitizedOutput}`);
+           }
            
            // 查找登录链接
            const urlMatch = output.match(/(https:\/\/openapi\.alipan\.com[^\s\n]+)/);
@@ -77,7 +134,9 @@ export class AliyunpanProvider {
 
          this.loginProcess.stderr.on('data', (data) => {
            const error = data.toString();
-           this.logger.error('aliyunpan login 错误:', error);
+           this.logger.error(
+             `aliyunpan login 错误: ${this.redactSensitiveCliOutput(error) || '未知错误'}`,
+           );
            if (!hasError) {
              hasError = true;
              clearTimeout(timeout);
@@ -186,7 +245,10 @@ export class AliyunpanProvider {
         logoutProcess.stdout.on('data', (data) => {
           const text = data.toString();
           output += text;
-          this.logger.log('aliyunpan logout 输出:', text);
+          const sanitizedText = this.redactSensitiveCliOutput(text);
+          if (sanitizedText) {
+            this.logger.log(`aliyunpan logout 输出已收到: ${sanitizedText}`);
+          }
           
           // 如果看到确认提示，自动发送 'y'
           if (text.includes('? (y/n)') || text.includes('(y/n) >')) {
@@ -197,7 +259,9 @@ export class AliyunpanProvider {
 
         logoutProcess.stderr.on('data', (data) => {
           const error = data.toString();
-          this.logger.error('aliyunpan logout 错误:', error);
+          this.logger.error(
+            `aliyunpan logout 错误: ${this.redactSensitiveCliOutput(error) || '未知错误'}`,
+          );
           if (!hasError) {
             hasError = true;
             clearTimeout(timeout);
@@ -226,18 +290,24 @@ export class AliyunpanProvider {
   // 执行同步备份
   async executeSync(localPath: string, panPath: string): Promise<{ success: boolean; message: string }> {
     try {
+      const safeLocalPath = String(localPath || '').trim();
+      const safePanPath = String(panPath || '').trim();
+      if (!safeLocalPath || !safePanPath) {
+        throw new Error('同步路径不能为空');
+      }
       // 确保本地路径存在
-      if (!fs.existsSync(localPath)) {
-        throw new Error(`本地路径不存在: ${localPath}`);
+      if (!fs.existsSync(safeLocalPath)) {
+        throw new Error(`本地路径不存在: ${safeLocalPath}`);
       }
 
-      // 构建上传命令 - 使用upload命令替代sync命令，添加skip参数跳过已存在文件
-      const command = `aliyunpan upload "${localPath}" "${panPath}" --skip`;
+      this.logger.log(`执行阿里云盘上传: local=${safeLocalPath}, pan=${safePanPath}`);
       
-      this.logger.log(`执行阿里云盘上传: ${command}`);
-      
-      // 设置较长的超时时间，因为备份可能需要较长时间
-      const { stdout, stderr } = await execAsync(command, { timeout: 3 * 60 * 60 * 1000 }); // 3小时超时
+      const { stdout, stderr } = await this.runAliyunpanCommand([
+        'upload',
+        safeLocalPath,
+        safePanPath,
+        '--skip',
+      ]);
       
       this.logger.log(`上传输出: ${stdout}`);
       if (stderr) {

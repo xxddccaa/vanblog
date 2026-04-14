@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CreateCategoryDto, UpdateCategoryDto, UpdateCategorySortDto } from 'src/types/category.dto';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
@@ -6,6 +6,7 @@ import { CategoryProvider } from 'src/provider/category/category.provider';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { config } from 'src/config';
 import { ApiToken } from 'src/provider/swagger/token';
+import { Request } from 'express';
 
 @ApiTags('category')
 @UseGuards(...AdminGuard)
@@ -18,8 +19,9 @@ export class CategoryController {
   ) {}
 
   @Get('/all')
-  async getAllCategory(@Query('detail') detail: string) {
-    const data = await this.categoryProvider.getAllCategories(detail == 'true');
+  async getAllCategory(@Req() req: Request, @Query('detail') detail: string) {
+    const allowDetail = detail == 'true' && (req as any)?.user?.id === 0;
+    const data = await this.categoryProvider.getAllCategories(allowDetail);
     return {
       statusCode: 200,
       data,
@@ -37,7 +39,7 @@ export class CategoryController {
 
   @Post()
   async createCategory(@Body() body: CreateCategoryDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -53,7 +55,7 @@ export class CategoryController {
 
   @Delete('/:name')
   async deleteCategory(@Param('name') name: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -69,7 +71,7 @@ export class CategoryController {
 
   @Put('/:name')
   async updateCategoryByName(@Param('name') name: string, @Body() updateDto: UpdateCategoryDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -85,7 +87,7 @@ export class CategoryController {
 
   @Put()
   async updateCategoriesSort(@Body() updateDto: UpdateCategorySortDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -101,7 +103,7 @@ export class CategoryController {
 
   @Post('/init-sort')
   async initializeCategoriesSort() {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

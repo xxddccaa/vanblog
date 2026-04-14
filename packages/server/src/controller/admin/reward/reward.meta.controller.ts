@@ -27,7 +27,7 @@ export class RewardMetaController {
 
   @Put()
   async update(@Body() updateDto: RewardDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -43,7 +43,7 @@ export class RewardMetaController {
 
   @Post()
   async create(@Body() updateDto: RewardDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -59,7 +59,7 @@ export class RewardMetaController {
 
   @Delete('/:name')
   async delete(@Param('name') name: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',

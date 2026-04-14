@@ -82,7 +82,7 @@ export class NavToolController {
 
   @Post()
   async createTool(@Body() toolDto: CreateNavToolDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止创建导航工具！',
@@ -104,7 +104,7 @@ export class NavToolController {
 
   @Put(':id')
   async updateTool(@Param('id') id: string, @Body() toolDto: UpdateNavToolDto) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改导航工具！',
@@ -126,7 +126,7 @@ export class NavToolController {
 
   @Delete(':id')
   async deleteTool(@Param('id') id: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止删除导航工具！',
@@ -147,7 +147,7 @@ export class NavToolController {
 
   @Put('/sort/update')
   async updateToolsSort(@Body() body: { tools: Array<{ id: string; sort: number }> }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改排序！',

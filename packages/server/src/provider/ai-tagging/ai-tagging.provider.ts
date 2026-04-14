@@ -4,6 +4,7 @@ import { Model } from 'src/storage/mongoose-compat';
 import { Setting, SettingDocument } from 'src/scheme/setting.schema';
 import { ArticleProvider } from '../article/article.provider';
 import axios from 'axios';
+import { normalizeAiRequestBaseUrl } from 'src/utils/aiRequestUrl';
 
 @Injectable()
 export class AITaggingProvider {
@@ -48,9 +49,10 @@ export class AITaggingProvider {
     conversations: any[] 
   }) {
     const { baseUrl, apiKey, model, temperature, topP, maxTokens, conversations } = params;
+    const normalizedBaseUrl = normalizeAiRequestBaseUrl(baseUrl);
     
     try {
-      const response = await axios.post(`${baseUrl}/chat/completions`, {
+      const response = await axios.post(`${normalizedBaseUrl}/chat/completions`, {
         model: model || 'gpt-4o',
         messages: conversations,
         temperature: temperature || 0.8,

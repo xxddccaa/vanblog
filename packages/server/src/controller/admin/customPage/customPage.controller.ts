@@ -39,6 +39,12 @@ export class CustomPageController {
     @Query('path') path: string,
     @Query('name') name: string,
   ) {
+    if (config?.demo == true || config?.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
     this.logger.log(`上传自定义页面文件：${path}\t ${name}`);
     file.originalname = name;
     const res = await this.staticProvider.upload(file, 'customPage', false, path);
@@ -79,7 +85,7 @@ export class CustomPageController {
   }
   @Post()
   async createOne(@Body() dto: CustomPage) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -94,7 +100,7 @@ export class CustomPageController {
   }
   @Post('file')
   async createFile(@Query('path') pathname: string, @Query('subPath') subPath: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -109,7 +115,7 @@ export class CustomPageController {
   }
   @Post('folder')
   async createFolder(@Query('path') pathname: string, @Query('subPath') subPath: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -125,7 +131,7 @@ export class CustomPageController {
 
   @Put('file')
   async updateFileInFolder(@Body() dto: { filePath: string; pathname: string; content: string }) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -145,7 +151,7 @@ export class CustomPageController {
   }
   @Put()
   async updateOne(@Body() dto: CustomPage) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
@@ -160,7 +166,7 @@ export class CustomPageController {
   }
   @Delete()
   async deleteOne(@Query('path') path: string) {
-    if (config.demo && config.demo == 'true') {
+    if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止修改此项！',
