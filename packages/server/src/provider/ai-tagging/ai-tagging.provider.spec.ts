@@ -89,4 +89,28 @@ describe('AITaggingProvider', () => {
 
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
+
+  it('surfaces upstream AI API error messages', async () => {
+    mockedAxios.post.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          error: {
+            message: 'Incorrect API key provided',
+          },
+        },
+      },
+      message: 'Request failed with status code 401',
+    });
+    const provider = createProvider();
+
+    await expect(
+      provider.generateTags({
+        baseUrl: 'https://api.stepfun.com/v1',
+        apiKey: 'secret',
+        model: 'step-3',
+        conversations: [{ role: 'user', content: 'hello' }],
+      }),
+    ).rejects.toThrow('AI标签生成失败: Incorrect API key provided');
+  });
 });

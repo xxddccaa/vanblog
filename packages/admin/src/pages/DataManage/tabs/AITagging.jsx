@@ -59,6 +59,37 @@ const defaultConfig = {
   ]
 };
 
+const normalizeConfig = (nextConfig) => ({
+  ...defaultConfig,
+  ...(nextConfig || {}),
+  conversations:
+    nextConfig?.conversations?.length > 0 ? nextConfig.conversations : defaultConfig.conversations,
+});
+
+const getResponseMessage = (response, fallbackMessage) => {
+  if (!response) {
+    return fallbackMessage;
+  }
+
+  if (typeof response === 'string') {
+    return response;
+  }
+
+  return response.message || response.data?.message || fallbackMessage;
+};
+
+const assertSuccessResponse = (response, fallbackMessage, dataType) => {
+  if (!response || response.statusCode !== 200) {
+    throw new Error(getResponseMessage(response, fallbackMessage));
+  }
+
+  if (dataType && typeof response.data !== dataType) {
+    throw new Error(getResponseMessage(response, fallbackMessage));
+  }
+
+  return response.data;
+};
+
 export default function AITagging() {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -76,15 +107,22 @@ export default function AITagging() {
   // 获取配置
   const fetchConfig = useCallback(async () => {
     try {
-      const { data } = await getAITaggingConfig();
-      if (data) {
-        setConfig(data);
-        form.setFieldsValue(data);
+      const response = await getAITaggingConfig();
+      if (response?.statusCode !== 200) {
+        throw new Error(getResponseMessage(response, '获取配置失败'));
+      }
+
+      if (response.data) {
+        const nextConfig = normalizeConfig(response.data);
+        setConfig(nextConfig);
+        form.setFieldsValue(nextConfig);
       } else {
+        setConfig(defaultConfig);
         form.setFieldsValue(defaultConfig);
       }
     } catch (error) {
       console.error('获取配置失败:', error);
+      setConfig(defaultConfig);
       form.setFieldsValue(defaultConfig);
     }
   }, [form]);
@@ -93,10 +131,11 @@ export default function AITagging() {
   const fetchArticles = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await getArticlesForTagging();
+      const response = await getArticlesForTagging();
+      const data = assertSuccessResponse(response, '获取文章列表失败');
       setArticles(data);
     } catch (error) {
-      message.error('获取文章列表失败');
+      message.error(error.message || '获取文章列表失败');
     } finally {
       setLoading(false);
     }
@@ -110,11 +149,12 @@ export default function AITagging() {
   // 保存配置
   const handleSaveConfig = async (values) => {
     try {
-      await updateAITaggingConfig(values);
-      setConfig(values);
+      const response = await updateAITaggingConfig(values);
+      assertSuccessResponse(response, '配置保存失败');
+      setConfig(normalizeConfig(values));
       message.success('配置保存成功');
     } catch (error) {
-      message.error('配置保存失败');
+      message.error(error.message || '配置保存失败');
     }
   };
 
@@ -144,7 +184,7 @@ export default function AITagging() {
         content: conv.content.replace('{content}', `标题：${article.title}\n内容：${article.content || ''}`)
       }));
 
-      const { data } = await generateAITags({
+      const response = await generateAITags({
         baseUrl: config.baseUrl,
         apiKey: config.apiKey,
         model: config.model,
@@ -153,12 +193,14 @@ export default function AITagging() {
         maxTokens: config.maxTokens,
         conversations
       });
+      const data = assertSuccessResponse(response, 'AI标签生成失败', 'string');
 
       // 解析标签，去除前后空格并过滤空字符串
       const tags = data.split(',').map(tag => tag.trim()).filter(tag => tag && tag.length > 0);
       
       // 更新文章标签（单个文章打标时触发ISR）
-      await updateArticleTags(article.id, tags, false);
+      const updateResponse = await updateArticleTags(article.id, tags, false);
+      assertSuccessResponse(updateResponse, '标签保存失败');
       
       // 更新本地状态
       setArticles(prevArticles => 
@@ -192,7 +234,8 @@ export default function AITagging() {
       const tags = editingTags[article.id] || [];
       
       // 手动编辑标签时触发ISR
-      await updateArticleTags(article.id, tags, false);
+      const response = await updateArticleTags(article.id, tags, false);
+      assertSuccessResponse(response, '标签保存失败');
       
       // 更新本地状态
       setArticles(prevArticles => 
@@ -213,7 +256,7 @@ export default function AITagging() {
         fetchArticles();
       }, 1000);
     } catch (error) {
-      message.error('标签保存失败');
+      message.error(error.message || '标签保存失败');
     }
   };
 
@@ -234,10 +277,11 @@ export default function AITagging() {
   const handleTriggerISR = async () => {
     setIsrLoading(true);
     try {
-      await triggerISR();
+      const response = await triggerISR();
+      assertSuccessResponse(response, '触发渲染失败');
       message.success('页面渲染已触发！需要一些时间生效。');
     } catch (error) {
-      message.error('触发渲染失败');
+      message.error(error.message || '触发渲染失败');
     } finally {
       setIsrLoading(false);
     }
@@ -296,7 +340,7 @@ export default function AITagging() {
               content: conv.content.replace('{content}', `标题：${article.title}\n内容：${article.content || ''}`)
             }));
 
-            const { data } = await generateAITags({
+            const response = await generateAITags({
               baseUrl: config.baseUrl,
               apiKey: config.apiKey,
               model: config.model,
@@ -305,12 +349,14 @@ export default function AITagging() {
               maxTokens: config.maxTokens,
               conversations
             });
+            const data = assertSuccessResponse(response, 'AI标签生成失败', 'string');
 
             // 解析标签，去除前后空格并过滤空字符串
             const tags = data.split(',').map(tag => tag.trim()).filter(tag => tag && tag.length > 0);
             
             // 更新文章标签（批量操作时跳过ISR）
-            await updateArticleTags(article.id, tags, true);
+            const updateResponse = await updateArticleTags(article.id, tags, true);
+            assertSuccessResponse(updateResponse, '标签保存失败');
             
             // 更新本地状态
             setArticles(prevArticles => 

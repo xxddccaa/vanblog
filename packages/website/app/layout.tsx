@@ -15,7 +15,6 @@ import '../styles/code-dark.css';
 import '../styles/zoom.css';
 
 export const metadata: Metadata = {
-  title: 'VanBlog',
 };
 
 export const viewport: Viewport = {

@@ -22,6 +22,64 @@ import { checkLoginAsync } from "../../utils/auth";
 const NavBarMobile = dynamic(() => import("../NavBarMobile"), {
   ssr: false,
 });
+
+const MANAGED_DESCRIPTION_META = "meta[name='description'][data-vanblog-managed='true']";
+const MANAGED_ROBOTS_META = "meta[name='robots'][data-vanblog-managed='true']";
+const MANAGED_ICON_LINK = "link[rel='icon'][data-vanblog-managed='true']";
+const MANAGED_THEME_LINK = 'link[data-vanblog-theme-link]';
+
+const upsertHeadMeta = (selector: string, name: string, content: string) => {
+  let element = document.head.querySelector(selector) as HTMLMetaElement | null;
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute("name", name);
+    element.setAttribute("data-vanblog-managed", "true");
+    document.head.appendChild(element);
+  }
+  element.setAttribute("content", content);
+};
+
+const upsertHeadLink = (
+  selector: string,
+  rel: string,
+  href: string,
+  extraAttributes: Record<string, string> = {},
+) => {
+  let element = document.head.querySelector(selector) as HTMLLinkElement | null;
+  if (!element) {
+    element = document.createElement("link");
+    element.setAttribute("rel", rel);
+    element.setAttribute("data-vanblog-managed", "true");
+    document.head.appendChild(element);
+  }
+  element.setAttribute("href", href);
+  Object.entries(extraAttributes).forEach(([key, value]) => {
+    element?.setAttribute(key, value);
+  });
+};
+
+const syncThemeStylesheet = (theme: "light" | "dark", href: string) => {
+  const selector = `${MANAGED_THEME_LINK}[data-theme-for='${theme}']`;
+  const existing = document.head.querySelector(selector) as HTMLLinkElement | null;
+
+  if (!href) {
+    existing?.remove();
+    return;
+  }
+
+  if (existing) {
+    existing.setAttribute("href", href);
+    return;
+  }
+
+  const link = document.createElement("link");
+  link.setAttribute("rel", "stylesheet");
+  link.setAttribute("href", href);
+  link.setAttribute("data-theme-for", theme);
+  link.setAttribute("data-vanblog-theme-link", "true");
+  document.head.appendChild(link);
+};
+
 export default function (props: {
   option: LayoutProps;
   title: string;
@@ -75,6 +133,47 @@ export default function (props: {
       document.body.style.overflow = "auto";
     };
   }, [props]);
+
+  useEffect(() => {
+    document.title = props.title;
+
+    upsertHeadLink(
+      MANAGED_ICON_LINK,
+      "icon",
+      props.option.favicon || "/favicon.ico",
+    );
+    upsertHeadMeta(
+      MANAGED_DESCRIPTION_META,
+      "description",
+      props.option.description || props.option.siteDesc || "",
+    );
+    upsertHeadMeta(MANAGED_ROBOTS_META, "robots", "index, follow");
+
+    const root = document.documentElement;
+    root.style.setProperty(
+      "--bg-image",
+      props.option.backgroundImage ? `url("${props.option.backgroundImage}")` : "none",
+    );
+    root.style.setProperty(
+      "--bg-image-dark",
+      props.option.backgroundImageDark || props.option.backgroundImage
+        ? `url("${props.option.backgroundImageDark || props.option.backgroundImage}")`
+        : "none",
+    );
+
+    syncThemeStylesheet("light", props.option.markdownLightThemeUrl || "");
+    syncThemeStylesheet("dark", props.option.markdownDarkThemeUrl || "");
+  }, [
+    props.option.backgroundImage,
+    props.option.backgroundImageDark,
+    props.option.description,
+    props.option.favicon,
+    props.option.markdownDarkThemeUrl,
+    props.option.markdownLightThemeUrl,
+    props.option.siteDesc,
+    props.title,
+  ]);
+
   return (
     <>
       <Head>

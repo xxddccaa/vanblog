@@ -73,12 +73,47 @@ export class AITaggingProvider {
 
       return content;
     } catch (error) {
-      throw new Error(`AI标签生成失败: ${error.message}`);
+      throw new Error(`AI标签生成失败: ${this.getAiErrorMessage(error)}`);
     }
   }
 
   async updateArticleTags(articleId: number, tags: string[]) {
     await this.articleProvider.updateById(articleId, { tags });
     return { message: '标签更新成功' };
+  }
+
+  private getAiErrorMessage(error: unknown) {
+    const responseMessage = this.extractAxiosResponseMessage(
+      axios.isAxiosError(error) ? error.response?.data : (error as any)?.response?.data,
+    );
+    if (responseMessage) {
+      return responseMessage;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return '未知错误';
+  }
+
+  private extractAxiosResponseMessage(data: any) {
+    if (!data) {
+      return null;
+    }
+
+    if (typeof data === 'string') {
+      return data;
+    }
+
+    if (typeof data?.error?.message === 'string') {
+      return data.error.message;
+    }
+
+    if (typeof data?.message === 'string') {
+      return data.message;
+    }
+
+    return null;
   }
 } 
