@@ -19,11 +19,12 @@
 1. 在 `master` 上整理代码并提交。
 2. 运行完整测试，优先通过 `pnpm test:full`。
 3. 确认根目录 `package.json` 的版本号正确，例如 `1.0.0`，并统一成发布标签 `vX.Y.Z`。
-4. 先补齐本次版本对应的 wiki / release note，写清楚本版特性、与上一公开稳定版的差异，以及可直接部署的 `docker compose` 配置单。
+4. 先补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案，写清楚本版特性、与上一公开稳定版的差异，以及可直接部署的 `docker compose` 配置单。
 5. 给当前代码打版本 tag，并推送到 GitHub。
 6. 使用 `scripts/release-images.sh` 构建并推送 5 个镜像。
-7. 记录本次版本号、Git tag、镜像 id（默认用 Git 短 SHA）和对应 wiki / release note 地址。
-8. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。
+7. 发布或更新 GitHub Release 页面，并确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
+8. 记录本次版本号、Git tag、镜像 id（默认用 Git 短 SHA）、Wiki 地址、GitHub Release 地址。
+9. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。
 
 这个机制的优点：
 
@@ -104,6 +105,7 @@ pnpm test:full
 - 当前分支代码已提交，避免从脏工作区发版
 - 根目录 `package.json` 里的版本号已经更新
 - 本次发布确实对应当前代码状态
+- `gh auth status` 已登录，便于直接维护 GitHub Wiki 和 GitHub Release
 
 查看当前版本：
 
@@ -179,7 +181,49 @@ bash scripts/release-images.sh --help
 - `--skip-tests`：跳过发布脚本内置的 `pnpm test:blog-flow`
 - `--skip-builds`：跳过补充构建步骤，通常只在你明确已有最新产物时使用
 
-### 5.4 推荐的人工发版顺序
+### 5.4 buildx / 架构经验
+
+默认脚本会走 `buildx`，默认平台为：
+
+```bash
+linux/amd64,linux/arm64
+```
+
+如果当前机器还没有可用的多架构 builder，先检查：
+
+```bash
+docker buildx ls
+```
+
+如果看到的是 `docker` driver，且发布时报：
+
+```text
+Multi-platform build is not supported for the docker driver.
+```
+
+先创建容器型 builder：
+
+```bash
+docker buildx create --name vanblog-release --driver docker-container --use
+docker buildx inspect --bootstrap
+```
+
+如果还需要补 `arm64` 模拟支持，可执行：
+
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+docker buildx inspect --bootstrap
+```
+
+如果本次发布只要求 `amd64`，或 `arm64` 构建因为网络/模拟速度过慢，可以显式切换为单架构：
+
+```bash
+bash scripts/release-images.sh --push --platforms linux/amd64
+```
+
+本仓库在 `v1.3.2` 这次正式发布里，实际采用的是 `linux/amd64` 单架构推送。
+
+### 5.5 推荐的人工发版顺序
 
 ```bash
 # 1) 确认工作区状态
@@ -191,10 +235,9 @@ pnpm test:full
 # 3) 看一下版本号
 node -p "require('./package.json').version"
 
-# 4) 先更新本次版本对应的 wiki / release note
-#    - 写本版特性
-#    - 写和上一公开稳定版的区别
-#    - 写 docker compose 配置单
+# 4) 先更新仓库内版本文档
+#    - docs/releases/vX.Y.Z.md
+#    - docs/releases/README.md
 
 # 5) 推 Git 提交
 git push origin master
@@ -206,9 +249,40 @@ git push origin v1.0.0
 # 7) 登录镜像仓库
 docker login
 
-# 8) 发布 5 个镜像
+# 8) 登录 GitHub CLI
+gh auth status
+
+# 9) 发布 5 个镜像
 pnpm release:images:push
+
+# 10) 发布 / 更新 GitHub Wiki
+gh repo clone xxddccaa/vanblog.wiki /tmp/vanblog-wiki
+# 在 /tmp/vanblog-wiki 中新增 Release-vX.Y.Z.md
+# 视情况同步更新 Home.md / _Sidebar.md / Docs-Index.md
+
+# 11) 创建 GitHub Release
+gh release create v1.0.0 --title "v1.0.0" --notes-file /tmp/vanblog-release-v1.0.0.md
 ```
+
+### 5.6 v1.3.2 这次实际走通的完整顺序
+
+下面这组步骤已经在当前机器上真实走通过，可以作为后续 AI 发版的优先参考：
+
+1. 更新根目录 `package.json` 版本。
+2. 完成代码修复与文档整理。
+3. 运行 `pnpm test:full`。
+4. 提交代码并推送 `master`。
+5. 创建并推送 `vX.Y.Z` tag。
+6. 如果需要，先处理 `buildx` builder 和 `binfmt`。
+7. 执行镜像发布；如果双架构过慢或不稳定，可回退到：
+
+```bash
+bash scripts/release-images.sh --push --skip-tests --skip-builds --platforms linux/amd64
+```
+
+8. 使用 `gh repo clone xxddccaa/vanblog.wiki` 克隆 Wiki 仓库并提交版本页面。
+9. 使用 `gh release create vX.Y.Z` 创建 GitHub Release 页面。
+10. 回到主仓库，把 `docs/releases/README.md` 中的版本索引补齐并推送。
 
 ## 6. 版本 wiki / release note 要求
 
@@ -221,6 +295,18 @@ pnpm release:images:push
 - 说明它和“上一公开稳定版”的差异，而不是只写零散改动
 - 给出可直接部署的 `docker compose` 配置单或等价的 `.env` + compose 说明
 - 给出镜像标签示例、部署命令、升级命令、回滚命令
+
+本仓库当前至少维护三份版本发布说明，它们应保持同一版本口径：
+
+- `docs/releases/vX.Y.Z.md`
+- GitHub Wiki：`Release-vX.Y.Z`
+- GitHub Release：`vX.Y.Z`
+
+推荐做法：
+
+- 先写仓库内 `docs/releases/vX.Y.Z.md`
+- 再以它为基础生成 Wiki 页面
+- 最后再整理一版较精简的 GitHub Release 文案
 
 关于“和上一版的差异”：
 
@@ -376,6 +462,8 @@ pnpm test:full
 ```
 
 11. 除了镜像发布外，还要同步维护当前版本的 wiki / release note，并确保其中的 compose 配置单与当前版本一致。
+12. 如果使用 GitHub Wiki，默认通过 `gh repo clone <owner>/<repo>.wiki` 拉取并提交，不要在浏览器里手工改完后忘记同步本地文档。
+13. 如果创建 GitHub Release，优先使用 `gh release create` 或 `gh release edit`，并确保 Release 文案中的镜像 tag、Wiki 链接、版本说明链接都已更新。
 
 ## 11. GitHub Actions 说明
 

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { MindMap, MindMapDocument } from 'src/scheme/mindmap.schema';
@@ -77,6 +78,20 @@ export class MindMapProvider {
   }
 
   async create(createMindMapDto: CreateMindMapDto): Promise<MindMap> {
+    if (this.structuredDataService.isInitialized()) {
+      const now = new Date();
+      const created = {
+        _id: randomUUID(),
+        viewer: 0,
+        deleted: false,
+        ...createMindMapDto,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await this.syncMindMapToStructuredStore(created);
+      return created as any;
+    }
+
     const createdData = new this.mindMapModel({
       ...createMindMapDto,
       createdAt: new Date(),
@@ -183,6 +198,17 @@ export class MindMapProvider {
       updatedAt: new Date(),
     };
 
+    const structuredMindMap = await this.getMindMapFromStructuredStore(id, true);
+    if (structuredMindMap && this.structuredDataService.isInitialized()) {
+      const baseMindMap: any = structuredMindMap as any;
+      const updated = {
+        ...(baseMindMap?._doc || baseMindMap),
+        ...updateData,
+      };
+      await this.syncMindMapToStructuredStore(updated);
+      return updated as any;
+    }
+
     const updated = await this.mindMapModel.findByIdAndUpdate(id, updateData, { new: true });
     if (updated) {
       await this.syncMindMapToStructuredStore(updated.toObject ? updated.toObject() : updated);
@@ -191,6 +217,18 @@ export class MindMapProvider {
   }
 
   async deleteById(id: string): Promise<MindMap> {
+    const structuredMindMap = await this.getMindMapFromStructuredStore(id, true);
+    if (structuredMindMap && this.structuredDataService.isInitialized()) {
+      const baseMindMap: any = structuredMindMap as any;
+      const deleted = {
+        ...(baseMindMap?._doc || baseMindMap),
+        deleted: true,
+        updatedAt: new Date(),
+      };
+      await this.syncMindMapToStructuredStore(deleted);
+      return deleted as any;
+    }
+
     const deleted = await this.mindMapModel.findByIdAndUpdate(
       id,
       { deleted: true, updatedAt: new Date() },
@@ -238,6 +276,17 @@ export class MindMapProvider {
   }
 
   async incrementViewer(id: string): Promise<void> {
+    const structuredMindMap = await this.getMindMapFromStructuredStore(id, true);
+    if (structuredMindMap && this.structuredDataService.isInitialized()) {
+      const baseMindMap: any = structuredMindMap as any;
+      await this.syncMindMapToStructuredStore({
+        ...(baseMindMap?._doc || baseMindMap),
+        viewer: Number(structuredMindMap?.viewer || 0) + 1,
+        updatedAt: new Date(),
+      });
+      return;
+    }
+
     await this.mindMapModel.findByIdAndUpdate(id, { $inc: { viewer: 1 } });
     const latest = await this.mindMapModel.findById(id).lean().exec();
     if (latest) {
@@ -278,9 +327,9 @@ export class MindMapProvider {
     }
   }
 
-  private async getMindMapFromStructuredStore(id: string) {
+  private async getMindMapFromStructuredStore(id: string, includeDeleted = false) {
     try {
-      return await this.structuredDataService.getMindMapById(id);
+      return await this.structuredDataService.getMindMapById(id, includeDeleted);
     } catch (error) {
       this.logger.warn(
         `getMindMapById failed, fallback to record store: ${error?.message || error}`,

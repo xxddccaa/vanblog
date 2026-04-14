@@ -103,7 +103,14 @@ export class DocumentController {
 
   @Get('/library/:id')
   async getDocumentsByLibrary(@Param('id') id: number) {
-    const data = await this.documentProvider.getDocumentsByLibrary(id);
+    const libraryId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!libraryId) {
+      return {
+        statusCode: 400,
+        message: '文档库 ID 无效',
+      };
+    }
+    const data = await this.documentProvider.getDocumentsByLibrary(libraryId);
     return {
       statusCode: 200,
       data,
@@ -112,7 +119,14 @@ export class DocumentController {
 
   @Get('/library/:id/export')
   async exportLibraryDocuments(@Param('id') id: number) {
-    const data = await this.documentProvider.exportLibraryDocuments(id);
+    const libraryId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!libraryId) {
+      return {
+        statusCode: 400,
+        message: '文档库 ID 无效',
+      };
+    }
+    const data = await this.documentProvider.exportLibraryDocuments(libraryId);
     return {
       statusCode: 200,
       data,
@@ -121,7 +135,14 @@ export class DocumentController {
 
   @Get('/:id')
   async getOne(@Param('id') id: number) {
-    const data = await this.documentProvider.findById(id);
+    const documentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!documentId) {
+      return {
+        statusCode: 400,
+        message: '文档 ID 无效',
+      };
+    }
+    const data = await this.documentProvider.findById(documentId);
     return {
       statusCode: 200,
       data,
@@ -130,7 +151,14 @@ export class DocumentController {
 
   @Put('/:id')
   async update(@Param('id') id: number, @Body() updateDto: UpdateDocumentDto) {
-    const data = await this.documentProvider.updateById(id, updateDto);
+    const documentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!documentId) {
+      return {
+        statusCode: 400,
+        message: '文档 ID 无效',
+      };
+    }
+    const data = await this.documentProvider.updateById(documentId, updateDto);
     this.searchIndexProvider.generateSearchIndex('更新私密文档触发搜索索引同步', 500);
     return {
       statusCode: 200,
@@ -160,8 +188,16 @@ export class DocumentController {
         message: '演示站禁止移动文档！',
       };
     }
-    
-    const data = await this.documentProvider.moveDocument(id, moveDto);
+
+    const documentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!documentId) {
+      return {
+        statusCode: 400,
+        message: '文档 ID 无效',
+      };
+    }
+
+    const data = await this.documentProvider.moveDocument(documentId, moveDto);
     return {
       statusCode: 200,
       data,
@@ -170,7 +206,14 @@ export class DocumentController {
 
   @Delete('/:id')
   async delete(@Param('id') id: number) {
-    const data = await this.documentProvider.deleteById(id);
+    const documentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!documentId) {
+      return {
+        statusCode: 400,
+        message: '文档 ID 无效',
+      };
+    }
+    const data = await this.documentProvider.deleteById(documentId);
     this.searchIndexProvider.generateSearchIndex('删除私密文档触发搜索索引同步', 500);
     return {
       statusCode: 200,
@@ -186,12 +229,20 @@ export class DocumentController {
         message: '演示站禁止此操作！',
       };
     }
-    
-    const data = await this.documentProvider.convertToDraft(id, body.category);
+
+    const documentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!documentId) {
+      return {
+        statusCode: 400,
+        message: '文档 ID 无效',
+      };
+    }
+
+    const data = await this.documentProvider.convertToDraft(documentId, body.category);
     this.searchIndexProvider.generateSearchIndex('文档转草稿触发搜索索引同步', 500);
     return {
       statusCode: 200,
       data,
     };
   }
-} 
+}

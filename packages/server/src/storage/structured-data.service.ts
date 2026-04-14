@@ -27,7 +27,9 @@ export class StructuredDataService implements OnModuleInit {
   async ensureSchema() {
     await this.store.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
     for (const sequence of this.numericIdSequences) {
-      await this.store.query(`CREATE SEQUENCE IF NOT EXISTS ${sequence.name} START WITH 1 INCREMENT BY 1`);
+      await this.store.query(
+        `CREATE SEQUENCE IF NOT EXISTS ${sequence.name} START WITH 1 INCREMENT BY 1`,
+      );
     }
 
     await this.store.query(`
@@ -494,7 +496,9 @@ export class StructuredDataService implements OnModuleInit {
       deduped.set(String(key), record);
     }
     if (deduped.size !== (records || []).length) {
-      this.logger.warn(`检测到重复${label}，已按最新记录覆盖旧记录: ${(records || []).length - deduped.size} 条`);
+      this.logger.warn(
+        `检测到重复${label}，已按最新记录覆盖旧记录: ${(records || []).length - deduped.size} 条`,
+      );
     }
     return Array.from(deduped.values());
   }
@@ -674,7 +678,9 @@ export class StructuredDataService implements OnModuleInit {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       toolCount:
-        row.tool_count === undefined || row.tool_count === null ? undefined : Number(row.tool_count),
+        row.tool_count === undefined || row.tool_count === null
+          ? undefined
+          : Number(row.tool_count),
     };
   }
 
@@ -797,7 +803,8 @@ export class StructuredDataService implements OnModuleInit {
       title: row.title,
       content: row.content || '',
       author: row.author || undefined,
-      parent_id: row.parent_id === null || row.parent_id === undefined ? null : Number(row.parent_id),
+      parent_id:
+        row.parent_id === null || row.parent_id === undefined ? null : Number(row.parent_id),
       library_id:
         row.library_id === null || row.library_id === undefined ? null : Number(row.library_id),
       type: row.document_type,
@@ -910,11 +917,12 @@ export class StructuredDataService implements OnModuleInit {
     return `websearch_to_tsquery('simple', ${paramRef})`;
   }
 
-  private buildWeightedSearchVectorSql(parts: Array<{ expr: string; weight: 'A' | 'B' | 'C' | 'D' }>) {
+  private buildWeightedSearchVectorSql(
+    parts: Array<{ expr: string; weight: 'A' | 'B' | 'C' | 'D' }>,
+  ) {
     return parts
       .map(
-        (part) =>
-          `setweight(to_tsvector('simple', COALESCE(${part.expr}, '')), '${part.weight}')`,
+        (part) => `setweight(to_tsvector('simple', COALESCE(${part.expr}, '')), '${part.weight}')`,
       )
       .join(' || ');
   }
@@ -1089,10 +1097,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceUsers(users: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_users RESTART IDENTITY CASCADE');
-    for (const user of this.dedupeRecords(
-      users,
-      '用户 ID',
-      (user) => String(this.normalizeNumericId(user?.id) ?? ''),
+    for (const user of this.dedupeRecords(users, '用户 ID', (user) =>
+      String(this.normalizeNumericId(user?.id) ?? ''),
     )) {
       if (user?.id === undefined || !user?.name) {
         continue;
@@ -1204,10 +1210,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceVisits(visits: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_visits CASCADE');
-    for (const visit of this.dedupeRecords(
-      visits,
-      '访问统计键',
-      (visit) => (visit?.date && visit?.pathname ? `${visit.date}::${visit.pathname}` : ''),
+    for (const visit of this.dedupeRecords(visits, '访问统计键', (visit) =>
+      visit?.date && visit?.pathname ? `${visit.date}::${visit.pathname}` : '',
     )) {
       if (!visit?.date || !visit?.pathname) {
         continue;
@@ -1233,10 +1237,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceCategories(categories: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_categories CASCADE');
-    for (const category of this.dedupeRecords(
-      categories,
-      '分类 ID',
-      (category) => String(this.normalizeNumericId(category?.id) ?? ''),
+    for (const category of this.dedupeRecords(categories, '分类 ID', (category) =>
+      String(this.normalizeNumericId(category?.id) ?? ''),
     )) {
       if (category?.id === undefined || !category?.name) {
         continue;
@@ -1271,10 +1273,8 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceArticles(articles: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_article_tags');
     await this.store.query('TRUNCATE TABLE vanblog_articles CASCADE');
-    for (const article of this.dedupeRecords(
-      articles,
-      '文章 ID',
-      (article) => String(this.normalizeNumericId(article?.id) ?? ''),
+    for (const article of this.dedupeRecords(articles, '文章 ID', (article) =>
+      String(this.normalizeNumericId(article?.id) ?? ''),
     )) {
       if (article?.id === undefined || !article?.title) {
         continue;
@@ -1328,10 +1328,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceDrafts(drafts: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_drafts CASCADE');
-    for (const draft of this.dedupeRecords(
-      drafts,
-      '草稿 ID',
-      (draft) => String(this.normalizeNumericId(draft?.id) ?? ''),
+    for (const draft of this.dedupeRecords(drafts, '草稿 ID', (draft) =>
+      String(this.normalizeNumericId(draft?.id) ?? ''),
     )) {
       if (draft?.id === undefined || !draft?.title) {
         continue;
@@ -1390,10 +1388,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceNavCategories(categories: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_nav_categories CASCADE');
-    for (const category of this.dedupeRecords(
-      categories,
-      '导航分类 ID',
-      (category) => String(category?._id || category?.id || ''),
+    for (const category of this.dedupeRecords(categories, '导航分类 ID', (category) =>
+      String(category?._id || category?.id || ''),
     )) {
       const id = String(category?._id || category?.id || '');
       if (!id || !category?.name) {
@@ -1421,10 +1417,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceNavTools(tools: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_nav_tools CASCADE');
-    for (const tool of this.dedupeRecords(
-      tools,
-      '导航工具 ID',
-      (tool) => String(tool?._id || tool?.id || ''),
+    for (const tool of this.dedupeRecords(tools, '导航工具 ID', (tool) =>
+      String(tool?._id || tool?.id || ''),
     )) {
       const id = String(tool?._id || tool?.id || '');
       if (!id || !tool?.name || !tool?.url || !tool?.categoryId) {
@@ -1487,10 +1481,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replacePipelines(pipelines: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_pipelines CASCADE');
-    for (const pipeline of this.dedupeRecords(
-      pipelines,
-      '流水线 ID',
-      (pipeline) => String(this.normalizeNumericId(pipeline?.id) ?? ''),
+    for (const pipeline of this.dedupeRecords(pipelines, '流水线 ID', (pipeline) =>
+      String(this.normalizeNumericId(pipeline?.id) ?? ''),
     )) {
       if (pipeline?.id === undefined || !pipeline?.name || !pipeline?.eventName) {
         continue;
@@ -1585,10 +1577,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceDocuments(documents: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_documents CASCADE');
-    for (const document of this.dedupeRecords(
-      documents,
-      '文档 ID',
-      (document) => String(this.normalizeNumericId(document?.id) ?? ''),
+    for (const document of this.dedupeRecords(documents, '文档 ID', (document) =>
+      String(this.normalizeNumericId(document?.id) ?? ''),
     )) {
       if (document?.id === undefined || !document?.title) {
         continue;
@@ -1625,10 +1615,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceMoments(moments: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_moments CASCADE');
-    for (const moment of this.dedupeRecords(
-      moments,
-      '动态 ID',
-      (moment) => String(this.normalizeNumericId(moment?.id) ?? ''),
+    for (const moment of this.dedupeRecords(moments, '动态 ID', (moment) =>
+      String(this.normalizeNumericId(moment?.id) ?? ''),
     )) {
       if (moment?.id === undefined || !moment?.content) {
         continue;
@@ -1657,10 +1645,8 @@ export class StructuredDataService implements OnModuleInit {
 
   private async replaceMindMaps(mindMaps: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_mindmaps CASCADE');
-    for (const mindMap of this.dedupeRecords(
-      mindMaps,
-      '脑图 ID',
-      (mindMap) => String(mindMap?._id || mindMap?.id || ''),
+    for (const mindMap of this.dedupeRecords(mindMaps, '脑图 ID', (mindMap) =>
+      String(mindMap?._id || mindMap?.id || ''),
     )) {
       const id = String(mindMap?._id || mindMap?.id || '');
       if (!id || !mindMap?.title) {
@@ -1886,7 +1872,10 @@ export class StructuredDataService implements OnModuleInit {
     return Number(result.rows[0]?.next_id || 1);
   }
 
-  private async ensureSequenceAtLeast(sequenceName: string, numericId: number | string | null | undefined) {
+  private async ensureSequenceAtLeast(
+    sequenceName: string,
+    numericId: number | string | null | undefined,
+  ) {
     const parsedId = Number(numericId);
     if (!Number.isFinite(parsedId)) {
       return;
@@ -2930,24 +2919,24 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   async updateTokenDisabledByToken(token: string, disabled: boolean) {
-    await this.store.query(
-      `UPDATE vanblog_tokens SET disabled = $2 WHERE token = $1`,
-      [token, disabled],
-    );
+    await this.store.query(`UPDATE vanblog_tokens SET disabled = $2 WHERE token = $1`, [
+      token,
+      disabled,
+    ]);
   }
 
   async updateTokenDisabledByName(name: string, disabled: boolean) {
-    await this.store.query(
-      `UPDATE vanblog_tokens SET disabled = $2 WHERE name = $1`,
-      [name, disabled],
-    );
+    await this.store.query(`UPDATE vanblog_tokens SET disabled = $2 WHERE name = $1`, [
+      name,
+      disabled,
+    ]);
   }
 
   async updateTokenDisabledByRecordId(recordId: string, disabled: boolean) {
-    await this.store.query(
-      `UPDATE vanblog_tokens SET disabled = $2 WHERE source_record_id = $1`,
-      [recordId, disabled],
-    );
+    await this.store.query(`UPDATE vanblog_tokens SET disabled = $2 WHERE source_record_id = $1`, [
+      recordId,
+      disabled,
+    ]);
   }
 
   async updateTokensDisabledByUserFilters(filters: {
@@ -3055,11 +3044,7 @@ export class StructuredDataService implements OnModuleInit {
     return await this.listStatics();
   }
 
-  async queryStatics(option: {
-    staticType?: string;
-    page?: number;
-    pageSize?: number;
-  }) {
+  async queryStatics(option: { staticType?: string; page?: number; pageSize?: number }) {
     const params: any[] = [];
     const clauses: string[] = [];
     if (option.staticType) {
@@ -3181,19 +3166,20 @@ export class StructuredDataService implements OnModuleInit {
     return value === null || value === undefined ? null : Number(value);
   }
 
-  async listArticles(options: {
-    includeHidden?: boolean;
-    includeDelete?: boolean;
-    limit?: number;
-    orderBy?: string;
-  } = {}) {
+  async listArticles(
+    options: {
+      includeHidden?: boolean;
+      includeDelete?: boolean;
+      limit?: number;
+      orderBy?: string;
+    } = {},
+  ) {
     const { params, whereSql } = this.buildArticleWhere({
       includeHidden: options.includeHidden,
       includeDelete: options.includeDelete,
     });
     const orderSql = options.orderBy || 'a.created_at DESC';
-    const limitSql =
-      options.limit && options.limit > 0 ? `LIMIT ${Math.trunc(options.limit)}` : '';
+    const limitSql = options.limit && options.limit > 0 ? `LIMIT ${Math.trunc(options.limit)}` : '';
     const result = await this.store.query(
       `
         ${this.getArticleSelectSql()}
@@ -3562,7 +3548,10 @@ export class StructuredDataService implements OnModuleInit {
 
       const rowTimestamp = row.last_modified ? new Date(row.last_modified).getTime() : NaN;
       const currentLatest = latestTimestamp ? new Date(latestTimestamp).getTime() : NaN;
-      if (!Number.isNaN(rowTimestamp) && (Number.isNaN(currentLatest) || rowTimestamp > currentLatest)) {
+      if (
+        !Number.isNaN(rowTimestamp) &&
+        (Number.isNaN(currentLatest) || rowTimestamp > currentLatest)
+      ) {
         latestTimestamp = new Date(rowTimestamp).toISOString();
       }
     }
@@ -3674,7 +3663,9 @@ export class StructuredDataService implements OnModuleInit {
     );
 
     return result.rows.reduce<Record<string, any[]>>((acc, row: any) => {
-      acc[String(row.year)] = (row.articles || []).map((article: any) => this.mapArticleRow(article));
+      acc[String(row.year)] = (row.articles || []).map((article: any) =>
+        this.mapArticleRow(article),
+      );
       return acc;
     }, {});
   }
@@ -3766,11 +3757,15 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   private async refreshTagAggregates(tagNames: string[]) {
-    const normalizedNames = [...new Set((tagNames || []).map((item) => item?.trim()).filter(Boolean))];
+    const normalizedNames = [
+      ...new Set((tagNames || []).map((item) => item?.trim()).filter(Boolean)),
+    ];
     if (!normalizedNames.length) {
       return;
     }
-    await this.store.query(`DELETE FROM vanblog_tags WHERE name = ANY($1::text[])`, [normalizedNames]);
+    await this.store.query(`DELETE FROM vanblog_tags WHERE name = ANY($1::text[])`, [
+      normalizedNames,
+    ]);
     await this.store.query(
       `
         INSERT INTO vanblog_tags (name, article_count, created_at, updated_at)
@@ -4308,11 +4303,13 @@ export class StructuredDataService implements OnModuleInit {
     };
   }
 
-  async listDocuments(options: {
-    includeDelete?: boolean;
-    libraryId?: number;
-    type?: 'library' | 'document';
-  } = {}) {
+  async listDocuments(
+    options: {
+      includeDelete?: boolean;
+      libraryId?: number;
+      type?: 'library' | 'document';
+    } = {},
+  ) {
     const params: any[] = [];
     const clauses: string[] = [];
     if (!options.includeDelete) {
@@ -4584,8 +4581,8 @@ export class StructuredDataService implements OnModuleInit {
         FROM vanblog_mindmaps
         ${whereSql}
         ORDER BY ${option.sortCreatedAt ? 'created_at' : 'updated_at'} ${
-        option.sortCreatedAt === 'asc' ? 'ASC' : 'DESC'
-      }
+          option.sortCreatedAt === 'asc' ? 'ASC' : 'DESC'
+        }
         ${limitSql}
       `,
       dataParams,
@@ -4596,12 +4593,16 @@ export class StructuredDataService implements OnModuleInit {
     };
   }
 
-  async getMindMapById(id: string) {
+  async getMindMapById(id: string, includeDeleted = false) {
+    const clauses = ['id = $1'];
+    if (!includeDeleted) {
+      clauses.push('deleted = FALSE');
+    }
     const result = await this.store.query(
       `
         SELECT *
         FROM vanblog_mindmaps
-        WHERE id = $1 AND deleted = FALSE
+        WHERE ${clauses.join(' AND ')}
         LIMIT 1
       `,
       [id],

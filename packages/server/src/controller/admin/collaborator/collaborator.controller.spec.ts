@@ -36,4 +36,27 @@ describe('CollaboratorController', () => {
     expect(JSON.stringify(result)).not.toContain('writer-login');
     expect(JSON.stringify(result)).not.toContain('editor-login');
   });
+
+  it('deletes a collaborator when the route param is a string id', async () => {
+    const userProvider = {
+      deleteCollaborator: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const tokenProvider = {
+      disableAllCollaborator: jest.fn().mockResolvedValue(undefined),
+    };
+    const controller = new CollaboratorController(
+      userProvider as any,
+      {} as any,
+      tokenProvider as any,
+    );
+
+    const result = await controller.deleteCollaboratorById('2' as any);
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { acknowledged: true },
+    });
+    expect(userProvider.deleteCollaborator).toHaveBeenCalledWith(2);
+    expect(tokenProvider.disableAllCollaborator).toHaveBeenCalledTimes(1);
+  });
 });

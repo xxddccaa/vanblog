@@ -20,6 +20,15 @@ export class CollaboratorController {
     private readonly metaProvider: MetaProvider,
     private readonly tokenProvider: TokenProvider,
   ) {}
+
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get()
   async getAllCollaborators() {
     const data = await this.userProvider.getAllCollaborators();
@@ -57,7 +66,14 @@ export class CollaboratorController {
         message: '演示站禁止修改此项！',
       };
     }
-    const data = await this.userProvider.deleteCollaborator(id);
+    const collaboratorId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!collaboratorId) {
+      return {
+        statusCode: 400,
+        message: '协作者 ID 无效',
+      };
+    }
+    const data = await this.userProvider.deleteCollaborator(collaboratorId);
     await this.tokenProvider.disableAllCollaborator();
     return {
       statusCode: 200,

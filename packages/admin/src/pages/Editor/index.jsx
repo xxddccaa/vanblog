@@ -44,6 +44,12 @@ export default function () {
   const type = searchParams.get('type') || 'article';
   const id = searchParams.get('id');
   const cacheKey = useMemo(() => `${type}-${id || '0'}`, [type, id]);
+  const ensureSuccess = useCallback((result, fallbackMessage) => {
+    if (result?.statusCode !== 200) {
+      throw new Error(result?.message || fallbackMessage || '保存失败');
+    }
+    return result?.data;
+  }, []);
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown);
@@ -97,7 +103,11 @@ export default function () {
           return false;
         }
         // 不让空白本地缓存覆盖掉服务端已有正文。
-        if (typeof cacheObj?.content === 'string' && cacheObj.content.trim() === '' && data?.content) {
+        if (
+          typeof cacheObj?.content === 'string' &&
+          cacheObj.content.trim() === '' &&
+          data?.content
+        ) {
           clear();
           return false;
         }
@@ -119,7 +129,7 @@ export default function () {
         console.log('[缓存检查]', {
           serverTime: new Date(serverTime).toLocaleString(),
           cacheTime: new Date(cacheTime).toLocaleString(),
-          useCache: cacheTime > serverTime
+          useCache: cacheTime > serverTime,
         });
         if (serverTime > cacheTime) {
           clear();
@@ -227,42 +237,47 @@ export default function () {
   const saveFn = async () => {
     const v = value;
     setLoading(true);
-    if (type == 'article') {
-      await updateArticle(currObj?.id, { content: v });
-      await fetchData();
-      message.success('保存成功！');
-    } else if (type == 'draft') {
-      await updateDraft(currObj?.id, { content: v });
-      await fetchData();
-      message.success('保存成功！');
-    } else if (type == 'about') {
-      await updateAbout({ content: v });
-      await fetchData();
-      message.success('保存成功！');
-    } else if (type == 'moment') {
-      if (currObj?.id) {
-        // 更新现有动态
-        await updateMoment(currObj.id, { content: v });
+    try {
+      if (type == 'article') {
+        ensureSuccess(await updateArticle(currObj?.id, { content: v }), '保存文章失败');
         await fetchData();
         message.success('保存成功！');
-      } else {
-        // 创建新动态
-        const newMoment = await createMoment({ content: v });
-        message.success('发布成功！');
-        // 更新当前页面状态，使其变为编辑模式
-        setCurrObj(newMoment.data);
-        // 更新URL但不刷新页面
-        history.replace(`/editor?type=moment&id=${newMoment.data.id}`);
+      } else if (type == 'draft') {
+        ensureSuccess(await updateDraft(currObj?.id, { content: v }), '保存草稿失败');
+        await fetchData();
+        message.success('保存成功！');
+      } else if (type == 'about') {
+        ensureSuccess(await updateAbout({ content: v }), '保存关于页失败');
+        await fetchData();
+        message.success('保存成功！');
+      } else if (type == 'moment') {
+        if (currObj?.id) {
+          // 更新现有动态
+          ensureSuccess(await updateMoment(currObj.id, { content: v }), '保存动态失败');
+          await fetchData();
+          message.success('保存成功！');
+        } else {
+          // 创建新动态
+          const newMoment = ensureSuccess(await createMoment({ content: v }), '发布动态失败');
+          message.success('发布成功！');
+          // 更新当前页面状态，使其变为编辑模式
+          setCurrObj(newMoment);
+          // 更新URL但不刷新页面
+          history.replace(`/editor?type=moment&id=${newMoment.id}`);
+        }
+      } else if (type == 'document') {
+        ensureSuccess(await updateDocument(currObj?.id, { content: v }), '保存文档失败');
+        await fetchData();
+        message.success('保存成功！');
       }
-    } else if (type == 'document') {
-      await updateDocument(currObj?.id, { content: v });
-      await fetchData();
-      message.success('保存成功！');
+      if (editorConfig.afterSave && editorConfig.afterSave == 'goBack') {
+        history.go(-1);
+      }
+    } catch (error) {
+      message.error(error?.message || '保存失败！');
+    } finally {
+      setLoading(false);
     }
-    if (editorConfig.afterSave && editorConfig.afterSave == 'goBack') {
-      history.go(-1);
-    }
-    setLoading(false);
   };
 
   const handleSave = async () => {
@@ -273,7 +288,7 @@ export default function () {
       });
       return;
     }
-    
+
     // 对于动态类型，直接保存不需要复杂的检查
     if (type == 'moment') {
       Modal.confirm({
@@ -282,19 +297,19 @@ export default function () {
       });
       return;
     }
-    
+
     // 对于文章和草稿类型，直接保存不需要确认弹窗
     if (type == 'article' || type == 'draft') {
       saveFn();
       return;
     }
-    
+
     // 对于文档类型，直接保存不需要复杂的检查
     if (type == 'document') {
       saveFn();
       return;
     }
-    
+
     // 对于其他类型（如about），保留原有的确认逻辑
     // 先检查一下有没有 more .
     let hasMore = true;
@@ -303,10 +318,7 @@ export default function () {
         hasMore = false;
       }
     }
-    let hasTags =
-      ['article', 'draft'].includes(type) &&
-      currObj?.tags &&
-      currObj.tags.length > 0;
+    let hasTags = ['article', 'draft'].includes(type) && currObj?.tags && currObj.tags.length > 0;
     if (type == 'about') {
       hasTags = true;
     }
@@ -371,14 +383,16 @@ export default function () {
     <Menu
       items={[
         // 重置按钮：moment类型不显示
-        type != 'moment' ? {
-          key: 'resetBtn',
-          label: '重置',
-          onClick: () => {
-            setValue(currObj?.content || '');
-            message.success('重置为初始值成功！');
-          },
-        } : null,
+        type != 'moment'
+          ? {
+              key: 'resetBtn',
+              label: '重置',
+              onClick: () => {
+                setValue(currObj?.content || '');
+                message.success('重置为初始值成功！');
+              },
+            }
+          : null,
         type != 'about' && type != 'moment'
           ? {
               key: 'updateModalBtn',
@@ -548,13 +562,15 @@ export default function () {
           },
         },
         // 帮助文档：moment、draft、article和document类型不显示
-        ['moment', 'draft', 'article', 'document'].includes(type) ? null : {
-          key: 'helpBtn',
-          label: '帮助文档',
-          onClick: () => {
-            window.open('https://vanblog.mereith.com/feature/basic/editor.html', '_blank');
-          },
-        },
+        ['moment', 'draft', 'article', 'document'].includes(type)
+          ? null
+          : {
+              key: 'helpBtn',
+              label: '帮助文档',
+              onClick: () => {
+                window.open('https://vanblog.mereith.com/feature/basic/editor.html', '_blank');
+              },
+            },
       ]}
     ></Menu>
   );
@@ -565,8 +581,24 @@ export default function () {
       header={{
         title: (
           <Space>
-            <span title={type == 'about' ? '关于' : type == 'moment' ? (currObj?.id ? '编辑动态' : '创建动态') : currObj?.title}>
-              {type == 'about' ? '关于' : type == 'moment' ? (currObj?.id ? '编辑动态' : '创建动态') : currObj?.title}
+            <span
+              title={
+                type == 'about'
+                  ? '关于'
+                  : type == 'moment'
+                    ? currObj?.id
+                      ? '编辑动态'
+                      : '创建动态'
+                    : currObj?.title
+              }
+            >
+              {type == 'about'
+                ? '关于'
+                : type == 'moment'
+                  ? currObj?.id
+                    ? '编辑动态'
+                    : '创建动态'
+                  : currObj?.title}
             </span>
             {type != 'about' && type != 'moment' && type != 'document' && (
               <>
@@ -580,9 +612,7 @@ export default function () {
                 <Tag color="green">{typeMap[type] || '-'}</Tag>
               </>
             )}
-            {type == 'moment' && (
-              <Tag color="orange">{typeMap[type] || '-'}</Tag>
-            )}
+            {type == 'moment' && <Tag color="orange">{typeMap[type] || '-'}</Tag>}
           </Space>
         ),
         extra: [

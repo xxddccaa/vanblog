@@ -1,4 +1,10 @@
-import { getAllCategories, getTags, updateArticle, updateDraft, updateDocument, getLibraries } from '@/services/van-blog/api';
+import {
+  getAllCategories,
+  getTags,
+  updateArticle,
+  updateDraft,
+  updateDocument,
+} from '@/services/van-blog/api';
 import { ModalForm, ProFormDateTimePicker, ProFormSelect, ProFormText } from '@ant-design/pro-form';
 import { Form, message, Modal } from 'antd';
 import moment from 'moment';
@@ -12,6 +18,20 @@ export default function (props: {
 }) {
   const { currObj, setLoading, type, onFinish } = props;
   const [form] = Form.useForm();
+  const ensureSuccess = (result: any, fallbackMessage: string) => {
+    if (result?.statusCode !== 200) {
+      throw new Error(result?.message || fallbackMessage);
+    }
+    return result?.data;
+  };
+  const buildSubmitValues = (values: any) => {
+    if (type === 'document') {
+      return {
+        title: values?.title,
+      };
+    }
+    return values;
+  };
   useEffect(() => {
     if (form && form.setFieldsValue) form.setFieldsValue(currObj);
   }, [currObj]);
@@ -29,6 +49,7 @@ export default function (props: {
       submitTimeout={3000}
       initialValues={currObj || {}}
       onFinish={async (values) => {
+        const submitValues = buildSubmitValues(values);
         if (location.hostname == 'blog-demo.mereith.com' && type != 'draft') {
           Modal.info({
             title: '演示站禁止修改信息！',
@@ -40,26 +61,29 @@ export default function (props: {
           return false;
         }
         setLoading(true);
-        if (type == 'article') {
-          await updateArticle(currObj?.id, values);
-          onFinish();
-          message.success('修改文章成功！');
-          setLoading(false);
-        } else if (type == 'draft') {
-          await updateDraft(currObj?.id, values);
-          onFinish();
-          message.success('修改草稿成功！');
-          setLoading(false);
-        } else if (type == 'document') {
-          await updateDocument(currObj?.id, values);
-          onFinish();
-          message.success('修改文档成功！');
-          setLoading(false);
-        } else {
+        try {
+          if (type == 'article') {
+            ensureSuccess(await updateArticle(currObj?.id, values), '修改文章失败！');
+            onFinish();
+            message.success('修改文章成功！');
+          } else if (type == 'draft') {
+            ensureSuccess(await updateDraft(currObj?.id, values), '修改草稿失败！');
+            onFinish();
+            message.success('修改草稿成功！');
+          } else if (type == 'document') {
+            ensureSuccess(await updateDocument(currObj?.id, submitValues), '修改文档失败！');
+            onFinish();
+            message.success('修改文档成功！');
+          } else {
+            return false;
+          }
+          return true;
+        } catch (error: any) {
+          message.error(error?.message || '修改失败！');
           return false;
+        } finally {
+          setLoading(false);
         }
-
-        return true;
       }}
       layout="horizontal"
       labelCol={{ span: 6 }}
@@ -71,8 +95,8 @@ export default function (props: {
         required
         id="title"
         name="title"
-        label="文章标题"
-        placeholder="请输入标题"
+        label={type === 'document' ? '文档标题' : '文章标题'}
+        placeholder={type === 'document' ? '请输入文档标题' : '请输入标题'}
         rules={[{ required: true, message: '这是必填项' }]}
       />
       {type !== 'document' && <AuthorField />}
@@ -113,30 +137,15 @@ export default function (props: {
           }}
         />
       )}
-      <ProFormDateTimePicker
-        width="md"
-        name="createdAt"
-        id="createdAt"
-        label="创建时间"
-        placeholder="不填默认为此刻"
-        fieldProps={{
-          showTime: true,
-        }}
-      />
-      {type === 'document' && (
-        <ProFormSelect
+      {type !== 'document' && (
+        <ProFormDateTimePicker
           width="md"
-          name="library_id"
-          label="所属文档库"
-          placeholder="请选择所属文档库"
-          request={async () => {
-            const { data: libraries } = await getLibraries();
-            return libraries?.map((lib) => {
-              return {
-                label: lib.title,
-                value: lib.id,
-              };
-            }) || [];
+          name="createdAt"
+          id="createdAt"
+          label="创建时间"
+          placeholder="不填默认为此刻"
+          fieldProps={{
+            showTime: true,
           }}
         />
       )}

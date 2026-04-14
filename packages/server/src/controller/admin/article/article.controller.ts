@@ -127,7 +127,15 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
-    
+
+    const articleId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!articleId) {
+      return {
+        statusCode: 400,
+        message: '文章 ID 无效',
+      };
+    }
+
     // 验证自定义路径名不能为纯数字
     if (updateArticleDto.pathname && /^\d+$/.test(updateArticleDto.pathname.trim())) {
       return {
@@ -135,28 +143,31 @@ export class ArticleController {
         message: '自定义路径名不能为纯数字，避免与文章ID冲突',
       };
     }
-    
+
     // 验证自定义路径名的唯一性
     if (updateArticleDto.pathname && updateArticleDto.pathname.trim()) {
-      const existingArticle = await this.articleProvider.getByPathName(updateArticleDto.pathname.trim(), 'admin');
-      if (existingArticle && existingArticle.id !== id) {
+      const existingArticle = await this.articleProvider.getByPathName(
+        updateArticleDto.pathname.trim(),
+        'admin',
+      );
+      if (existingArticle && existingArticle.id !== articleId) {
         return {
           statusCode: 400,
           message: `自定义路径名 "${updateArticleDto.pathname.trim()}" 已被其他文章使用，请使用不同的路径名`,
         };
       }
     }
-    
+
     // 获取更新前的文章信息，用于增量渲染比较
-    const beforeObj = await this.articleProvider.getById(id, 'admin');
-    const data = await this.articleProvider.updateById(id, updateArticleDto);
-    
+    const beforeObj = await this.articleProvider.getById(articleId, 'admin');
+    const data = await this.articleProvider.updateById(articleId, updateArticleDto);
+
     // 使用精确的增量渲染，而不是全量渲染
-    this.isrProvider.activeArticleById(id, 'update', beforeObj);
-    
+    this.isrProvider.activeArticleById(articleId, 'update', beforeObj);
+
     // 异步同步标签数据，不影响用户体验
     this.syncTagsAsync('文章更新');
-    
+
     return {
       statusCode: 200,
       data,
@@ -171,7 +182,7 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
-    
+
     // 验证自定义路径名不能为纯数字
     if (createArticleDto.pathname && /^\d+$/.test(createArticleDto.pathname.trim())) {
       return {
@@ -179,10 +190,13 @@ export class ArticleController {
         message: '自定义路径名不能为纯数字，避免与文章ID冲突',
       };
     }
-    
+
     // 验证自定义路径名的唯一性
     if (createArticleDto.pathname && createArticleDto.pathname.trim()) {
-      const existingArticle = await this.articleProvider.getByPathName(createArticleDto.pathname.trim(), 'admin');
+      const existingArticle = await this.articleProvider.getByPathName(
+        createArticleDto.pathname.trim(),
+        'admin',
+      );
       if (existingArticle) {
         return {
           statusCode: 400,
@@ -190,15 +204,15 @@ export class ArticleController {
         };
       }
     }
-    
+
     const data = await this.articleProvider.create(createArticleDto);
-    
+
     // 使用精确的增量渲染，而不是全量渲染
     this.isrProvider.activeArticleById(data.id, 'create');
-    
+
     // 异步同步标签数据，不影响用户体验
     this.syncTagsAsync('文章创建');
-    
+
     return {
       statusCode: 200,
       data,
@@ -222,17 +236,25 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
-    
+
+    const articleId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!articleId) {
+      return {
+        statusCode: 400,
+        message: '文章 ID 无效',
+      };
+    }
+
     // 获取删除前的文章信息
-    const beforeObj = await this.articleProvider.getById(id, 'admin');
-    const data = await this.articleProvider.deleteById(id);
-    
+    const beforeObj = await this.articleProvider.getById(articleId, 'admin');
+    const data = await this.articleProvider.deleteById(articleId);
+
     // 删除文章后按受影响页面做定向刷新，避免整站缓存联动失效
-    this.isrProvider.activeArticleById(id, 'delete', beforeObj);
-    
+    this.isrProvider.activeArticleById(articleId, 'delete', beforeObj);
+
     // 异步同步标签数据，不影响用户体验
     this.syncTagsAsync('文章删除');
-    
+
     return {
       statusCode: 200,
       data,
@@ -247,16 +269,16 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
-    
+
     try {
       const data = await this.articleProvider.reorderArticleIds();
-      
+
       // 触发全量ISR更新，因为文章ID都变了
       this.isrProvider.activeAll('文章重排', undefined, { forceActice: true });
-      
+
       // 异步同步标签数据
       this.syncTagsAsync('文章重排');
-      
+
       return {
         statusCode: 200,
         data,
@@ -277,13 +299,13 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
-    
+
     try {
       const data = await this.articleProvider.fixNegativeIds();
       this.isrProvider.activeAll('修复负数文章 ID 触发增量渲染！', undefined, {
         forceActice: true,
       });
-      
+
       return {
         statusCode: 200,
         data,
@@ -304,13 +326,13 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
-    
+
     try {
       const data = await this.articleProvider.cleanupTempIds();
       this.isrProvider.activeAll('清理临时文章 ID 触发增量渲染！', undefined, {
         forceActice: true,
       });
-      
+
       return {
         statusCode: 200,
         data,
@@ -331,13 +353,13 @@ export class ArticleController {
         message: '演示站禁止修改此项！',
       };
     }
-    
+
     try {
       const data = await this.articleProvider.cleanupDuplicatePathnames();
       this.isrProvider.activeAll('清理重复路径名触发增量渲染！', undefined, {
         forceActice: true,
       });
-      
+
       return {
         statusCode: 200,
         data,

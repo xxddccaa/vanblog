@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM node:24.14.1-alpine AS base
 ENV NODE_OPTIONS="--max_old_space_size=7168"
 ENV CI=1
@@ -16,16 +17,17 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/re
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \
-    && pnpm config set fetch-timeout 600000 -g \
-    && pnpm config set child-concurrency 1 -g
+    && pnpm config set fetch-timeout 600000 -g
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/server/package.json ./packages/server/
-RUN pnpm install --filter @vanblog/server... --frozen-lockfile --child-concurrency=1
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --filter @vanblog/server... --frozen-lockfile
 
 FROM base AS builder
 COPY packages/server ./packages/server
-RUN pnpm --filter @vanblog/server build \
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm --filter @vanblog/server build \
     && pnpm deploy --legacy --filter @vanblog/server --prod /prod/server
 
 FROM base AS runner

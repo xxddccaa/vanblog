@@ -13,6 +13,15 @@ import { ApiToken } from 'src/provider/swagger/token';
 @Controller('/api/admin/pipeline')
 export class PipelineController {
   constructor(private readonly pipelineProvider: PipelineProvider) {}
+
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get()
   async getAllPipelines(@Req() req: Request) {
     const pipelines = await this.pipelineProvider.getAll();
@@ -30,7 +39,13 @@ export class PipelineController {
   }
   @Get('/:id')
   async getPipelineById(@Param('id') idString: string) {
-    const id = parseInt(idString);
+    const id = this.normalizePositiveInt(idString, 0, Number.MAX_SAFE_INTEGER);
+    if (!id) {
+      return {
+        statusCode: 400,
+        message: '流水线 ID 无效',
+      };
+    }
     const pipeline = await this.pipelineProvider.getPipelineById(id);
     return {
       statusCode: 200,
@@ -47,7 +62,13 @@ export class PipelineController {
   }
   @Delete('/:id')
   async deletePipelineById(@Param('id') idString: string) {
-    const id = parseInt(idString);
+    const id = this.normalizePositiveInt(idString, 0, Number.MAX_SAFE_INTEGER);
+    if (!id) {
+      return {
+        statusCode: 400,
+        message: '流水线 ID 无效',
+      };
+    }
     const pipeline = await this.pipelineProvider.deletePipelineById(id);
     return {
       statusCode: 200,
@@ -59,7 +80,13 @@ export class PipelineController {
     @Param('id') idString: string,
     @Body() updatePipelineDto: CreatePipelineDto,
   ) {
-    const id = parseInt(idString);
+    const id = this.normalizePositiveInt(idString, 0, Number.MAX_SAFE_INTEGER);
+    if (!id) {
+      return {
+        statusCode: 400,
+        message: '流水线 ID 无效',
+      };
+    }
     const pipeline = await this.pipelineProvider.updatePipelineById(id, updatePipelineDto);
     return {
       statusCode: 200,
@@ -68,7 +95,13 @@ export class PipelineController {
   }
   @Post('/trigger/:id')
   async triggerPipelineById(@Param('id') idString: string, @Body() triggerDto: { input?: any }) {
-    const id = parseInt(idString);
+    const id = this.normalizePositiveInt(idString, 0, Number.MAX_SAFE_INTEGER);
+    if (!id) {
+      return {
+        statusCode: 400,
+        message: '流水线 ID 无效',
+      };
+    }
     const result = await this.pipelineProvider.triggerById(id, triggerDto.input);
     return {
       statusCode: 200,

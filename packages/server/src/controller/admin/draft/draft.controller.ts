@@ -84,7 +84,7 @@ export class DraftController {
       statusCode: 200,
       data: {
         total: data.length,
-        data: data.map(draft => ({
+        data: data.map((draft) => ({
           id: draft.id,
           title: draft.title,
           category: draft.category,
@@ -98,7 +98,14 @@ export class DraftController {
 
   @Get('/:id')
   async getOne(@Param('id') id: number) {
-    const data = await this.draftProvider.findById(id);
+    const draftId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!draftId) {
+      return {
+        statusCode: 400,
+        message: '草稿 ID 无效',
+      };
+    }
+    const data = await this.draftProvider.findById(draftId);
     return {
       statusCode: 200,
       data,
@@ -107,6 +114,13 @@ export class DraftController {
 
   @Put('/:id')
   async update(@Param('id') id: number, @Body() updateDto: UpdateDraftDto) {
+    const draftId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!draftId) {
+      return {
+        statusCode: 400,
+        message: '草稿 ID 无效',
+      };
+    }
     const result = await this.pipelineProvider.dispatchEvent('beforeUpdateDraft', updateDto);
     if (result.length > 0) {
       const lastResult = result[result.length - 1];
@@ -115,8 +129,8 @@ export class DraftController {
         updateDto = lastOuput;
       }
     }
-    const data = await this.draftProvider.updateById(id, updateDto);
-    const updated = await this.draftProvider.findById(id);
+    const data = await this.draftProvider.updateById(draftId, updateDto);
+    const updated = await this.draftProvider.findById(draftId);
     this.pipelineProvider.dispatchEvent('afterUpdateDraft', updated);
     this.searchIndexProvider.generateSearchIndex('更新草稿触发搜索索引同步', 500);
     return {
@@ -155,7 +169,15 @@ export class DraftController {
         message: '演示站禁止发布草稿！',
       };
     }
-    
+
+    const draftId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!draftId) {
+      return {
+        statusCode: 400,
+        message: '草稿 ID 无效',
+      };
+    }
+
     // 验证自定义路径名不能为纯数字
     if (publishDto.pathname && /^\d+$/.test(publishDto.pathname.trim())) {
       return {
@@ -163,11 +185,14 @@ export class DraftController {
         message: '自定义路径名不能为纯数字，避免与文章ID冲突',
       };
     }
-    
+
     // 验证自定义路径名的唯一性
     if (publishDto.pathname && publishDto.pathname.trim()) {
       // 检查是否已有文章使用了相同的自定义路径名
-      const existingArticleByPathname = await this.articleProvider.getByPathName(publishDto.pathname.trim(), 'admin');
+      const existingArticleByPathname = await this.articleProvider.getByPathName(
+        publishDto.pathname.trim(),
+        'admin',
+      );
       if (existingArticleByPathname) {
         return {
           statusCode: 400,
@@ -175,7 +200,7 @@ export class DraftController {
         };
       }
     }
-    
+
     const result = await this.pipelineProvider.dispatchEvent('beforeUpdateArticle', publishDto);
     if (result.length > 0) {
       const lastResult = result[result.length - 1];
@@ -184,13 +209,13 @@ export class DraftController {
         publishDto = lastOuput;
       }
     }
-    const data = await this.draftProvider.publish(id, publishDto);
+    const data = await this.draftProvider.publish(draftId, publishDto);
     this.isrProvider.activeAll('发布草稿触发增量渲染！');
     this.pipelineProvider.dispatchEvent('afterUpdateArticle', data);
-    
+
     // 异步同步标签数据，不影响用户体验
     this.syncTagsAsync('草稿发布');
-    
+
     return {
       statusCode: 200,
       data,
@@ -198,8 +223,15 @@ export class DraftController {
   }
   @Delete('/:id')
   async delete(@Param('id') id: number) {
-    const toDeleteDraft = await this.draftProvider.findById(id);
-    const data = await this.draftProvider.deleteById(id);
+    const draftId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!draftId) {
+      return {
+        statusCode: 400,
+        message: '草稿 ID 无效',
+      };
+    }
+    const toDeleteDraft = await this.draftProvider.findById(draftId);
+    const data = await this.draftProvider.deleteById(draftId);
     this.pipelineProvider.dispatchEvent('deleteDraft', toDeleteDraft);
     this.searchIndexProvider.generateSearchIndex('删除草稿触发搜索索引同步', 500);
     return {
@@ -229,16 +261,27 @@ export class DraftController {
   }
 
   @Post('/:id/convert-to-document')
-  async convertToDocument(@Param('id') id: number, @Body() body: { libraryId: number; parentId?: number }) {
+  async convertToDocument(
+    @Param('id') id: number,
+    @Body() body: { libraryId: number; parentId?: number },
+  ) {
     if (config?.demo == true || config?.demo == 'true') {
       return {
         statusCode: 401,
         message: '演示站禁止此操作！',
       };
     }
-    
+
+    const draftId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!draftId) {
+      return {
+        statusCode: 400,
+        message: '草稿 ID 无效',
+      };
+    }
+
     // 获取要转换的草稿
-    const draft = await this.draftProvider.getById(id);
+    const draft = await this.draftProvider.getById(draftId);
     if (!draft) {
       return {
         statusCode: 404,

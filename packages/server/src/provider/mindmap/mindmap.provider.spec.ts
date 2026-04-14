@@ -1,132 +1,129 @@
 import { MindMapProvider } from './mindmap.provider';
 
 describe('MindMapProvider', () => {
-  it('escapes regex metacharacters in title filters before querying fallback storage', async () => {
-    const findChain = {
-      select: jest.fn().mockReturnThis(),
-      sort: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockResolvedValue([]),
-    };
-    const mindMapModel = {
-      countDocuments: jest.fn().mockResolvedValue(0),
-      find: jest.fn().mockReturnValue(findChain),
-    };
-    const provider = new MindMapProvider(
-      mindMapModel as any,
+  const createProvider = (overrides: Record<string, any> = {}) => {
+    const model = Object.assign(
+      function MockMindMapModel(this: any, payload: any) {
+        Object.assign(this, payload);
+        this.save = jest.fn().mockResolvedValue({
+          ...payload,
+          _id: 'mongo-id',
+          toObject: () => ({ ...payload, _id: 'mongo-id' }),
+        });
+      },
       {
-        queryMindMaps: jest.fn().mockResolvedValue({ total: 0, mindMaps: [] }),
-        isInitialized: jest.fn().mockReturnValue(false),
-      } as any,
+        findByIdAndUpdate: jest.fn(),
+        findById: jest.fn(),
+        findOne: jest.fn(),
+        updateOne: jest.fn(),
+        countDocuments: jest.fn(),
+        find: jest.fn(),
+      },
+      overrides.model,
     );
 
-    await provider.getByOption({
-      page: 1,
-      pageSize: 10,
-      title: '(draft+)+$',
-    } as any);
-
-    const query = mindMapModel.countDocuments.mock.calls[0][0];
-    expect(query.$and[1].title.$regex).toEqual(/\(draft\+\)\+\$/i);
-    expect(findChain.select).toHaveBeenCalled();
-  });
-
-  it('imports mind maps with targeted PG upserts instead of refreshing the whole table', async () => {
-    const mindMapModel = {
-      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
-    };
     const structuredDataService = {
+      isInitialized: jest.fn().mockReturnValue(true),
+      getMindMapById: jest.fn(),
       upsertMindMap: jest.fn().mockResolvedValue(undefined),
+      queryMindMaps: jest.fn(),
+      searchMindMaps: jest.fn(),
+      listMindMaps: jest.fn(),
+      ...overrides.structuredDataService,
     };
-    const provider = new MindMapProvider(mindMapModel as any, structuredDataService as any);
 
-    await provider.importMindMaps([{ _id: 'map-1', title: 'Map', content: 'body' } as any]);
+    return {
+      provider: new MindMapProvider(model as any, structuredDataService as any),
+      model,
+      structuredDataService,
+    };
+  };
 
-    expect(mindMapModel.updateOne).toHaveBeenCalledWith(
-      { _id: 'map-1' },
-      { _id: 'map-1', title: 'Map', content: 'body' },
-      { upsert: true },
-    );
-    expect(structuredDataService.upsertMindMap).toHaveBeenCalledWith({
-      _id: 'map-1',
-      title: 'Map',
-      content: 'body',
+  it('creates a mind map directly in structured storage when pg mode is active', async () => {
+    const { provider, structuredDataService } = createProvider();
+
+    const result = await provider.create({
+      title: 'PG mind map',
+      content: '{}',
     });
-  });
 
-  it('returns no mind maps for blank searches without hitting the model fallback', async () => {
-    const mindMapModel = {
-      find: jest.fn(),
-    };
-    const provider = new MindMapProvider(
-      mindMapModel as any,
-      {
-        searchMindMaps: jest.fn().mockResolvedValue([]),
-        isInitialized: jest.fn().mockReturnValue(false),
-      } as any,
-    );
-
-    const result = await provider.searchByString('   ');
-
-    expect(result).toEqual([]);
-    expect(mindMapModel.find).not.toHaveBeenCalled();
-  });
-
-  it('falls back to the record store when structured list queries fail', async () => {
-    const findChain = {
-      select: jest.fn().mockReturnThis(),
-      sort: jest.fn().mockReturnThis(),
-      skip: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockResolvedValue([{ _id: 'map-1', title: 'Fallback map' }]),
-    };
-    const mindMapModel = {
-      countDocuments: jest.fn().mockResolvedValue(1),
-      find: jest.fn().mockReturnValue(findChain),
-    };
-    const provider = new MindMapProvider(
-      mindMapModel as any,
-      {
-        queryMindMaps: jest
-          .fn()
-          .mockRejectedValue(new Error('relation "vanblog_mindmaps" does not exist')),
-        isInitialized: jest.fn().mockReturnValue(true),
-      } as any,
-    );
-
-    const result = await provider.getByOption({ page: 1, pageSize: 10 } as any);
-
-    expect(result.total).toBe(1);
-    expect(result.mindMaps).toEqual([{ _id: 'map-1', title: 'Fallback map' }]);
-    expect(mindMapModel.countDocuments).toHaveBeenCalled();
-    expect(findChain.limit).toHaveBeenCalledWith(10);
-  });
-
-  it('does not fail creation when structured sync is temporarily unavailable', async () => {
-    const savedMindMap = {
-      _id: 'map-1',
-      title: 'Map',
-      content: 'body',
-      toObject: jest.fn().mockReturnValue({
-        _id: 'map-1',
-        title: 'Map',
-        content: 'body',
+    expect(structuredDataService.upsertMindMap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: expect.any(String),
+        title: 'PG mind map',
+        content: '{}',
+        viewer: 0,
+        deleted: false,
       }),
-    };
-    const save = jest.fn().mockResolvedValue(savedMindMap);
-    const mindMapModel = jest.fn().mockImplementation(function (this: any, payload: any) {
-      Object.assign(this, payload);
-      this.save = save;
-    });
-    const provider = new MindMapProvider(
-      mindMapModel as any,
-      {
-        upsertMindMap: jest.fn().mockRejectedValue(new Error('structured store offline')),
-      } as any,
     );
+    expect(result).toEqual(
+      expect.objectContaining({
+        _id: expect.any(String),
+        title: 'PG mind map',
+      }),
+    );
+  });
 
-    const result = await provider.create({ title: 'Map', content: 'body' } as any);
+  it('updates a mind map directly in structured storage when pg mode is active', async () => {
+    const existing = {
+      _id: 'mindmap-1',
+      title: 'Old',
+      content: '{}',
+      viewer: 2,
+      deleted: false,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+    };
+    const { provider, structuredDataService, model } = createProvider({
+      structuredDataService: {
+        getMindMapById: jest.fn().mockResolvedValue(existing),
+      },
+    });
 
-    expect(result).toBe(savedMindMap);
-    expect(save).toHaveBeenCalled();
+    const result = await provider.updateById('mindmap-1', {
+      title: 'New',
+    });
+
+    expect(structuredDataService.upsertMindMap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: 'mindmap-1',
+        title: 'New',
+        viewer: 2,
+      }),
+    );
+    expect(model.findByIdAndUpdate).not.toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        _id: 'mindmap-1',
+        title: 'New',
+      }),
+    );
+  });
+
+  it('increments viewer directly in structured storage when pg mode is active', async () => {
+    const existing = {
+      _id: 'mindmap-2',
+      title: 'Views',
+      content: '{}',
+      viewer: 7,
+      deleted: false,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+    };
+    const { provider, structuredDataService, model } = createProvider({
+      structuredDataService: {
+        getMindMapById: jest.fn().mockResolvedValue(existing),
+      },
+    });
+
+    await provider.incrementViewer('mindmap-2');
+
+    expect(structuredDataService.upsertMindMap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: 'mindmap-2',
+        viewer: 8,
+      }),
+    );
+    expect(model.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 });

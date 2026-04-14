@@ -90,6 +90,41 @@ describe('ArticleController', () => {
     expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
   });
 
+  it('allows updating an article when the pathname stays unchanged on a string route param', async () => {
+    const beforeObj = {
+      id: 7,
+      pathname: 'stable-post',
+      title: 'old title',
+    };
+    const { controller, articleProvider, isrProvider } = createController({
+      articleProvider: {
+        getById: jest.fn().mockResolvedValue(beforeObj),
+        getByPathName: jest.fn().mockResolvedValue(beforeObj),
+        updateById: jest
+          .fn()
+          .mockResolvedValue({ acknowledged: true, matchedCount: 1, modifiedCount: 1 }),
+      },
+    });
+
+    const result = await controller.updateArticle(
+      '7' as any,
+      {
+        title: 'new title',
+        pathname: 'stable-post',
+      } as any,
+    );
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { acknowledged: true, matchedCount: 1, modifiedCount: 1 },
+    });
+    expect(articleProvider.updateById).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ title: 'new title', pathname: 'stable-post' }),
+    );
+    expect(isrProvider.activeArticleById).toHaveBeenCalledWith(7, 'update', beforeObj);
+  });
+
   it('clamps oversized admin article pagination before querying the provider', async () => {
     const { controller, articleProvider } = createController({
       articleProvider: {
@@ -286,7 +321,9 @@ describe('ArticleController', () => {
       data: { updated: 12 },
     });
     expect(articleProvider.reorderArticleIds).toHaveBeenCalledTimes(1);
-    expect(isrProvider.activeAll).toHaveBeenCalledWith('文章重排', undefined, { forceActice: true });
+    expect(isrProvider.activeAll).toHaveBeenCalledWith('文章重排', undefined, {
+      forceActice: true,
+    });
     expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
     expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
   });
@@ -350,11 +387,9 @@ describe('ArticleController', () => {
       message: '已清理 2 篇文章的重复路径名',
     });
     expect(articleProvider.cleanupDuplicatePathnames).toHaveBeenCalledTimes(1);
-    expect(isrProvider.activeAll).toHaveBeenCalledWith(
-      '清理重复路径名触发增量渲染！',
-      undefined,
-      { forceActice: true },
-    );
+    expect(isrProvider.activeAll).toHaveBeenCalledWith('清理重复路径名触发增量渲染！', undefined, {
+      forceActice: true,
+    });
     expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
   });
 });

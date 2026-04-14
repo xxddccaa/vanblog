@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM node:24.14.1-alpine AS runner
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app/waline
@@ -24,7 +25,8 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/re
     && pnpm config set fetch-timeout 600000 -g
 
 COPY packages/waline/package.json ./package.json
-RUN pnpm install --prod --ignore-scripts \
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --prod --ignore-scripts \
     && apk del python3 py3-setuptools make g++
 
 WORKDIR /app

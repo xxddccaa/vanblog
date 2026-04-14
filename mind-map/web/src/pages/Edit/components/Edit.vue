@@ -244,7 +244,6 @@ export default {
     this.$bus.$on('localStorageExceeded', this.onLocalStorageExceeded)
     window.addEventListener('resize', this.handleResize)
     this.$bus.$on('showDownloadTip', this.showDownloadTip)
-    this.webTip()
   },
   beforeDestroy() {
     this.$bus.$off('execCommand', this.execCommand)
@@ -625,20 +624,6 @@ export default {
       const file = dt.files && dt.files[0]
       if (!file) return
       this.$bus.$emit('importFile', file)
-    },
-
-    // 网页版试用提示
-    webTip() {
-      const storageKey = 'webUseTip'
-      const data = localStorage.getItem(storageKey)
-      if (data) {
-        return
-      }
-      this.showDownloadTip(
-        '重要提示',
-        '网页版已暂停更新，部分功能缺失，请下载客户端获得完整体验~'
-      )
-      localStorage.setItem(storageKey, 1)
     },
 
     showDownloadTip(title, desc) {

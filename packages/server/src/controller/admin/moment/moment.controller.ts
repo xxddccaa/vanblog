@@ -1,14 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Put,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { config } from 'src/config';
 import { CreateMomentDto, UpdateMomentDto } from 'src/types/moment.dto';
@@ -28,6 +18,14 @@ export class MomentController {
     private readonly isrProvider: ISRProvider,
   ) {}
 
+  private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
+    const parsed = parseInt(String(value ?? ''), 10);
+    if (Number.isNaN(parsed) || parsed <= 0) {
+      return fallback;
+    }
+    return Math.min(parsed, max);
+  }
+
   @Get('/')
   async getByOption(
     @Query('page') page: number,
@@ -37,8 +35,8 @@ export class MomentController {
     @Query('endTime') endTime?: string,
   ) {
     const option = {
-      page: parseInt(page as any),
-      pageSize: parseInt(pageSize as any),
+      page: this.normalizePositiveInt(page, 1, 100000),
+      pageSize: this.normalizePositiveInt(pageSize, 10, 100),
       sortCreatedAt,
       startTime,
       endTime,
@@ -52,7 +50,14 @@ export class MomentController {
 
   @Get('/:id')
   async getOneById(@Param('id') id: string) {
-    const data = await this.momentProvider.getById(parseInt(id), 'admin');
+    const momentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!momentId) {
+      return {
+        statusCode: 400,
+        message: '动态 ID 无效',
+      };
+    }
+    const data = await this.momentProvider.getById(momentId, 'admin');
     return {
       statusCode: 200,
       data,
@@ -67,7 +72,14 @@ export class MomentController {
         message: '演示站禁止修改动态！',
       };
     }
-    const data = await this.momentProvider.updateById(id, updateDto);
+    const momentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!momentId) {
+      return {
+        statusCode: 400,
+        message: '动态 ID 无效',
+      };
+    }
+    const data = await this.momentProvider.updateById(momentId, updateDto);
     this.isrProvider.activeAll('更新动态触发增量渲染！');
     return {
       statusCode: 200,
@@ -96,11 +108,18 @@ export class MomentController {
     if (config?.demo == true || config?.demo == 'true') {
       return { statusCode: 401, message: '演示站禁止删除动态！' };
     }
-    await this.momentProvider.deleteById(id);
+    const momentId = this.normalizePositiveInt(id, 0, Number.MAX_SAFE_INTEGER);
+    if (!momentId) {
+      return {
+        statusCode: 400,
+        message: '动态 ID 无效',
+      };
+    }
+    await this.momentProvider.deleteById(momentId);
     this.isrProvider.activeAll('删除动态触发增量渲染！');
     return {
       statusCode: 200,
       data: { success: true },
     };
   }
-} 
+}
