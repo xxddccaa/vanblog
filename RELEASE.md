@@ -33,6 +33,12 @@
 - 支持 `latest`、版本别名、不可变标签三套引用方式。
 - AI 可以直接按文档执行，不需要猜测镜像命名规则。
 
+文档约定补充：
+
+- 正式发布时，3 类 tag 都要推送：不可变 tag、版本别名 tag、`latest`
+- 但仓库 release 文档、GitHub Wiki、GitHub Release 里的 `docker compose` 示例，默认使用 **版本别名 tag**，也就是 `vanblog-<service>-<version>`
+- 只有在你明确需要“锁死到某一个镜像构建结果”时，才在文档外或私下部署单里改用带 `image-id` 的不可变 tag
+
 ## 2. 镜像命名规范
 
 镜像仓库默认使用：
@@ -67,8 +73,8 @@ kevinchina/deeplearning:vanblog-waline-v1.0.0-<image-id>
 
 建议引用优先级：
 
-- **生产环境**：优先使用不可变 tag，即 `vanblog-<service>-<version>-<image-id>`
-- **人工查看**：可使用 `vanblog-<service>-<version>`
+- **对外文档 / Wiki / Release 示例**：默认使用版本别名 tag，即 `vanblog-<service>-<version>`
+- **需要严格锁定构建结果时**：使用不可变 tag，即 `vanblog-<service>-<version>-<image-id>`
 - **临时体验**：可使用 `vanblog-<service>-latest`
 
 ## 3. 当前镜像清单
@@ -164,6 +170,11 @@ bash scripts/release-images.sh \
   --repo kevinchina/deeplearning \
   --push
 ```
+
+正式推送时的约定：
+
+- 要把不可变 tag、版本别名 tag、`latest` 三套 tag 都推送上去
+- 但版本文档、Wiki、GitHub Release 中给用户展示的 compose 示例，默认写版本别名 tag，例如 `kevinchina/deeplearning:vanblog-caddy-v1.0.0`
 
 ### 5.3 常用参数
 
