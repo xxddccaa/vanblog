@@ -53,10 +53,10 @@ cp .env.release.example .env
 - `EMAIL`：你的邮箱，用于证书相关场景
 - `VANBLOG_RELEASE_SUFFIX`：本次要部署的镜像版本，例如 `v1.0.0-<image-id>`
 - `VAN_BLOG_WALINE_DATABASE_URL`：Waline 独立 PostgreSQL 数据库连接串，默认是同实例下的 `waline` 数据库
-- `WALINE_JWT_TOKEN`：替换成高强度随机字符串
+- `WALINE_JWT_TOKEN`：可选；如需手动指定 Waline 与内部控制面共用密钥可填写，否则留空让系统首次启动时自动生成
 - 目录挂载项：按你的服务器实际目录调整
 
-缺失 `WALINE_JWT_TOKEN` 时，镜像 compose 会直接拒绝启动，避免 Waline 以弱默认密钥上线。
+如果 `WALINE_JWT_TOKEN` 留空，镜像运行时会在首次启动时自动生成一份共享密钥，并写入日志目录中的 `waline.jwt` 文件，后续重启会继续复用这份密钥。
 
 可选但和本文这轮缓存改造直接相关的配置：
 
@@ -77,6 +77,7 @@ cp .env.release.example .env
 - 默认 HTTP-only 模式只需要暴露 `80`
 - 如果叠加 `docker-compose.https.yml`，再额外暴露 `443`
 - 默认官方拓扑会自动启用 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361`，不需要再额外开放 Waline 端口
+- 默认镜像拓扑会把共享 Waline JWT 落盘到日志目录中的 `waline.jwt`，因此不要删除该文件所在的数据卷，除非你明确知道会导致 Waline 登录态与控制令牌轮换
 
 ## 4. 首次部署
 

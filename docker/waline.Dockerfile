@@ -30,6 +30,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     && apk del python3 py3-setuptools make g++
 
 WORKDIR /app
+COPY docker/shared/ensure-waline-jwt.cjs ./ensure-waline-jwt.cjs
 COPY scripts/fix-waline-dashboard.js ./scripts/fix-waline-dashboard.js
 COPY docker/waline/entrypoint.sh ./waline/entrypoint.sh
 COPY docker/waline/control-auth.cjs ./waline/control-auth.cjs
@@ -40,6 +41,8 @@ WORKDIR /app/waline
 ENV NODE_ENV=production
 ENV PORT=8360
 ENV WALINE_CONTROL_PORT=8361
+
+VOLUME /var/log
 
 EXPOSE 8360 8361
 CMD ["sh", "entrypoint.sh"]

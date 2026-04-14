@@ -152,16 +152,10 @@ test('docker compose wires cross-container control endpoints', () => {
   );
   assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_API_TOKEN:\s+\$\{VAN_BLOG_CLOUDFLARE_API_TOKEN:-\}/);
   assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_ZONE_ID:\s+\$\{VAN_BLOG_CLOUDFLARE_ZONE_ID:-\}/);
-  assert.match(compose, /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}/);
-  assert.match(compose, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}/);
-  assert.match(
-    composeImage,
-    /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
-  );
-  assert.match(
-    composeImage,
-    /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
-  );
+  assert.match(compose, /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-\}/);
+  assert.match(compose, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-\}/);
+  assert.match(composeImage, /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-\}/);
+  assert.match(composeImage, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-\}/);
   assert.match(
     manualCompose,
     /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
@@ -170,6 +164,10 @@ test('docker compose wires cross-container control endpoints', () => {
     manualCompose,
     /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
   );
+  assert.match(compose, /website:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
+  assert.match(compose, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
+  assert.match(composeImage, /website:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
+  assert.match(composeImage, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
 });
 
 test('waline service is configured to use standalone postgres credentials', () => {
@@ -199,11 +197,11 @@ test('release env example and deploy guide document optional Cloudflare purge cr
   assert.match(releaseDoc, /siteInfo\.baseUrl/);
   assert.match(releaseDoc, /Cloudflare URL purge 会被跳过/);
   assert.match(releaseEnv, /VAN_BLOG_WALINE_DATABASE_URL=postgresql:\/\/postgres:postgres@postgres:5432\/waline/);
-  assert.match(releaseEnv, /WALINE_JWT_TOKEN=replace-with-a-long-random-string/);
+  assert.match(releaseEnv, /WALINE_JWT_TOKEN=$/m);
   assert.match(deployDoc, /VAN_BLOG_WALINE_DATABASE_URL/);
   assert.match(deployDoc, /VANBLOG_WALINE_CONTROL_URL/);
-  assert.match(deployDoc, /缺失 `WALINE_JWT_TOKEN` 时，镜像 compose 会直接拒绝启动/);
-  assert.match(releaseDoc, /缺失 `WALINE_JWT_TOKEN` 时，Waline 相关容器会拒绝启动/);
+  assert.match(deployDoc, /首次启动时自动生成一份共享密钥/);
+  assert.match(releaseDoc, /waline\.jwt/);
 });
 
 test('caddy routes requests to the split services', () => {

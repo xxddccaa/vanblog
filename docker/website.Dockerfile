@@ -21,8 +21,11 @@ COPY packages/website/next.config.js ./packages/website/next.config.js
 COPY packages/website/public ./packages/website/public
 COPY packages/website/package.json ./packages/website/package.json
 COPY packages/website/.next/static ./packages/website/.next/static
+COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
 COPY docker/website/control-auth.cjs ./control-auth.cjs
 COPY docker/website/runner.cjs ./runner.cjs
+COPY docker/website/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 ENV NODE_ENV=production
 ENV PORT=3001
@@ -31,5 +34,7 @@ ENV VAN_BLOG_SERVER_URL="http://server:3000"
 ENV VAN_BLOG_REVALIDATE="false"
 ENV VAN_BLOG_ALLOW_DOMAINS="pic.mereith.com"
 
+VOLUME /var/log
+
 EXPOSE 3001 3011
-CMD ["node", "runner.cjs"]
+CMD ["sh", "entrypoint.sh"]

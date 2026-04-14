@@ -58,6 +58,9 @@ RUN if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
 
 COPY --from=builder /prod/server/ ./
 COPY --from=builder /app/packages/server/dist ./dist
+COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
+COPY docker/server/entrypoint.sh /app/server/entrypoint.sh
+RUN chmod +x /app/server/entrypoint.sh
 
 ENV NODE_ENV=production
 ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
@@ -72,4 +75,4 @@ VOLUME /var/log
 VOLUME /root/.config/aliyunpan
 
 EXPOSE 3000
-CMD ["node", "dist/src/main.js"]
+CMD ["sh", "entrypoint.sh"]

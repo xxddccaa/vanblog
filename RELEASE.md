@@ -410,13 +410,13 @@ docker compose -f docker-compose.image.yml up -d
 
 还应确认线上站点元数据中的 `siteInfo.baseUrl` 已经设置成最终公网地址；如果这个值缺失，tag purge 仍可发送，但 Cloudflare URL purge 会被跳过。
 
-如果这次发布涉及评论系统，也应确认服务器 `.env` 中已经设置：
+如果这次发布涉及评论系统，也应确认服务器 `.env` 中已经包含或知晓下面这些值：
 
 - `VAN_BLOG_WALINE_DATABASE_URL`
 - `WALINE_JWT_TOKEN`
 
 当前官方拓扑默认让 `server` 通过 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361` 管理独立 Waline 容器，并让 Waline 使用同一个 PostgreSQL 实例里的独立 `waline` 数据库。
-缺失 `WALINE_JWT_TOKEN` 时，Waline 相关容器会拒绝启动，避免生产环境回退到弱默认密钥。
+如果 `WALINE_JWT_TOKEN` 留空，当前镜像会在首次启动时自动生成一份共享密钥，并写入日志目录中的 `waline.jwt` 文件，后续重启继续复用。
 
 ### 6.2 使用版本别名或 latest
 

@@ -52,7 +52,7 @@ services:
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
       VANBLOG_WALINE_CONTROL_URL: http://waline:8361
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
-      WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
+      WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
     volumes:
       - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
@@ -94,6 +94,8 @@ services:
       timeout: 10s
       retries: 10
       start_period: 20s
+    volumes:
+      - ${VANBLOG_LOG_DIR:-./log}:/var/log
 
   admin:
     build:
@@ -128,10 +130,12 @@ services:
       PG_DB: ${VAN_BLOG_WALINE_DB:-waline}
       PG_USER: ${POSTGRES_USER:-postgres}
       PG_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      JWT_TOKEN: ${WALINE_JWT_TOKEN:-vanblog-change-me}
+      JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
     expose:
       - '8360'
       - '8361'
+    volumes:
+      - ${VANBLOG_LOG_DIR:-./log}:/var/log
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1']
       interval: 15s

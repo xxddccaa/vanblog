@@ -42,7 +42,7 @@ services:
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
       VANBLOG_WALINE_CONTROL_URL: http://waline:8361
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
-      WALINE_JWT_TOKEN: "replace-with-a-strong-random-string"
+      WALINE_JWT_TOKEN: ""
     volumes:
       - ./data/static:/app/static
       - ./log:/var/log
@@ -68,10 +68,12 @@ services:
       VAN_BLOG_SERVER_URL: http://server:3000
       VAN_BLOG_REVALIDATE: "false"
       VAN_BLOG_ALLOW_DOMAINS: pic.mereith.com
-      WALINE_JWT_TOKEN: "replace-with-a-strong-random-string"
+      WALINE_JWT_TOKEN: ""
     expose:
       - "3001"
       - "3011"
+    volumes:
+      - ./log:/var/log
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1"]
       interval: 15s
@@ -108,10 +110,12 @@ services:
       PG_DB: waline
       PG_USER: postgres
       PG_PASSWORD: postgres
-      JWT_TOKEN: "replace-with-a-strong-random-string"
+      JWT_TOKEN: ""
     expose:
       - "8360"
       - "8361"
+    volumes:
+      - ./log:/var/log
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1"]
       interval: 15s

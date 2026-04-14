@@ -14,7 +14,7 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 | `VAN_BLOG_WALINE_DATABASE_URL` | `server` | Waline 独立 PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/waline` |
 | `VANBLOG_WALINE_CONTROL_URL` | `server` | Waline 控制端点 | `http://waline:8361` |
 | `VAN_BLOG_ALLOW_DOMAINS` | `website` | Next.js 允许加载的外部图片域名，多个用逗号分隔 | `pic.mereith.com` |
-| `WALINE_JWT_TOKEN` | `server` / `website` / `waline` | Waline 与内部控制面共用的 JWT 密钥；生产镜像部署必须显式设置，源码/host-dev 调试默认 `vanblog-change-me` | 生产镜像无默认值 |
+| `WALINE_JWT_TOKEN` | `server` / `website` / `waline` | Waline 与内部控制面共用的 JWT 密钥；留空时镜像运行时会自动生成并落盘到日志目录中的 `waline.jwt`，也可手动指定覆盖 | 可留空自动生成 |
 | `VANBLOG_HTTP_PORT` | `caddy` | 宿主机暴露的 HTTP 端口 | `80` |
 | `VANBLOG_HTTPS_PORT` | `caddy` | 使用 `docker-compose.https.yml` 时暴露的 HTTPS 端口 | `443` |
 | `VAN_BLOG_CADDY_MANAGE_HTTPS` | `server` | 是否允许后台管理内置 Caddy HTTPS 行为 | `false` |

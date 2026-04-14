@@ -39,9 +39,9 @@ cp .env.release.example .env
 - `EMAIL`
 - `VANBLOG_DOCKER_REPO`
 - `VANBLOG_RELEASE_SUFFIX`
-- `WALINE_JWT_TOKEN`
+- `WALINE_JWT_TOKEN`（可选）
 
-未设置 `WALINE_JWT_TOKEN` 时，`docker-compose.image.yml` 会直接报错退出，避免 Waline 以默认弱密钥启动。
+未设置 `WALINE_JWT_TOKEN` 时，`docker-compose.image.yml` 会在首次启动时自动生成一份共享密钥，并写入日志目录中的 `waline.jwt` 文件。
 
 ### 2. 启动服务
 

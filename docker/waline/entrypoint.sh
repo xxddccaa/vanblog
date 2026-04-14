@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+WALINE_SHARED_JWT="$(node /app/ensure-waline-jwt.cjs WALINE_JWT_TOKEN JWT_TOKEN)"
+export WALINE_JWT_TOKEN="${WALINE_SHARED_JWT}"
+export JWT_TOKEN="${WALINE_SHARED_JWT}"
+
 if [ -n "${PG_HOST:-}" ] && [ -n "${PG_DB:-}" ] && [ "${WALINE_SKIP_PG_BOOTSTRAP:-false}" != "true" ]; then
   export PGPASSWORD="${PG_PASSWORD:-}"
   MAINTENANCE_DB="${PG_BOOTSTRAP_DATABASE:-postgres}"
