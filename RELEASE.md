@@ -13,6 +13,7 @@
 
 - **源码部署**：本地或调试环境直接使用 `docker-compose.yml`，从当前仓库源码构建并启动。
 - **镜像部署**：生产环境或分发场景使用 `docker-compose.image.yml`，直接拉取已经发布好的镜像。
+- **简化 latest 部署**：如果只是想在另一台机器上快速复用当前目录结构，也可以使用 `docker-compose.latest.yml`，直接拉取 `latest` 标签。
 
 推荐的正式发布流程：
 
@@ -38,6 +39,7 @@
 - 正式发布时，3 类 tag 都要推送：不可变 tag、版本别名 tag、`latest`
 - 但仓库 release 文档、GitHub Wiki、GitHub Release 里的 `docker compose` 示例，默认使用 **版本别名 tag**，也就是 `vanblog-<service>-<version>`
 - 只有在你明确需要“锁死到某一个镜像构建结果”时，才在文档外或私下部署单里改用带 `image-id` 的不可变 tag
+- 如果要提供“当前目录直接拉 latest”的简化部署入口，应维护 `docker-compose.latest.yml`，并保持服务清单、卷挂载和健康检查与当前镜像拓扑一致
 
 ## 2. 镜像命名规范
 

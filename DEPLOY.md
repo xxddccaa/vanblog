@@ -11,6 +11,10 @@
 - `docker-compose.image.yml`
 - `.env.release.example` 复制出的 `.env`
 
+如果你不想维护 `.env` 和 `VANBLOG_RELEASE_SUFFIX`，只是想要一个“当前目录挂载 + 直接拉 latest 镜像”的最简模板，也可以使用仓库里的：
+
+- `docker-compose.latest.yml`
+
 这样做的好处是：
 
 - 服务器不需要 Node.js / pnpm 构建环境
@@ -31,6 +35,7 @@
 把仓库中的这些文件带到服务器：
 
 - `docker-compose.image.yml`
+- `docker-compose.latest.yml`（仅在你想直接使用 latest 简化模板时需要）
 - `docker-compose.https.yml`（仅在你想启用内置 HTTPS 时需要）
 - `.env.release.example`
 - 如有自定义配置，可额外带上自己的 `.env`
@@ -74,6 +79,8 @@ cp .env.release.example .env
 - 默认官方拓扑会自动启用 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361`，不需要再额外开放 Waline 端口
 
 ## 4. 首次部署
+
+### 4.1 推荐方式：版本化镜像部署
 
 ```bash
 docker compose -f docker-compose.image.yml pull
@@ -122,6 +129,26 @@ http://<你的域名或 IP>/admin/init
 - Cloudflare tag purge 仍可工作
 - Cloudflare URL purge 会跳过
 - RSS 中依赖站点域名的绝对链接也可能不完整
+
+### 4.2 可选：直接使用 latest 简化模板
+
+如果你明确接受 `latest` 会随着后续发布移动，想直接使用当前目录映射与固定字段模板，可以：
+
+```bash
+docker compose -f docker-compose.latest.yml pull
+docker compose -f docker-compose.latest.yml up -d
+```
+
+这个模板的特点：
+
+- 直接写死 `kevinchina/deeplearning:vanblog-*-latest`
+- 继续使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
+- 不需要额外准备 `.env`
+
+但也请注意：
+
+- 它更适合快速部署或个人维护场景
+- 如果你希望上线内容可精确回滚、可审计，仍然优先使用 `docker-compose.image.yml`
 
 ### 可选：启用内置 Caddy HTTPS
 
