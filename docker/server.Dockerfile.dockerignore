@@ -3,7 +3,11 @@
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
 !tsconfig.base.json
+!docker/
+!docker/shared/
+!docker/shared/ensure-waline-jwt.cjs
+!docker/server/
+!docker/server/entrypoint.sh
 !packages/
 !packages/server/
 !packages/server/**
-

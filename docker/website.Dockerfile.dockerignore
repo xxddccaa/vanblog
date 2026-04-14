@@ -1,6 +1,10 @@
 **
 !docker/
+!docker/shared/
+!docker/shared/ensure-waline-jwt.cjs
 !docker/website/
+!docker/website/entrypoint.sh
+!docker/website/control-auth.cjs
 !docker/website/runner.cjs
 !packages/
 !packages/website/
@@ -13,4 +17,3 @@
 !packages/website/.next/standalone/**
 !packages/website/.next/static/
 !packages/website/.next/static/**
-
