@@ -21,10 +21,10 @@ export class TagProvider {
 
   /**
    * 同步标签数据 - 从文章中提取标签并更新Tag表
-   * 这个方法用于初始化或修复标签数据
+   * 文章变更时结构化文章表已同步，这里只需要重建标签聚合并清缓存
    */
   async syncTagsFromArticles() {
-    await this.structuredDataService.refreshArticlesFromRecordStore();
+    await this.structuredDataService.rebuildArticleTagAggregates();
     await this.clearTagCache();
   }
 

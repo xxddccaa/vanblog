@@ -13,12 +13,25 @@ import { Button, Space, message, Tooltip } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { batchExport, batchDelete } from '@/services/van-blog/batch';
 
+const MAX_DRAFT_PAGE_SIZE = 100;
+const DEFAULT_DRAFT_PAGE_SIZE = 20;
+const DRAFT_PAGE_SIZE_OPTIONS = ['10', '20', '50', '100'];
+const DRAFT_PAGE_SIZE_STORAGE_KEY = 'van-blog-admin-num-draft-page-size';
+
+const normalizeDraftPageSize = (value, fallback = DEFAULT_DRAFT_PAGE_SIZE) => {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.min(Math.max(parsed, 10), MAX_DRAFT_PAGE_SIZE);
+};
+
 export default () => {
   const actionRef = useRef();
   const [colKeys, setColKeys] = useState(draftKeysObj);
   const [simplePage, setSimplePage] = useState(false);
   const [simpleSearch, setSimpleSearch] = useState(false);
-  const [defaultPageSize, setDefaultPageSize] = useState(20);
+  const [defaultPageSize, setDefaultPageSize] = useState(DEFAULT_DRAFT_PAGE_SIZE);
   const [pageSize, setPageSize] = useNum(defaultPageSize, 'draft-page-size');
   const [showConvertToDocumentModal, setShowConvertToDocumentModal] = useState(false);
   const [convertingDraft, setConvertingDraft] = useState(null);
@@ -47,13 +60,22 @@ export default () => {
     const fetchSiteInfo = async () => {
       try {
         const { data } = await getSiteInfo();
-        const configuredPageSize = data?.adminDraftPageSize || 20;
+        const configuredPageSize = normalizeDraftPageSize(
+          data?.adminDraftPageSize,
+          DEFAULT_DRAFT_PAGE_SIZE,
+        );
         setDefaultPageSize(configuredPageSize);
-        // 如果本地存储中没有自定义值，使用配置的默认值
-        const localStorageKey = 'draft-page-size';
-        const storedPageSize = localStorage.getItem(localStorageKey);
+        const storedPageSize = localStorage.getItem(DRAFT_PAGE_SIZE_STORAGE_KEY);
         if (!storedPageSize) {
           setPageSize(configuredPageSize);
+          return;
+        }
+        const normalizedStoredPageSize = normalizeDraftPageSize(
+          storedPageSize,
+          configuredPageSize,
+        );
+        if (normalizedStoredPageSize !== parseInt(storedPageSize, 10)) {
+          setPageSize(normalizedStoredPageSize);
         }
       } catch (error) {
         console.error('获取站点配置失败:', error);
@@ -177,7 +199,7 @@ export default () => {
               }
             }
             option.page = current;
-            option.pageSize = pageSize;
+            option.pageSize = normalizeDraftPageSize(pageSize, defaultPageSize);
             const { data } = await getDraftsByOption(option);
             const { drafts, total } = data;
 
@@ -206,12 +228,13 @@ export default () => {
             span: searchSpan,
           }}
           pagination={{
-            pageSize: pageSize,
+            pageSize: normalizeDraftPageSize(pageSize, defaultPageSize),
             showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50', '100', '200', '500', '1000'],
+            pageSizeOptions: DRAFT_PAGE_SIZE_OPTIONS,
             onChange: (p, ps) => {
-              if (ps != pageSize) {
-                setPageSize(ps);
+              const normalizedPageSize = normalizeDraftPageSize(ps, defaultPageSize);
+              if (normalizedPageSize !== pageSize) {
+                setPageSize(normalizedPageSize);
               }
             },
             simple: simplePage,

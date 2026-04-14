@@ -18,7 +18,6 @@ import { ArticleProvider } from 'src/provider/article/article.provider';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
-import { TagProvider } from 'src/provider/tag/tag.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 @ApiTags('article')
 @ApiToken
@@ -29,7 +28,6 @@ export class ArticleController {
     private readonly articleProvider: ArticleProvider,
     private readonly isrProvider: ISRProvider,
     private readonly pipelineProvider: PipelineProvider,
-    private readonly tagProvider: TagProvider,
   ) {}
 
   private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
@@ -165,8 +163,7 @@ export class ArticleController {
     // 使用精确的增量渲染，而不是全量渲染
     this.isrProvider.activeArticleById(articleId, 'update', beforeObj);
 
-    // 异步同步标签数据，不影响用户体验
-    this.syncTagsAsync('文章更新');
+    this.refreshTagPagesAsync('文章更新');
 
     return {
       statusCode: 200,
@@ -210,8 +207,7 @@ export class ArticleController {
     // 使用精确的增量渲染，而不是全量渲染
     this.isrProvider.activeArticleById(data.id, 'create');
 
-    // 异步同步标签数据，不影响用户体验
-    this.syncTagsAsync('文章创建');
+    this.refreshTagPagesAsync('文章创建');
 
     return {
       statusCode: 200,
@@ -252,8 +248,7 @@ export class ArticleController {
     // 删除文章后按受影响页面做定向刷新，避免整站缓存联动失效
     this.isrProvider.activeArticleById(articleId, 'delete', beforeObj);
 
-    // 异步同步标签数据，不影响用户体验
-    this.syncTagsAsync('文章删除');
+    this.refreshTagPagesAsync('文章删除');
 
     return {
       statusCode: 200,
@@ -276,8 +271,7 @@ export class ArticleController {
       // 触发全量ISR更新，因为文章ID都变了
       this.isrProvider.activeAll('文章重排', undefined, { forceActice: true });
 
-      // 异步同步标签数据
-      this.syncTagsAsync('文章重排');
+      this.refreshTagPagesAsync('文章重排');
 
       return {
         statusCode: 200,
@@ -374,22 +368,18 @@ export class ArticleController {
   }
 
   /**
-   * 异步同步标签数据，不阻塞主要操作
+   * 标签数据已在主流程更新，这里只做标签页 ISR 刷新
    */
-  private syncTagsAsync(operation: string) {
-    // 使用 setTimeout 确保异步执行，不影响主要业务流程
+  private refreshTagPagesAsync(operation: string) {
     setTimeout(async () => {
       try {
-        await this.tagProvider.syncTagsFromArticles();
-        // 触发标签相关页面的ISR更新
         this.isrProvider.activeUrl('/tag', false);
         this.isrProvider.activePath('tag');
-        console.log(`[${operation}] 标签数据同步完成`);
+        console.log(`[${operation}] 标签页刷新已触发`);
       } catch (error) {
-        // 确保标签同步失败不会影响主要流程
-        console.error(`[${operation}] 标签数据同步失败:`, error.message);
-        console.error('标签同步错误详情:', error.stack);
+        console.error(`[${operation}] 标签页刷新失败:`, error.message);
+        console.error('标签页刷新错误详情:', error.stack);
       }
-    }, 500); // 增加延迟到500ms，确保主要操作完全完成
+    }, 500);
   }
 }

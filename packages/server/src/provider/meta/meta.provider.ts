@@ -85,9 +85,16 @@ export class MetaProvider {
   async updateTotalWords(reason: string) {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(async () => {
-      const total = await this.articleProvider.countTotalWords();
-      await this.update({ totalWordCount: total });
-      this.logger.log(`${reason}触发更新字数缓存：当前文章总字数: ${total}`);
+      try {
+        const total = await this.articleProvider.countTotalWords();
+        await this.update({ totalWordCount: total });
+        this.logger.log(`${reason}触发更新字数缓存：当前文章总字数: ${total}`);
+      } catch (error) {
+        this.logger.error(
+          `${reason}触发更新字数缓存失败`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
     }, 1000 * 30);
   }
 

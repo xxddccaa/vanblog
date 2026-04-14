@@ -68,7 +68,7 @@ export class CustomPageProvider {
   }
 
   async getAll(includeHtml = false) {
-    const pages = await this.structuredDataService.listCustomPages();
+    const pages = await this.structuredDataService.listCustomPages(includeHtml);
     if (pages.length || this.structuredDataService.isInitialized()) {
       return pages.map((page: any) => this.projectPage(page, includeHtml)) as any;
     }

@@ -20,7 +20,6 @@ import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { config } from 'src/config';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
-import { TagProvider } from 'src/provider/tag/tag.provider';
 import { DocumentProvider } from 'src/provider/document/document.provider';
 import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 
@@ -34,7 +33,6 @@ export class DraftController {
     private readonly articleProvider: ArticleProvider,
     private readonly isrProvider: ISRProvider,
     private readonly pipelineProvider: PipelineProvider,
-    private readonly tagProvider: TagProvider,
     private readonly documentProvider: DocumentProvider,
     private readonly searchIndexProvider: SearchIndexProvider,
   ) {}
@@ -213,8 +211,7 @@ export class DraftController {
     this.isrProvider.activeAll('发布草稿触发增量渲染！');
     this.pipelineProvider.dispatchEvent('afterUpdateArticle', data);
 
-    // 异步同步标签数据，不影响用户体验
-    this.syncTagsAsync('草稿发布');
+    this.refreshTagPagesAsync('草稿发布');
 
     return {
       statusCode: 200,
@@ -241,23 +238,19 @@ export class DraftController {
   }
 
   /**
-   * 异步同步标签数据，不阻塞主要操作
+   * 标签数据已在发布主流程更新，这里只做标签页 ISR 刷新
    */
-  private syncTagsAsync(operation: string) {
-    // 使用 setTimeout 确保异步执行，不影响主要业务流程
+  private refreshTagPagesAsync(operation: string) {
     setTimeout(async () => {
       try {
-        await this.tagProvider.syncTagsFromArticles();
-        // 触发标签相关页面的ISR更新
         this.isrProvider.activeUrl('/tag', false);
         this.isrProvider.activePath('tag');
-        console.log(`[${operation}] 标签数据同步完成`);
+        console.log(`[${operation}] 标签页刷新已触发`);
       } catch (error) {
-        // 确保标签同步失败不会影响主要流程
-        console.error(`[${operation}] 标签数据同步失败:`, error.message);
-        console.error('标签同步错误详情:', error.stack);
+        console.error(`[${operation}] 标签页刷新失败:`, error.message);
+        console.error('标签页刷新错误详情:', error.stack);
       }
-    }, 500); // 增加延迟到500ms，确保主要操作完全完成
+    }, 500);
   }
 
   @Post('/:id/convert-to-document')

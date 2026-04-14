@@ -1,10 +1,11 @@
-export function wordCount(Words: string) {
+export function wordCount(words?: string | null) {
+  const safeWords = typeof words === 'string' ? words : '';
   let iTotal = 0;
   let inum = 0;
   let eTotal = 0;
   let sTotal = 0;
-  for (let i = 0; i < Words.length; i++) {
-    const c = Words.charAt(i);
+  for (let i = 0; i < safeWords.length; i++) {
+    const c = safeWords.charAt(i);
     //基本汉字
     if (c.match(/[\u4e00-\u9fa5]/)) {
       iTotal++;

@@ -239,4 +239,168 @@ describe('ArticleProvider', () => {
 
     await expect(provider.getByIdWithPassword(7, 'secret')).resolves.toBeNull();
   });
+
+  it('refreshes structured articles after fixing negative ids', async () => {
+    const articleModel = {
+      find: jest
+        .fn()
+        .mockImplementationOnce(() => ({
+          sort: jest.fn(() => ({
+            exec: jest.fn().mockResolvedValue([{ id: -3, title: 'legacy negative' }]),
+          })),
+        }))
+        .mockImplementationOnce(() => ({
+          sort: jest.fn(() => ({
+            limit: jest.fn().mockResolvedValue([{ id: 12 }]),
+          })),
+        })),
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const structuredDataService = {
+      refreshArticlesFromRecordStore: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.fixNegativeIds();
+
+    expect(result).toEqual({
+      fixedCount: 1,
+      message: '负数ID修复成功完成',
+    });
+    expect(articleModel.updateOne).toHaveBeenCalledWith(
+      { id: -3 },
+      expect.objectContaining({ id: 13 }),
+    );
+    expect(structuredDataService.refreshArticlesFromRecordStore).toHaveBeenCalledWith(
+      'article-fix-negative-ids',
+    );
+  });
+
+  it('refreshes structured articles after cleaning temporary ids', async () => {
+    const articleModel = {
+      find: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([{ id: 50001, title: 'temp article' }]),
+      }),
+      deleteOne: jest.fn().mockResolvedValue({ acknowledged: true, deletedCount: 1 }),
+    };
+    const structuredDataService = {
+      refreshArticlesFromRecordStore: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.cleanupTempIds();
+
+    expect(result).toEqual({
+      cleanedCount: 1,
+      message: '成功清理 1 篇临时ID文章',
+    });
+    expect(articleModel.deleteOne).toHaveBeenCalledWith({ id: 50001 });
+    expect(structuredDataService.refreshArticlesFromRecordStore).toHaveBeenCalledWith(
+      'article-cleanup-temp-ids',
+    );
+  });
+
+  it('refreshes structured articles after clearing duplicate pathnames', async () => {
+    const articleModel = {
+      find: jest.fn().mockReturnValue({
+        sort: jest.fn(() => ({
+          exec: jest.fn().mockResolvedValue([
+            { id: 7, title: 'first', pathname: 'dup-path', createdAt: new Date('2024-01-01') },
+            { id: 8, title: 'second', pathname: 'dup-path', createdAt: new Date('2024-01-02') },
+          ]),
+        })),
+      }),
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const structuredDataService = {
+      refreshArticlesFromRecordStore: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.cleanupDuplicatePathnames();
+
+    expect(result).toEqual({ cleanedCount: 1 });
+    expect(articleModel.updateOne).toHaveBeenCalledWith(
+      { id: 8 },
+      { $unset: { pathname: '' } },
+    );
+    expect(structuredDataService.refreshArticlesFromRecordStore).toHaveBeenCalledWith(
+      'article-cleanup-duplicate-pathnames',
+    );
+  });
+
+  it('refreshes structured articles after reordering article ids', async () => {
+    const article = {
+      _id: 'article-1',
+      id: 9,
+      title: 'first',
+      pathname: 'stable-path',
+      content: 'plain body',
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    };
+    const articleModel = {
+      find: jest
+        .fn()
+        .mockImplementationOnce(() => ({
+          sort: jest.fn(() => ({
+            exec: jest.fn().mockResolvedValue([article]),
+          })),
+        }))
+        .mockImplementationOnce(() => ({
+          exec: jest.fn().mockResolvedValue([]),
+        })),
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+      deleteOne: jest.fn().mockResolvedValue({ acknowledged: true, deletedCount: 0 }),
+    };
+    const structuredDataService = {
+      refreshArticlesFromRecordStore: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.reorderArticleIds();
+
+    expect(result).toEqual({
+      totalArticles: 1,
+      updatedReferences: 0,
+      customPathArticles: 1,
+      message: '文章序号重排成功完成',
+    });
+    expect(articleModel.updateOne).toHaveBeenNthCalledWith(
+      1,
+      { id: 9 },
+      expect.objectContaining({ id: 100000 }),
+    );
+    expect(articleModel.updateOne).toHaveBeenNthCalledWith(
+      2,
+      { id: 100000 },
+      expect.objectContaining({ id: 1 }),
+    );
+    expect(structuredDataService.refreshArticlesFromRecordStore).toHaveBeenCalledWith(
+      'article-reorder',
+    );
+  });
 });

@@ -54,4 +54,45 @@ describe('MetaProvider', () => {
     );
     expect(metaModel.findOne).not.toHaveBeenCalled();
   });
+
+  it('swallows total word refresh failures so the server does not crash on malformed articles', async () => {
+    jest.useFakeTimers();
+
+    const logger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+    };
+    const provider = new MetaProvider(
+      {
+        findOne: jest.fn(),
+        updateOne: jest.fn(),
+        create: jest.fn(),
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {
+        countTotalWords: jest.fn().mockRejectedValue(new Error('bad article content')),
+      } as any,
+      {} as any,
+      {
+        getMeta: jest.fn().mockResolvedValue({}),
+        upsertMeta: jest.fn(),
+      } as any,
+    );
+    (provider as any).logger = logger;
+
+    await provider.updateTotalWords('测试');
+    jest.advanceTimersByTime(30_000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(logger.error).toHaveBeenCalledWith(
+      '测试触发更新字数缓存失败',
+      expect.stringContaining('bad article content'),
+    );
+
+    jest.useRealTimers();
+  });
 });

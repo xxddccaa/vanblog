@@ -6,6 +6,8 @@ import { SearchArticleOption } from 'src/types/article.dto';
 export class StructuredDataService implements OnModuleInit {
   private readonly logger = new Logger(StructuredDataService.name);
   private initialized = false;
+  private articleRefreshQueue: Promise<void> = Promise.resolve();
+  private tagAggregateQueue: Promise<void> = Promise.resolve();
   private readonly numericIdSequences = [
     { name: 'vanblog_users_id_seq', table: 'vanblog_users', column: 'id' },
     { name: 'vanblog_articles_id_seq', table: 'vanblog_articles', column: 'id' },
@@ -17,6 +19,23 @@ export class StructuredDataService implements OnModuleInit {
   ] as const;
 
   constructor(private readonly store: PostgresStoreService) {}
+
+  private async runExclusive<T>(
+    queueKey: 'articleRefreshQueue' | 'tagAggregateQueue',
+    task: () => Promise<T>,
+  ): Promise<T> {
+    const previous = this[queueKey];
+    let release!: () => void;
+    this[queueKey] = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous.catch(() => undefined);
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  }
 
   async onModuleInit() {
     await this.ensureSchema();
@@ -913,6 +932,108 @@ export class StructuredDataService implements OnModuleInit {
     `;
   }
 
+  private getDraftSelectSql() {
+    return `
+      SELECT
+        id,
+        title,
+        content,
+        tags,
+        author,
+        category,
+        deleted,
+        created_at,
+        updated_at,
+        source_record_id
+      FROM vanblog_drafts
+    `;
+  }
+
+  private getDraftSummarySelectSql() {
+    return `
+      SELECT
+        id,
+        title,
+        ''::text AS content,
+        tags,
+        author,
+        category,
+        deleted,
+        created_at,
+        updated_at,
+        source_record_id
+      FROM vanblog_drafts
+    `;
+  }
+
+  private getDocumentSelectSql() {
+    return `
+      SELECT
+        id,
+        title,
+        content,
+        author,
+        parent_id,
+        library_id,
+        document_type,
+        path,
+        sort_order,
+        deleted,
+        created_at,
+        updated_at,
+        source_record_id
+      FROM vanblog_documents
+    `;
+  }
+
+  private getDocumentSummarySelectSql() {
+    return `
+      SELECT
+        id,
+        title,
+        ''::text AS content,
+        author,
+        parent_id,
+        library_id,
+        document_type,
+        path,
+        sort_order,
+        deleted,
+        created_at,
+        updated_at,
+        source_record_id
+      FROM vanblog_documents
+    `;
+  }
+
+  private getCustomPageSelectSql() {
+    return `
+      SELECT
+        path,
+        name,
+        page_type,
+        html,
+        created_at,
+        updated_at,
+        source_record_id
+      FROM vanblog_custom_pages
+    `;
+  }
+
+  private getCustomPageSummarySelectSql() {
+    return `
+      SELECT
+        path,
+        name,
+        page_type,
+        ''::text AS html,
+        created_at,
+        updated_at,
+        source_record_id
+      FROM vanblog_custom_pages
+    `;
+  }
+
   private getTsQuerySql(paramRef: string) {
     return `websearch_to_tsquery('simple', ${paramRef})`;
   }
@@ -1706,9 +1827,17 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   async refreshArticlesFromRecordStore(reason = 'manual') {
-    const articles = await this.store.getAll('articles');
-    await this.replaceArticles(articles);
-    this.logger.log(`文章结构化表同步完成: ${reason}`);
+    await this.runExclusive('articleRefreshQueue', async () => {
+      const articles = await this.store.getAll('articles');
+      await this.replaceArticles(articles);
+      this.logger.log(`文章结构化表同步完成: ${reason}`);
+    });
+  }
+
+  async rebuildArticleTagAggregates() {
+    await this.runExclusive('tagAggregateQueue', async () => {
+      await this.rebuildTagAggregates();
+    });
   }
 
   async refreshDraftsFromRecordStore() {
@@ -2265,8 +2394,10 @@ export class StructuredDataService implements OnModuleInit {
         article._id || null,
       ],
     );
-    await this.replaceArticleTags(article.id, article.tags || []);
-    await this.rebuildTagAggregates();
+    await this.runExclusive('tagAggregateQueue', async () => {
+      await this.replaceArticleTags(article.id, article.tags || []);
+      await this.rebuildTagAggregates();
+    });
   }
 
   async upsertDraft(draft: any) {
@@ -2348,11 +2479,13 @@ export class StructuredDataService implements OnModuleInit {
     return this.mapCustomPageRow(result.rows[0]);
   }
 
-  async listCustomPages() {
+  async listCustomPages(includeHtml = false) {
+    const selectSql = includeHtml
+      ? this.getCustomPageSelectSql()
+      : this.getCustomPageSummarySelectSql();
     const result = await this.store.query(
       `
-        SELECT *
-        FROM vanblog_custom_pages
+        ${selectSql}
         ORDER BY created_at DESC, path ASC
       `,
     );
@@ -3699,6 +3832,12 @@ export class StructuredDataService implements OnModuleInit {
 
     const queryParams = [...params];
     let limitSql = '';
+    const selectSql =
+      normalizedOption.toListView &&
+      !normalizedOption.withPreviewContent &&
+      !normalizedOption.withWordCount
+        ? this.getArticleSummarySelectSql()
+        : this.getArticleSelectSql();
     if (normalizedOption.pageSize !== -1) {
       queryParams.push(normalizedOption.pageSize);
       queryParams.push(normalizedOption.pageSize * (normalizedOption.page - 1));
@@ -3707,7 +3846,7 @@ export class StructuredDataService implements OnModuleInit {
 
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
+        ${selectSql}
         ${whereSql}
         ORDER BY ${this.buildArticleOrderSql(normalizedOption, isPublic)}
         ${limitSql}
@@ -3784,26 +3923,30 @@ export class StructuredDataService implements OnModuleInit {
     if (!oldName || !newName || oldName === newName) {
       return;
     }
-    await this.store.query(
-      `
-        INSERT INTO vanblog_article_tags (article_id, tag_name)
-        SELECT article_id, $2
-        FROM vanblog_article_tags
-        WHERE tag_name = $1
-        ON CONFLICT DO NOTHING
-      `,
-      [oldName, newName],
-    );
-    await this.store.query('DELETE FROM vanblog_article_tags WHERE tag_name = $1', [oldName]);
-    await this.refreshTagAggregates([oldName, newName]);
+    await this.runExclusive('tagAggregateQueue', async () => {
+      await this.store.query(
+        `
+          INSERT INTO vanblog_article_tags (article_id, tag_name)
+          SELECT article_id, $2
+          FROM vanblog_article_tags
+          WHERE tag_name = $1
+          ON CONFLICT DO NOTHING
+        `,
+        [oldName, newName],
+      );
+      await this.store.query('DELETE FROM vanblog_article_tags WHERE tag_name = $1', [oldName]);
+      await this.refreshTagAggregates([oldName, newName]);
+    });
   }
 
   async removeTagFromArticles(name: string) {
     if (!name) {
       return;
     }
-    await this.store.query('DELETE FROM vanblog_article_tags WHERE tag_name = $1', [name]);
-    await this.store.query('DELETE FROM vanblog_tags WHERE name = $1', [name]);
+    await this.runExclusive('tagAggregateQueue', async () => {
+      await this.store.query('DELETE FROM vanblog_article_tags WHERE tag_name = $1', [name]);
+      await this.store.query('DELETE FROM vanblog_tags WHERE name = $1', [name]);
+    });
   }
 
   async getTagPage(
@@ -3995,6 +4138,7 @@ export class StructuredDataService implements OnModuleInit {
     category?: string;
     tags?: string;
     title?: string;
+    toListView?: boolean;
     sortCreatedAt?: 'asc' | 'desc';
     startTime?: string;
     endTime?: string;
@@ -4061,10 +4205,13 @@ export class StructuredDataService implements OnModuleInit {
       limitSql = `LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`;
     }
 
+    const selectSql = option.toListView
+      ? this.getDraftSummarySelectSql()
+      : this.getDraftSelectSql();
+
     const result = await this.store.query(
       `
-        SELECT *
-        FROM vanblog_drafts
+        ${selectSql}
         ${whereSql}
         ORDER BY created_at ${option.sortCreatedAt === 'asc' ? 'ASC' : 'DESC'}, id DESC
         ${limitSql}
@@ -4240,6 +4387,7 @@ export class StructuredDataService implements OnModuleInit {
     parent_id?: number;
     type?: 'library' | 'document';
     author?: string;
+    toListView?: boolean;
     sortCreatedAt?: 'asc' | 'desc';
     startTime?: string;
     endTime?: string;
@@ -4287,10 +4435,12 @@ export class StructuredDataService implements OnModuleInit {
       dataParams.push((safePage - 1) * option.pageSize);
       limitSql = `LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`;
     }
+    const selectSql = option.toListView
+      ? this.getDocumentSummarySelectSql()
+      : this.getDocumentSelectSql();
     const result = await this.store.query(
       `
-        SELECT *
-        FROM vanblog_documents
+        ${selectSql}
         ${whereSql}
         ORDER BY sort_order ASC, created_at ${option.sortCreatedAt === 'asc' ? 'ASC' : 'DESC'}
         ${limitSql}
@@ -4308,6 +4458,7 @@ export class StructuredDataService implements OnModuleInit {
       includeDelete?: boolean;
       libraryId?: number;
       type?: 'library' | 'document';
+      includeContent?: boolean;
     } = {},
   ) {
     const params: any[] = [];
@@ -4324,10 +4475,12 @@ export class StructuredDataService implements OnModuleInit {
       clauses.push(`document_type = $${params.length}`);
     }
     const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const selectSql = options.includeContent
+      ? this.getDocumentSelectSql()
+      : this.getDocumentSummarySelectSql();
     const result = await this.store.query(
       `
-        SELECT *
-        FROM vanblog_documents
+        ${selectSql}
         ${whereSql}
         ORDER BY sort_order ASC, created_at DESC
       `,

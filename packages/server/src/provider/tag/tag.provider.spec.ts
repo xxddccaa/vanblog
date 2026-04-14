@@ -1,6 +1,28 @@
 import { TagProvider } from './tag.provider';
 
 describe('TagProvider', () => {
+  it('syncs tags by rebuilding tag aggregates without rebuilding article tables', async () => {
+    const cacheProvider = {
+      delPattern: jest.fn().mockResolvedValue(undefined),
+    };
+    const structuredDataService = {
+      rebuildArticleTagAggregates: jest.fn().mockResolvedValue(undefined),
+      refreshArticlesFromRecordStore: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new TagProvider(
+      {} as any,
+      {} as any,
+      cacheProvider as any,
+      structuredDataService as any,
+    );
+
+    await provider.syncTagsFromArticles();
+
+    expect(structuredDataService.rebuildArticleTagAggregates).toHaveBeenCalledTimes(1);
+    expect(structuredDataService.refreshArticlesFromRecordStore).not.toHaveBeenCalled();
+    expect(cacheProvider.delPattern).toHaveBeenCalledWith('tag:*');
+  });
+
   it('renames tags with a targeted PG sync instead of rebuilding all structured articles', async () => {
     const articleModel = {
       updateMany: jest.fn().mockResolvedValue({ acknowledged: true }),

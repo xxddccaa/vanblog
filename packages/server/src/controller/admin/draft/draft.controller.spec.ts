@@ -1,6 +1,22 @@
 import { DraftController } from './draft.controller';
 
 describe('DraftController', () => {
+  const originalSetTimeout = global.setTimeout;
+
+  beforeEach(() => {
+    jest.spyOn(global, 'setTimeout').mockImplementation(((handler: TimerHandler) => {
+      if (typeof handler === 'function') {
+        void handler();
+      }
+      return 0 as any;
+    }) as any);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    global.setTimeout = originalSetTimeout;
+  });
+
   const createController = (overrides: Record<string, any> = {}) => {
     const draftProvider = {
       getByOption: jest.fn().mockResolvedValue({ total: 0, drafts: [] }),
@@ -9,7 +25,18 @@ describe('DraftController', () => {
         .mockResolvedValue({ acknowledged: true, matchedCount: 1, modifiedCount: 1 }),
       findById: jest.fn().mockResolvedValue({ id: 80, title: 'draft title' }),
       deleteById: jest.fn().mockResolvedValue({ acknowledged: true }),
+      publish: jest.fn().mockResolvedValue({ id: 81, pathname: 'draft-post' }),
       ...overrides.draftProvider,
+    };
+    const articleProvider = {
+      getByPathName: jest.fn().mockResolvedValue(null),
+      ...overrides.articleProvider,
+    };
+    const isrProvider = {
+      activeAll: jest.fn(),
+      activeUrl: jest.fn(),
+      activePath: jest.fn(),
+      ...overrides.isrProvider,
     };
     const pipelineProvider = {
       dispatchEvent: jest.fn().mockResolvedValue([]),
@@ -23,14 +50,15 @@ describe('DraftController', () => {
     return {
       controller: new DraftController(
         draftProvider as any,
-        {} as any,
-        { activeAll: jest.fn() } as any,
+        articleProvider as any,
+        isrProvider as any,
         pipelineProvider as any,
-        {} as any,
         {} as any,
         searchIndexProvider as any,
       ),
       draftProvider,
+      articleProvider,
+      isrProvider,
       pipelineProvider,
       searchIndexProvider,
     };
@@ -75,6 +103,34 @@ describe('DraftController', () => {
     expect(searchIndexProvider.generateSearchIndex).toHaveBeenCalledWith(
       '更新草稿触发搜索索引同步',
       500,
+    );
+  });
+
+  it('publishes drafts without rebuilding tags again and only refreshes tag pages', async () => {
+    const { controller, draftProvider, articleProvider, isrProvider, pipelineProvider } =
+      createController();
+
+    const result = await controller.publish(
+      '80' as any,
+      {
+        pathname: 'draft-post',
+      } as any,
+    );
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { id: 81, pathname: 'draft-post' },
+    });
+    expect(articleProvider.getByPathName).toHaveBeenCalledWith('draft-post', 'admin');
+    expect(draftProvider.publish).toHaveBeenCalledWith(80, expect.objectContaining({
+      pathname: 'draft-post',
+    }));
+    expect(isrProvider.activeAll).toHaveBeenCalledWith('发布草稿触发增量渲染！');
+    expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
+    expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
+    expect(pipelineProvider.dispatchEvent).toHaveBeenCalledWith(
+      'afterUpdateArticle',
+      expect.objectContaining({ id: 81 }),
     );
   });
 });

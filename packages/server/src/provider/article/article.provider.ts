@@ -497,7 +497,7 @@ export class ArticleProvider {
       })
       .exec();
     articles.forEach((a) => {
-      total = total + wordCount(a.content);
+      total = total + wordCount(a?.content);
     });
     return total;
   }
@@ -1616,7 +1616,11 @@ export class ArticleProvider {
     return await this.structuredDataService.nextArticleId();
   }
 
-    /**
+  private async refreshStructuredArticles(reason: string) {
+    await this.structuredDataService.refreshArticlesFromRecordStore(reason);
+  }
+
+  /**
    * 文章序号重排 - 将所有文章按创建时间顺序重新分配ID
    * 改进版：使用更安全的ID重分配策略，包括自定义路径文章
    */
@@ -1778,7 +1782,7 @@ export class ArticleProvider {
       console.log('文章序号重排完成');
       console.log('提示: 文章ID变更后，可能需要手动清理浏览量统计缓存');
       
-      this.idLock = false;
+      await this.refreshStructuredArticles('article-reorder');
       
       return {
         totalArticles: articles.length,
@@ -1788,9 +1792,10 @@ export class ArticleProvider {
       };
       
     } catch (error) {
-      this.idLock = false;
       console.error('文章序号重排失败:', error);
       throw new Error(`文章序号重排失败: ${error.message}`);
+    } finally {
+      this.idLock = false;
     }
   }
 
@@ -1845,7 +1850,7 @@ export class ArticleProvider {
       }
 
       console.log('负数ID修复完成');
-      this.idLock = false;
+      await this.refreshStructuredArticles('article-fix-negative-ids');
       
       return {
         fixedCount: negativeIdArticles.length,
@@ -1853,9 +1858,10 @@ export class ArticleProvider {
       };
       
     } catch (error) {
-      this.idLock = false;
       console.error('修复负数ID失败:', error);
       throw new Error(`修复负数ID失败: ${error.message}`);
+    } finally {
+      this.idLock = false;
     }
   }
 
@@ -1895,7 +1901,7 @@ export class ArticleProvider {
         cleanedCount++;
       }
 
-      this.idLock = false;
+      await this.refreshStructuredArticles('article-cleanup-temp-ids');
 
       return {
         cleanedCount: cleanedCount,
@@ -1903,9 +1909,10 @@ export class ArticleProvider {
       };
 
     } catch (error) {
-      this.idLock = false;
       console.error('清理临时ID失败:', error);
       throw new Error(`清理临时ID失败: ${error.message}`);
+    } finally {
+      this.idLock = false;
     }
   }
 
@@ -1963,6 +1970,9 @@ export class ArticleProvider {
       }
     }
 
+    if (cleanedCount > 0) {
+      await this.refreshStructuredArticles('article-cleanup-duplicate-pathnames');
+    }
     console.log(`清理完成，共处理了 ${cleanedCount} 篇文章的重复路径名`);
     return { cleanedCount };
   }

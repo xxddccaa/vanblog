@@ -12,12 +12,25 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import { history } from '@umijs/max';
 import { articleObjAll, articleObjSmall, columns } from './columns';
 
+const MAX_ARTICLE_PAGE_SIZE = 100;
+const DEFAULT_ARTICLE_PAGE_SIZE = 20;
+const ARTICLE_PAGE_SIZE_OPTIONS = ['10', '20', '50', '100'];
+const ARTICLE_PAGE_SIZE_STORAGE_KEY = 'van-blog-admin-num-article-page-size';
+
+const normalizeArticlePageSize = (value, fallback = DEFAULT_ARTICLE_PAGE_SIZE) => {
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.min(Math.max(parsed, 10), MAX_ARTICLE_PAGE_SIZE);
+};
+
 export default () => {
   const actionRef = useRef();
   const [colKeys, setColKeys] = useState(articleObjAll);
   const [simplePage, setSimplePage] = useState(false);
   const [simpleSearch, setSimpleSearch] = useState(false);
-  const [defaultPageSize, setDefaultPageSize] = useState(20);
+  const [defaultPageSize, setDefaultPageSize] = useState(DEFAULT_ARTICLE_PAGE_SIZE);
   const [pageSize, setPageSize] = useNum(defaultPageSize, 'article-page-size');
   const [showContentSearch, setShowContentSearch] = useState(false);
 
@@ -31,13 +44,22 @@ export default () => {
     const fetchSiteInfo = async () => {
       try {
         const { data } = await getSiteInfo();
-        const configuredPageSize = data?.adminArticlePageSize || 20;
+        const configuredPageSize = normalizeArticlePageSize(
+          data?.adminArticlePageSize,
+          DEFAULT_ARTICLE_PAGE_SIZE,
+        );
         setDefaultPageSize(configuredPageSize);
-        // 如果本地存储中没有自定义值，使用配置的默认值
-        const localStorageKey = 'article-page-size';
-        const storedPageSize = localStorage.getItem(localStorageKey);
+        const storedPageSize = localStorage.getItem(ARTICLE_PAGE_SIZE_STORAGE_KEY);
         if (!storedPageSize) {
           setPageSize(configuredPageSize);
+          return;
+        }
+        const normalizedStoredPageSize = normalizeArticlePageSize(
+          storedPageSize,
+          configuredPageSize,
+        );
+        if (normalizedStoredPageSize !== parseInt(storedPageSize, 10)) {
+          setPageSize(normalizedStoredPageSize);
         }
       } catch (error) {
         console.error('获取站点配置失败:', error);
@@ -165,7 +187,7 @@ export default () => {
               }
             }
             option.page = current;
-            option.pageSize = pageSize;
+            option.pageSize = normalizeArticlePageSize(pageSize, defaultPageSize);
             const { data } = await getArticlesByOption(option);
             const { articles, total } = data;
             return {
@@ -193,13 +215,14 @@ export default () => {
             className: 'searchCard',
           }}
           pagination={{
-            pageSize: pageSize,
+            pageSize: normalizeArticlePageSize(pageSize, defaultPageSize),
             simple: simplePage,
             showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50', '100', '200', '500', '1000'],
+            pageSizeOptions: ARTICLE_PAGE_SIZE_OPTIONS,
             onChange: (p, ps) => {
-              if (ps != pageSize) {
-                setPageSize(ps);
+              const normalizedPageSize = normalizeArticlePageSize(ps, defaultPageSize);
+              if (normalizedPageSize !== pageSize) {
+                setPageSize(normalizedPageSize);
               }
             },
           }}

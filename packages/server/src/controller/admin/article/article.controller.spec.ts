@@ -44,21 +44,11 @@ describe('ArticleController', () => {
       activePath: jest.fn(),
       ...overrides.isrProvider,
     };
-    const tagProvider = {
-      syncTagsFromArticles: jest.fn().mockResolvedValue(undefined),
-      ...overrides.tagProvider,
-    };
 
     return {
-      controller: new ArticleController(
-        articleProvider as any,
-        isrProvider as any,
-        {} as any,
-        tagProvider as any,
-      ),
+      controller: new ArticleController(articleProvider as any, isrProvider as any, {} as any),
       articleProvider,
       isrProvider,
-      tagProvider,
     };
   };
 
@@ -68,7 +58,7 @@ describe('ArticleController', () => {
       pathname: 'stable-post',
       title: 'old title',
     };
-    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         getById: jest.fn().mockResolvedValue(beforeObj),
         updateById: jest.fn().mockResolvedValue({ id: 7, title: 'new title' }),
@@ -87,7 +77,8 @@ describe('ArticleController', () => {
     );
     expect(isrProvider.activeArticleById).toHaveBeenCalledWith(7, 'update', beforeObj);
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
-    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
+    expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
   });
 
   it('allows updating an article when the pathname stays unchanged on a string route param', async () => {
@@ -200,7 +191,7 @@ describe('ArticleController', () => {
   });
 
   it('uses precise article invalidation for creates', async () => {
-    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         create: jest.fn().mockResolvedValue({ id: 8, pathname: 'new-post' }),
       },
@@ -215,7 +206,8 @@ describe('ArticleController', () => {
     expect(articleProvider.create).toHaveBeenCalled();
     expect(isrProvider.activeArticleById).toHaveBeenCalledWith(8, 'create');
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
-    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
+    expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
   });
 
   it('uses precise article invalidation for deletes instead of full-site refresh', async () => {
@@ -225,7 +217,7 @@ describe('ArticleController', () => {
       category: 'System Design',
       tags: ['Cloudflare'],
     };
-    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         getById: jest.fn().mockResolvedValue(beforeObj),
       },
@@ -237,11 +229,12 @@ describe('ArticleController', () => {
     expect(articleProvider.deleteById).toHaveBeenCalledWith(7);
     expect(isrProvider.activeArticleById).toHaveBeenCalledWith(7, 'delete', beforeObj);
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
-    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
+    expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
   });
 
   it('rejects numeric create pathnames without triggering invalidation side effects', async () => {
-    const { controller, articleProvider, isrProvider, tagProvider } = createController();
+    const { controller, articleProvider, isrProvider } = createController();
 
     const result = await controller.createArticle({
       title: 'hello',
@@ -256,11 +249,12 @@ describe('ArticleController', () => {
     expect(articleProvider.create).not.toHaveBeenCalled();
     expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
-    expect(tagProvider.syncTagsFromArticles).not.toHaveBeenCalled();
+    expect(isrProvider.activeUrl).not.toHaveBeenCalled();
+    expect(isrProvider.activePath).not.toHaveBeenCalled();
   });
 
   it('rejects duplicate create pathnames without triggering invalidation side effects', async () => {
-    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         getByPathName: jest.fn().mockResolvedValue({ id: 99, pathname: 'existing-path' }),
       },
@@ -280,11 +274,12 @@ describe('ArticleController', () => {
     expect(articleProvider.create).not.toHaveBeenCalled();
     expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
-    expect(tagProvider.syncTagsFromArticles).not.toHaveBeenCalled();
+    expect(isrProvider.activeUrl).not.toHaveBeenCalled();
+    expect(isrProvider.activePath).not.toHaveBeenCalled();
   });
 
   it('rejects duplicate update pathnames without triggering invalidation side effects', async () => {
-    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         getByPathName: jest.fn().mockResolvedValue({ id: 99, pathname: 'existing-path' }),
       },
@@ -304,11 +299,12 @@ describe('ArticleController', () => {
     expect(articleProvider.updateById).not.toHaveBeenCalled();
     expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
-    expect(tagProvider.syncTagsFromArticles).not.toHaveBeenCalled();
+    expect(isrProvider.activeUrl).not.toHaveBeenCalled();
+    expect(isrProvider.activePath).not.toHaveBeenCalled();
   });
 
   it('uses full-site ISR for reorder because article ids change globally', async () => {
-    const { controller, articleProvider, isrProvider, tagProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         reorderArticleIds: jest.fn().mockResolvedValue({ updated: 12 }),
       },
@@ -325,7 +321,8 @@ describe('ArticleController', () => {
       forceActice: true,
     });
     expect(isrProvider.activeArticleById).not.toHaveBeenCalled();
-    expect(tagProvider.syncTagsFromArticles).toHaveBeenCalledTimes(1);
+    expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
+    expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
   });
 
   it('uses full-site ISR when repairing negative ids', async () => {
