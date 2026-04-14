@@ -10,7 +10,7 @@ IMAGE_ID=""
 PUSH=false
 RUN_TESTS=true
 RUN_BUILDS=true
-PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
+PLATFORMS="${PLATFORMS:-linux/amd64}"
 INSTALL_ALIYUNPAN="${INSTALL_ALIYUNPAN:-false}"
 SERVICES=(caddy server website admin waline)
 
@@ -23,7 +23,7 @@ Options:
   --version <vX.Y.Z>     Release version. Defaults to the root package.json version prefixed with v.
   --image-id <id>        Release image id. Defaults to the current git short SHA.
   --repo <repo>          Image repository. Default: kevinchina/deeplearning
-  --platforms <list>     buildx platforms. Default: linux/amd64,linux/arm64
+  --platforms <list>     buildx platforms. Default: linux/amd64
   --push                 Push images after building.
   --skip-tests           Skip pnpm test:blog-flow.
   --skip-builds          Skip pnpm build:website and pnpm build:admin when tests are skipped.

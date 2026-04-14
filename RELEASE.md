@@ -199,7 +199,7 @@ bash scripts/release-images.sh --help
 默认脚本会走 `buildx`，默认平台为：
 
 ```bash
-linux/amd64,linux/arm64
+linux/amd64
 ```
 
 如果当前机器还没有可用的多架构 builder，先检查：
@@ -221,14 +221,14 @@ docker buildx create --name vanblog-release --driver docker-container --use
 docker buildx inspect --bootstrap
 ```
 
-如果还需要补 `arm64` 模拟支持，可执行：
+如果你未来明确需要重新启用 `arm64` 模拟支持，可执行：
 
 ```bash
 docker run --privileged --rm tonistiigi/binfmt --install arm64
 docker buildx inspect --bootstrap
 ```
 
-如果本次发布只要求 `amd64`，或 `arm64` 构建因为网络/模拟速度过慢，可以显式切换为单架构：
+当前正式发布默认只构建 `amd64`。如果你想显式指定，也可以继续写：
 
 ```bash
 bash scripts/release-images.sh --push --platforms linux/amd64
@@ -287,7 +287,7 @@ gh release create v1.0.0 --title "v1.0.0" --notes-file /tmp/vanblog-release-v1.0
 4. 提交代码并推送 `master`。
 5. 创建并推送 `vX.Y.Z` tag。
 6. 如果需要，先处理 `buildx` builder 和 `binfmt`。
-7. 执行镜像发布；如果双架构过慢或不稳定，可回退到：
+7. 执行镜像发布；当前默认就是 `amd64` 单架构，如需显式指定可使用：
 
 ```bash
 bash scripts/release-images.sh --push --skip-tests --skip-builds --platforms linux/amd64
