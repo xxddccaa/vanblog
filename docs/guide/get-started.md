@@ -7,7 +7,7 @@ order: 1
 欢迎使用 VanBlog。当前仓库默认提供两种部署路径：
 
 - **源码部署**：适合本地调试、二次开发、直接从仓库构建
-- **镜像部署**：适合生产环境，直接使用已发布的多镜像版本
+- **镜像部署**：默认推荐直接使用 `docker-compose.latest.yml`；如需锁定版本再使用 `docker-compose.image.yml`
 
 <!-- more -->
 
@@ -24,9 +24,26 @@ order: 1
 
 <!-- @include: ./docker.snippet.md -->
 
-## 方式二：使用已发布镜像部署
+## 方式二：使用 latest 镜像部署（默认推荐）
 
-更适合生产环境或固定版本部署。
+适合想直接复用当前目录结构、快速拉起服务的场景。
+
+### 1. 直接启动
+
+```bash
+docker compose -f docker-compose.latest.yml pull
+docker compose -f docker-compose.latest.yml up -d
+```
+
+### 2. 说明
+
+- 不需要额外准备 `.env`
+- 默认使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
+- Waline 共享密钥会在首次启动时自动生成，并写入 `log/waline.jwt`
+
+## 方式三：使用版本锁定镜像部署
+
+更适合生产环境固定版本、精确回滚或审计部署内容的场景。
 
 ### 1. 准备环境变量
 
@@ -41,7 +58,7 @@ cp .env.release.example .env
 - `VANBLOG_RELEASE_SUFFIX`
 - `WALINE_JWT_TOKEN`（可选）
 
-未设置 `WALINE_JWT_TOKEN` 时，`docker-compose.image.yml` 会在首次启动时自动生成一份共享密钥，并写入日志目录中的 `waline.jwt` 文件。
+未设置 `WALINE_JWT_TOKEN` 时，`docker-compose.image.yml` 会在首次启动时自动生成一份共享密钥，并写入日志目录中的 `waline.jwt` 文件，后续重启继续复用。
 
 ### 2. 启动服务
 

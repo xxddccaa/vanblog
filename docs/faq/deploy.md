@@ -110,7 +110,7 @@ postgresql://postgres:postgres@postgres:5432/vanblog
 
 请整理以下信息后提交 Issue：
 
-- 使用的是 `docker-compose.yml` 还是 `docker-compose.image.yml`
+- 使用的是 `docker-compose.yml`、`docker-compose.latest.yml` 还是 `docker-compose.image.yml`
 - `docker compose ps` 的结果
 - `docker compose logs -f caddy server website admin waline postgres redis` 中的关键错误
 - 你是否额外套了 Nginx / Caddy / CDN

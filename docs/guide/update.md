@@ -4,7 +4,7 @@ icon: cloud-arrow-up
 order: -3
 ---
 
-当前仓库已经不再使用旧的一键脚本或单镜像部署方式。升级时请根据你使用的编排文件，按“源码部署”或“镜像部署”两种方式处理。
+当前仓库已经不再使用旧的一键脚本或单镜像部署方式。升级时请根据你使用的编排文件，按“源码部署”“latest 镜像部署”或“锁版镜像部署”处理。
 
 ## 升级前建议
 
@@ -31,9 +31,23 @@ docker compose down
 docker compose up -d --build
 ```
 
-## 镜像部署升级
+## latest 镜像部署升级
 
-适用于使用 `docker-compose.image.yml` 拉取已发布镜像的场景。
+适用于使用 `docker-compose.latest.yml` 直接拉取 `latest` 镜像的场景。
+
+```bash
+docker compose -f docker-compose.latest.yml pull
+docker compose -f docker-compose.latest.yml up -d
+```
+
+注意：
+
+- 这种方式适合快速升级到当前最新发布
+- 但它不适合精确回滚到某个历史版本
+
+## 锁版镜像部署升级
+
+适用于使用 `docker-compose.image.yml` 拉取已发布镜像，并通过 `.env` 锁定版本的场景。
 
 1. 修改 `.env` 中的版本变量，例如：
 
@@ -50,7 +64,13 @@ docker compose -f docker-compose.image.yml up -d
 
 ## 如何回滚
 
-### 镜像部署回滚
+### latest 镜像部署回滚
+
+`docker-compose.latest.yml` 本身不会记录历史版本，因此它不适合做精确回滚。
+
+如果你需要回滚，请改用 `docker-compose.image.yml`，并把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成要回退到的具体版本。
+
+### 锁版镜像部署回滚
 
 把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后重新执行：
 

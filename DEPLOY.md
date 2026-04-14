@@ -6,21 +6,17 @@
 
 ## 1. 部署目标
 
-生产环境推荐使用：
+当前建议把镜像部署分成两条路径来理解：
 
-- `docker-compose.image.yml`
-- `.env.release.example` 复制出的 `.env`
-
-如果你不想维护 `.env` 和 `VANBLOG_RELEASE_SUFFIX`，只是想要一个“当前目录挂载 + 直接拉 latest 镜像”的最简模板，也可以使用仓库里的：
-
-- `docker-compose.latest.yml`
+- `docker-compose.latest.yml`：默认推荐的最简部署方式，直接拉取当前 `latest` 镜像
+- `docker-compose.image.yml` + `.env.release.example`：锁定具体发布版本，便于精确回滚与审计
 
 这样做的好处是：
 
 - 服务器不需要 Node.js / pnpm 构建环境
 - 服务器只负责拉取镜像并启动
-- 回滚时只需要切换 `VANBLOG_RELEASE_SUFFIX`
-- 能确保部署内容与发布内容一一对应
+- latest 模板适合快速部署或个人维护
+- 锁版模板适合需要明确版本边界的上线场景
 
 ## 2. 服务器准备
 
@@ -34,13 +30,13 @@
 
 把仓库中的这些文件带到服务器：
 
-- `docker-compose.image.yml`
-- `docker-compose.latest.yml`（仅在你想直接使用 latest 简化模板时需要）
+- `docker-compose.latest.yml`
+- `docker-compose.image.yml`（仅在你想锁定具体版本时需要）
 - `docker-compose.https.yml`（仅在你想启用内置 HTTPS 时需要）
 - `.env.release.example`
 - 如有自定义配置，可额外带上自己的 `.env`
 
-## 3. 生成服务器环境文件
+## 3. 如需锁版部署：生成服务器环境文件
 
 先复制模板：
 
@@ -81,7 +77,27 @@ cp .env.release.example .env
 
 ## 4. 首次部署
 
-### 4.1 推荐方式：版本化镜像部署
+### 4.1 默认推荐：直接使用 latest 简化模板
+
+如果你明确接受 `latest` 会随着后续发布移动，想直接使用当前目录映射与固定字段模板，可以：
+
+```bash
+docker compose -f docker-compose.latest.yml pull
+docker compose -f docker-compose.latest.yml up -d
+```
+
+这个模板的特点：
+
+- 直接写死 `kevinchina/deeplearning:vanblog-*-latest`
+- 继续使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
+- 不需要额外准备 `.env`
+
+但也请注意：
+
+- 它更适合快速部署或个人维护场景
+- 如果你希望上线内容可精确回滚、可审计，继续使用下一节的 `docker-compose.image.yml`
+
+### 4.2 如需锁版：版本化镜像部署
 
 ```bash
 docker compose -f docker-compose.image.yml pull
@@ -130,26 +146,6 @@ http://<你的域名或 IP>/admin/init
 - Cloudflare tag purge 仍可工作
 - Cloudflare URL purge 会跳过
 - RSS 中依赖站点域名的绝对链接也可能不完整
-
-### 4.2 可选：直接使用 latest 简化模板
-
-如果你明确接受 `latest` 会随着后续发布移动，想直接使用当前目录映射与固定字段模板，可以：
-
-```bash
-docker compose -f docker-compose.latest.yml pull
-docker compose -f docker-compose.latest.yml up -d
-```
-
-这个模板的特点：
-
-- 直接写死 `kevinchina/deeplearning:vanblog-*-latest`
-- 继续使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
-- 不需要额外准备 `.env`
-
-但也请注意：
-
-- 它更适合快速部署或个人维护场景
-- 如果你希望上线内容可精确回滚、可审计，仍然优先使用 `docker-compose.image.yml`
 
 ### 可选：启用内置 Caddy HTTPS
 
@@ -236,8 +232,8 @@ docker compose -f docker-compose.image.yml -f docker-compose.https.yml up -d
 如果 AI 代理要帮你部署，默认应遵守下面规则：
 
 1. 优先读取 `README.md`、`RELEASE.md`、`DEPLOY.md`。
-2. 生产部署默认使用 `docker-compose.image.yml`，而不是源码构建版 `docker-compose.yml`。
-3. 默认从 `.env.release.example` 生成服务器 `.env`。
+2. 默认快速部署优先使用 `docker-compose.latest.yml`；如需锁版本或回滚，再使用 `docker-compose.image.yml`。
+3. 使用锁版部署时，再从 `.env.release.example` 生成服务器 `.env`。
 4. 不要新增 `postgres`、`redis` 的宿主机端口映射。
 5. 不要新增 Caddy admin API `2019` 的宿主机端口映射。
 6. 默认只对外暴露 `80`；只有启用 `docker-compose.https.yml` 时才暴露 `443`。

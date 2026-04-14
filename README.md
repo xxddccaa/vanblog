@@ -2,10 +2,11 @@
 
 这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续更新。当前部署方式已经完全切换为 **Docker Compose 多容器架构**，文档、脚本和发布流程都以本仓库为准。
 
-现在仓库默认提供两种使用方式：
+现在仓库默认提供三种使用方式：
 
 - **源码部署**：用 `docker-compose.yml` 从当前仓库直接构建并启动
-- **镜像部署**：用 `docker-compose.image.yml` 拉取已经发布的多镜像版本启动
+- **latest 镜像部署（默认推荐）**：用 `docker-compose.latest.yml` 直接拉取当前最新发布镜像启动
+- **版本锁定镜像部署**：用 `docker-compose.image.yml` + `.env` 固定到某个具体发布标签，便于回滚与审计
 
 当前默认维护分支是 `master`。如果你从 GitHub 拉取源码或引用仓库内文档，请统一以 `master` 为准。
 
@@ -41,8 +42,9 @@
 
 - 前台首页：`http://<你的 IP 或域名>/`
 - 后台管理：`http://<你的 IP 或域名>/admin`
-- API 文档：`http://<你的 IP 或域名>/swagger`
 - 评论前台：`http://<你的 IP 或域名>/comment/`
+
+默认通过 Caddy 的公网入口不会暴露 Swagger。若需查看 API 文档，请直接通过主机本地或容器内的 `server` 服务入口访问。
 
 ## 快速开始
 
@@ -81,7 +83,22 @@ docker compose down
 docker compose down -v
 ```
 
-### 2. 使用已发布镜像启动
+### 2. 使用 latest 镜像启动（默认推荐）
+
+```bash
+docker compose -f docker-compose.latest.yml pull
+docker compose -f docker-compose.latest.yml up -d
+```
+
+这个方式最省事：
+
+- 不需要额外准备 `.env`
+- 默认使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
+- 首次启动时会自动生成 Waline 共享 JWT，并写入 `log/waline.jwt`
+
+如果后续重启服务，这份密钥会继续复用；不要随意删除 `log/waline.jwt`。
+
+### 3. 如需锁定到某个发布版本
 
 ```bash
 export VANBLOG_DOCKER_REPO=kevinchina/deeplearning
@@ -90,7 +107,11 @@ export VANBLOG_RELEASE_SUFFIX=v1.0.0-<image-id>
 docker compose -f docker-compose.image.yml up -d
 ```
 
-如果只是临时体验，也可以把 `VANBLOG_RELEASE_SUFFIX` 设成 `latest`，但生产环境更推荐固定到某个不可变发布标签。
+这个方式更适合：
+
+- 精确锁定某个版本
+- 回滚到指定发布
+- 需要明确记录线上到底跑的是哪一版镜像
 
 ## 自动化测试
 
@@ -165,7 +186,8 @@ kevinchina/deeplearning:vanblog-waline-v1.0.0-<image-id>
 仓库内已经提供：
 
 - `scripts/release-images.sh`：统一构建 / 打 tag / 推送镜像
-- `docker-compose.image.yml`：基于已发布镜像部署
+- `docker-compose.latest.yml`：默认推荐的 latest 镜像部署模板
+- `docker-compose.image.yml`：基于已发布版本标签的锁版部署模板
 - `RELEASE.md`：完整的人工 + AI 发版指南
 - `DEPLOY.md`：生产环境拉镜像部署与回滚指南
 - `.env.release.example`：生产环境变量模板
@@ -205,7 +227,8 @@ pnpm release:images:push
 
 - 当前是多容器部署，不再是旧单容器结构
 - `/admin` 必须走 Caddy 子路径代理
-- 生产部署推荐使用 `docker-compose.image.yml`
+- 默认快速部署使用 `docker-compose.latest.yml`
+- 如需锁版本或回滚，再使用 `docker-compose.image.yml`
 - 发版默认使用 `scripts/release-images.sh`
 
 ## 当前维护方向

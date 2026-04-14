@@ -6,7 +6,13 @@ order: 3
 
 ## 如何回滚
 
-### 镜像部署
+### latest 镜像部署
+
+`docker-compose.latest.yml` 只会跟随当前最新发布，不记录历史版本。
+
+如果你需要精确回滚，请切换到 `docker-compose.image.yml`，再把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成目标版本。
+
+### 锁版镜像部署
 
 把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后执行：
 
