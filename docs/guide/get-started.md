@@ -73,7 +73,7 @@ http://<你的域名或 IP>/admin/init
 - 后台管理：`http://<你的域名或 IP>/admin`
 - 评论管理：`http://<你的域名或 IP>/api/ui/`
 
-默认公网入口不会暴露 Swagger。若需查看 API 文档，请在受信任网络内访问 `http://<你的域名或 IP>/swagger`，或直接通过容器/主机本地入口访问。
+默认通过 Caddy 的公网入口不会暴露 Swagger。若需查看 API 文档，请直接通过主机本地或容器内的 `server` 服务入口访问，不要依赖 `http://<你的域名或 IP>/swagger` 这个公网地址。
 
 ## 下一步建议
 

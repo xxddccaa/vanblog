@@ -28,10 +28,11 @@ import { DownOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-layout';
 import { Button, Dropdown, Input, Menu, message, Modal, Space, Tag, Upload } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { history } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
 import moment from 'moment';
 
 export default function () {
+  const location = useLocation();
   const [value, setValue] = useState('');
   const [currObj, setCurrObj] = useState({});
   const [loading, setLoading] = useState(true);
@@ -39,8 +40,10 @@ export default function () {
     { afterSave: 'stay', useLocalCache: 'open' },
     'editorConfig',
   );
-  const type = history.location.query?.type || 'article';
-  const getCacheKey = () => `${type}-${history.location.query?.id || '0'}`;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const type = searchParams.get('type') || 'article';
+  const id = searchParams.get('id');
+  const cacheKey = useMemo(() => `${type}-${id || '0'}`, [type, id]);
 
   useEffect(() => {
     window.addEventListener('keydown', onKeyDown);
@@ -74,25 +77,27 @@ export default function () {
   const fetchData = useCallback(
     async (noMessage) => {
       setLoading(true);
-
-      const type = history.location.query?.type || 'article';
-      const id = history.location.query?.id;
-      const cacheString = window.localStorage.getItem(getCacheKey());
+      const cacheString = window.localStorage.getItem(cacheKey);
       let cacheObj = {};
       try {
         cacheObj = JSON.parse(cacheString || '{}');
       } catch (err) {
-        window.localStorage.removeItem(getCacheKey());
+        window.localStorage.removeItem(cacheKey);
       }
       const checkCache = (data) => {
         const clear = () => {
-          window.localStorage.removeItem(getCacheKey());
+          window.localStorage.removeItem(cacheKey);
         };
         if (editorConfig?.useLocalCache == 'close') {
           clear();
           return false;
         }
         if (!cacheObj || !cacheObj?.content) {
+          clear();
+          return false;
+        }
+        // 不让空白本地缓存覆盖掉服务端已有正文。
+        if (typeof cacheObj?.content === 'string' && cacheObj.content.trim() === '' && data?.content) {
           clear();
           return false;
         }
@@ -204,7 +209,7 @@ export default function () {
       }
       setLoading(false);
     },
-    [history, setLoading, setValue, type],
+    [cacheKey, editorConfig?.useLocalCache, id, setLoading, setValue, type],
   );
 
   useEffect(() => {
@@ -293,16 +298,16 @@ export default function () {
     // 对于其他类型（如about），保留原有的确认逻辑
     // 先检查一下有没有 more .
     let hasMore = true;
-    if (['article', 'draft'].includes(history.location.query?.type)) {
+    if (['article', 'draft'].includes(type)) {
       if (!value?.includes('<!-- more -->')) {
         hasMore = false;
       }
     }
     let hasTags =
-      ['article', 'draft'].includes(history.location.query?.type) &&
+      ['article', 'draft'].includes(type) &&
       currObj?.tags &&
       currObj.tags.length > 0;
-    if (history.location.query?.type == 'about') {
+    if (type == 'about') {
       hasTags = true;
     }
     Modal.confirm({
@@ -383,7 +388,7 @@ export default function () {
                     try {
                       // 使用一个远未来的时间戳，确保本地缓存优先级最高
                       window.localStorage.setItem(
-                        getCacheKey(),
+                        cacheKey,
                         JSON.stringify({
                           content: value,
                           time: new Date().valueOf() + 24 * 60 * 60 * 1000, // 向后偏移24小时，确保优先使用本地缓存
@@ -535,7 +540,7 @@ export default function () {
               okText: '确认清理',
               cancelText: '返回',
               onOk: () => {
-                window.localStorage.removeItem(getCacheKey());
+                window.localStorage.removeItem(cacheKey);
                 setValue(currObj?.content || '');
                 message.success('清除实时保存缓存成功！已重置为服务端返回数据');
               },
@@ -625,7 +630,7 @@ export default function () {
             setValue(val);
             if (editorConfig?.useLocalCache && editorConfig?.useLocalCache == 'open') {
               window.localStorage.setItem(
-                getCacheKey(),
+                cacheKey,
                 JSON.stringify({
                   content: val,
                   time: new Date().valueOf(),

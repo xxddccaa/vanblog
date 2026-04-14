@@ -30,46 +30,211 @@ body .bytemd-preview {
   background: #ffffff;
 }
 
+/* 后台编辑器暗色模式：同时兼容 html.dark / body.dark / html[data-theme='dark'] */
+html[data-theme='dark'],
+html[data-theme='dark'] body,
+body[data-theme='dark'],
+html.dark,
+html.dark body,
+body.dark,
+.dark {
+  --vb-editor-dark-bg: #212428;
+  --vb-editor-dark-panel: #1b1f24;
+  --vb-editor-dark-border: rgba(148, 163, 184, 0.18);
+  --vb-editor-dark-text: #e5e7eb;
+  --vb-editor-dark-muted: #cbd5e1;
+}
+
 /* 强制覆盖：确保暗色模式下预览区域背景色正确（优先级高于动态加载的主题CSS） */
 /* 使用更高优先级的选择器: #212428 = rgb(33, 36, 40) */
 html.dark body .bytemd-preview.bytemd-preview,
 html.dark body .bytemd-preview,
 html.dark .editor-wrapper .bytemd-preview,
+html[data-theme='dark'] body .bytemd-preview,
+html[data-theme='dark'] .editor-wrapper .bytemd-preview,
+body[data-theme='dark'] .editor-wrapper .bytemd-preview,
 body.dark .bytemd-preview,
 .dark .editor-wrapper .bytemd-preview,
 .dark .bytemd-preview {
-  background: #212428 !important;
-  background-color: #212428 !important;
+  background: var(--vb-editor-dark-bg) !important;
+  background-color: var(--vb-editor-dark-bg) !important;
 }
 
 html.dark body .bytemd-preview .markdown-body.markdown-body,
 html.dark body .markdown-body.markdown-body,
 html.dark .editor-wrapper .markdown-body,
 html.dark .bytemd-preview .markdown-body,
+html[data-theme='dark'] body .markdown-body.markdown-body,
+html[data-theme='dark'] .editor-wrapper .markdown-body,
+html[data-theme='dark'] .bytemd-preview .markdown-body,
+body[data-theme='dark'] .editor-wrapper .markdown-body,
 .dark .editor-wrapper .markdown-body,
 .dark .bytemd-preview .markdown-body,
 html.dark .markdown-body,
 .dark .markdown-body {
-  background: #212428 !important;
-  background-color: #212428 !important;
+  background: var(--vb-editor-dark-bg) !important;
+  background-color: var(--vb-editor-dark-bg) !important;
+  color: var(--vb-editor-dark-text) !important;
 }
 
 html.dark body .bytemd.bytemd,
 html.dark .editor-wrapper .bytemd,
 html.dark .bytemd,
+html[data-theme='dark'] body .bytemd.bytemd,
+html[data-theme='dark'] .editor-wrapper .bytemd,
+html[data-theme='dark'] .bytemd,
+body[data-theme='dark'] .editor-wrapper .bytemd,
 .dark .editor-wrapper .bytemd,
 .dark .bytemd {
-  background: #212428 !important;
-  background-color: #212428 !important;
+  background: var(--vb-editor-dark-bg) !important;
+  background-color: var(--vb-editor-dark-bg) !important;
 }
 
 html.dark body .bytemd-body.bytemd-body,
 html.dark .editor-wrapper .bytemd-body,
 html.dark .bytemd-body,
+html[data-theme='dark'] body .bytemd-body.bytemd-body,
+html[data-theme='dark'] .editor-wrapper .bytemd-body,
+html[data-theme='dark'] .bytemd-body,
+body[data-theme='dark'] .editor-wrapper .bytemd-body,
 .dark .editor-wrapper .bytemd-body,
 .dark .bytemd-body {
-  background: #212428 !important;
-  background-color: #212428 !important;
+  background: var(--vb-editor-dark-bg) !important;
+  background-color: var(--vb-editor-dark-bg) !important;
+}
+
+html.dark .editor-wrapper .bytemd-toolbar,
+html.dark .editor-wrapper .bytemd-status,
+html[data-theme='dark'] .editor-wrapper .bytemd-toolbar,
+html[data-theme='dark'] .editor-wrapper .bytemd-status,
+body[data-theme='dark'] .editor-wrapper .bytemd-toolbar,
+body[data-theme='dark'] .editor-wrapper .bytemd-status,
+.dark .editor-wrapper .bytemd-toolbar,
+.dark .editor-wrapper .bytemd-status {
+  background: var(--vb-editor-dark-panel) !important;
+  background-color: var(--vb-editor-dark-panel) !important;
+  border-color: var(--vb-editor-dark-border) !important;
+  color: var(--vb-editor-dark-text) !important;
+}
+
+html.dark .editor-wrapper .bytemd-toolbar-icon,
+html[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon,
+body[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon,
+.dark .editor-wrapper .bytemd-toolbar-icon,
+.dark .editor-wrapper .bytemd-toolbar-icon {
+  color: var(--vb-editor-dark-muted) !important;
+}
+
+html.dark .editor-wrapper .bytemd-toolbar-icon:hover,
+html.dark .editor-wrapper .bytemd-toolbar-icon.bytemd-toolbar-active,
+html[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon:hover,
+html[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon.bytemd-toolbar-active,
+body[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon:hover,
+body[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon.bytemd-toolbar-active,
+.dark .editor-wrapper .bytemd-toolbar-icon:hover,
+.dark .editor-wrapper .bytemd-toolbar-icon.bytemd-toolbar-active {
+  background: rgba(148, 163, 184, 0.14) !important;
+  color: #f8fafc !important;
+}
+
+html.dark .editor-wrapper .bytemd-toolbar-icon svg,
+html[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon svg,
+body[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon svg,
+.dark .editor-wrapper .bytemd-toolbar-icon svg {
+  color: inherit !important;
+}
+
+html.dark .tippy-box,
+html[data-theme='dark'] .tippy-box,
+body[data-theme='dark'] .tippy-box,
+.dark .tippy-box {
+  background: var(--vb-editor-dark-panel) !important;
+  background-color: var(--vb-editor-dark-panel) !important;
+  color: var(--vb-editor-dark-text) !important;
+  border: 1px solid var(--vb-editor-dark-border);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
+}
+
+html.dark .tippy-content,
+html[data-theme='dark'] .tippy-content,
+body[data-theme='dark'] .tippy-content,
+.dark .tippy-content {
+  color: var(--vb-editor-dark-text) !important;
+}
+
+html.dark .tippy-box[data-placement^='top'] > .tippy-arrow::before,
+html[data-theme='dark'] .tippy-box[data-placement^='top'] > .tippy-arrow::before,
+body[data-theme='dark'] .tippy-box[data-placement^='top'] > .tippy-arrow::before,
+.dark .tippy-box[data-placement^='top'] > .tippy-arrow::before {
+  border-top-color: var(--vb-editor-dark-panel) !important;
+}
+
+html.dark .tippy-box[data-placement^='bottom'] > .tippy-arrow::before,
+html[data-theme='dark'] .tippy-box[data-placement^='bottom'] > .tippy-arrow::before,
+body[data-theme='dark'] .tippy-box[data-placement^='bottom'] > .tippy-arrow::before,
+.dark .tippy-box[data-placement^='bottom'] > .tippy-arrow::before {
+  border-bottom-color: var(--vb-editor-dark-panel) !important;
+}
+
+html.dark .tippy-box[data-placement^='left'] > .tippy-arrow::before,
+html[data-theme='dark'] .tippy-box[data-placement^='left'] > .tippy-arrow::before,
+body[data-theme='dark'] .tippy-box[data-placement^='left'] > .tippy-arrow::before,
+.dark .tippy-box[data-placement^='left'] > .tippy-arrow::before {
+  border-left-color: var(--vb-editor-dark-panel) !important;
+}
+
+html.dark .tippy-box[data-placement^='right'] > .tippy-arrow::before,
+html[data-theme='dark'] .tippy-box[data-placement^='right'] > .tippy-arrow::before,
+body[data-theme='dark'] .tippy-box[data-placement^='right'] > .tippy-arrow::before,
+.dark .tippy-box[data-placement^='right'] > .tippy-arrow::before {
+  border-right-color: var(--vb-editor-dark-panel) !important;
+}
+
+html.dark .editor-wrapper .bytemd-editor,
+html.dark .editor-wrapper .CodeMirror,
+html.dark .editor-wrapper .CodeMirror-scroll,
+html.dark .editor-wrapper .CodeMirror-gutters,
+html.dark .editor-wrapper .CodeMirror-lines,
+html[data-theme='dark'] .editor-wrapper .bytemd-editor,
+html[data-theme='dark'] .editor-wrapper .CodeMirror,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-scroll,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-gutters,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-lines,
+body[data-theme='dark'] .editor-wrapper .bytemd-editor,
+body[data-theme='dark'] .editor-wrapper .CodeMirror,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-scroll,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-gutters,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-lines,
+.dark .editor-wrapper .bytemd-editor,
+.dark .editor-wrapper .CodeMirror,
+.dark .editor-wrapper .CodeMirror-scroll,
+.dark .editor-wrapper .CodeMirror-gutters,
+.dark .editor-wrapper .CodeMirror-lines {
+  background: var(--vb-editor-dark-bg) !important;
+  background-color: var(--vb-editor-dark-bg) !important;
+  color: var(--vb-editor-dark-text) !important;
+  border-color: var(--vb-editor-dark-border) !important;
+}
+
+html.dark .editor-wrapper .CodeMirror-cursor,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-cursor,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-cursor,
+.dark .editor-wrapper .CodeMirror-cursor {
+  border-left-color: var(--vb-editor-dark-text) !important;
+}
+
+html.dark .editor-wrapper .CodeMirror-linenumber,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-linenumber,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-linenumber,
+.dark .editor-wrapper .CodeMirror-linenumber {
+  color: #94a3b8 !important;
+}
+
+html.dark .editor-wrapper .CodeMirror-selected,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-selected,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-selected,
+.dark .editor-wrapper .CodeMirror-selected {
+  background: rgba(59, 130, 246, 0.28) !important;
 }
 
 .editor-wrapper {
@@ -182,6 +347,11 @@ html.dark .bytemd-body,
   /* 强制覆盖所有背景色为统一的 #212428 */
   .bytemd,
   .bytemd-body,
+  .bytemd-toolbar,
+  .bytemd-status,
+  .bytemd-editor,
+  .CodeMirror,
+  .CodeMirror-scroll,
   .bytemd-preview,
   .markdown-body {
     background: #212428 !important;

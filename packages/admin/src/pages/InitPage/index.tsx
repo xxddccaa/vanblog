@@ -1,3 +1,4 @@
+import AuthThemeSync from '@/components/AuthThemeSync';
 import Footer from '@/components/Footer';
 import { fetchInit } from '@/services/van-blog/api';
 import ProCard from '@ant-design/pro-card';
@@ -19,6 +20,7 @@ const InitPage = () => {
   const formRef2 = useRef<ProFormInstance>();
   return (
     <div className={styles.container}>
+      <AuthThemeSync />
       <div className={styles.content}>
         <ProCard
           title={

@@ -33,9 +33,11 @@ export default function () {
   const [treeLoading, setTreeLoading] = useState(true);
   const [editorWidth, setEditorWidth] = useState(400);
   const [editorHeight, setEditorHeight] = useState<string | number>('calc(100vh - 82px)');
-  const type = history.location.query?.type;
-  const path = history.location.query?.path;
-  const id = history.location.query?.id;
+  const search = history.location?.search || window.location.search;
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
+  const type = searchParams.get('type');
+  const path = searchParams.get('path');
+  const id = searchParams.get('id');
   const isFolder = type == 'folder';
   const typeMap = {
     file: '单文件页面',
@@ -185,9 +187,9 @@ export default function () {
         setEditorLoading(false);
       }
     }
-  }, [setCurrObj, setValue, path]);
+  }, [id, isFolder, path, setCurrObj, setValue, type]);
   const handleSave = async () => {
-    if (location.hostname == 'blog-demo.mereith.com') {
+    if (window.location.hostname == 'blog-demo.mereith.com') {
       Modal.info({
         title: '演示站不可修改此项！',
       });

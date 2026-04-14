@@ -19,6 +19,63 @@
   .container {
     background: #111827;
   }
+
+  .content {
+    :global(.ant-pro-card) {
+      background: rgba(15, 23, 42, 0.84);
+      border-color: rgba(148, 163, 184, 0.22);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(18px);
+    }
+
+    :global(.ant-pro-card-title),
+    :global(.ant-steps-item-title),
+    :global(.ant-form-item-label > label),
+    :global(.ant-pro-form-group-title),
+    :global(.ant-form-item-explain-error),
+    :global(.ant-input-affix-wrapper .anticon),
+    :global(.ant-alert-message),
+    :global(.ant-alert-description) {
+      color: #e2e8f0;
+    }
+
+    :global(.ant-pro-card-title a),
+    :global(.ant-steps-item-description),
+    :global(.ant-steps-item-wait .ant-steps-item-title) {
+      color: #94a3b8;
+    }
+
+    :global(.ant-steps-item-process .ant-steps-item-title),
+    :global(.ant-steps-item-finish .ant-steps-item-title) {
+      color: #f8fafc;
+    }
+
+    :global(.ant-alert.ant-alert-info) {
+      background: rgba(30, 41, 59, 0.88);
+      border-color: rgba(96, 165, 250, 0.26);
+    }
+
+    :global(.ant-input),
+    :global(.ant-input-affix-wrapper),
+    :global(.ant-input-textarea textarea),
+    :global(.ant-select-selector),
+    :global(.ant-picker),
+    :global(.ant-input-number),
+    :global(.ant-input-number-input),
+    :global(.ant-input-number-group-addon) {
+      color: #f8fafc;
+      background: rgba(15, 23, 42, 0.72) !important;
+      border-color: rgba(148, 163, 184, 0.24) !important;
+    }
+
+    :global(.ant-input::placeholder),
+    :global(.ant-input-textarea textarea::placeholder),
+    :global(.ant-select-selection-placeholder),
+    :global(.ant-picker-input input::placeholder),
+    :global(.ant-input-number-input::placeholder) {
+      color: #94a3b8;
+    }
+  }
 }
 
 @media (min-width: @screen-md-min) {

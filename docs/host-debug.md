@@ -225,3 +225,24 @@ pnpm host:dev:up
    - 或用 `tests/manual-v1.3.0/docker-compose.yaml` 做镜像态验收
 
 如果问题只会在 `/admin` 子路径、镜像静态资源、Caddy 转发、容器健康检查里出现，不要只依赖宿主机调试结果，必须再回到 Docker 栈复验。
+
+## Admin 调试 token / MCP 建议
+
+当问题发生在 `/admin` 的登录态、编辑器、主题、缓存、列表页或浏览器行为层时，单看接口返回通常不够，建议配合浏览器 MCP 做真实页面验证。
+
+- debug super token 只用于本机或测试环境的临时调试，不用于生产环境
+- 不要把真实 token 写进仓库文件、脚本、测试夹具、截图说明或最终对外回复
+- 调试时优先用一次性的请求头或环境变量注入 token，不要做持久化配置
+- `http://127.0.0.1:18080` 与外部转发出来的公网地址/IP 属于不同 origin，`localStorage`、登录态、缓存彼此独立，必须分别验证
+- 遇到 `/admin` 编辑器或后台主题异常时，除了看接口是否 `200`，还要一起检查：
+  - 当前 origin 下的 `localStorage` / `sessionStorage`
+  - 当前主题模式（light / dark / auto）
+  - 是否命中了旧的后台壳文件或旧静态资源
+  - 页面真实 DOM 与最终命中的 CSS
+- 用浏览器 MCP 验证完成后，如果本次注入的 token、缓存或站点存储可能影响后续排查，记得清理当前 origin 的临时状态
+- 如果代码已经修改，为避免容器残留状态影响判断，Docker 验证仍应优先使用全量重启：
+
+```bash
+VANBLOG_HTTP_PORT=18080 docker compose down
+VANBLOG_HTTP_PORT=18080 docker compose up -d --build
+```

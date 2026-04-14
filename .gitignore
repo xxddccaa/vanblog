@@ -156,6 +156,8 @@ v8-compile-cache*
 sync_to_remote.sh
 # local runtime data
 data/
+caddy/config/
+aliyunpan/config/
 tests/.tmp/
 tests/host-dev/runtime/
 tests/manual-v*/runtime/

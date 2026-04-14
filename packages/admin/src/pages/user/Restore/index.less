@@ -1,0 +1,69 @@
+@layout-body-background: #f0f2f5;
+@screen-md-min: 768px;
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  background-color: @layout-body-background;
+  background-image: var(--restore-background-image);
+  background-repeat: no-repeat;
+  background-position: center 110px;
+  background-size: 100%;
+}
+
+.card {
+  width: min(700px, calc(100vw - 32px));
+  margin-top: 160px;
+  max-height: 470px;
+}
+
+:global(html[data-theme='dark']) {
+  .container {
+    background-color: #0f172a;
+    background-image:
+      radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 42%),
+      radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.12), transparent 36%),
+      linear-gradient(180deg, #0f172a 0%, #111827 100%);
+  }
+
+  .card {
+    :global(.ant-pro-card) {
+      background: rgba(15, 23, 42, 0.84);
+      border-color: rgba(148, 163, 184, 0.22);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(18px);
+    }
+
+    :global(.ant-pro-card-title),
+    :global(.ant-form-item-label > label),
+    :global(.ant-alert-description),
+    :global(.ant-alert-message),
+    :global(.ant-input-affix-wrapper .anticon),
+    :global(.ant-form-item-explain-error) {
+      color: #e2e8f0;
+    }
+
+    :global(.ant-alert.ant-alert-info) {
+      background: rgba(30, 41, 59, 0.88);
+      border-color: rgba(96, 165, 250, 0.26);
+    }
+
+    :global(.ant-input),
+    :global(.ant-input-affix-wrapper) {
+      color: #f8fafc;
+      background: rgba(15, 23, 42, 0.72);
+      border-color: rgba(148, 163, 184, 0.24);
+    }
+
+    :global(.ant-input::placeholder) {
+      color: #94a3b8;
+    }
+  }
+}
+
+@media (max-width: @screen-md-min) {
+  .card {
+    margin-top: 80px;
+  }
+}

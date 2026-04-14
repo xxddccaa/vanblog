@@ -218,13 +218,8 @@ test('caddy routes requests to the split services', () => {
   assert.match(caddyfile, /handle \/admin\*/);
 });
 
-test('swagger is only exposed to private clients at the caddy layer', () => {
+test('swagger stays hidden at the caddy layer', () => {
   for (const file of [caddyfile, caddyfileHttps]) {
-    assert.match(
-      file,
-      /@swaggerPrivate \{[\s\S]*path \/swagger\*[\s\S]*remote_ip private_ranges[\s\S]*\}/,
-    );
-    assert.match(file, /handle @swaggerPrivate \{[\s\S]*reverse_proxy server:3000[\s\S]*\}/);
     assert.match(file, /handle \/swagger\* \{[\s\S]*respond "Not Found" 404[\s\S]*\}/);
   }
 });

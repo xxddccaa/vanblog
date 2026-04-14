@@ -102,42 +102,44 @@ export default function EditorComponent(props: {
 
   return (
     <div style={{ height: '100%' }} className={themeClass}>
-      <Spin spinning={loading} className="editor-wrapper">
-        <Editor
-          value={props.value}
-          plugins={plugins}
-          onChange={props.onChange}
-          locale={cn}
-          sanitize={sanitize}
-          uploadImages={async (files: File[]) => {
-            if (files.length === 1) {
+      <div className="editor-wrapper">
+        <Spin spinning={loading}>
+          <Editor
+            value={props.value}
+            plugins={plugins}
+            onChange={props.onChange}
+            locale={cn}
+            sanitize={sanitize}
+            uploadImages={async (files: File[]) => {
+              if (files.length === 1) {
+                setLoading(true);
+                const url = await uploadImg(files[0]);
+                setLoading(false);
+                return url ? [{ url: encodeURI(url) }] : [];
+              }
+
               setLoading(true);
-              const url = await uploadImg(files[0]);
-              setLoading(false);
-              return url ? [{ url: encodeURI(url) }] : [];
-            }
-            
-            setLoading(true);
-            const res = [];
-            
-            try {
-              const uploadPromises = files.map(async (file) => {
-                const url = await uploadImg(file);
-                return url ? { url: encodeURI(url) } : null;
-              });
-              
-              const results = await Promise.all(uploadPromises);
-              res.push(...results.filter(Boolean));
-            } catch (error) {
-              console.error('批量上传图片失败:', error);
-            } finally {
-              setLoading(false);
-            }
-            
-            return res;
-          }}
-        />
-      </Spin>
+              const res = [];
+
+              try {
+                const uploadPromises = files.map(async (file) => {
+                  const url = await uploadImg(file);
+                  return url ? { url: encodeURI(url) } : null;
+                });
+
+                const results = await Promise.all(uploadPromises);
+                res.push(...results.filter(Boolean));
+              } catch (error) {
+                console.error('批量上传图片失败:', error);
+              } finally {
+                setLoading(false);
+              }
+
+              return res;
+            }}
+          />
+        </Spin>
+      </div>
     </div>
   );
 }

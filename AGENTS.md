@@ -75,6 +75,8 @@ This machine now has two sanctioned `18080` debug workflows documented in `docs/
 - Optional source-build Docker debug on `18080`:
   - `VANBLOG_HTTP_PORT=18080 docker compose up -d --build`
   - `VANBLOG_HTTP_PORT=18080 docker compose down`
+  - after code changes, prefer a full compose restart instead of restarting a single service: `VANBLOG_HTTP_PORT=18080 docker compose down && VANBLOG_HTTP_PORT=18080 docker compose up -d --build`
+  - this reduces stale container/image/runtime state during AI validation, but browser-side cache may still require a hard refresh or an incognito window
 - Fast host-debug on `18080`:
   - `pnpm host:dev:up`
   - `pnpm host:dev:down`
@@ -90,6 +92,17 @@ This machine now has two sanctioned `18080` debug workflows documented in `docs/
 - In host-debug mode, most edits under `packages/server`, `packages/website`, and `packages/admin` take effect automatically via dev-server reload/recompile; do not restart the whole stack unless needed.
 - If `tests/host-dev/Caddyfile`, `scripts/host-dev-up.sh`, `scripts/host-dev-down.sh`, `scripts/host-dev-env.sh`, ports, proxy rules, or startup env/args changed, restart with `pnpm host:dev:down && pnpm host:dev:up`.
 - When the issue involves `/admin` subpath routing, static assets, Caddy, WebSocket/HMR proxying, health checks, or other container-only behavior, validate again with the Docker `18080` workflow before concluding.
+
+## Admin Debug Token / MCP Workflow
+For local or test-only `/admin` debugging, a temporary debug super token flow is allowed for browser validation, but keep it ephemeral and out of tracked artifacts.
+
+- Never hardcode a real token into tracked files, scripts, fixtures, tests, or final user-facing responses.
+- Prefer passing the debug token through a one-off request header or environment variable during active debugging only.
+- Treat different origins as different browser states; `http://127.0.0.1:18080` and any forwarded public host/IP must be validated separately.
+- For `/admin` list/editor/theme/cache issues, verify both the backend API response and the browser-side state, including `localStorage`, theme mode, cached editor content, and loaded asset versions.
+- After browser-based token debugging, clear temporary site storage for the tested origin when it may affect later validation.
+- Do not enable or rely on debug-token behavior for production workflows; use it only for sanctioned local/test debugging.
+- After code changes, Docker validation should still use a full restart: `VANBLOG_HTTP_PORT=18080 docker compose down && VANBLOG_HTTP_PORT=18080 docker compose up -d --build`
 
 ## Commit & Pull Request Guidelines
 Recent history uses short, change-focused Chinese subjects, for example: `分类与标签页增加分页并优化公开文章查询。` Match that concise style or use an equally clear English summary.

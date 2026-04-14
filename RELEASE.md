@@ -18,10 +18,12 @@
 
 1. 在 `master` 上整理代码并提交。
 2. 运行完整测试，优先通过 `pnpm test:full`。
-3. 确认根目录 `package.json` 的版本号正确，例如 `1.0.0`。
-4. 使用 `scripts/release-images.sh` 构建并推送 5 个镜像。
-5. 记录本次版本号和镜像 id（默认用 Git 短 SHA）。
-6. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。
+3. 确认根目录 `package.json` 的版本号正确，例如 `1.0.0`，并统一成发布标签 `vX.Y.Z`。
+4. 先补齐本次版本对应的 wiki / release note，写清楚本版特性、与上一公开稳定版的差异，以及可直接部署的 `docker compose` 配置单。
+5. 给当前代码打版本 tag，并推送到 GitHub。
+6. 使用 `scripts/release-images.sh` 构建并推送 5 个镜像。
+7. 记录本次版本号、Git tag、镜像 id（默认用 Git 短 SHA）和对应 wiki / release note 地址。
+8. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。
 
 这个机制的优点：
 
@@ -189,14 +191,91 @@ pnpm test:full
 # 3) 看一下版本号
 node -p "require('./package.json').version"
 
-# 4) 登录镜像仓库
+# 4) 先更新本次版本对应的 wiki / release note
+#    - 写本版特性
+#    - 写和上一公开稳定版的区别
+#    - 写 docker compose 配置单
+
+# 5) 推 Git 提交
+git push origin master
+
+# 6) 打版本 tag（示例）
+git tag v1.0.0
+git push origin v1.0.0
+
+# 7) 登录镜像仓库
 docker login
 
-# 5) 发布 5 个镜像
+# 8) 发布 5 个镜像
 pnpm release:images:push
 ```
 
-## 6. 使用已发布镜像部署
+## 6. 版本 wiki / release note 要求
+
+每个正式版本都应当有一份和版本号绑定的发布说明。无论它最终放在 GitHub Wiki、仓库文档站、`docs/releases/`，还是其他对外文档系统，都应满足下面要求。
+
+最低要求：
+
+- 文档标题必须与版本绑定，例如 `v1.3.2`
+- 明确说明本版的核心特性、修复项、兼容性变化
+- 说明它和“上一公开稳定版”的差异，而不是只写零散改动
+- 给出可直接部署的 `docker compose` 配置单或等价的 `.env` + compose 说明
+- 给出镜像标签示例、部署命令、升级命令、回滚命令
+
+关于“和上一版的差异”：
+
+- 默认对比“上一公开稳定版”或“上一里程碑版本”
+- 例如当前发布 `v1.3.2`，如果对外实际承接的是 `v1.3.0`，那 wiki 应明确写出 `v1.3.2` 相比 `v1.3.0` 的新增、修复和部署差异
+- 不要假定读者会自己翻 commit 或自己比较多个历史版本
+
+建议结构：
+
+```md
+# vX.Y.Z
+
+## 本版摘要
+
+## 相比上一公开稳定版的变化
+
+## 主要特性 / 修复
+
+## 部署前注意事项
+
+## docker compose 配置单
+
+## 升级步骤
+
+## 回滚方法
+```
+
+## 7. docker compose 配置单要求
+
+每个正式版本的 wiki / release note 都应带一份“别人拿过去就能改变量部署”的配置单。它可以是完整 `docker-compose.yaml` 示例，也可以是 `docker-compose.image.yml` + `.env` 的组合说明，但必须满足下面要求：
+
+- 使用当前版本对应的不可变镜像 tag，格式为 `vanblog-<service>-vX.Y.Z-<image-id>`
+- 与当前官方运行拓扑保持一致，默认应覆盖 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis`
+- 明确哪些目录需要持久化挂载
+- 明确哪些环境变量必须改成用户自己的值
+- 明确对外暴露端口，以及哪些端口不应暴露到公网
+
+配置单内容建议至少覆盖：
+
+- 镜像 tag 示例
+- `EMAIL`
+- `POSTGRES_*`
+- `VAN_BLOG_DATABASE_URL`
+- `VAN_BLOG_REDIS_URL`
+- `WALINE_JWT_TOKEN`
+- `VAN_BLOG_WALINE_DATABASE_URL`
+- `VANBLOG_RELEASE_SUFFIX` 或直接写死的版本镜像 tag
+- `80/443` 或自定义宿主机 HTTP 端口映射
+- `data/static`、`data/postgres`、`data/redis`、`caddy/config`、`caddy/data`、`log` 等挂载目录
+
+如果 wiki 里提供的是“最小 compose 示例”，请额外标注一句：
+
+- 示例的字段、服务清单和环境变量以仓库当前 `docker-compose.image.yml` 与 `.env.release.example` 为准，后续版本发布时要同步更新，不要直接复制旧版本的配置单。
+
+## 8. 使用已发布镜像部署
 
 生产部署推荐使用根目录的：
 
@@ -256,7 +335,7 @@ export VANBLOG_RELEASE_SUFFIX=latest
 
 但仍然建议生产环境优先使用不可变 tag，而不是 `latest`。
 
-## 7. 回滚建议
+## 9. 回滚建议
 
 如果线上有问题，直接把 `VANBLOG_RELEASE_SUFFIX` 改回上一版即可：
 
@@ -267,7 +346,7 @@ docker compose -f docker-compose.image.yml up -d
 
 这也是拆分多镜像加版本化标签的核心价值：**可快速回滚，可精确定位。**
 
-## 8. AI 代理发版规则
+## 10. AI 代理发版规则
 
 如果 AI 需要帮你发版，默认应遵守下面规则：
 
@@ -296,25 +375,30 @@ docker compose -f docker-compose.image.yml up -d
 pnpm test:full
 ```
 
-## 9. GitHub Actions 说明
+11. 除了镜像发布外，还要同步维护当前版本的 wiki / release note，并确保其中的 compose 配置单与当前版本一致。
 
-当前仓库**不再使用 GitHub Actions 执行镜像发布**。
+## 11. GitHub Actions 说明
+
+当前仓库**不再使用 GitHub Actions 执行正式镜像发布、测试环境推送、ARM 测试镜像推送或文档镜像部署**。
 
 原因很直接：
 
 - Docker Hub 发布以当前机器的本地手工流程为准
 - 本机已经配置了代理、buildx builder、测试链路和 Docker 登录态
-- 推送 `v*` tag 后再让 GitHub 侧重复构建，容易产生失败邮件和额外噪音
+- 推送 `master` 或 `v*` tag 后再让 GitHub 侧重复构建/部署，容易产生失败邮件和额外噪音
+- 版本发布要以“本机测试通过 + 本机构建镜像 + 本机推送”为唯一准入路径
 
 因此：
 
-- `.github/workflows/release.yml` 已移除
-- `.github/workflows/local-build.yml` 已移除
+- `.github/workflows/deploy-docs.yml` 已移除
+- `.github/workflows/test.yml` 已移除
+- `.github/workflows/test-arm.yml` 已移除
 - 正式发布统一使用本地命令：`pnpm release:images:push`
+- 当前仅保留 PR 级别的普通代码校验；向 GitHub 推送版本 tag 不应再触发远端镜像发布流程
 
 如果保留 GitHub Actions，定位仅限于普通代码校验；不要再把 Docker Hub 正式发布绑定到 GitHub Actions。
 
-## 10. 常用命令速查
+## 12. 常用命令速查
 
 ```bash
 # 查看版本

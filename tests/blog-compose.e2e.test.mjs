@@ -196,6 +196,38 @@ function createComposeEnv(httpPort, httpsPort) {
   };
 }
 
+function cleanupTempRoot() {
+  if (!fs.existsSync(tempRoot)) {
+    return;
+  }
+
+  try {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+    return;
+  } catch (error) {
+    if (!['EACCES', 'EPERM'].includes(error?.code)) {
+      throw error;
+    }
+  }
+
+  const parentDir = path.dirname(tempRoot);
+  const dirName = path.basename(tempRoot);
+  const result = spawnSync(
+    'docker',
+    ['run', '--rm', '-v', `${parentDir}:/cleanup`, 'redis:7-alpine', 'sh', '-c', `rm -rf "/cleanup/${dirName}"`],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      timeout: 2 * 60 * 1000,
+    },
+  );
+
+  if ((result.status ?? 1) !== 0) {
+    const details = [result.stdout, result.stderr].filter(Boolean).join('\n').trim();
+    throw new Error(`Failed to remove temp compose data ${tempRoot}\n${details}`);
+  }
+}
+
 async function encryptForFrontend(username, password) {
   const lower = username.toLowerCase();
   const sha256 = (input) => createHash('sha256').update(input).digest('hex');
@@ -559,7 +591,7 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     });
 
     if (process.env.KEEP_BLOG_E2E !== 'true') {
-      fs.rmSync(tempRoot, { recursive: true, force: true });
+      cleanupTempRoot();
     }
   }
 });

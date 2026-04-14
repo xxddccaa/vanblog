@@ -115,19 +115,32 @@ body .dark-switch {
 .editor-full {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
+  min-height: 100vh;
   .ant-pro-grid-content {
     max-width: 50000px !important;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
   }
-  .ant-pro-page-container-children-content {
+  .ant-pro-page-container-children-content,
+  .ant-pro-page-container-children-container {
     margin: 0 !important;
   }
+  .ant-pro-grid-content,
   .ant-pro-grid-content-children,
   .ant-pro-page-container-children-content,
+  .ant-pro-page-container-children-container,
   .ant-spin-nested-loading,
   .ant-spin-container {
     height: 100%;
+    min-height: 0;
+  }
+  .ant-pro-grid-content-children,
+  .ant-pro-page-container-children-content,
+  .ant-pro-page-container-children-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
   }
 }
 .ant-pro-grid-content.wide {

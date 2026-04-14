@@ -1,3 +1,4 @@
+import AuthThemeSync from '@/components/AuthThemeSync';
 import Footer from '@/components/Footer';
 import { login, getPublicSiteInfo, fetchAllMeta } from '@/services/van-blog/api';
 import { encryptPwd } from '@/services/van-blog/encryptPwd';
@@ -171,6 +172,7 @@ const Login = () => {
         '--login-background-image': `url(${getAdminAssetPath('background.svg')})`,
       }}
     >
+      <AuthThemeSync />
       <div className={styles.content}>
         <LoginForm
           className={styles.loginForm}

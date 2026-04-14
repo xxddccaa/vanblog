@@ -1,3 +1,4 @@
+import AuthThemeSync from '@/components/AuthThemeSync';
 import { restore } from '@/services/van-blog/api';
 import { encryptPwd } from '@/services/van-blog/encryptPwd';
 import ProCard from '@ant-design/pro-card';
@@ -5,23 +6,20 @@ import ProForm, { ProFormText } from '@ant-design/pro-form';
 import { Alert, message } from 'antd';
 import { history } from '@umijs/max';
 import { getAdminAssetPath } from '@/utils/getAssetPath';
+import styles from './index.less';
 export default function () {
   return (
     <div
+      className={styles.container}
       style={{
-        height: '100%',
-        display: 'flex',
-        backgroundImage: `url('${getAdminAssetPath('background.svg')}')`,
-        backgroundRepeat: 'no-repeat',
-        backgroundSize: '100%',
-        backgroundColor: '#f0f2f5',
-        justifyContent: 'center',
+        '--restore-background-image': `url('${getAdminAssetPath('background.svg')}')`,
       }}
     >
+      <AuthThemeSync />
       <ProCard
         title="忘记密码"
         bordered
-        style={{ maxWidth: '700px', marginTop: '200px', maxHeight: '470px' }}
+        className={styles.card}
       >
         <Alert
           type="info"
