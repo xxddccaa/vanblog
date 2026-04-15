@@ -213,6 +213,102 @@ async function assertAdminShell(page) {
   assert.notEqual(logoTitleColor, 'rgba(0, 0, 0, 0.88)', 'dark theme still renders logo title as black');
 }
 
+async function findSyntaxHighlightArticleId(token) {
+  const { response, body } = await fetchJson(
+    `${baseUrl}/api/admin/article?page=1&pageSize=50&toListView=true`,
+    {
+      headers: { token },
+    },
+  );
+  assert.equal(response.status, 200, `list articles failed: ${JSON.stringify(body)}`);
+  assert.equal(body?.statusCode, 200, `list articles failed: ${JSON.stringify(body)}`);
+
+  const articles = body?.data?.articles || [];
+  for (const article of articles) {
+    if (!article?.id) {
+      continue;
+    }
+
+    const { response: detailResponse, body: detailBody } = await fetchJson(
+      `${baseUrl}/api/admin/article/${article.id}`,
+      {
+        headers: { token },
+      },
+    );
+    assert.equal(detailResponse.status, 200, `get article ${article.id} failed: ${JSON.stringify(detailBody)}`);
+    assert.equal(
+      detailBody?.statusCode,
+      200,
+      `get article ${article.id} failed: ${JSON.stringify(detailBody)}`,
+    );
+
+    const content = detailBody?.data?.content || '';
+    if (/```[a-zA-Z]/.test(content)) {
+      return article.id;
+    }
+  }
+
+  assert.fail('expected at least one article with a fenced language code block for editor smoke test');
+}
+
+async function assertDarkEditorSyntaxHighlight(page, token) {
+  const articleId = await findSyntaxHighlightArticleId(token);
+
+  await page.evaluate(() => {
+    window.localStorage.setItem('theme', 'dark');
+  });
+
+  const bodyText = await openAdminRoute(page, `/editor?type=article&id=${articleId}`);
+  assert.ok(bodyText.includes('保存'), 'editor page did not render save action');
+
+  const syntaxState = await page.evaluate(() => {
+    const htmlTheme = document.documentElement.dataset.theme || '';
+    const editor = document.querySelector('.CodeMirror');
+    const editorBaseColor = editor ? getComputedStyle(editor).color : '';
+    const editorTokenColors = Array.from(document.querySelectorAll('.CodeMirror span[class*="cm-"]'))
+      .map((element) => ({
+        classes: element.className,
+        color: getComputedStyle(element).color,
+      }))
+      .filter((token) => token.color && token.color !== editorBaseColor);
+
+    const previewBody = document.querySelector('.bytemd-preview .markdown-body');
+    const previewBaseColor = previewBody ? getComputedStyle(previewBody).color : '';
+    const previewTokenColors = Array.from(
+      document.querySelectorAll('.bytemd-preview [class*="hljs-"]'),
+    )
+      .map((element) => ({
+        classes: element.className,
+        color: getComputedStyle(element).color,
+      }))
+      .filter((token) => token.color && token.color !== previewBaseColor);
+
+    return {
+      htmlTheme,
+      editorBaseColor,
+      previewBaseColor,
+      editorHighlightedTokenCount: editorTokenColors.length,
+      previewHighlightedTokenCount: previewTokenColors.length,
+      editorTokenSample: editorTokenColors.slice(0, 5),
+      previewTokenSample: previewTokenColors.slice(0, 5),
+    };
+  });
+
+  assert.equal(syntaxState.htmlTheme, 'dark', 'editor page did not stay in dark theme');
+  assert.ok(
+    syntaxState.editorHighlightedTokenCount > 0,
+    `dark editor tokens collapsed to base color ${syntaxState.editorBaseColor}: ${JSON.stringify(
+      syntaxState.editorTokenSample,
+    )}`,
+  );
+  assert.ok(
+    syntaxState.previewHighlightedTokenCount > 0,
+    `dark preview tokens collapsed to base color ${syntaxState.previewBaseColor}: ${JSON.stringify(
+      syntaxState.previewTokenSample,
+    )}`,
+  );
+}
+
 async function main() {
   const token = await getDebugToken();
   const executablePath = getChromeExecutablePath();
@@ -252,6 +348,7 @@ async function main() {
     const articleBody = await openAdminRoute(page, '/article');
     assert.ok(articleBody.includes('文章管理'), 'article page did not render');
     await assertAdminShell(page);
+    await assertDarkEditorSyntaxHighlight(page, token);
     await page.waitForTimeout(2500);
     const walinePrewarmState = await page.evaluate(() =>
       window.sessionStorage.getItem('vanblog.admin.waline-prewarmed'),

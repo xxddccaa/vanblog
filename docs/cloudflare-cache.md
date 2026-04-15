@@ -10,9 +10,10 @@ A machine-readable starter config is also available at [docs/cloudflare-cache-ru
 
 - `packages/website/next.config.js` emits `Cache-Control`, `CDN-Cache-Control`, `Cloudflare-CDN-Cache-Control`, and `Cache-Tag` for public HTML groups.
 - `packages/server/src/provider/public-cache/public-cache.middleware.ts` emits cache headers, strong `ETag`, `Last-Modified`, anonymous-read cacheability, and `no-store` bypass for auth/write/search/admin-nav responses.
-- `packages/server/src/provider/public-cache/public-cache.middleware.ts` keeps public cacheable responses free of `Vary: Cookie` and `Vary: User-Agent`, and falls back to `no-store` if a public response tries to emit `Set-Cookie`.
+- `packages/server/src/provider/public-cache/public-cache.middleware.ts` keeps public cacheable API responses free of `Vary: Cookie` and `Vary: User-Agent`, and falls back to `no-store` if a public response tries to emit `Set-Cookie`.
+- `packages/website/next.config.js` adds `Vary: x-vanblog-theme` to public HTML so the first-screen shell can stay theme-correct without varying on the full `Cookie` header.
 - `packages/server/src/main.ts` and `packages/server/src/utils/staticCacheHeaders.ts` serve `search-index.json`, RSS feeds, and sitemap files as static artifacts with cache headers and cache tags.
-- `packages/website/proxy.ts` strips tracking params from anonymous cacheable public HTML requests before page rendering, while bypassing auth-like headers and authenticated cookies.
+- `packages/website/proxy.ts` strips tracking params from anonymous cacheable public HTML requests before page rendering, forwards a normalized `x-vanblog-theme` request header, and still bypasses auth-like headers and authenticated cookies.
 - Public article reads are split into shell and fragments: `/api/public/article/:id`, `/api/public/article/:id/nav`, `/api/public/article/:id/engagement`, `/api/public/article/:id/fragments`, plus `/api/public/site-stats`.
 - Frontend overview pages avoid engagement/comment/viewer fragment reads during SSR, and article detail pages load those fragments asynchronously.
 - Browser-side pageview writes are split away from route rendering: `packages/website/pages/_app.tsx` delegates to `packages/website/utils/pageviewLifecycle.ts`, which records pageviews through `navigator.sendBeacon()` when available and falls back to `fetch(..., { keepalive: true })`.
@@ -23,7 +24,7 @@ A machine-readable starter config is also available at [docs/cloudflare-cache-ru
 ### Requires Cloudflare dashboard rollout
 
 - Create the Cache Rules below in Cloudflare so public HTML and public JSON actually become edge-cacheable.
-- Configure cache-key normalization to ignore `utm_*`, `fbclid`, `gclid`, and anonymous cookies. If the current plan cannot do that natively, use the Worker fallback in this repo or redirect-based normalization.
+- Configure cache-key normalization to ignore `utm_*`, `fbclid`, `gclid`, and anonymous cookies, while keeping a normalized public HTML theme variant (`x-vanblog-theme`) outside the `Cookie` key. If the current plan cannot do that natively, use the Worker fallback in this repo or redirect-based normalization.
 - Enable optional Cloudflare features such as `Tiered Cache` and `Respect Strong ETags` in the dashboard if the zone plan supports them.
 - Use Cloudflare Cache Analytics after rollout to validate HIT ratio and origin-request reduction.
 - Make sure the site metadata `baseUrl` is set to the final public origin in `/admin/init` or later site settings, otherwise Cloudflare file purge for page and feed URLs will be skipped.
@@ -126,9 +127,11 @@ Action:
 ## Cache Key Hygiene
 
 - Ignore marketing query params such as `utm_*`, `fbclid`, and `gclid`.
-- Ignore anonymous cookies on public pages.
+- Ignore anonymous cookies on public pages, but keep a normalized theme variant for public HTML (`light` or `dark`, with legacy `auto` mapped to `dark`).
+- Public HTML should vary by `x-vanblog-theme`, not by the full `Cookie` header.
 - The origin middleware in this repo now follows the same rule for `/api/public/*`: only auth-like cookies bypass cache, while anonymous preference cookies do not force `no-store`.
 - If a Worker fallback is used, bypass cache normalization entirely when auth-like cookies such as `token`, `session`, `sessionid`, `connect.sid`, or `next-auth.session-token` are present.
+- If a Worker fallback is used, strip anonymous cookies before cache lookup, derive `x-vanblog-theme` from the `theme` cookie, normalize legacy `auto` to `dark`, and include that theme variant in the public HTML cache key.
 - If the current Cloudflare plan cannot normalize keys directly, use a Worker or redirect-based URL normalization before cache lookup.
 
 This repo now also includes a Next.js redirect fallback at [packages/website/proxy.ts](/root/vanblog/vanblog_git/vanblog/packages/website/proxy.ts), which strips tracking params from anonymous cacheable public HTML URLs before the request reaches the page renderer, and skips normalization entirely when auth-like headers or authenticated cookies are present.
@@ -143,6 +146,8 @@ That Worker template:
 - skips cache normalization entirely for auth-like request headers such as `Authorization`, `token`, `x-token`, and `x-api-key`
 - bypasses cache normalization when obviously authenticated cookies such as `token`, `session`, `sessionid`, `connect.sid`, and `next-auth.session-token` are present
 - removes anonymous cookies before cache lookup
+- derives `x-vanblog-theme` from the public `theme` cookie and maps legacy `auto` to `dark`
+- varies the public HTML cache key by the normalized theme variant instead of by `Cookie`
 - only applies to public HTML paths, not admin or write traffic
 
 ## Optional Enhancements

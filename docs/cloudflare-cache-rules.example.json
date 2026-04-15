@@ -129,6 +129,16 @@
       "msclkid"
     ],
     "ignore_anonymous_cookies": true,
+    "public_html_theme_variant": {
+      "header": "x-vanblog-theme",
+      "cookie": "theme",
+      "allowed_values": [
+        "light",
+        "dark"
+      ],
+      "legacy_auto_maps_to": "dark",
+      "cache_key_scope": "public_html_only"
+    },
     "preserve_auth_cookies": [
       "token",
       "auth",

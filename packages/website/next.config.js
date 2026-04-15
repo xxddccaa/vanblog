@@ -61,6 +61,13 @@ const getCdnUrl = () => {
     return {};
   }
 };
+const withThemeVariantVary = (headers) => [
+  ...headers,
+  {
+    key: "Vary",
+    value: "x-vanblog-theme",
+  },
+];
 module.exports = withBundleAnalyzer({
   reactStrictMode: true,
   generateEtags: true,
@@ -91,7 +98,7 @@ module.exports = withBundleAnalyzer({
     return [
       {
         source: "/post/:path*",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-post" },
           {
@@ -102,11 +109,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=604800, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/(about|link)",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-post" },
           {
@@ -117,11 +124,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=604800, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/c/:path*",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-post" },
           {
@@ -132,11 +139,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=604800, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/(moment|nav)",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-dynamic" },
           {
@@ -147,11 +154,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=300, stale-while-revalidate=600",
           },
-        ],
+        ]),
       },
       {
         source: "/",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-listing,home" },
           {
@@ -162,11 +169,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/archive/:year/:month",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-post,archive-month" },
           {
@@ -177,11 +184,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=604800, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/archive",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-listing,archive" },
           {
@@ -192,11 +199,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/archive/:path*",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-listing,archive" },
           {
@@ -207,11 +214,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/category/:path*",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-listing" },
           {
@@ -222,11 +229,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/category/:category/archive/:year/:month",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-post,archive-month" },
           {
@@ -237,11 +244,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=604800, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/tag/:path*",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-listing" },
           {
@@ -252,11 +259,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/tag/:tag/archive/:year/:month",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-post,archive-month" },
           {
@@ -267,11 +274,11 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=604800, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/timeline",
-        headers: [
+        headers: withThemeVariantVary([
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
           { key: "Cache-Tag", value: "html-public,html-listing" },
           {
@@ -282,7 +289,7 @@ module.exports = withBundleAnalyzer({
             key: "Cloudflare-CDN-Cache-Control",
             value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
-        ],
+        ]),
       },
       {
         source: "/_next/static/:path*",
@@ -312,7 +319,7 @@ module.exports = withBundleAnalyzer({
       },
       {
         source:
-          "/:path(background.svg|favicon.ico|initTheme.js|logo.svg|markdown.css|more.png|robot.txt|robots.txt|yly_tools_logo.png)",
+          "/:path(background.svg|favicon.ico|logo.svg|markdown.css|more.png|robot.txt|robots.txt|yly_tools_logo.png)",
         headers: [
           {
             key: "Cache-Control",

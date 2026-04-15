@@ -290,7 +290,7 @@ describe("static content and archive detail page cache shells", () => {
         showFriends: "false",
         headerLeftContent: "siteName",
         enableComment: "true",
-        defaultTheme: "auto",
+        defaultTheme: "dark",
         enableCustomizing: "false",
         showDonateButton: "false",
         showCopyRight: "true",

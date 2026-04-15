@@ -26,4 +26,26 @@ describe("getLayoutProps", () => {
 
     expect(layoutProps.menus.find((item) => item.value === "/moment")?.name).toBe("动态");
   });
+
+  it("maps legacy auto default theme settings to dark", () => {
+    const layoutProps = getLayoutProps({
+      version: "1.2.0",
+      tags: [],
+      totalArticles: 0,
+      totalWordCount: 0,
+      menus: [],
+      meta: {
+        categories: [],
+        socials: [],
+        siteInfo: {
+          favicon: "/favicon.ico",
+          siteName: "VanBlog",
+          siteDesc: "Cache-first blog",
+          defaultTheme: "auto",
+        },
+      },
+    } as any);
+
+    expect(layoutProps.defaultTheme).toBe("dark");
+  });
 });

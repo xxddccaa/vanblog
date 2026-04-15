@@ -34,7 +34,7 @@ export class SiteInfo {
   showDonateButton: 'true' | 'false';
   showDonateInAbout: 'true' | 'false';
   allowOpenHiddenPostByUrl: 'true' | 'false';
-  defaultTheme: 'auto' | 'dark' | 'light';
+  defaultTheme: 'dark' | 'light';
   enableCustomizing: 'true' | 'false';
   showRSS: 'true' | 'false';
   openArticleLinksInNewWindow: 'true' | 'false';

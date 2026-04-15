@@ -27,7 +27,7 @@ export default function (props: {
   showFriends: "true" | "false";
   showRSS: "true" | "false";
   headerLeftContent: "siteName" | "siteLogo";
-  defaultTheme: "dark" | "auto" | "light";
+  defaultTheme: "dark" | "light";
   subMenuOffset: number;
   openArticleLinksInNewWindow: boolean;
 }) {

@@ -162,7 +162,7 @@ export interface MetaProps {
     showDonateInfo: "true" | "false";
     showFriends: "true" | "false";
     enableComment: "true" | "false";
-    defaultTheme: "auto" | "light" | "dark";
+    defaultTheme: "light" | "dark";
     showDonateInAbout?: "true" | "false";
     enableCustomizing: "true" | "false";
     showDonateButton: "true" | "false";
@@ -243,7 +243,7 @@ const defaultMeta: MetaProps = {
     showDonateInfo: "true",
     showFriends: "true",
     showAdminButton: "true",
-    defaultTheme: "auto",
+    defaultTheme: "dark",
     showDonateInAbout: "false",
     enableCustomizing: "true",
     showCopyRight: "true",

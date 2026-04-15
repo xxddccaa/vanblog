@@ -97,7 +97,7 @@ describe("layout cache shell", () => {
             showFriends: "false",
             headerLeftContent: "siteName",
             enableComment: "true",
-            defaultTheme: "auto",
+            defaultTheme: "dark",
             enableCustomizing: "false",
             showDonateButton: "false",
             showCopyRight: "true",

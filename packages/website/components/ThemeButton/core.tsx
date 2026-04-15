@@ -1,67 +1,33 @@
 import { useContext, useLayoutEffect, useRef } from "react";
 import { applyTheme, getTheme, initTheme } from "../../utils/theme";
+import type { ThemePreference } from "../../utils/themeBoot";
 import { ThemeContext } from "../../utils/themeContext";
 
-export default function (props: { defaultTheme: "auto" | "dark" | "light" }) {
+export default function (props: { defaultTheme: ThemePreference }) {
   const { current } = useRef<any>({ hasInit: false });
-  const { current: currentTimer } = useRef<any>({ timer: null });
   const { theme, setTheme: setState } = useContext(ThemeContext);
-  const setTheme = (newTheme: "auto" | "light" | "dark") => {
-    // console.log(`[setTheme] ${newTheme}`);
-    clearTimer();
+  const setTheme = (newTheme: ThemePreference) => {
     localStorage.setItem("theme", newTheme);
-    // 设置真实的主题，然后把真实的主题搞到 state 里。
+    document.cookie = `theme=${newTheme}; path=/; max-age=31536000; samesite=lax`;
     const realTheme = getTheme(newTheme);
     applyTheme(realTheme, "setTheme", true);
     setState(realTheme);
-    if (realTheme.includes("auto")) {
-      setTimer();
-    }
-  };
-  const clearTimer = () => {
-    clearInterval(currentTimer.timer);
-    currentTimer.timer = null;
-  };
-  const setTimer = () => {
-    clearTimer();
-    currentTimer.timer = setInterval(() => {
-      const realTheme = getTheme("auto");
-      applyTheme(realTheme, "autoThemeTimer", true);
-    }, 10000);
-  };
-  const getThemeTitleAuto = () => {
-    if ((theme as any) == "auto") {
-      return "自动模式";
-    }
-    if (theme.includes("light")) {
-      return "自动模式-亮色";
-    } else {
-      return "自动模式-暗色";
-    }
   };
 
   useLayoutEffect(() => {
     if (!current.hasInit) {
       current.hasInit = true;
       if (!localStorage.getItem("theme")) {
-        // 第一次用默认的
         setTheme(props.defaultTheme);
-        clearTimer();
       } else {
-        const iTheme = initTheme();
-        setTheme(iTheme);
-        clearTimer();
+        setTheme(initTheme());
       }
     }
-    return () => {
-      clearInterval(currentTimer.timer);
-    };
-  }, [current, setTheme, props, currentTimer, theme]);
+  }, [current, props.defaultTheme, setTheme]);
+
   const handleSwitch = () => {
-    if (theme == "light") {
+    if (theme === "light") {
       setTheme("dark");
-    } else if (theme == "dark") {
-      setTheme("auto");
     } else {
       setTheme("light");
     }
@@ -73,7 +39,7 @@ export default function (props: { defaultTheme: "auto" | "dark" | "light" }) {
     >
       <div
         style={{
-          display: theme == "light" ? "block" : "none",
+          display: theme === "light" ? "block" : "none",
           height: 20,
         }}
         className="dark:text-dark "
@@ -94,7 +60,7 @@ export default function (props: { defaultTheme: "auto" | "dark" | "light" }) {
       <div
         className="dark:text-dark fill-gray-600"
         style={{
-          display: theme == "dark" ? "block" : "none",
+          display: theme === "dark" ? "block" : "none",
           height: 20,
         }}
         title="暗色模式"
@@ -108,24 +74,6 @@ export default function (props: { defaultTheme: "auto" | "dark" | "light" }) {
           height={20}
         >
           <path d="M524.8 938.667h-4.267a439.893 439.893 0 0 1-313.173-134.4 446.293 446.293 0 0 1-11.093-597.334A432.213 432.213 0 0 1 366.933 90.027a42.667 42.667 0 0 1 45.227 9.386 42.667 42.667 0 0 1 10.24 42.667 358.4 358.4 0 0 0 82.773 375.893 361.387 361.387 0 0 0 376.747 82.774 42.667 42.667 0 0 1 54.187 55.04 433.493 433.493 0 0 1-99.84 154.88 438.613 438.613 0 0 1-311.467 128z"></path>
-        </svg>
-      </div>
-      <div
-        className="dark:text-dark fill-gray-600"
-        style={{
-          display: theme.includes("auto") ? "block" : "none",
-          height: 20,
-        }}
-        title={getThemeTitleAuto()}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width={20}
-          height={20}
-          viewBox="0 0 1024 1024"
-          aria-label="auto icon"
-        >
-          <path d="M512 992C246.92 992 32 777.08 32 512S246.92 32 512 32s480 214.92 480 480-214.92 480-480 480zm0-840c-198.78 0-360 161.22-360 360 0 198.84 161.22 360 360 360s360-161.16 360-360c0-198.78-161.22-360-360-360zm0 660V212c165.72 0 300 134.34 300 300 0 165.72-134.28 300-300 300z"></path>
         </svg>
       </div>
     </div>

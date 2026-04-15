@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  getThemeVariantForPublicHtml,
   hasAuthenticatedCookie,
   hasAuthLikeHeader,
   shouldNormalizePublicHtmlPath,
   stripTrackingSearchParams,
 } from "./utils/cacheKeyNormalization";
 
+const appendThemeVaryHeader = (response: NextResponse) => {
+  response.headers.append("Vary", "x-vanblog-theme");
+  return response;
+};
+
 export function proxy(request: NextRequest) {
   if (!["GET", "HEAD"].includes(request.method)) {
     return NextResponse.next();
   }
 
+  const cookieHeader = request.headers?.get?.("cookie");
+
   if (
     hasAuthLikeHeader(request.headers) ||
-    hasAuthenticatedCookie(request.headers?.get?.("cookie"))
+    hasAuthenticatedCookie(cookieHeader)
   ) {
     return NextResponse.next();
   }
@@ -22,12 +30,26 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const normalized = stripTrackingSearchParams(request.nextUrl);
-  if (!normalized.changed) {
-    return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  const themeVariant = getThemeVariantForPublicHtml(cookieHeader);
+  if (themeVariant) {
+    requestHeaders.set("x-vanblog-theme", themeVariant);
+  } else {
+    requestHeaders.delete("x-vanblog-theme");
   }
 
-  return NextResponse.redirect(normalized.url, 308);
+  const normalized = stripTrackingSearchParams(request.nextUrl);
+  if (!normalized.changed) {
+    return appendThemeVaryHeader(
+      NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      }),
+    );
+  }
+
+  return appendThemeVaryHeader(NextResponse.redirect(normalized.url, 308));
 }
 
 export const config = {

@@ -47,6 +47,16 @@ export default {
       return fetch(request);
     }
 
+    const normalizeTheme = (theme) => {
+      if (theme === "light" || theme === "dark") {
+        return theme;
+      }
+      if (theme === "auto") {
+        return "dark";
+      }
+      return null;
+    };
+
     for (const key of [...url.searchParams.keys()]) {
       if (
         key.startsWith("utm_") ||
@@ -59,14 +69,19 @@ export default {
     }
 
     const filteredCookies = [];
+    let themeVariant = null;
     const cookieHeader = request.headers.get("Cookie") || "";
     for (const rawPart of cookieHeader.split(";")) {
       const part = rawPart.trim();
       if (!part) {
         continue;
       }
-      const [name] = part.split("=");
+      const [name, ...valueParts] = part.split("=");
       const normalizedName = (name || "").trim().toLowerCase();
+      if (normalizedName === "theme") {
+        themeVariant = normalizeTheme(valueParts.join("="));
+        continue;
+      }
       if (
         normalizedName === "token" ||
         normalizedName === "auth" ||
@@ -93,6 +108,11 @@ export default {
       return fetch(request);
     }
     headers.delete("Cookie");
+    if (themeVariant) {
+      headers.set("x-vanblog-theme", themeVariant);
+    } else {
+      headers.delete("x-vanblog-theme");
+    }
 
     const normalizedRequest = new Request(url.toString(), {
       method: request.method,
@@ -103,6 +123,9 @@ export default {
     return fetch(normalizedRequest, {
       cf: {
         cacheEverything: true,
+        cacheKey: themeVariant
+          ? `${url.origin}${url.pathname}${url.search}::theme=${themeVariant}`
+          : `${url.origin}${url.pathname}${url.search}`,
       },
     });
   },

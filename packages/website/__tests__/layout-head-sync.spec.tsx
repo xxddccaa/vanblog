@@ -107,7 +107,7 @@ describe("layout head sync", () => {
               showFriends: "false",
               headerLeftContent: "siteName",
               enableComment: "false",
-              defaultTheme: "auto",
+              defaultTheme: "dark",
               enableCustomizing: "false",
               showDonateButton: "false",
               showCopyRight: "true",

@@ -30,6 +30,61 @@ body .bytemd-preview {
   background: #ffffff;
 }
 
+.editor-wrapper .bytemd-preview {
+  .mermaid,
+  .bytemd-mermaid {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: #f8f5ff !important;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    overflow: auto;
+    color: #0d47a1 !important;
+  }
+
+  .mermaid svg,
+  .bytemd-mermaid svg {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    height: auto;
+    background: transparent !important;
+  }
+
+  .mermaid text,
+  .mermaid tspan,
+  .bytemd-mermaid text,
+  .bytemd-mermaid tspan {
+    fill: #0d47a1 !important;
+    color: #0d47a1 !important;
+  }
+
+  .mermaid foreignObject,
+  .mermaid foreignObject *,
+  .bytemd-mermaid foreignObject,
+  .bytemd-mermaid foreignObject * {
+    color: #0d47a1 !important;
+  }
+
+  .mermaid .label,
+  .mermaid .nodeLabel,
+  .mermaid .edgeLabel,
+  .mermaid .messageText,
+  .mermaid .actor,
+  .bytemd-mermaid .label,
+  .bytemd-mermaid .nodeLabel,
+  .bytemd-mermaid .edgeLabel,
+  .bytemd-mermaid .messageText,
+  .bytemd-mermaid .actor {
+    color: #0d47a1 !important;
+    fill: #0d47a1 !important;
+  }
+}
+
 /* 后台编辑器暗色模式：同时兼容 html.dark / body.dark / html[data-theme='dark'] */
 html[data-theme='dark'],
 html[data-theme='dark'] body,
@@ -237,6 +292,50 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror-selected,
   background: rgba(59, 130, 246, 0.28) !important;
 }
 
+html.dark .editor-wrapper .CodeMirror pre,
+html[data-theme='dark'] .editor-wrapper .CodeMirror pre,
+body[data-theme='dark'] .editor-wrapper .CodeMirror pre,
+.dark .editor-wrapper .CodeMirror pre {
+  color: #e5e7eb !important;
+}
+
+html.dark .editor-wrapper .CodeMirror .cm-header,
+html.dark .editor-wrapper .CodeMirror .cm-link,
+html.dark .editor-wrapper .CodeMirror .cm-url,
+html[data-theme='dark'] .editor-wrapper .CodeMirror .cm-header,
+html[data-theme='dark'] .editor-wrapper .CodeMirror .cm-link,
+html[data-theme='dark'] .editor-wrapper .CodeMirror .cm-url,
+body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-header,
+body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-link,
+body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-url,
+.dark .editor-wrapper .CodeMirror .cm-header,
+.dark .editor-wrapper .CodeMirror .cm-link,
+.dark .editor-wrapper .CodeMirror .cm-url {
+  color: #7dd3fc !important;
+}
+
+html.dark .editor-wrapper .CodeMirror .cm-comment,
+html.dark .editor-wrapper .CodeMirror .cm-quote,
+html[data-theme='dark'] .editor-wrapper .CodeMirror .cm-comment,
+html[data-theme='dark'] .editor-wrapper .CodeMirror .cm-quote,
+body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-comment,
+body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-quote,
+.dark .editor-wrapper .CodeMirror .cm-comment,
+.dark .editor-wrapper .CodeMirror .cm-quote {
+  color: #fbbf24 !important;
+}
+
+html.dark .editor-wrapper .CodeMirror .cm-variable-2,
+html.dark .editor-wrapper .CodeMirror .cm-strong,
+html[data-theme='dark'] .editor-wrapper .CodeMirror .cm-variable-2,
+html[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
+body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-variable-2,
+body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
+.dark .editor-wrapper .CodeMirror .cm-variable-2,
+.dark .editor-wrapper .CodeMirror .cm-strong {
+  color: #f8fafc !important;
+}
+
 .editor-wrapper {
   height: 100%;
   width: 100%;
@@ -383,6 +482,38 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror-selected,
       &:hover {
         background: #777;
       }
+    }
+  }
+
+  .bytemd-preview {
+    .mermaid,
+    .bytemd-mermaid {
+      background: #f8f5ff !important;
+      border-color: rgba(148, 163, 184, 0.28) !important;
+      box-shadow: inset 0 0 0 1px rgba(156, 39, 176, 0.28);
+      color: #0d47a1 !important;
+    }
+
+    .mermaid text,
+    .mermaid tspan,
+    .bytemd-mermaid text,
+    .bytemd-mermaid tspan,
+    .mermaid foreignObject,
+    .mermaid foreignObject *,
+    .bytemd-mermaid foreignObject,
+    .bytemd-mermaid foreignObject *,
+    .mermaid .label,
+    .mermaid .nodeLabel,
+    .mermaid .edgeLabel,
+    .mermaid .messageText,
+    .mermaid .actor,
+    .bytemd-mermaid .label,
+    .bytemd-mermaid .nodeLabel,
+    .bytemd-mermaid .edgeLabel,
+    .bytemd-mermaid .messageText,
+    .bytemd-mermaid .actor {
+      color: #0d47a1 !important;
+      fill: #0d47a1 !important;
     }
   }
 }

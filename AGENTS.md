@@ -46,6 +46,14 @@ Follow existing 2-space indentation and run Prettier before committing; root for
 - Use camelCase for utilities such as `loadConfig.ts` or `getLayoutProps.ts`.
 - Do not edit generated outputs like `packages/admin/src/.umi`, `packages/admin/dist`, or `packages/website/.next` unless the task explicitly requires regenerated artifacts.
 
+## Working With Existing Changes
+Pre-existing modified files are normal in this repository and are not, by themselves, a reason to stop working.
+
+- Ignore unrelated modified files and continue the requested task.
+- Do not modify, format, stage, or revert unrelated files that already contain user changes.
+- Only pause when the requested task requires editing a file that already has user changes and there is a real risk of overwriting or mixing work.
+- If overlapping edits are unavoidable, read the existing changes carefully, preserve the user's intent, and ask before taking any action that could discard their work.
+
 ## Testing Guidelines
 Add or update tests for each behavior change; there is no visible repo-wide coverage gate.
 
@@ -67,6 +75,8 @@ Treat release and deployment work as documented workflows, not guesswork.
 
 ## Host Debug Workflow
 This machine now has two sanctioned `18080` debug workflows documented in `docs/host-debug.md`.
+
+- There is also a separate machine-local Docker test environment documented in `docs/reference/test-env.md`; when the task refers to the dedicated `test-env-vanblog` stack, read that doc first for its absolute path, startup commands, and `/api/admin/auth/debug-token` setup.
 
 - Docker image-style acceptance on `18080`:
   - `docker compose -f tests/manual-v1.3.0/docker-compose.yaml -p vanblog-manual-v130 up -d`

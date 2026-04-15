@@ -1,11 +1,12 @@
 import React from "react";
+import type { ThemePreference } from "./themeBoot";
 
-export type RealThemeType = "auto-dark" | "auto-light" | "dark" | "light";
+export type RealThemeType = ThemePreference;
 
 export const ThemeContext = React.createContext<{
   theme: RealThemeType;
   setTheme: (newState: RealThemeType) => void;
 }>({
-  theme: "auto-light",
+  theme: "dark",
   setTheme: () => {},
 });

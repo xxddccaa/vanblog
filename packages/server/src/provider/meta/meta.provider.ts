@@ -3,6 +3,9 @@ import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { Meta, MetaDocument } from 'src/scheme/meta.schema';
 import { UpdateSiteInfoDto } from 'src/types/site.dto';
+
+const normalizeDefaultTheme = (theme?: string | null) =>
+  theme === 'light' ? 'light' : 'dark';
 import { RewardItem } from 'src/types/reward.dto';
 import { SocialItem, SocialType } from 'src/types/social.dto';
 import { LinkItem } from 'src/types/link.dto';
@@ -367,10 +370,16 @@ export class MetaProvider {
     // @ts-ignore eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const { name, password, ...updateDto } = updateSiteInfoDto;
     const oldSiteInfo = await this.getSiteInfo();
+    const normalizedUpdateDto = {
+      ...updateDto,
+      ...(Object.prototype.hasOwnProperty.call(updateDto, 'defaultTheme')
+        ? { defaultTheme: normalizeDefaultTheme((updateDto as any)?.defaultTheme) }
+        : {}),
+    };
     return await this.syncMetaPatch({
       siteInfo: {
         ...oldSiteInfo,
-        ...updateDto,
+        ...normalizedUpdateDto,
         updatedAt: new Date(),
       },
     });

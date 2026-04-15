@@ -32,6 +32,11 @@ const expectStableHeaders = (headers: any[]) =>
     ]),
   );
 
+const expectThemeVary = (headers: any[]) =>
+  expect(headers).toEqual(
+    expect.arrayContaining([{ key: "Vary", value: "x-vanblog-theme" }]),
+  );
+
 describe("website cache headers", () => {
   it("uses explicit Cloudflare-oriented cache rules for stable, archive, listing, and dynamic public HTML", async () => {
     const rules = await nextConfig.headers();
@@ -55,11 +60,12 @@ describe("website cache headers", () => {
     const fixedAssetRule = rules.find(
       (rule: any) =>
         rule.source ===
-        "/:path(background.svg|favicon.ico|initTheme.js|logo.svg|markdown.css|more.png|robot.txt|robots.txt|yly_tools_logo.png)",
+        "/:path(background.svg|favicon.ico|logo.svg|markdown.css|more.png|robot.txt|robots.txt|yly_tools_logo.png)",
     );
     const markdownThemeRule = rules.find((rule: any) => rule.source === "/markdown-themes/:path*");
 
     expectStableHeaders(postRule.headers);
+    expectThemeVary(postRule.headers);
     expect(aboutRule.headers).toEqual(postRule.headers);
     expect(customPageRule.headers).toEqual(postRule.headers);
     expect(postRule.headers).toEqual(
@@ -67,12 +73,14 @@ describe("website cache headers", () => {
     );
 
     expectListingHeaders(homeRule.headers);
+    expectThemeVary(homeRule.headers);
     expect(homeRule.headers).toEqual(
       expect.arrayContaining([{ key: "Cache-Tag", value: "html-public,html-listing,home" }]),
     );
 
     for (const rule of [archiveRule, archiveWildcardRule, categoryRule, tagRule, timelineRule]) {
       expectListingHeaders(rule.headers);
+      expectThemeVary(rule.headers);
       expect(rule.headers).toEqual(
         expect.arrayContaining([{ key: "Cache-Tag", value: expect.stringContaining("html-listing") }]),
       );
@@ -80,6 +88,7 @@ describe("website cache headers", () => {
 
     for (const rule of [archiveMonthRule, categoryMonthRule, tagMonthRule]) {
       expectStableHeaders(rule.headers);
+      expectThemeVary(rule.headers);
       expect(rule.headers).toEqual(
         expect.arrayContaining([{ key: "Cache-Tag", value: "html-public,html-post,archive-month" }]),
       );
@@ -97,6 +106,7 @@ describe("website cache headers", () => {
           key: "Cloudflare-CDN-Cache-Control",
           value: "public, s-maxage=300, stale-while-revalidate=600",
         },
+        { key: "Vary", value: "x-vanblog-theme" },
       ]),
     );
     expect(nextStaticRule.headers).toEqual([
@@ -123,6 +133,7 @@ describe("website cache headers", () => {
     );
     expect(markdownThemeRule.headers).toEqual(fixedAssetRule.headers);
     expect(fixedAssetRule.headers.map((header: any) => header.key)).not.toContain("Cache-Tag");
+    expect(fixedAssetRule.headers.map((header: any) => header.key)).not.toContain("Vary");
   });
 
   it("redirects legacy paginated routes to archive or summary entry pages", async () => {
@@ -152,6 +163,6 @@ describe("website cache headers", () => {
     expect(keys).not.toContain("Surrogate-Control");
     expect(keys).toContain("Cloudflare-CDN-Cache-Control");
     expect(keys).not.toContain("Set-Cookie");
-    expect(keys).not.toContain("Vary");
+    expect(keys).toContain("Vary");
   });
 });

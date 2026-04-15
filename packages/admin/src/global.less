@@ -424,7 +424,6 @@ html[data-theme='dark'] {
   body,
   .ant-typography,
   .ant-pro-page-container,
-  .ant-pro-page-container *,
   .ant-pro-grid-content,
   .ant-pro-grid-content-children,
   .ant-page-header,
@@ -487,6 +486,7 @@ html[data-theme='dark'] {
   .ant-table-cell,
   .ant-table-thead > tr > th,
   .ant-table-tbody > tr > td {
+    // Keep shell text readable in dark mode without flattening ByteMD/CodeMirror/hljs token colors.
     color: #e5e7eb !important;
   }
 

@@ -1,3 +1,5 @@
+import { getThemePreferenceFromCookie } from "./themeBoot";
+
 const TRACKING_QUERY_PARAM_KEYS = new Set(["fbclid", "gclid", "msclkid"]);
 const AUTH_COOKIE_NAMES = new Set([
   "auth",
@@ -106,6 +108,9 @@ export const hasAuthLikeHeader = (headers?: Headers | null) => {
 
   return false;
 };
+
+export const getThemeVariantForPublicHtml = (cookieHeader?: string | null) =>
+  getThemePreferenceFromCookie(cookieHeader);
 
 export const shouldNormalizePublicHtmlPath = (pathname: string) => {
   if (!pathname) {

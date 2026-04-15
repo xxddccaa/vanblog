@@ -91,6 +91,21 @@ describe("website proxy cache normalization", () => {
     expect(result.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("forwards a normalized theme variant header for anonymous public html requests", () => {
+    const result = proxy({
+      method: "GET",
+      nextUrl: new URL("https://example.com/post/stable-shell"),
+      headers: new Headers({
+        cookie: "theme=auto; locale=zh-CN",
+      }),
+    } as any);
+
+    expect(result.status).toBe(200);
+    expect(result.headers.get("x-middleware-next")).toBe("1");
+    expect(result.headers.get("x-middleware-override-headers")).toContain("x-vanblog-theme");
+    expect(result.headers.get("x-middleware-request-x-vanblog-theme")).toBe("dark");
+  });
+
   it("also redirects HEAD requests for cacheable dynamic public html", () => {
     const result = proxy({
       method: "HEAD",

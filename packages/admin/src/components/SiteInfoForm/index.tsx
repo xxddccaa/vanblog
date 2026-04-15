@@ -304,13 +304,12 @@ export default function (props: {
           <ProFormSelect
             name={'defaultTheme'}
             label="前台默认主题模式"
-            placeholder={'自动模式'}
+            placeholder={'暗色模式'}
             valueEnum={{
-              auto: '自动模式',
               dark: '暗色模式',
               light: '亮色模式',
             }}
-            tooltip={'设置后第一次进入前台的用户将以此作为默认主题模式'}
+            tooltip={'设置后第一次进入前台的用户将以此作为默认主题模式；自动模式已迁移为明确主题'}
           />
           <ProFormSelect
             name={'allowOpenHiddenPostByUrl'}

@@ -2,6 +2,7 @@ import { defaultMenu, MenuItem, PublicMetaProp } from "../api/getAllData";
 import dayjs from "dayjs";
 import { AuthorCardProps } from "../components/AuthorCard";
 import { checkLogin } from "./auth";
+import { normalizeThemePreference, ThemePreference } from "./themeBoot";
 export interface LayoutProps {
   description: string;
   ipcNumber: string;
@@ -27,7 +28,7 @@ export interface LayoutProps {
   showFriends: "true" | "false";
   headerLeftContent: "siteLogo" | "siteName";
   enableComment: "true" | "false";
-  defaultTheme: "auto" | "dark" | "light";
+  defaultTheme: ThemePreference;
   enableCustomizing: "true" | "false";
   showDonateButton: "true" | "false";
   showCopyRight: "true" | "false";
@@ -185,7 +186,7 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     categories: data.meta.categories,
     showSubMenu: showSubMenu ? "true" : "false",
     enableComment: siteInfo?.enableComment || "false",
-    defaultTheme: siteInfo?.defaultTheme || "auto",
+    defaultTheme: normalizeThemePreference(siteInfo?.defaultTheme) || "dark",
     openArticleLinksInNewWindow,
     showCopyRight,
     showDonateButton,

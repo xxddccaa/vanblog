@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getThemeVariantForPublicHtml,
   hasAuthenticatedCookie,
   hasAuthLikeHeader,
   isTrackingQueryParam,
@@ -71,6 +72,13 @@ describe("cache key normalization", () => {
     expect(hasAuthLikeHeader(new Headers({ authorization: "Bearer secret" }))).toBe(true);
     expect(hasAuthLikeHeader(new Headers({ "x-api-key": "secret" }))).toBe(true);
     expect(hasAuthLikeHeader(new Headers({ "x-debug-auth": "secret" }))).toBe(true);
+  });
+
+  it("normalizes the public html theme variant from anonymous cookies", () => {
+    expect(getThemeVariantForPublicHtml("theme=dark; locale=zh-CN")).toBe("dark");
+    expect(getThemeVariantForPublicHtml("theme=light; locale=zh-CN")).toBe("light");
+    expect(getThemeVariantForPublicHtml("theme=auto; locale=zh-CN")).toBe("dark");
+    expect(getThemeVariantForPublicHtml("locale=zh-CN")).toBeNull();
   });
 
   it("only normalizes public HTML paths instead of api or static requests", () => {

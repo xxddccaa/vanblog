@@ -274,6 +274,16 @@ test('cloudflare cache samples cover public cache rules and waline bypasses', ()
 
   assert.match(JSON.stringify(cloudflareRules.cache_key_hygiene.ignore_query_params), /utm_\*/);
   assert.equal(cloudflareRules.cache_key_hygiene.ignore_anonymous_cookies, true);
+  assert.equal(cloudflareRules.cache_key_hygiene.public_html_theme_variant.header, 'x-vanblog-theme');
+  assert.equal(cloudflareRules.cache_key_hygiene.public_html_theme_variant.cookie, 'theme');
+  assert.match(
+    JSON.stringify(cloudflareRules.cache_key_hygiene.public_html_theme_variant.allowed_values),
+    /dark/,
+  );
+  assert.equal(
+    cloudflareRules.cache_key_hygiene.public_html_theme_variant.legacy_auto_maps_to,
+    'dark',
+  );
   assert.match(
     JSON.stringify(cloudflareRules.cache_key_hygiene.preserve_auth_cookies),
     /next-auth\.session-token/,
@@ -313,13 +323,15 @@ test('cloudflare cache guide documents the intended rule order and bypass constr
   assert.match(cloudflareDoc, /packages\/server\/src\/provider\/public-cache\/public-cache\.middleware\.ts/);
   assert.match(cloudflareDoc, /packages\/server\/src\/main\.ts/);
   assert.match(cloudflareDoc, /packages\/website\/proxy\.ts/);
+  assert.match(cloudflareDoc, /Vary: x-vanblog-theme/);
+  assert.match(cloudflareDoc, /x-vanblog-theme/);
   assert.match(cloudflareDoc, /anonymous cacheable public HTML requests/i);
-  assert.match(cloudflareDoc, /bypassing auth-like headers and authenticated cookies/i);
+  assert.match(cloudflareDoc, /bypasses auth-like headers and authenticated cookies/i);
   assert.match(cloudflareDoc, /Public article reads are split into shell and fragments/i);
   assert.match(cloudflareDoc, /Browser-side pageview writes are split away from route rendering/i);
   assert.match(cloudflareDoc, /navigator\.sendBeacon\(\)/);
   assert.match(cloudflareDoc, /fetch\(..., \{ keepalive: true \}\)/);
-  assert.match(cloudflareDoc, /free of `Vary: Cookie` and `Vary: User-Agent`/);
+  assert.match(cloudflareDoc, /public cacheable API responses free of `Vary: Cookie` and `Vary: User-Agent`/);
   assert.match(cloudflareDoc, /falls back to `no-store` if a public response tries to emit `Set-Cookie`/);
   assert.match(cloudflareDoc, /\/admin\*/);
   assert.match(cloudflareDoc, /\/api\/admin\/\*/);
@@ -329,7 +341,9 @@ test('cloudflare cache guide documents the intended rule order and bypass constr
   assert.match(cloudflareDoc, /\/api\/public\/search\*/);
   assert.match(cloudflareDoc, /\/api\/public\/nav\/admin-data/);
   assert.match(cloudflareDoc, /keep any authenticated request bypassed/i);
-  assert.match(cloudflareDoc, /Ignore anonymous cookies on public pages/);
+  assert.match(cloudflareDoc, /Ignore anonymous cookies on public pages, but keep a normalized theme variant/i);
+  assert.match(cloudflareDoc, /Public HTML should vary by `x-vanblog-theme`, not by the full `Cookie` header/i);
+  assert.match(cloudflareDoc, /normalize legacy `auto` to `dark`/i);
   assert.match(cloudflareDoc, /bypass cache normalization entirely when auth-like cookies/i);
   assert.match(cloudflareDoc, /sessionid/);
   assert.match(cloudflareDoc, /skips normalization entirely when auth-like headers or authenticated cookies are present/i);
@@ -591,6 +605,10 @@ test('cloudflare worker sample normalizes marketing params and anonymous cookies
   assert.match(cloudflareWorker, /url\.pathname === "\/moment"/);
   assert.match(cloudflareWorker, /url\.pathname === "\/nav"/);
   assert.match(cloudflareWorker, /headers\.delete\("Cookie"\)/);
+  assert.match(cloudflareWorker, /headers\.set\("x-vanblog-theme", themeVariant\)/);
+  assert.match(cloudflareWorker, /cacheKey:/);
+  assert.match(cloudflareWorker, /::theme=\$\{themeVariant\}/);
+  assert.match(cloudflareWorker, /theme === "auto"/);
   assert.match(cloudflareWorker, /next-auth\.session-token/);
   assert.match(cloudflareWorker, /sessionid/);
   assert.match(cloudflareWorker, /cacheEverything/);
@@ -620,9 +638,11 @@ test('cloudflare worker normalizes anonymous public html requests before cache l
     assert.equal(calls.length, 1);
     assert.equal(calls[0].request.url, 'https://example.com/post/stable-shell?page=2');
     assert.equal(calls[0].request.headers.get('cookie'), null);
+    assert.equal(calls[0].request.headers.get('x-vanblog-theme'), 'dark');
     assert.deepEqual(calls[0].init, {
       cf: {
         cacheEverything: true,
+        cacheKey: 'https://example.com/post/stable-shell?page=2::theme=dark',
       },
     });
   } finally {
@@ -674,9 +694,11 @@ test('cloudflare worker also normalizes other cacheable public html groups befor
     assert.equal(calls[4].request.url, 'https://example.com/nav');
     for (const call of calls) {
       assert.equal(call.request.headers.get('cookie'), null);
+      assert.equal(call.request.headers.get('x-vanblog-theme'), null);
       assert.deepEqual(call.init, {
         cf: {
           cacheEverything: true,
+          cacheKey: call.request.url,
         },
       });
     }

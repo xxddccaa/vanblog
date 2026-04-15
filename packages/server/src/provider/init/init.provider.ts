@@ -16,6 +16,12 @@ import { WebsiteProvider } from '../website/website.provider';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { CustomPageDocument } from 'src/scheme/customPage.schema';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+
+const normalizeDefaultTheme = (
+  theme?: string | null,
+): 'light' | 'dark' =>
+  theme === 'light' ? 'light' : 'dark';
+
 @Injectable()
 export class InitProvider {
   logger = new Logger(InitProvider.name);
@@ -46,6 +52,7 @@ export class InitProvider {
       siteName: safeSiteInfo?.siteName || 'VanBlog',
       siteDesc: safeSiteInfo?.siteDesc || '',
       baseUrl: safeSiteInfo?.baseUrl || '',
+      defaultTheme: normalizeDefaultTheme((safeSiteInfo as any)?.defaultTheme),
     };
     if (normalized?.since) {
       return normalized;

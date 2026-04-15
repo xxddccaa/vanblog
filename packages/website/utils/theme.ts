@@ -1,44 +1,42 @@
+import {
+  getThemeSnapshot,
+  getThemePreferenceFromCookie,
+  normalizeThemePreference,
+  ThemePreference,
+} from "./themeBoot";
+
 export const initTheme = () => {
   if (typeof localStorage === "undefined") {
-    return "auto";
-  }
-
-  // 2种情况： 1. 自动。 2.手动
-  if (!("theme" in localStorage) || localStorage.theme == "auto") {
-    return "auto";
-  }
-
-  if (localStorage.theme === "dark") {
     return "dark";
   }
 
-  return "light";
-};
-
-export const getAutoTheme = () => {
-  const hour = new Date().getHours();
-  const isNight = hour > 18 || hour < 8;
-
-  if (typeof window === "undefined") {
-    return isNight ? "auto-dark" : "auto-light";
+  const storedTheme = normalizeThemePreference(localStorage.getItem("theme"));
+  if (storedTheme) {
+    return storedTheme;
   }
 
-  if (isNight || window.matchMedia("(prefers-color-scheme: dark)").matches) {
-    return "auto-dark";
+  const cookieTheme = getThemePreferenceFromCookie(document.cookie);
+  if (cookieTheme) {
+    return cookieTheme;
   }
 
-  return "auto-light";
+  return "dark";
 };
 
-export const getTheme = (theme: "auto" | "light" | "dark") =>
-  theme == "auto" ? getAutoTheme() : theme;
+export const getTheme = (theme: ThemePreference) => theme;
 
 export const applyTheme = (
-  theme: string,
+  theme: ThemePreference,
   source: string,
   disableLog = false
 ) => {
-  if (theme.includes("light")) {
+  const isLight = theme === "light";
+  const documentTheme = isLight ? "light" : "dark";
+  const { backgroundColor } = getThemeSnapshot({
+    defaultTheme: theme,
+  });
+
+  if (isLight) {
     document.documentElement.classList.add("light");
     document.documentElement.classList.remove("dark");
     if (!disableLog) {
@@ -50,5 +48,16 @@ export const applyTheme = (
     if (!disableLog) {
       // console.log(`[Apply Theme][${source}] ${theme}`);
     }
+  }
+
+  document.documentElement.dataset.theme = documentTheme;
+  document.documentElement.style.backgroundColor = backgroundColor;
+  document.documentElement.style.colorScheme = documentTheme;
+
+  if (document.body) {
+    document.body.dataset.theme = documentTheme;
+    document.body.classList.toggle("light", isLight);
+    document.body.classList.toggle("dark", !isLight);
+    document.body.style.backgroundColor = "transparent";
   }
 };
