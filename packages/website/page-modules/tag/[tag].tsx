@@ -20,6 +20,7 @@ const TagArchivePage = (props: TagArchivePageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={props.tag}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

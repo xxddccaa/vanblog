@@ -3,13 +3,14 @@ import { PageContainer } from '@ant-design/pro-layout';
 import { Image, Space, Spin, Tag } from 'antd';
 import { useMemo } from 'react';
 import { useModel } from '@umijs/max';
-import { getAdminAssetPath } from '@/utils/getAssetPath';
+import { resolveAdminBrandLogo } from '@/utils/adminBranding';
 export default function (props) {
   const { initialState } = useModel('@@initialState');
   const version = useMemo(() => {
     let v = initialState?.version || '获取中';
     return v;
   }, [initialState, history]);
+  const adminLogo = resolveAdminBrandLogo(initialState);
 
   return (
     <PageContainer title={null} extra={null} header={{ title: null, extra: null, ghost: true }}>
@@ -23,7 +24,7 @@ export default function (props) {
               userSelect: 'none',
             }}
           >
-            <Image width={200} src={getAdminAssetPath('logo.svg')} alt="logo" preview={false} />
+            <Image width={200} src={adminLogo} alt="logo" preview={false} />
             <div
               style={{
                 fontSize: 26,

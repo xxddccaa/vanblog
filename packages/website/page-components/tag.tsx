@@ -110,6 +110,7 @@ export default function TagPage(props: TagPageProps) {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title="标签"
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

@@ -49,6 +49,8 @@ export class InitProvider {
       siteLogo: safeSiteInfo?.siteLogo || '',
       siteLogoDark: safeSiteInfo?.siteLogoDark || '',
       favicon: safeSiteInfo?.favicon || '',
+      adminLogo: safeSiteInfo?.adminLogo || '',
+      adminFavicon: safeSiteInfo?.adminFavicon || '',
       siteName: safeSiteInfo?.siteName || 'VanBlog',
       siteDesc: safeSiteInfo?.siteDesc || '',
       baseUrl: safeSiteInfo?.baseUrl || '',

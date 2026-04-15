@@ -22,6 +22,7 @@ const Home = (props: IndexPageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={props.layoutProps.siteName}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

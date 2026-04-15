@@ -191,6 +191,7 @@ export default function MomentPage({
   return (
     <Layout
       option={layoutProps}
+      contentWidthMode={layoutProps.articleWidthMode}
       title={"动态 - " + layoutProps.siteName}
       sideBar={<AuthorCard option={authorCardProps} />}
     >

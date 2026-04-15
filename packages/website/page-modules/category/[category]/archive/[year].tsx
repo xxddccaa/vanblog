@@ -20,6 +20,7 @@ const CategoryArchiveYearPage = (props: CategoryArchiveYearPageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={`${props.category} - ${props.year}`}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

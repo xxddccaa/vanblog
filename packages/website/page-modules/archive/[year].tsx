@@ -19,6 +19,7 @@ const ArchiveYearPage = (props: ArchiveYearPageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={`${props.year} 年归档`}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

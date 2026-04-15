@@ -26,6 +26,8 @@ export class MetaController {
       baseUrl: siteInfo.baseUrl || '',
       enableComment: siteInfo.enableComment || 'false',
       allowDomains: process.env.VAN_BLOG_ALLOW_DOMAINS || '',
+      adminLogo: siteInfo.adminLogo || '',
+      adminFavicon: siteInfo.adminFavicon || '',
     };
     return {
       statusCode: 200,

@@ -1,11 +1,16 @@
 import { Alert, Card, Col, Input, Row, Select, Typography } from 'antd';
+import {
+  MARKDOWN_THEME_PLAIN_PRESET,
+  resolveMarkdownThemeUrl,
+} from '@/utils/markdownTheme';
 
 const { Text, Paragraph } = Typography;
 
 // 定义预置主题列表（只包含 vanblog 适配过的主题：已做亮/暗包裹，且样式范围只影响 Markdown 容器）
 const PRESET_THEMES = {
   light: [
-    { value: '__vanblog_plain__', label: 'Vanblog Plain（朴素/经典）', description: '不加载额外主题，只用系统自带 GitHub 风格（推荐给喜欢朴素的人）' },
+    { value: '', label: 'Vanblog Default（冷静蓝青）', description: '系统默认的彩色主题：冷静蓝青，适合技术博客阅读与预览一致性' },
+    { value: MARKDOWN_THEME_PLAIN_PRESET, label: 'Vanblog Plain（朴素/经典）', description: '不加载额外主题，只用系统自带 GitHub 风格（推荐给喜欢朴素的人）' },
     { value: '/markdown-themes/vanblog-minimal-light-only.css', label: 'Vanblog Minimal（舒适·极简）', description: '低噪点/低刺激/轻强调（仅亮色）' },
     { value: '/markdown-themes/vanblog-sepia-light-only.css', label: 'Vanblog Sepia Book（舒适·暖纸张）', description: '书籍感/衬线/更柔和对比（仅亮色）' },
     { value: '/markdown-themes/vanblog-nord-light-only.css', label: 'Vanblog Nord（舒适·北欧）', description: '低饱和冷静配色（仅亮色）' },
@@ -28,10 +33,10 @@ const PRESET_THEMES = {
     { value: '/markdown-themes/phycat-prussian-light-only.css', label: 'Phycat Prussian（普鲁士蓝）', description: '深沉的普鲁士蓝色调（仅亮色）' },
     { value: '/markdown-themes/vanblog-paper-light-only.css', label: 'Vanblog Paper（纸张蓝）', description: '清爽的纸张/蓝色系（仅亮色）' },
     { value: '/markdown-themes/vanblog-latte-light-only.css', label: 'Vanblog Latte（拿铁米黄）', description: '温暖的米黄色/拿铁系（仅亮色）' },
-    { value: '', label: '系统默认', description: '使用 GitHub 风格的 Markdown 样式' },
   ],
   dark: [
-    { value: '__vanblog_plain__', label: 'Vanblog Plain（朴素/经典）', description: '不加载额外主题，只用系统自带 GitHub 风格（推荐给喜欢朴素的人）' },
+    { value: '', label: 'Vanblog Default（冷静蓝青）', description: '系统默认的彩色主题：冷静蓝青，适合技术博客阅读与预览一致性' },
+    { value: MARKDOWN_THEME_PLAIN_PRESET, label: 'Vanblog Plain（朴素/经典）', description: '不加载额外主题，只用系统自带 GitHub 风格（推荐给喜欢朴素的人）' },
     { value: '/markdown-themes/vanblog-minimal-dark-only.css', label: 'Vanblog Minimal（舒适·极简）', description: '低刺激暗色/轻强调（仅暗色）' },
     { value: '/markdown-themes/vanblog-sepia-dark-only.css', label: 'Vanblog Sepia Book（舒适·暖暗纸）', description: '暖暗纸/护眼/书籍感（仅暗色）' },
     { value: '/markdown-themes/vanblog-nord-dark-only.css', label: 'Vanblog Nord（舒适·北欧）', description: '北欧暗色/低刺激层次（仅暗色）' },
@@ -54,7 +59,6 @@ const PRESET_THEMES = {
     { value: '/markdown-themes/phycat-prussian-dark-only.css', label: 'Phycat Prussian Dark（深普鲁士蓝）', description: '深色普鲁士蓝配色（仅暗色）' },
     { value: '/markdown-themes/vanblog-aurora-dark-only.css', label: 'Vanblog Aurora（极光紫青）', description: '更活泼的紫青渐变（仅暗色）' },
     { value: '/markdown-themes/vanblog-graphite-dark-only.css', label: 'Vanblog Graphite（石墨灰）', description: '克制耐看的中性暗色（仅暗色）' },
-    { value: '', label: '系统默认', description: '使用 GitHub 风格的 Markdown 样式' },
   ],
 };
 
@@ -69,17 +73,12 @@ export default function MarkdownThemeSelector(props: {
 }) {
   const { value = {}, onChange } = props;
 
-  const normalizePreset = (p?: string) => (p === '__vanblog_plain__' ? '' : p);
-  const normalizeUrl = (u?: string) => (u === '__vanblog_plain__' ? '' : u);
-
-  const effectiveLight =
-    normalizeUrl(value.markdownLightThemeUrl) ||
-    normalizePreset(value.markdownLightThemePreset) ||
-    '/markdown-themes/phycat-cherry-light-only.css';
-  const effectiveDark =
-    normalizeUrl(value.markdownDarkThemeUrl) ||
-    normalizePreset(value.markdownDarkThemePreset) ||
-    '/markdown-themes/phycat-dark-only.css';
+  const effectiveLight = resolveMarkdownThemeUrl('light', value);
+  const effectiveDark = resolveMarkdownThemeUrl('dark', value);
+  const lightPresetValue = value.markdownLightThemePreset ?? '';
+  const darkPresetValue = value.markdownDarkThemePreset ?? '';
+  const lightSummary = effectiveLight || 'Vanblog Plain / GitHub 风格（不加载额外主题）';
+  const darkSummary = effectiveDark || 'Vanblog Plain / GitHub 风格（不加载额外主题）';
 
   return (
     <div style={{ padding: '16px 0' }}>
@@ -94,7 +93,10 @@ export default function MarkdownThemeSelector(props: {
               2. 如果自定义路径和预设都设置了，优先使用自定义路径
             </Paragraph>
             <Paragraph>
-              3. 需要在「站点配置 - 布局设置」中开启客制化功能才能生效
+              3. 不选任何自定义时，会使用系统默认的冷静蓝青主题；选择「Vanblog Plain」才会回到 GitHub 朴素风
+            </Paragraph>
+            <Paragraph>
+              4. 需要在「站点配置 - 布局设置」中开启客制化功能才能生效
             </Paragraph>
           </div>
         }
@@ -109,17 +111,16 @@ export default function MarkdownThemeSelector(props: {
             <div style={{ marginBottom: 12 }}>
               <div style={{ marginBottom: 6 }}>选择预设主题</div>
               <Select
-                value={value.markdownLightThemePreset ?? ''}
+                value={lightPresetValue}
                 placeholder="请选择亮色主题"
                 style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="label"
                 options={PRESET_THEMES.light}
                 onChange={(val) => {
-                  const v = val === '__vanblog_plain__' ? '' : val;
                   onChange?.({
                     ...value,
-                    markdownLightThemePreset: v,
+                    markdownLightThemePreset: val,
                     // 选预置 => 清空自定义URL，避免互相覆盖导致“暗色回默认”等问题
                     markdownLightThemeUrl: '',
                   });
@@ -144,7 +145,7 @@ export default function MarkdownThemeSelector(props: {
 
             <div style={{ marginTop: 8 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                当前生效：{effectiveLight}
+                当前生效：{lightSummary}
               </Text>
             </div>
           </Card>
@@ -155,17 +156,16 @@ export default function MarkdownThemeSelector(props: {
             <div style={{ marginBottom: 12 }}>
               <div style={{ marginBottom: 6 }}>选择预设主题</div>
               <Select
-                value={value.markdownDarkThemePreset ?? ''}
+                value={darkPresetValue}
                 placeholder="请选择暗色主题"
                 style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="label"
                 options={PRESET_THEMES.dark}
                 onChange={(val) => {
-                  const v = val === '__vanblog_plain__' ? '' : val;
                   onChange?.({
                     ...value,
-                    markdownDarkThemePreset: v,
+                    markdownDarkThemePreset: val,
                     markdownDarkThemeUrl: '',
                   });
                 }}
@@ -188,7 +188,7 @@ export default function MarkdownThemeSelector(props: {
 
             <div style={{ marginTop: 8 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                当前生效：{effectiveDark}
+                当前生效：{darkSummary}
               </Text>
             </div>
           </Card>
@@ -197,4 +197,3 @@ export default function MarkdownThemeSelector(props: {
     </div>
   );
 }
-

@@ -1144,11 +1144,13 @@ body .markdown-body pre {
   background-color: inherit;
 }
 
-body .markdown-body .code-block-wrapper::-webkit-scrollbar {
+body .markdown-body .code-block-wrapper::-webkit-scrollbar,
+body .markdown-body .code-content-wrapper::-webkit-scrollbar {
   height: 8px;
 }
 
-body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
+body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb,
+body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   border-radius: 6px;
 }
 
@@ -1218,16 +1220,60 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
   border-color: #555 !important;
 }
 
+.markdown-body .code-wrap-btn {
+  cursor: pointer !important;
+  transition: background-color 0.2s ease-in-out !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+  font-size: 12px !important;
+  color: #6f7177 !important;
+  border: 1px solid #d0d7de !important;
+  background-color: #fff !important;
+  user-select: none !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
+
+.markdown-body .code-wrap-btn:hover {
+  background-color: rgb(229 231 235) !important;
+  border-color: #bbb !important;
+}
+
+.markdown-body .code-wrap-btn.code-wrap-enabled {
+  color: #fff !important;
+  background-color: #1772b4 !important;
+  border-color: #1772b4 !important;
+}
+
+.dark .markdown-body .code-wrap-btn {
+  border-color: #3e4145 !important;
+  color: #8b949e !important;
+  background-color: #212428 !important;
+}
+
+.dark .markdown-body .code-wrap-btn:hover {
+  background-color: rgb(55 65 81) !important;
+  border-color: #555 !important;
+}
+
+.dark .markdown-body .code-wrap-btn.code-wrap-enabled {
+  color: #f8fafc !important;
+  background-color: #1772b4 !important;
+  border-color: #1772b4 !important;
+}
+
 /* 代码内容包装器样式 - 提高优先级 */
 .markdown-body .code-content-wrapper {
   transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out !important;
-  overflow: hidden !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
   position: relative !important;
 }
 
 /* 折叠状态：限制高度为大约15行 */
 .markdown-body .code-content-wrapper.code-collapsed {
   max-height: var(--code-max-height, 21em) !important; /* 调整为更适合的高度，约15行 * 1.4em line-height */
+  overflow: hidden !important;
 }
 
 /* 折叠状态时添加渐变遮罩 */
@@ -1247,9 +1293,33 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
   background: linear-gradient(transparent, #212428) !important;
 }
 
+/* 暗色主题下，无语言高亮类的原始 fenced code block 也要保持浅色文字 */
+html.dark .markdown-body .code-content-wrapper > code:not(.hljs),
+html.dark .markdown-body .code-content-wrapper > code:not(.hljs) *,
+html[data-theme='dark'] .markdown-body .code-content-wrapper > code:not(.hljs),
+html[data-theme='dark'] .markdown-body .code-content-wrapper > code:not(.hljs) *,
+body[data-theme='dark'] .markdown-body .code-content-wrapper > code:not(.hljs),
+body[data-theme='dark'] .markdown-body .code-content-wrapper > code:not(.hljs) *,
+.dark .markdown-body .code-content-wrapper > code:not(.hljs),
+.dark .markdown-body .code-content-wrapper > code:not(.hljs) * {
+  color: #dcdcdc !important;
+}
+
 /* 确保代码块在折叠状态下正确显示 */
 .markdown-body .code-content-wrapper.code-collapsed pre {
   margin-bottom: 0 !important;
+}
+
+.markdown-body .code-content-wrapper.code-wrap-enabled {
+  overflow-x: hidden !important;
+}
+
+.markdown-body .code-content-wrapper.code-wrap-enabled pre,
+.markdown-body .code-content-wrapper.code-wrap-enabled code,
+.markdown-body .code-content-wrapper.code-wrap-enabled .hljs {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
 }
 .markdown-body iframe {
   border: none;

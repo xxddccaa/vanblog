@@ -208,3 +208,51 @@ html:not(.dark) .markdown-body hr {
   opacity: 0.95;
   filter: blur(0.3px);
 }
+
+/* VanBlog softened h2 override */
+html:not(.dark) .markdown-body h2 {
+  display: block;
+  width: auto;
+  margin: 22px 0 18px;
+  padding: 0 0 10px 22px;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(255, 240, 246, 0.95), rgba(250, 245, 255, 0.5), transparent 72%);
+  box-shadow: none;
+  text-shadow: none;
+  position: relative;
+  overflow: visible;
+  color: var(--vb-ink);
+  transition: color 0.28s ease, transform 0.28s ease, background 0.28s ease;
+  animation: none;
+}
+
+html:not(.dark) .markdown-body h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.24em;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(135deg, rgba(255, 77, 141, 0.98) 0 4px, rgba(124, 58, 237, 0.98) 4px 8px);
+  box-shadow: 0 0 0 4px rgba(255, 77, 141, 0.08);
+}
+
+html:not(.dark) .markdown-body h2::after {
+  content: '';
+  position: absolute;
+  left: 22px;
+  bottom: 0;
+  width: 108px;
+  height: 6px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(90deg, rgba(255, 77, 141, 0.9) 0 12px, rgba(124, 58, 237, 0.78) 12px 24px);
+  opacity: 0.55;
+}
+
+html:not(.dark) .markdown-body h2:hover {
+  color: #4c1d95;
+  transform: translateX(2px);
+  background: linear-gradient(90deg, rgba(255, 240, 246, 1), rgba(250, 245, 255, 0.7), transparent 76%);
+}

@@ -15,6 +15,11 @@
   color: #000;
 }
 
+.light .hljs.language-markdown .hljs-code,
+.light .hljs.language-md .hljs-code {
+  color: #795e26;
+}
+
 .light .hljs-comment,
 .light .hljs-quote,
 .light .hljs-variable {

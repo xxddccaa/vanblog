@@ -23,6 +23,7 @@ const CategoryArchiveMonthPage = (props: CategoryArchiveMonthPageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={`${props.category} - ${label}`}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

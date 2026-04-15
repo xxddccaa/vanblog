@@ -285,6 +285,7 @@ export default function Document() {
             <DocumentViewer
               value={documentContent}
               codeMaxLines={siteInfo?.codeMaxLines || 15}
+              themeConfig={siteInfo}
             />
           )}
         </div>

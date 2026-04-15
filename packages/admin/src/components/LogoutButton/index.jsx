@@ -1,7 +1,7 @@
 import { logout } from '@/services/van-blog/api';
 import { message } from 'antd';
 import { history, useModel } from '@umijs/max';
-const loginOut = async () => {
+export const logoutAndRedirect = async () => {
   await logout();
 
   const { query = {}, search, pathname } = history.location;
@@ -24,7 +24,7 @@ export default function (props) {
     <div
       onClick={() => {
         setInitialState((s) => ({ ...s, user: undefined }));
-        loginOut().then(() => {
+        logoutAndRedirect().then(() => {
           message.success('登出成功！');
         });
       }}

@@ -1,72 +1,67 @@
 .document-viewer {
+  --vb-doc-surface: #f8fafc;
+  --vb-doc-scroll-track: #f1f1f1;
+  --vb-doc-scroll-thumb: #c1c1c1;
+  --vb-doc-code-btn-border: #d0d7de;
+  --vb-doc-code-btn-text: #6f7177;
+  --vb-doc-code-btn-bg: #fff;
+  --vb-doc-code-btn-hover: rgb(229 231 235);
+  --vb-doc-code-fade: #f6f8fa;
   height: 100%;
   width: 100%;
   overflow: auto;
-  
-  /* 统一滚动条样式 */
+
+  &.dark {
+    --vb-doc-surface: #111827;
+    --vb-doc-scroll-track: #2d2d2d;
+    --vb-doc-scroll-thumb: #555;
+    --vb-doc-code-btn-border: #3e4145;
+    --vb-doc-code-btn-text: #8b949e;
+    --vb-doc-code-btn-bg: #1f2226;
+    --vb-doc-code-btn-hover: rgb(55 65 81);
+    --vb-doc-code-fade: #1f2226;
+  }
+
   &::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   &::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--vb-doc-scroll-track);
     border-radius: 4px;
   }
-  
+
   &::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: var(--vb-doc-scroll-thumb);
     border-radius: 4px;
-    
+
     &:hover {
-      background: #a8a8a8;
+      background: #777;
     }
   }
-  
+
   scrollbar-width: thin;
-  scrollbar-color: #c1c1c1 #f1f1f1;
-  
-  /* 暗色模式滚动条 */
-  &.dark {
-    &::-webkit-scrollbar-track {
-      background: #2d2d2d;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-      background: #555;
-      
-      &:hover {
-        background: #777;
-      }
-    }
-    
-    scrollbar-width: thin;
-    scrollbar-color: #555 #2d2d2d;
-  }
-  
-  /* 内容区域样式 */
+  scrollbar-color: var(--vb-doc-scroll-thumb) var(--vb-doc-scroll-track);
+
   .bytemd-viewer {
     height: 100%;
     min-height: 400px;
     overflow: auto;
-    background-color: #fff;
-    
+    background-color: var(--vb-doc-surface);
+
     .markdown-body {
       padding: 16px;
       max-width: none;
       min-height: calc(100% - 32px);
-      background-color: #fff;
-      
-      /* 确保内容正确显示 */
+      background-color: transparent;
       overflow: visible;
       word-wrap: break-word;
       line-height: 1.6;
-      
-      /* 修复代码块复制按钮定位问题 */
+
       .code-block-wrapper {
         position: relative !important;
       }
-      
-      /* 代码展开/收起按钮样式 - 提高优先级 */
+
       .markdown-body .code-toggle-btn,
       .code-toggle-btn {
         cursor: pointer !important;
@@ -74,30 +69,54 @@
         border-radius: 4px !important;
         padding: 4px 8px !important;
         font-size: 12px !important;
-        color: #6f7177 !important;
-        border: 1px solid #d0d7de !important;
-        background-color: #fff !important;
+        color: var(--vb-doc-code-btn-text) !important;
+        border: 1px solid var(--vb-doc-code-btn-border) !important;
+        background-color: var(--vb-doc-code-btn-bg) !important;
         user-select: none !important;
         display: inline-block !important;
-        
+
         &:hover {
-          background-color: rgb(229 231 235) !important;
-          border-color: #bbb !important;
+          background-color: var(--vb-doc-code-btn-hover) !important;
+          border-color: var(--vb-doc-code-btn-border) !important;
         }
       }
-      
-      /* 代码内容包装器样式 - 提高优先级 */
+
+      .markdown-body .code-wrap-btn,
+      .code-wrap-btn {
+        cursor: pointer !important;
+        transition: background-color 0.2s ease-in-out !important;
+        border-radius: 4px !important;
+        padding: 4px 8px !important;
+        font-size: 12px !important;
+        color: var(--vb-doc-code-btn-text) !important;
+        border: 1px solid var(--vb-doc-code-btn-border) !important;
+        background-color: var(--vb-doc-code-btn-bg) !important;
+        user-select: none !important;
+        display: inline-block !important;
+
+        &:hover {
+          background-color: var(--vb-doc-code-btn-hover) !important;
+          border-color: var(--vb-doc-code-btn-border) !important;
+        }
+
+        &.code-wrap-enabled {
+          color: #fff !important;
+          background-color: #1772b4 !important;
+          border-color: #1772b4 !important;
+        }
+      }
+
       .markdown-body .code-content-wrapper,
       .code-content-wrapper {
         transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out !important;
-        overflow: hidden !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
         position: relative !important;
-        
-        /* 折叠状态：限制高度为大约15行 */
+
         &.code-collapsed {
-          max-height: var(--code-max-height, 21em) !important; /* 调整为更适合的高度，约15行 * 1.4em line-height */
-          
-          /* 折叠状态时添加渐变遮罩 */
+          max-height: var(--code-max-height, 21em) !important;
+          overflow: hidden !important;
+
           &::after {
             content: '' !important;
             position: absolute !important;
@@ -105,17 +124,28 @@
             left: 0 !important;
             right: 0 !important;
             height: 3em !important;
-            background: linear-gradient(transparent, #f6f8fa) !important;
+            background: linear-gradient(transparent, var(--vb-doc-code-fade)) !important;
             pointer-events: none !important;
           }
-          
+
           pre {
             margin-bottom: 0 !important;
           }
         }
+
+        &.code-wrap-enabled {
+          overflow-x: hidden !important;
+
+          pre,
+          code,
+          .hljs {
+            white-space: pre-wrap !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+          }
+        }
       }
-      
-      /* 确保header-right正确定位 */
+
       .markdown-body .header-right,
       .header-right {
         position: absolute !important;
@@ -129,51 +159,4 @@
       }
     }
   }
-  
-  /* 在 Document 页面中强制使用亮色背景 */
-  .document-page-container & {
-    background-color: #fff;
-    
-    .bytemd-viewer {
-      background-color: #fff;
-      
-      .markdown-body {
-        background-color: #fff;
-        color: #24292e;
-      }
-    }
-    
-    /* 覆盖暗色模式样式 */
-    &.dark {
-      background-color: #fff;
-      
-      .bytemd-viewer {
-        background-color: #fff;
-        
-        .markdown-body {
-          background-color: #fff;
-          color: #24292e;
-          
-          /* 暗色主题下的代码折叠按钮样式 - 提高优先级 */
-          .markdown-body .code-toggle-btn,
-          .code-toggle-btn {
-            border-color: #3e4145 !important;
-            color: #8b949e !important;
-            background-color: #1f2226 !important;
-            
-            &:hover {
-              background-color: rgb(55 65 81) !important;
-              border-color: #555 !important;
-            }
-          }
-          
-          /* 暗色主题下的代码内容包装器样式 - 提高优先级 */
-          .markdown-body .code-content-wrapper.code-collapsed::after,
-          .code-content-wrapper.code-collapsed::after {
-            background: linear-gradient(transparent, #1f2226) !important;
-          }
-        }
-      }
-    }
-  }
-} 
+}

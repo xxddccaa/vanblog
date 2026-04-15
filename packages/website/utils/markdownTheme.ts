@@ -1,0 +1,46 @@
+export const MARKDOWN_THEME_PLAIN_PRESET = '__vanblog_plain__';
+
+export const MARKDOWN_THEME_DEFAULTS = {
+  light: '/markdown-themes/phycat-sky-light-only.css',
+  dark: '/markdown-themes/phycat-sky-dark-only.css',
+} as const;
+
+export type MarkdownThemeMode = 'light' | 'dark';
+
+export type MarkdownThemeConfig = {
+  markdownLightThemeUrl?: string;
+  markdownDarkThemeUrl?: string;
+  markdownLightThemePreset?: string;
+  markdownDarkThemePreset?: string;
+};
+
+export const resolveMarkdownThemeUrl = (
+  theme: MarkdownThemeMode,
+  config?: MarkdownThemeConfig,
+) => {
+  const customUrl =
+    theme === 'light' ? config?.markdownLightThemeUrl : config?.markdownDarkThemeUrl;
+  const preset =
+    theme === 'light'
+      ? config?.markdownLightThemePreset
+      : config?.markdownDarkThemePreset;
+
+  if (customUrl) {
+    return customUrl;
+  }
+
+  if (preset === MARKDOWN_THEME_PLAIN_PRESET) {
+    return '';
+  }
+
+  if (preset) {
+    return preset;
+  }
+
+  return MARKDOWN_THEME_DEFAULTS[theme];
+};
+
+export const resolveMarkdownThemeConfig = (config?: MarkdownThemeConfig) => ({
+  markdownLightThemeUrl: resolveMarkdownThemeUrl('light', config),
+  markdownDarkThemeUrl: resolveMarkdownThemeUrl('dark', config),
+});

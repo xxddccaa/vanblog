@@ -2,7 +2,18 @@ import { defaultMenu, MenuItem, PublicMetaProp } from "../api/getAllData";
 import dayjs from "dayjs";
 import { AuthorCardProps } from "../components/AuthorCard";
 import { checkLogin } from "./auth";
+import { resolveMarkdownThemeConfig } from "./markdownTheme";
 import { normalizeThemePreference, ThemePreference } from "./themeBoot";
+
+export type ArticleWidthMode = "standard" | "wide" | "ultraWide" | "full";
+
+export const normalizeArticleWidthMode = (mode?: string): ArticleWidthMode => {
+  if (mode === "wide" || mode === "ultraWide" || mode === "full") {
+    return mode;
+  }
+  return "standard";
+};
+
 export interface LayoutProps {
   description: string;
   ipcNumber: string;
@@ -44,6 +55,7 @@ export interface LayoutProps {
   homePageSize?: number;
   privateSite?: 'true' | 'false';
   codeMaxLines?: number;
+  articleWidthMode?: ArticleWidthMode;
   showRunningTime?: 'true' | 'false';
   backgroundImage?: string;
   backgroundImageDark?: string;
@@ -96,6 +108,8 @@ const normalizePublicMenus = (menus?: MenuItem[]) => {
 
 export function getLayoutProps(data: PublicMetaProp): LayoutProps {
   const siteInfo = data.meta.siteInfo;
+  // 空值现在代表系统默认的彩色主题；只有显式选择 Plain 预设才回退到纯 GitHub 风格。
+  const markdownThemeConfig = resolveMarkdownThemeConfig(siteInfo);
   const showSubMenu =
     Boolean(data.meta.categories.length) && siteInfo?.showSubMenu == "true";
   let headerLeftContent: "siteLogo" | "siteName" = "siteName";
@@ -159,6 +173,9 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
   ) {
     openArticleLinksInNewWindow = "true";
   }
+  const articleWidthMode = normalizeArticleWidthMode(
+    (siteInfo as any)?.articleWidthMode,
+  );
 
   return {
     showFriends,
@@ -195,23 +212,12 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     homePageSize: siteInfo?.homePageSize || 5,
     privateSite: siteInfo?.privateSite || "false",
     codeMaxLines: siteInfo?.codeMaxLines || 15,
+    articleWidthMode,
     showRunningTime: siteInfo?.showRunningTime || "false",
     backgroundImage: siteInfo?.backgroundImage || "",
     backgroundImageDark: siteInfo?.backgroundImageDark || "",
-    // Markdown 主题：优先使用自定义URL，否则使用预设，最后使用默认主题
-    // 朴素/经典模式：如果显式设置为空字符串，则不注入 markdown-themes 的 link（仅保留系统自带 github-markdown.css）
-    markdownLightThemeUrl:
-      siteInfo?.markdownLightThemeUrl === "" && !siteInfo?.markdownLightThemePreset
-        ? ""
-        : siteInfo?.markdownLightThemeUrl ||
-          siteInfo?.markdownLightThemePreset ||
-          "/markdown-themes/phycat-cherry-light-only.css",
-    markdownDarkThemeUrl:
-      siteInfo?.markdownDarkThemeUrl === "" && !siteInfo?.markdownDarkThemePreset
-        ? ""
-        : siteInfo?.markdownDarkThemeUrl ||
-          siteInfo?.markdownDarkThemePreset ||
-          "/markdown-themes/phycat-dark-only.css",
+    markdownLightThemeUrl: markdownThemeConfig.markdownLightThemeUrl,
+    markdownDarkThemeUrl: markdownThemeConfig.markdownDarkThemeUrl,
     ...customSetting,
   };
 }

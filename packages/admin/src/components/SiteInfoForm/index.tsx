@@ -72,6 +72,22 @@ export default function (props: {
             placeholder={'请输入网站黑暗模式 Logo Url，留空表示沿用上个'}
             isInit={props.isInit}
           />
+          <UrlFormItem
+            formRef={props.form}
+            name="adminLogo"
+            required={false}
+            label="后台 Logo"
+            placeholder={'请输入后台 Logo Url，留空使用 /admin/logo.svg'}
+            isInit={props.isInit}
+          />
+          <UrlFormItem
+            formRef={props.form}
+            name="adminFavicon"
+            required={false}
+            label="后台图标(favicon)"
+            placeholder={'请输入后台 favicon Url，留空使用 /admin/logo.svg'}
+            isInit={props.isInit}
+          />
         </>
       )}
       {props.showRequire && (
@@ -430,6 +446,19 @@ export default function (props: {
             min={5}
             max={50}
             tooltip={'设置代码块默认显示的最大行数，超过此行数的代码将自动折叠。默认为15行。'}
+          />
+          <ProFormSelect
+            name={'articleWidthMode'}
+            label="文章页宽度模式"
+            initialValue={'standard'}
+            placeholder={'标准'}
+            valueEnum={{
+              standard: '标准',
+              wide: '宽版',
+              ultraWide: '超宽',
+              full: '铺满',
+            }}
+            tooltip={'控制前台文章页在桌面大屏下的版心宽度。标准接近当前效果，宽版更舒展，超宽适合大显示器，铺满会尽量利用可用宽度。'}
           />
           
           {/* 建站时间显示设置 */}

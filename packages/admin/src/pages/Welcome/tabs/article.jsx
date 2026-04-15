@@ -1,16 +1,15 @@
-import { ProCard, StatisticCard } from '@ant-design/pro-components';
-import { Spin, Row, Col, Card, Progress, Tag, Timeline, Tooltip } from 'antd';
-import { useCallback, useEffect, useState } from 'react';
+import { Spin, Row, Col, Card, Progress, Tag, Timeline } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getWelcomeData } from '@/services/van-blog/api';
 import style from '../index.less';
 import NumSelect from '@/components/NumSelect';
-import { Pie, Column, Radar, WordCloud, Rose } from '@ant-design/plots';
+import { Pie, Column, Radar, Rose } from '@ant-design/plots';
 import { useNum } from '@/services/van-blog/useNum';
 import RcResizeObserver from 'rc-resize-observer';
-import { 
-  FileTextOutlined, 
-  EditOutlined, 
-  FolderOutlined, 
+import {
+  FileTextOutlined,
+  EditOutlined,
+  FolderOutlined,
   TagsOutlined,
   TrophyOutlined,
   BookOutlined,
@@ -19,21 +18,28 @@ import {
   ThunderboltOutlined,
   StarOutlined,
   CoffeeOutlined,
-  BulbOutlined
+  BulbOutlined,
 } from '@ant-design/icons';
+import {
+  WELCOME_CHART_COLORS,
+  getWelcomeAreaFill,
+  getWelcomeAxisStyle,
+  getWelcomeLegendStyle,
+  useWelcomeThemePalette,
+} from '../theme';
 
 const ArticleTab = () => {
   const [data, setData] = useState();
   const [loading, setLoading] = useState(true);
   const [responsive, setResponsive] = useState(false);
   const [num, setNum] = useNum(5);
-  
+  const palette = useWelcomeThemePalette();
+
   const fetchData = useCallback(async () => {
     const { data: res } = await getWelcomeData('article', 5, 5, num);
-
     setData(res);
   }, [setData, num]);
-  
+
   useEffect(() => {
     setLoading(true);
     fetchData().then(() => {
@@ -41,169 +47,223 @@ const ArticleTab = () => {
     });
   }, [fetchData, setLoading]);
 
-  // 计算创作分析指标
-  const creativeAnalytics = {
-    avgWordsPerArticle: data?.articleNum > 0 ? Math.round(data?.wordNum / data?.articleNum) : 0,
-    contentRichness: Math.min(100, Math.round((data?.wordNum || 0) / 1000)),
-    categoryBalance: data?.categoryNum > 0 ? Math.round((data?.articleNum || 0) / data?.categoryNum) : 0,
-    tagDiversity: data?.tagNum > 0 ? Math.round((data?.articleNum || 0) / data?.tagNum * 10) : 0,
-    productivityScore: Math.min(100, Math.round(((data?.articleNum || 0) * 2 + (data?.wordNum || 0) / 1000) / 10)),
-  };
+  const creativeAnalytics = useMemo(
+    () => ({
+      avgWordsPerArticle: data?.articleNum > 0 ? Math.round(data?.wordNum / data?.articleNum) : 0,
+      contentRichness: Math.min(100, Math.round((data?.wordNum || 0) / 1000)),
+      categoryBalance: data?.categoryNum > 0 ? Math.round((data?.articleNum || 0) / data?.categoryNum) : 0,
+      tagDiversity: data?.tagNum > 0 ? Math.round(((data?.articleNum || 0) / data?.tagNum) * 10) : 0,
+      productivityScore: Math.min(
+        100,
+        Math.round((((data?.articleNum || 0) * 2 + (data?.wordNum || 0) / 1000) / 10)),
+      ),
+    }),
+    [data?.articleNum, data?.categoryNum, data?.tagNum, data?.wordNum],
+  );
 
-  const pieConfig = {
-    data: data?.categoryPieData || [],
-    angleField: 'value',
-    colorField: 'type',
-    radius: 0.8,
-    innerRadius: 0.6,
-    label: false,
-    legend: {
-      position: 'bottom',
-      flipPage: false,
-    },
-    color: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'],
-    interactions: [
-      { type: 'element-selected' },
-      { type: 'element-active' },
-      { type: 'pie-statistic-active' },
+  const chartColors = useMemo(
+    () => [
+      WELCOME_CHART_COLORS.primary[0],
+      WELCOME_CHART_COLORS.primary[1],
+      WELCOME_CHART_COLORS.accent[0],
+      WELCOME_CHART_COLORS.accent[1],
+      WELCOME_CHART_COLORS.cyan[0],
+      WELCOME_CHART_COLORS.cyan[1],
+      WELCOME_CHART_COLORS.success[0],
+      WELCOME_CHART_COLORS.success[1],
     ],
-    statistic: {
-      title: {
-        style: {
-          whiteSpace: 'pre-wrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        },
-        content: '分类分布',
-      },
-      content: {
-        style: {
-          whiteSpace: 'pre-wrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          fontSize: '24px',
-          fontWeight: 'bold',
-          color: '#2c3e50',
-        },
-        content: `${data?.categoryNum || 0}个`,
-      },
-    },
-  };
+    [],
+  );
 
-  const columnConfig = {
-    data: data?.columnData || [],
-    xField: 'type',
-    yField: 'value',
-    label: {
-      position: 'top',
-      style: {
-        fill: '#5a6c7d',
-        fontSize: 12,
-        fontWeight: 'bold',
+  const pieConfig = useMemo(
+    () => ({
+      data: data?.categoryPieData || [],
+      angleField: 'value',
+      colorField: 'type',
+      radius: 0.8,
+      innerRadius: 0.6,
+      label: false,
+      legend: getWelcomeLegendStyle(palette, {
+        position: 'bottom',
+        flipPage: false,
+      }),
+      color: chartColors,
+      interactions: [
+        { type: 'element-selected' },
+        { type: 'element-active' },
+        { type: 'pie-statistic-active' },
+      ],
+      statistic: {
+        title: {
+          style: {
+            whiteSpace: 'pre-wrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fill: palette.textSecondary,
+          },
+          content: '分类分布',
+        },
+        content: {
+          style: {
+            whiteSpace: 'pre-wrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: palette.statisticText,
+          },
+          content: `${data?.categoryNum || 0}个`,
+        },
       },
-    },
-    color: ({ type, value }) => {
-      const index = (data?.columnData || []).findIndex(item => item.type === type);
-      const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#764ba2', '#f5576c', '#00f2fe', '#38f9d7'];
-      return colors[index % colors.length];
-    },
-    columnStyle: {
-      radius: [4, 4, 0, 0],
-    },
-    xAxis: {
+    }),
+    [chartColors, data?.categoryNum, data?.categoryPieData, palette],
+  );
+
+  const columnConfig = useMemo(
+    () => ({
+      data: data?.columnData || [],
+      xField: 'type',
+      yField: 'value',
       label: {
-        autoHide: true,
-        autoRotate: false,
+        position: 'top',
+        style: {
+          fill: palette.chartLabel,
+          fontSize: 12,
+          fontWeight: 'bold',
+        },
+      },
+      color: ({ type }) => {
+        const index = (data?.columnData || []).findIndex((item) => item.type === type);
+        return chartColors[index % chartColors.length];
+      },
+      columnStyle: {
+        radius: [4, 4, 0, 0],
+      },
+      xAxis: getWelcomeAxisStyle(palette),
+      yAxis: getWelcomeAxisStyle(palette, true),
+      meta: {
+        type: { alias: '标签名' },
+        value: { alias: '文章数量' },
+      },
+    }),
+    [chartColors, data?.columnData, palette],
+  );
+
+  const roseConfig = useMemo(
+    () => ({
+      data: data?.categoryPieData || [],
+      xField: 'type',
+      yField: 'value',
+      seriesField: 'type',
+      radius: 0.9,
+      legend: getWelcomeLegendStyle(palette, { position: 'bottom' }),
+      label: {
+        offset: palette.isDark ? 12 : -15,
         style: {
           fontSize: 12,
+          fontWeight: 'bold',
+          fill: palette.roseLabel,
         },
       },
-    },
-    meta: {
-      type: { alias: '标签名' },
-      value: { alias: '文章数量' },
-    },
-  };
+      labelLine: palette.isDark
+        ? {
+            style: {
+              stroke: palette.chartGrid,
+            },
+          }
+        : undefined,
+      color: chartColors,
+    }),
+    [chartColors, data?.categoryPieData, palette],
+  );
 
-  // 玫瑰图配置
-  const roseConfig = {
-    data: data?.categoryPieData || [],
-    xField: 'type',
-    yField: 'value',
-    seriesField: 'type',
-    radius: 0.9,
-    label: {
-      offset: -15,
-      style: {
-        fontSize: 12,
-        fontWeight: 'bold',
-        fill: 'white',
+  const radarData = useMemo(
+    () => [
+      { name: '文章数量', value: Math.min(100, (data?.articleNum || 0) * 2) },
+      { name: '总字数', value: Math.min(100, (data?.wordNum || 0) / 1000) },
+      { name: '分类丰富度', value: Math.min(100, (data?.categoryNum || 0) * 10) },
+      { name: '标签多样性', value: Math.min(100, (data?.tagNum || 0) * 5) },
+      { name: '内容深度', value: creativeAnalytics.avgWordsPerArticle / 20 },
+    ],
+    [creativeAnalytics.avgWordsPerArticle, data?.articleNum, data?.categoryNum, data?.tagNum, data?.wordNum],
+  );
+
+  const radarConfig = useMemo(
+    () => ({
+      data: radarData,
+      xField: 'name',
+      yField: 'value',
+      appendPadding: [0, 10, 0, 10],
+      meta: {
+        value: {
+          alias: '得分',
+          min: 0,
+          max: 100,
+        },
       },
-    },
-    color: ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7'],
-  };
-
-  // 雷达图数据
-  const radarData = [
-    { name: '文章数量', value: Math.min(100, (data?.articleNum || 0) * 2) },
-    { name: '总字数', value: Math.min(100, (data?.wordNum || 0) / 1000) },
-    { name: '分类丰富度', value: Math.min(100, (data?.categoryNum || 0) * 10) },
-    { name: '标签多样性', value: Math.min(100, (data?.tagNum || 0) * 5) },
-    { name: '内容深度', value: creativeAnalytics.avgWordsPerArticle / 20 },
-  ];
-
-  const radarConfig = {
-    data: radarData,
-    xField: 'name',
-    yField: 'value',
-    appendPadding: [0, 10, 0, 10],
-    meta: {
-      value: {
-        alias: '得分',
-        min: 0,
-        max: 100,
-      },
-    },
-    xAxis: {
-      line: null,
-      tickLine: null,
-      grid: {
-        line: {
+      xAxis: {
+        label: {
           style: {
-            lineDash: null,
+            fill: palette.chartLabel,
+          },
+        },
+        line: null,
+        tickLine: null,
+        grid: {
+          line: {
+            style: {
+              stroke: palette.chartGrid,
+              lineDash: null,
+            },
           },
         },
       },
-    },
-    yAxis: {
-      line: null,
-      tickLine: null,
-      grid: {
-        line: {
-          type: 'line',
+      yAxis: {
+        label: {
           style: {
-            lineDash: null,
+            fill: palette.textTertiary,
           },
         },
-        alternateColor: 'rgba(0, 0, 0, 0.04)',
+        line: null,
+        tickLine: null,
+        grid: {
+          line: {
+            type: 'line',
+            style: {
+              stroke: palette.chartGrid,
+              lineDash: null,
+            },
+          },
+          alternateColor: palette.isDark ? 'rgba(148, 163, 184, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+        },
       },
-    },
-    point: {
-      size: 2,
-    },
-    area: {
-      style: {
-        fill: 'l(270) 0:#667eea 0.5:#764ba2 1:#f093fb',
-        fillOpacity: 0.3,
+      point: {
+        size: 2,
       },
-    },
-    line: {
-      style: {
-        stroke: '#667eea',
-        lineWidth: 2,
+      area: {
+        style: {
+          fill: getWelcomeAreaFill(
+            WELCOME_CHART_COLORS.primary[0],
+            WELCOME_CHART_COLORS.accent[0],
+            palette,
+          ),
+          fillOpacity: palette.isDark ? 0.22 : 0.3,
+        },
       },
-    },
-  };
+      line: {
+        style: {
+          stroke: WELCOME_CHART_COLORS.primary[0],
+          lineWidth: 2,
+        },
+      },
+    }),
+    [palette, radarData],
+  );
+
+  const lengthCardTone =
+    creativeAnalytics.avgWordsPerArticle < 500 ? style['insight-card-warning'] : style['insight-card-success'];
+  const categoryCardTone = data?.categoryNum < 5 ? style['insight-card-info'] : style['insight-card-success'];
+  const tagCardTone = creativeAnalytics.tagDiversity < 2 ? style['insight-card-warning'] : style['insight-card-success'];
 
   return (
     <div className={style['modern-welcome']}>
@@ -214,7 +274,6 @@ const ArticleTab = () => {
         }}
       >
         <Spin spinning={loading}>
-          {/* 核心指标卡片 */}
           <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
             <Col xs={24} sm={12} lg={6}>
               <div className={style['stat-card']}>
@@ -266,7 +325,6 @@ const ArticleTab = () => {
             </Col>
           </Row>
 
-          {/* 创作能力分析 */}
           <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
             <Col xs={24} lg={8}>
               <div className={style['chart-container']}>
@@ -277,9 +335,7 @@ const ArticleTab = () => {
                   </div>
                 </div>
                 <Radar {...radarConfig} height={280} />
-                <div style={{ textAlign: 'center', marginTop: 16, color: '#7f8c8d', fontSize: 12 }}>
-                  多维度评估创作水平
-                </div>
+                <div className={style['section-note']}>多维度评估创作水平</div>
               </div>
             </Col>
             <Col xs={24} lg={8}>
@@ -290,53 +346,47 @@ const ArticleTab = () => {
                     创作洞察
                   </div>
                 </div>
-                <div style={{ padding: '20px 0' }}>
+                <div className={style['section-body']}>
                   <Timeline>
-                    <Timeline.Item 
-                      dot={<BookOutlined style={{ color: '#667eea' }} />}
-                      color="#667eea"
-                    >
+                    <Timeline.Item dot={<BookOutlined style={{ color: WELCOME_CHART_COLORS.primary[0] }} />} color={WELCOME_CHART_COLORS.primary[0]}>
                       <div style={{ marginBottom: 8 }}>
                         <Tag color="blue">内容产出</Tag>
                       </div>
-                      <div style={{ color: '#2c3e50', marginBottom: 8 }}>
+                      <div className={style['timeline-value']} style={{ marginBottom: 8 }}>
                         创作效率评分
                       </div>
-                      <Progress 
+                      <Progress
                         percent={creativeAnalytics.productivityScore}
-                        strokeColor="#667eea"
+                        strokeColor={WELCOME_CHART_COLORS.primary[0]}
+                        trailColor={palette.progressTrail}
                         size="small"
                       />
                     </Timeline.Item>
-                    <Timeline.Item 
-                      dot={<StarOutlined style={{ color: '#f093fb' }} />}
-                      color="#f093fb"
-                    >
+                    <Timeline.Item dot={<StarOutlined style={{ color: WELCOME_CHART_COLORS.accent[0] }} />} color={WELCOME_CHART_COLORS.accent[0]}>
                       <div style={{ marginBottom: 8 }}>
                         <Tag color="magenta">内容质量</Tag>
                       </div>
-                      <div style={{ color: '#2c3e50', marginBottom: 8 }}>
+                      <div className={style['timeline-value']} style={{ marginBottom: 8 }}>
                         平均文章深度
                       </div>
-                      <Progress 
+                      <Progress
                         percent={Math.min(100, creativeAnalytics.avgWordsPerArticle / 20)}
-                        strokeColor="#f093fb"
+                        strokeColor={WELCOME_CHART_COLORS.accent[0]}
+                        trailColor={palette.progressTrail}
                         size="small"
                       />
                     </Timeline.Item>
-                    <Timeline.Item 
-                      dot={<CoffeeOutlined style={{ color: '#43e97b' }} />}
-                      color="#43e97b"
-                    >
+                    <Timeline.Item dot={<CoffeeOutlined style={{ color: WELCOME_CHART_COLORS.success[0] }} />} color={WELCOME_CHART_COLORS.success[0]}>
                       <div style={{ marginBottom: 8 }}>
                         <Tag color="green">写作习惯</Tag>
                       </div>
-                      <div style={{ color: '#2c3e50', marginBottom: 8 }}>
+                      <div className={style['timeline-value']} style={{ marginBottom: 8 }}>
                         分类组织能力
                       </div>
-                      <Progress 
+                      <Progress
                         percent={Math.min(100, creativeAnalytics.categoryBalance * 5)}
-                        strokeColor="#43e97b"
+                        strokeColor={WELCOME_CHART_COLORS.success[0]}
+                        trailColor={palette.progressTrail}
                         size="small"
                       />
                     </Timeline.Item>
@@ -352,65 +402,29 @@ const ArticleTab = () => {
                     创作建议
                   </div>
                 </div>
-                <div style={{ padding: '20px 0' }}>
+                <div className={style['section-body']}>
                   <Row gutter={[16, 16]}>
                     <Col span={24}>
-                      <Card 
-                        size="small" 
-                        style={{ 
-                          background: creativeAnalytics.avgWordsPerArticle < 500 ? 
-                            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' : 
-                            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', 
-                          color: 'white', 
-                          border: 'none' 
-                        }}
-                      >
-                        <div style={{ fontSize: 12, opacity: 0.9 }}>文章长度建议</div>
-                        <div style={{ fontWeight: 'bold', marginTop: 4 }}>
-                          {creativeAnalytics.avgWordsPerArticle < 500 
-                            ? '🚀 尝试写更长的深度文章' 
-                            : '👍 文章长度很棒！'
-                          }
+                      <Card size="small" className={`${style['insight-card']} ${lengthCardTone}`}>
+                        <div className={style['insight-label']}>文章长度建议</div>
+                        <div className={style['insight-value']}>
+                          {creativeAnalytics.avgWordsPerArticle < 500 ? '🚀 尝试写更长的深度文章' : '👍 文章长度很棒！'}
                         </div>
                       </Card>
                     </Col>
                     <Col span={24}>
-                      <Card 
-                        size="small" 
-                        style={{ 
-                          background: data?.categoryNum < 5 ? 
-                            'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 
-                            'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', 
-                          color: 'white', 
-                          border: 'none' 
-                        }}
-                      >
-                        <div style={{ fontSize: 12, opacity: 0.9 }}>分类管理建议</div>
-                        <div style={{ fontWeight: 'bold', marginTop: 4 }}>
-                          {data?.categoryNum < 5 
-                            ? '📂 可以创建更多分类' 
-                            : '🎯 分类结构合理！'
-                          }
+                      <Card size="small" className={`${style['insight-card']} ${categoryCardTone}`}>
+                        <div className={style['insight-label']}>分类管理建议</div>
+                        <div className={style['insight-value']}>
+                          {data?.categoryNum < 5 ? '📂 可以创建更多分类' : '🎯 分类结构合理！'}
                         </div>
                       </Card>
                     </Col>
                     <Col span={24}>
-                      <Card 
-                        size="small" 
-                        style={{ 
-                          background: creativeAnalytics.tagDiversity < 2 ? 
-                            'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' : 
-                            'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', 
-                          color: 'white', 
-                          border: 'none' 
-                        }}
-                      >
-                        <div style={{ fontSize: 12, opacity: 0.9 }}>标签使用建议</div>
-                        <div style={{ fontWeight: 'bold', marginTop: 4 }}>
-                          {creativeAnalytics.tagDiversity < 2 
-                            ? '🏷️ 增加更多主题标签' 
-                            : '✨ 标签使用得当！'
-                          }
+                      <Card size="small" className={`${style['insight-card']} ${tagCardTone}`}>
+                        <div className={style['insight-label']}>标签使用建议</div>
+                        <div className={style['insight-value']}>
+                          {creativeAnalytics.tagDiversity < 2 ? '🏷️ 增加更多主题标签' : '✨ 标签使用得当！'}
                         </div>
                       </Card>
                     </Col>
@@ -420,7 +434,6 @@ const ArticleTab = () => {
             </Col>
           </Row>
 
-          {/* 数据可视化分析 */}
           <Row gutter={[24, 24]}>
             <Col xs={24} lg={12}>
               <div className={style['chart-container']}>
@@ -447,7 +460,6 @@ const ArticleTab = () => {
             </Col>
           </Row>
 
-          {/* 额外的玫瑰图展示 */}
           {data?.categoryPieData && data.categoryPieData.length > 0 && (
             <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
               <Col span={24}>
@@ -459,9 +471,7 @@ const ArticleTab = () => {
                     </div>
                   </div>
                   <Rose {...roseConfig} height={400} />
-                  <div style={{ textAlign: 'center', marginTop: 16, color: '#7f8c8d', fontSize: 12 }}>
-                    以玫瑰图形式展示各分类的文章分布情况
-                  </div>
+                  <div className={style['section-note']}>以玫瑰图形式展示各分类的文章分布情况</div>
                 </div>
               </Col>
             </Row>

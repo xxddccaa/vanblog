@@ -237,6 +237,7 @@ export default function NavPage({
 
       <Layout
         option={layoutProps}
+      contentWidthMode={layoutProps.articleWidthMode}
         title={`导航 - ${siteName}`}
         sideBar={<AuthorCard option={authorCardProps} />}
       >

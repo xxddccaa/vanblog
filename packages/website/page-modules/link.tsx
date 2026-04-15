@@ -47,6 +47,7 @@ const LinkPage = (props: LinkPageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title="友情链接"
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >

@@ -7,6 +7,8 @@ export class SiteInfo {
   siteLogo: string;
   siteLogoDark: string;
   favicon: string;
+  adminLogo?: string;
+  adminFavicon?: string;
   siteName: string;
   siteDesc: string;
   beianNumber: string;
@@ -53,6 +55,8 @@ export class SiteInfo {
   privateSite?: 'true' | 'false';
   // 代码显示行数设置
   codeMaxLines?: number;
+  // 文章页宽度模式
+  articleWidthMode?: 'standard' | 'wide' | 'ultraWide' | 'full';
   // 是否显示建站时间
   showRunningTime?: 'true' | 'false';
   // 网站背景图

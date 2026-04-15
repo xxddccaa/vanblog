@@ -18,6 +18,7 @@ const ArchivePage = (props: ArchivePageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title="归档"
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

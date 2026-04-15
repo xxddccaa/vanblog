@@ -1,5 +1,6 @@
 import { HeadTag } from "../utils/getLayoutProps";
 import { config, getServerFetchOptions } from "../utils/loadConfig";
+import { MARKDOWN_THEME_DEFAULTS } from "../utils/markdownTheme";
 export type SocialType =
   | "bilibili"
   | "email"
@@ -180,6 +181,8 @@ export interface MetaProps {
     privateSite?: 'true' | 'false';
     // 代码显示行数设置
     codeMaxLines?: number;
+    // 文章页宽度模式
+    articleWidthMode?: "standard" | "wide" | "ultraWide" | "full";
     // 是否显示建站时间
     showRunningTime?: 'true' | 'false';
     // 网站背景图
@@ -254,11 +257,12 @@ const defaultMeta: MetaProps = {
     showEditButton: "false",
     privateSite: "false",
     codeMaxLines: 15,
+    articleWidthMode: "standard",
     showRunningTime: "false",
     backgroundImage: "",
     backgroundImageDark: "",
-    markdownLightThemeUrl: "/markdown-themes/phycat-cherry-light-only.css",
-    markdownDarkThemeUrl: "/markdown-themes/phycat-dark-only.css",
+    markdownLightThemeUrl: MARKDOWN_THEME_DEFAULTS.light,
+    markdownDarkThemeUrl: MARKDOWN_THEME_DEFAULTS.dark,
   },
 };
 

@@ -8,6 +8,7 @@ import { message } from 'antd';
 import { history, useModel } from '@umijs/max';
 import { useState, useEffect } from 'react';
 import { getAdminAssetPath } from '@/utils/getAssetPath';
+import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
 import styles from './index.less';
 
 const Login = () => {
@@ -36,6 +37,7 @@ const Login = () => {
       try {
         const { data } = await getPublicSiteInfo();
         setSiteInfo(data);
+        applyAdminFavicon(data);
       } catch (error) {
         console.error('获取站点信息失败:', error);
       }
@@ -165,6 +167,8 @@ const Login = () => {
     );
   };
 
+  const loginLogo = resolveAdminBrandLogo(siteInfo);
+
   return (
     <div
       className={styles.container}
@@ -176,7 +180,7 @@ const Login = () => {
       <div className={styles.content}>
         <LoginForm
           className={styles.loginForm}
-          logo={<img alt="logo" src={getAdminAssetPath('logo.svg')} />}
+          logo={<img alt="logo" src={loginLogo} />}
           title="VanBlog"
           subTitle={'VanBlog 博客管理后台'}
           initialValues={{

@@ -1,8 +1,7 @@
 import Footer from '@/components/Footer';
-import LogoutButton from '@/components/LogoutButton';
-import ThemeButton from '@/components/ThemeButton';
+import { logoutAndRedirect } from '@/components/LogoutButton';
+import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
 import { getStoredUser } from '@/utils/getStoredUser';
-import { getAdminAssetPath } from '@/utils/getAssetPath';
 import { 
   HomeOutlined, 
   LogoutOutlined,
@@ -17,15 +16,18 @@ import {
   ToolOutlined,
   FolderOutlined,
 } from '@ant-design/icons';
-import { message, Modal, notification } from 'antd';
+import { Menu, message, Modal, notification } from 'antd';
 import moment from 'moment';
 import { history, Link } from '@umijs/max';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import defaultSettings from '../config/defaultSettings';
 import { fetchAllMeta, getAdminLayoutConfig } from './services/van-blog/api';
 import { checkUrl } from './services/van-blog/checkUrl';
-import { applyThemeToDocument, getInitTheme } from './services/van-blog/theme';
+import { applyThemeToDocument, beforeSwitchTheme, getInitTheme } from './services/van-blog/theme';
 const loginPath = '/user/login';
+const ADMIN_SIDER_COLLAPSE_STORAGE_KEY = 'vanblog.admin.sider.collapsed';
+const ADMIN_SIDER_NARROW_BREAKPOINT = 768;
+const ADMIN_DEFAULT_VIEWPORT_WIDTH = 1280;
 
 // 图标映射
 const iconMapping = {
@@ -71,22 +73,62 @@ const ThemeSync = ({ theme, navTheme }) => {
   return null;
 };
 
+const AdminBrandSync = ({ siteInfo }) => {
+  useEffect(() => {
+    applyAdminFavicon(siteInfo);
+  }, [siteInfo?.adminFavicon]);
+
+  return null;
+};
+
 const WALINE_PREWARM_KEY = 'vanblog.admin.waline-prewarmed';
 const WALINE_PREWARM_RETRY_KEY = 'vanblog.admin.waline-prewarm-retry';
 
-const footerActionButtonStyle = (collapsed) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: collapsed ? 'center' : 'flex-start',
-  width: '100%',
-  minHeight: 38,
-  padding: collapsed ? '8px 0' : '8px 10px',
-  border: 0,
-  borderRadius: 10,
-  background: 'transparent',
-  color: 'inherit',
-  cursor: 'pointer',
-});
+const getViewportWidth = () =>
+  typeof window === 'undefined' ? ADMIN_DEFAULT_VIEWPORT_WIDTH : window.innerWidth;
+
+const readDesktopCollapsedPreference = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.localStorage.getItem(ADMIN_SIDER_COLLAPSE_STORAGE_KEY) === 'true';
+};
+
+const writeDesktopCollapsedPreference = (collapsed) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(ADMIN_SIDER_COLLAPSE_STORAGE_KEY, String(Boolean(collapsed)));
+};
+
+const ThemeLightIcon = ({ size = 16 }) => (
+  <svg
+    className="fill-gray-600"
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 1024 1024"
+    fill="currentColor"
+    aria-label="light icon"
+    width={size}
+    height={size}
+  >
+    <path d="M952 552h-80a40 40 0 0 1 0-80h80a40 40 0 0 1 0 80zM801.88 280.08a41 41 0 0 1-57.96-57.96l57.96-58a41.04 41.04 0 0 1 58 58l-58 57.96zM512 752a240 240 0 1 1 0-480 240 240 0 0 1 0 480zm0-560a40 40 0 0 1-40-40V72a40 40 0 0 1 80 0v80a40 40 0 0 1-40 40zm-289.88 88.08-58-57.96a41.04 41.04 0 0 1 58-58l57.96 58a41 41 0 0 1-57.96 57.96zM192 512a40 40 0 0 1-40 40H72a40 40 0 0 1 0-80h80a40 40 0 0 1 40 40zm30.12 231.92a41 41 0 0 1 57.96 57.96l-57.96 58a41.04 41.04 0 0 1-58-58l58-57.96zM512 832a40 40 0 0 1 40 40v80a40 40 0 0 1-80 0v-80a40 40 0 0 1 40-40zm289.88-88.08 58 57.96a41.04 41.04 0 0 1-58 58l-57.96-58a41 41 0 0 1 57.96-57.96z"></path>
+  </svg>
+);
+
+const ThemeDarkIcon = ({ size = 16 }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 1024 1024"
+    fill="currentColor"
+    aria-label="dark icon"
+    width={size}
+    height={size}
+  >
+    <path d="M524.8 938.667h-4.267a439.893 439.893 0 0 1-313.173-134.4 446.293 446.293 0 0 1-11.093-597.334A432.213 432.213 0 0 1 366.933 90.027a42.667 42.667 0 0 1 45.227 9.386 42.667 42.667 0 0 1 10.24 42.667 358.4 358.4 0 0 0 82.773 375.893 361.387 361.387 0 0 0 376.747 82.774 42.667 42.667 0 0 1 54.187 55.04 433.493 433.493 0 0 1-99.84 154.88 438.613 438.613 0 0 1-311.467 128z"></path>
+  </svg>
+);
 
 const getResolvedThemeMode = (initialState) =>
   initialState?.settings?.navTheme === 'realDark' ? 'dark' : 'light';
@@ -135,31 +177,216 @@ const getLayoutToken = (themeMode) => {
   };
 };
 
-const AdminSiderFooter = ({ collapsed }) => {
-  const labelStyle = collapsed ? { display: 'none' } : { marginLeft: 8 };
+const getSiderCollapseButton = () =>
+  typeof document === 'undefined'
+    ? null
+    : document.querySelector('.ant-pro-sider-collapsed-button');
+
+const isSiderCollapsed = () => {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const footer = document
+    .querySelector('[data-testid="admin-sider-footer-actions"]')
+    ?.closest('.ant-pro-sider-footer');
+  if (footer) {
+    return footer.classList.contains('ant-pro-sider-footer-collapsed');
+  }
+
+  return getSiderCollapseButton()?.classList.contains('ant-pro-sider-collapsed-button-collapsed') || false;
+};
+
+const SiderCollapseSync = () => {
+  const toggleButtonRef = useRef(null);
+  const pendingSyncTimersRef = useRef([]);
+  const mobileCollapsedRef = useRef(getViewportWidth() < ADMIN_SIDER_NARROW_BREAKPOINT);
+  const isNarrowScreenRef = useRef(getViewportWidth() < ADMIN_SIDER_NARROW_BREAKPOINT);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const syncCollapsedState = () => {
+      const toggleButton = getSiderCollapseButton();
+      if (!toggleButton) {
+        return;
+      }
+
+      const desiredCollapsed = isNarrowScreenRef.current
+        ? mobileCollapsedRef.current
+        : readDesktopCollapsedPreference();
+      const currentCollapsed = isSiderCollapsed();
+
+      if (currentCollapsed !== desiredCollapsed) {
+        toggleButton.click();
+      }
+    };
+
+    const recordCollapsedState = () => {
+      window.setTimeout(() => {
+        const currentCollapsed = isSiderCollapsed();
+
+        if (isNarrowScreenRef.current) {
+          mobileCollapsedRef.current = currentCollapsed;
+          return;
+        }
+
+        writeDesktopCollapsedPreference(currentCollapsed);
+      }, 80);
+    };
+
+    const bindToggleListener = () => {
+      const toggleButton = getSiderCollapseButton();
+      if (!toggleButton || toggleButtonRef.current === toggleButton) {
+        return;
+      }
+
+      if (toggleButtonRef.current) {
+        toggleButtonRef.current.removeEventListener('click', recordCollapsedState);
+      }
+
+      toggleButton.addEventListener('click', recordCollapsedState);
+      toggleButtonRef.current = toggleButton;
+    };
+
+    const queueDeferredSyncs = () => {
+      pendingSyncTimersRef.current.forEach((timer) => {
+        window.clearTimeout(timer);
+      });
+      pendingSyncTimersRef.current = [
+        window.setTimeout(syncCollapsedState, 180),
+        window.setTimeout(syncCollapsedState, 420),
+      ];
+    };
+
+    const applyResponsiveCollapse = () => {
+      handleSizeChange();
+      bindToggleListener();
+
+      const nextIsNarrowScreen = getViewportWidth() < ADMIN_SIDER_NARROW_BREAKPOINT;
+      if (nextIsNarrowScreen && !isNarrowScreenRef.current) {
+        mobileCollapsedRef.current = true;
+      }
+
+      isNarrowScreenRef.current = nextIsNarrowScreen;
+      syncCollapsedState();
+      queueDeferredSyncs();
+    };
+
+    applyResponsiveCollapse();
+
+    const frameId = window.requestAnimationFrame(applyResponsiveCollapse);
+    const timeoutId = window.setTimeout(applyResponsiveCollapse, 240);
+    window.addEventListener('resize', applyResponsiveCollapse);
+
+    return () => {
+      if (toggleButtonRef.current) {
+        toggleButtonRef.current.removeEventListener('click', recordCollapsedState);
+      }
+      pendingSyncTimersRef.current.forEach((timer) => {
+        window.clearTimeout(timer);
+      });
+      window.removeEventListener('resize', applyResponsiveCollapse);
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  return null;
+};
+
+const AdminSiderFooter = ({ collapsed, initialState, setInitialState }) => {
+  const theme = initialState?.theme || 'light';
+  const themeDisplay = theme === 'dark'
+    ? { label: '暗色', icon: <ThemeDarkIcon /> }
+    : { label: '亮色', icon: <ThemeLightIcon /> };
+
+  const handleThemeToggle = useCallback(() => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    const nextSettings = {
+      ...initialState?.settings,
+      navTheme: beforeSwitchTheme(nextTheme),
+    };
+
+    setInitialState({
+      ...initialState,
+      theme: nextTheme,
+      settings: nextSettings,
+    });
+  }, [initialState, setInitialState, theme]);
+
+  const handleLogout = useCallback(() => {
+    setInitialState((state) => ({ ...state, user: undefined }));
+    logoutAndRedirect().then(() => {
+      message.success('登出成功！');
+    });
+  }, [setInitialState]);
+
+  const handleFooterClick = useCallback(
+    ({ key }) => {
+      if (key === 'main-site') {
+        window.open('/', '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      if (key === 'about') {
+        history.push('/about');
+        return;
+      }
+
+      if (key === 'theme-toggle') {
+        handleThemeToggle();
+        return;
+      }
+
+      if (key === 'logout') {
+        handleLogout();
+      }
+    },
+    [handleLogout, handleThemeToggle],
+  );
+
+  const footerItems = useMemo(
+    () => [
+      {
+        key: 'main-site',
+        icon: <HomeOutlined />,
+        label: <span data-testid="admin-footer-main-site">主站</span>,
+        title: '主站',
+      },
+      {
+        key: 'about',
+        icon: <ProjectOutlined />,
+        label: <span data-testid="admin-footer-about">关于</span>,
+        title: '关于',
+      },
+      {
+        key: 'theme-toggle',
+        icon: themeDisplay.icon,
+        label: <span data-testid="admin-theme-toggle-label">{themeDisplay.label}</span>,
+        title: themeDisplay.label,
+      },
+      {
+        key: 'logout',
+        icon: <LogoutOutlined />,
+        label: <span data-testid="admin-logout-label">登出</span>,
+        title: '登出',
+      },
+    ],
+    [themeDisplay.icon, themeDisplay.label],
+  );
 
   return (
-    <div
-      data-testid="admin-sider-footer-actions"
-      style={{
-        padding: collapsed ? '8px' : '12px',
-      }}
-    >
-      <div style={{ minHeight: 38 }}>
-        <ThemeButton showText={!collapsed} />
-      </div>
-      <LogoutButton
-        trigger={
-          <button
-            type="button"
-            data-testid="admin-logout-button"
-            aria-label="退出后台登录"
-            style={footerActionButtonStyle(collapsed)}
-          >
-            <LogoutOutlined />
-            <span style={labelStyle}>登出</span>
-          </button>
-        }
+    <div data-testid="admin-sider-footer-actions">
+      <Menu
+        mode="inline"
+        selectable={false}
+        inlineCollapsed={collapsed}
+        className="admin-sider-footer-menu"
+        items={footerItems}
+        onClick={handleFooterClick}
       />
     </div>
   );
@@ -424,21 +651,19 @@ export async function getInitialState() {
 } // ProLayout 支持的api https://procomponents.ant.design/components/layout
 
 const handleSizeChange = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
   const el = document.querySelector('header.ant-layout-header');
   if (el) {
     el.style.display = 'block';
   }
 };
 
-window.onresize = handleSizeChange;
-
 export const layout = ({ initialState, setInitialState }) => {
-  handleSizeChange();
   const sessionUser = initialState?.user || getStoredUser();
   const themeMode = getResolvedThemeMode(initialState);
-  const siderLinkStyle = {
-    color: themeMode === 'dark' ? '#cbd5e1' : 'rgba(0, 0, 0, 0.65)',
-  };
+  const adminLogo = resolveAdminBrandLogo(initialState);
   const siderHeaderColor = themeMode === 'dark' ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)';
 
   // 动态菜单渲染函数
@@ -485,7 +710,6 @@ export const layout = ({ initialState, setInitialState }) => {
 
   return {
     menuDataRender,
-    logo: getAdminAssetPath('logo.svg'),
     menuHeaderRender: (_, __, props) => (
       <Link
         to="/"
@@ -493,7 +717,7 @@ export const layout = ({ initialState, setInitialState }) => {
         style={{ display: 'flex', alignItems: 'center', gap: 12, color: siderHeaderColor }}
       >
         <img
-          src={getAdminAssetPath('logo.svg')}
+          src={adminLogo}
           alt="VanBlog logo"
           style={{ width: 32, height: 32, flexShrink: 0 }}
         />
@@ -506,7 +730,11 @@ export const layout = ({ initialState, setInitialState }) => {
     ),
     rightContentRender: false,
     menuFooterRender: (props) => (
-      <AdminSiderFooter collapsed={Boolean(props?.collapsed)} />
+      <AdminSiderFooter
+        collapsed={Boolean(props?.collapsed)}
+        initialState={initialState}
+        setInitialState={setInitialState}
+      />
     ),
     // disableContentMargin: true,
     footerRender: () => {
@@ -530,16 +758,7 @@ export const layout = ({ initialState, setInitialState }) => {
         history.push('/');
       }
     },
-    links: [
-      <a key="mainSiste" rel="noreferrer" target="_blank" href={'/'} style={siderLinkStyle}>
-        <HomeOutlined />
-        <span>主站</span>
-      </a>,
-      <Link key="AboutLink" to={'/about'} style={siderLinkStyle}>
-        <ProjectOutlined />
-        <span>关于</span>
-      </Link>,
-    ],
+    links: [],
 
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
@@ -552,13 +771,17 @@ export const layout = ({ initialState, setInitialState }) => {
             theme={initialState?.theme}
             navTheme={initialState?.settings?.navTheme}
           />
+          <AdminBrandSync siteInfo={initialState} />
+          <SiderCollapseSync />
           <WalinePrewarm />
           {children}
         </>
       );
     },
     token: getLayoutToken(themeMode),
+    defaultCollapsed: false,
     ...initialState?.settings,
+    logo: adminLogo,
   };
 };
 export const request = {

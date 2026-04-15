@@ -37,6 +37,7 @@ export default function PostPages(props: PostPagesProps) {
       option={props.layoutProps}
       title={props.article.title}
       sideBar={hasToc(content) ? <Toc content={content} showSubMenu={props.showSubMenu} /> : null}
+      contentWidthMode={props.layoutProps.articleWidthMode}
     >
       <Head>
         <meta name="keywords" content={getArticlesKeyWord([props.article]).join(',')} />

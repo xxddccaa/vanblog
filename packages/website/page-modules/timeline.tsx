@@ -16,6 +16,7 @@ const TimeLine = (props: TimeLinePageProps) => {
     <Layout
       title={"时间线"}
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
       <TimelinePageComponent

@@ -40,6 +40,7 @@ const PostPages = (props: PostPagesProps) => {
           <Toc content={content} showSubMenu={props.showSubMenu} />
         ) : null
       }
+      contentWidthMode={props.layoutProps.articleWidthMode}
     >
       <Head>
         <meta

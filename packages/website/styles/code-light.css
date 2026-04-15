@@ -14,6 +14,13 @@
   color: #000
 }
 
+.light .hljs.language-markdown .hljs-code,
+.light .hljs.language-md .hljs-code,
+html:not(.dark) .hljs.language-markdown .hljs-code,
+html:not(.dark) .hljs.language-md .hljs-code {
+  color: #795e26;
+}
+
 /* 移除所有 hljs span 元素的背景色，避免代码看起来像被选中 */
 .light .hljs span {
   background: transparent !important;

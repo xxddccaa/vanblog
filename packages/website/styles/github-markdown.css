@@ -1059,10 +1059,12 @@ body .markdown-body pre {
 }
 
 
-body .markdown-body .code-block-wrapper::-webkit-scrollbar {
+body .markdown-body .code-block-wrapper::-webkit-scrollbar,
+body .markdown-body .code-content-wrapper::-webkit-scrollbar {
   height: 8px;
 }
-body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
+body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb,
+body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   border-radius: 6px;
 }
 
@@ -1122,6 +1124,47 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
   border-color: #555;
 }
 
+.markdown-body .code-wrap-btn {
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #6f7177;
+  border: 1px solid #d0d7de;
+  background-color: var(--color-canvas-default);
+  user-select: none;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.markdown-body .code-wrap-btn:hover {
+  background-color: rgb(229 231 235);
+  border-color: #bbb;
+}
+
+.markdown-body .code-wrap-btn.code-wrap-enabled {
+  color: #fff;
+  background-color: #1772b4;
+  border-color: #1772b4;
+}
+
+.dark .markdown-body .code-wrap-btn {
+  border-color: #3e4145;
+  color: #8b949e;
+}
+
+.dark .markdown-body .code-wrap-btn:hover {
+  background-color: rgb(55 65 81);
+  border-color: #555;
+}
+
+.dark .markdown-body .code-wrap-btn.code-wrap-enabled {
+  color: #f8fafc;
+  background-color: #1772b4;
+  border-color: #1772b4;
+}
+
 /* 展开状态的图标 */
 /* .markdown-body .code-toggle-btn::before {
   content: url("data:image/svg+xml,%3Csvg%0Awidth%3D%2214%22%0Aheight%3D%2214%22%0AviewBox%3D%220%200%2024%2024%22%0Afill%3D%22none%22%0Axmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%0A%3E%0A%3Cpath%0Ad%3D%22M6%209l6%206%206-6%22%0Astroke%3D%22%236f7177%22%0Astroke-width%3D%222%22%0Astroke-linecap%3D%22round%22%0Astroke-linejoin%3D%22round%22%0A%3E%3C%2Fpath%3E%0A%3C%2Fsvg%3E");
@@ -1139,13 +1182,15 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 /* 代码内容包装器样式 */
 .markdown-body .code-content-wrapper {
   transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   position: relative;
 }
 
 /* 折叠状态：限制高度为大约15行 */
 .markdown-body .code-content-wrapper.code-collapsed {
   max-height: var(--code-max-height, 21em); /* 默认约15行 * 1.4em line-height，可通过JS动态调整 */
+  overflow: hidden;
 }
 
 /* 折叠状态时添加渐变遮罩 */
@@ -1170,8 +1215,24 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
   margin-bottom: 0;
 }
 
+.markdown-body .code-content-wrapper.code-wrap-enabled {
+  overflow-x: hidden;
+}
+
+.markdown-body .code-content-wrapper.code-wrap-enabled pre,
+.markdown-body .code-content-wrapper.code-wrap-enabled code,
+.markdown-body .code-content-wrapper.code-wrap-enabled .hljs {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 /* mermaid图表通用样式 - 不依赖主题 */
 .mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   background-color: #f8f5ff !important; /* 淡紫色背景 */
   border-radius: 8px;
   padding: 16px;
@@ -1182,6 +1243,10 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 
 /* ByteMD mermaid容器样式 */
 .bytemd-mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   background-color: #f8f5ff !important; /* 淡紫色背景 */
   border-radius: 8px;
   padding: 16px;
@@ -1192,6 +1257,10 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 
 /* 黑色主题下的mermaid样式 */
 .dark .mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   background-color: #f8f5ff !important; /* 淡紫色背景 */
   border-radius: 8px;
   padding: 16px;
@@ -1202,6 +1271,10 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 
 /* 黑色主题下的ByteMD mermaid容器样式 */
 .dark .bytemd-mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   background-color: #f8f5ff !important; /* 淡紫色背景 */
   border-radius: 8px;
   padding: 16px;
@@ -1213,6 +1286,8 @@ body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb {
 /* 确保mermaid图表容器有足够的空间 */
 .mermaid svg,
 .bytemd-mermaid svg {
+  display: block;
+  margin: 0 auto;
   max-width: 100%;
   height: auto;
 }

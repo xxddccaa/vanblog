@@ -16,6 +16,7 @@ const CategoryPage = (props: CategoryPageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title="分类"
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >

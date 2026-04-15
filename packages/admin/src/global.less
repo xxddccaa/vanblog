@@ -286,14 +286,42 @@ body .ant-page-header-heading-title {
 .ant-pro-sider .ant-pro-sider-links,
 .ant-pro-sider .ant-pro-sider-links a,
 [data-testid='admin-sider-footer-actions'],
-[data-testid='admin-sider-footer-actions'] button,
 [data-testid='admin-sider-footer-actions'] span {
   color: var(--admin-sider-secondary-text) !important;
+}
+
+.ant-pro-sider .ant-pro-sider-links a {
+  gap: 8px;
 }
 
 [data-testid='admin-sider-footer-actions'] {
   background: var(--admin-sider-bg) !important;
   border-top: 1px solid var(--admin-sider-border) !important;
+  padding: 8px 0 12px;
+}
+
+[data-testid='admin-sider-footer-actions'] .admin-sider-footer-menu,
+[data-testid='admin-sider-footer-actions'] .admin-sider-footer-menu.ant-menu-inline-collapsed {
+  width: 100% !important;
+  border-inline-end: 0 !important;
+  background: transparent !important;
+}
+
+[data-testid='admin-sider-footer-actions'] .admin-sider-footer-menu .ant-menu-item {
+  width: calc(100% - 24px) !important;
+  margin-inline: 12px !important;
+  margin-block: 0 !important;
+  border-radius: 10px;
+}
+
+[data-testid='admin-sider-footer-actions']
+  .admin-sider-footer-menu.ant-menu-inline-collapsed
+  .ant-menu-item {
+  width: calc(100% - 24px) !important;
+}
+
+[data-testid='admin-sider-footer-actions'] .admin-sider-footer-menu .ant-menu-title-content {
+  margin-inline-start: 10px !important;
 }
 
 .ant-pro-sider .ant-pro-global-header-logo h1,

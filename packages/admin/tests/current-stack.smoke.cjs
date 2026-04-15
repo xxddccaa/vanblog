@@ -139,19 +139,18 @@ async function assertAdminShell(page) {
   const logoSrc = await logo.getAttribute('src');
   assert.equal(logoSrc, '/admin/logo.svg', `unexpected admin logo src: ${logoSrc}`);
 
-  const logoutButtons = page.getByTestId('admin-logout-button');
-  assert.equal(await logoutButtons.count(), 1, 'expected exactly one logout button in sider footer');
+  const footer = page.locator('[data-testid="admin-sider-footer-actions"]');
+  await footer.waitFor({ state: 'visible' });
 
-  const themeToggle = page.getByTestId('admin-theme-toggle');
-  await themeToggle.waitFor({ state: 'visible' });
-  const inFooter = await themeToggle.evaluate(
-    (element) => !!element.closest('[data-testid="admin-sider-footer-actions"]'),
+  const footerLabels = await footer.locator('.ant-menu-title-content').allTextContents();
+  assert.deepEqual(
+    footerLabels.map((item) => item.trim()).filter(Boolean),
+    ['主站', '关于', '亮色', '登出'],
+    `unexpected footer menu labels: ${JSON.stringify(footerLabels)}`,
   );
-  assert.equal(inFooter, true, 'theme toggle is not rendered in the left sider footer');
-  const logoutInFooter = await logoutButtons
-    .first()
-    .evaluate((element) => !!element.closest('[data-testid="admin-sider-footer-actions"]'));
-  assert.equal(logoutInFooter, true, 'logout button is not rendered in the left sider footer');
+
+  const themeToggle = footer.getByRole('menuitem', { name: /亮色|暗色/ });
+  await themeToggle.waitFor({ state: 'visible' });
 
   const beforeTheme = await page.evaluate(() => ({
     theme: window.localStorage.getItem('theme'),
@@ -181,11 +180,54 @@ async function assertAdminShell(page) {
   const darkState = await page.evaluate(() => ({
     theme: window.localStorage.getItem('theme'),
     htmlTheme: document.documentElement.dataset.theme || '',
-    buttonText: document.querySelector('[data-testid="admin-theme-toggle"]')?.textContent || '',
+    buttonText:
+      document.querySelector('[data-testid="admin-theme-toggle-label"]')?.textContent || '',
   }));
   assert.equal(darkState.theme, 'dark', 'expected persisted dark theme after reload');
   assert.equal(darkState.htmlTheme, 'dark', 'expected html data-theme to stay dark after reload');
-  assert.equal(darkState.buttonText, '暗色模式', 'theme label did not sync after dark theme reload');
+  assert.equal(darkState.buttonText, '暗色', 'theme label did not sync after dark theme reload');
+
+  await page.setViewportSize({ width: 991, height: 900 });
+  await page.waitForTimeout(800);
+  const collapsedAt991 = await page.evaluate(() =>
+    document
+      .querySelector('[data-testid="admin-sider-footer-actions"]')
+      ?.closest('.ant-pro-sider-footer')
+      ?.classList.contains('ant-pro-sider-footer-collapsed'),
+  );
+  assert.equal(collapsedAt991, false, 'desktop sider should stay expanded at 991px');
+
+  await page.setViewportSize({ width: 767, height: 900 });
+  await page.waitForTimeout(800);
+  const mobileShellState = await page.evaluate(() => ({
+    hasDesktopFooter: Boolean(document.querySelector('[data-testid="admin-sider-footer-actions"]')),
+    hasMobileMenuTrigger: Boolean(document.querySelector('[aria-label="menu"]')),
+  }));
+  assert.equal(
+    mobileShellState.hasDesktopFooter,
+    false,
+    'mobile shell should switch away from the desktop footer layout below 768px',
+  );
+  assert.equal(
+    mobileShellState.hasMobileMenuTrigger,
+    true,
+    'mobile shell should expose the menu trigger below 768px',
+  );
+
+  await page.getByRole('img', { name: 'menu' }).click();
+  await page.waitForTimeout(400);
+
+  const mobileFooter = page.locator('[role="dialog"] [data-testid="admin-sider-footer-actions"]');
+  await mobileFooter.waitFor({ state: 'visible' });
+  const mobileFooterLabels = await mobileFooter.locator('.ant-menu-title-content').allTextContents();
+  assert.deepEqual(
+    mobileFooterLabels.map((item) => item.trim()).filter(Boolean),
+    ['主站', '关于', '暗色', '登出'],
+    `unexpected mobile footer menu labels: ${JSON.stringify(mobileFooterLabels)}`,
+  );
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(800);
 
   const pageContainerColor = await page
     .locator('.ant-pro-page-container')
@@ -390,14 +432,17 @@ async function main() {
     try {
       tempMindMapId = await createTempMindMap(token);
       const editorBody = await openAdminRoute(page, `/mindmap/editor?id=${tempMindMapId}`);
-      assert.ok(editorBody.includes('思维导图编辑器'), 'mindmap editor did not render');
+      assert.ok(
+        editorBody.includes('保存 (Ctrl+S)') && editorBody.includes('编辑信息'),
+        'mindmap editor did not render expected controls',
+      );
       assert.equal(
         editorBody.includes('加载思维导图数据失败'),
         false,
         'mindmap editor still failed to load a valid record',
       );
 
-      const mindMapFrame = page.locator('iframe').first();
+      const mindMapFrame = page.locator('iframe[src*="/admin/mindmap/index.html"]').first();
       await mindMapFrame.waitFor({ state: 'visible', timeout: 15000 });
       const frameSrc = await mindMapFrame.getAttribute('src');
       assert.ok(

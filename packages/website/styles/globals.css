@@ -343,3 +343,28 @@ html.dark .markdown-body .hljs *,
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* 前台内容宽度模式：覆盖 markdown 主题里对正文版心的固定 max-width */
+.vanblog-main.vanblog-width-mode-wide #write,
+.vanblog-main.vanblog-width-mode-wide .markdown-body {
+  width: 100%;
+  max-width: min(100%, 70rem) !important;
+}
+
+.vanblog-main.vanblog-width-mode-ultraWide #write,
+.vanblog-main.vanblog-width-mode-ultraWide .markdown-body {
+  width: 100%;
+  max-width: min(100%, 82rem) !important;
+}
+
+.vanblog-main.vanblog-width-mode-full.vanblog-main-has-sidebar #write,
+.vanblog-main.vanblog-width-mode-full.vanblog-main-has-sidebar .markdown-body {
+  width: 100%;
+  max-width: none !important;
+}
+
+.vanblog-main.vanblog-width-mode-full.vanblog-main-no-sidebar #write,
+.vanblog-main.vanblog-width-mode-full.vanblog-main-no-sidebar .markdown-body {
+  width: 100%;
+  max-width: none !important;
+}

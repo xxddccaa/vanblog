@@ -18,6 +18,7 @@ import {
   createMoment,
   deleteMoment,
   getDocumentById,
+  getSiteInfo,
   updateDocument,
   deleteDocument,
 } from '@/services/van-blog/api';
@@ -36,6 +37,7 @@ export default function () {
   const [value, setValue] = useState('');
   const [currObj, setCurrObj] = useState({});
   const [loading, setLoading] = useState(true);
+  const [siteInfo, setSiteInfo] = useState(null);
   const [editorConfig, setEditorConfig] = useCacheState(
     { afterSave: 'stay', useLocalCache: 'open' },
     'editorConfig',
@@ -227,11 +229,16 @@ export default function () {
   }, [fetchData]);
 
   useEffect(() => {
-    // 进入默认收起侧边栏
-    const el = document.querySelector('.ant-pro-sider-collapsed-button');
-    if (el && el.style.paddingLeft != '') {
-      el.click();
-    }
+    const fetchSiteInfo = async () => {
+      try {
+        const { data } = await getSiteInfo();
+        setSiteInfo(data || null);
+      } catch (error) {
+        console.error('获取站点主题配置失败:', error);
+      }
+    };
+
+    fetchSiteInfo();
   }, []);
 
   const saveFn = async () => {
@@ -655,6 +662,8 @@ export default function () {
         <Editor
           loading={loading}
           setLoading={setLoading}
+          themeConfig={siteInfo}
+          codeMaxLines={siteInfo?.codeMaxLines || 15}
           value={value}
           onChange={(val) => {
             setValue(val);

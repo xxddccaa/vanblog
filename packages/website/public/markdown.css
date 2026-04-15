@@ -1010,6 +1010,10 @@
 
 /* mermaid图表通用样式 - 不依赖主题 */
 .mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   background-color: #f8f5ff !important; /* 淡紫色背景 */
   border-radius: 8px;
   padding: 16px;
@@ -1020,6 +1024,10 @@
 
 /* ByteMD mermaid容器样式 */
 .bytemd-mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
   background-color: #f8f5ff !important; /* 淡紫色背景 */
   border-radius: 8px;
   padding: 16px;
@@ -1031,6 +1039,8 @@
 /* 确保mermaid图表容器有足够的空间 */
 .mermaid svg,
 .bytemd-mermaid svg {
+  display: block;
+  margin: 0 auto;
   max-width: 100%;
   height: auto;
 }

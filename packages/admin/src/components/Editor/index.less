@@ -27,7 +27,11 @@ body .emoji-categories {
 
 /* 编辑器预览区域背景色 - 与前台一致 */
 body .bytemd-preview {
-  background: #ffffff;
+  background: #f8fafc;
+}
+
+body .bytemd-preview .markdown-body {
+  background: transparent;
 }
 
 .editor-wrapper .bytemd-preview {
@@ -111,25 +115,19 @@ body[data-theme='dark'] .editor-wrapper .bytemd-preview,
 body.dark .bytemd-preview,
 .dark .editor-wrapper .bytemd-preview,
 .dark .bytemd-preview {
-  background: var(--vb-editor-dark-bg) !important;
-  background-color: var(--vb-editor-dark-bg) !important;
+  background: var(--vb-editor-dark-panel) !important;
+  background-color: var(--vb-editor-dark-panel) !important;
 }
 
 html.dark body .bytemd-preview .markdown-body.markdown-body,
-html.dark body .markdown-body.markdown-body,
-html.dark .editor-wrapper .markdown-body,
 html.dark .bytemd-preview .markdown-body,
-html[data-theme='dark'] body .markdown-body.markdown-body,
-html[data-theme='dark'] .editor-wrapper .markdown-body,
 html[data-theme='dark'] .bytemd-preview .markdown-body,
-body[data-theme='dark'] .editor-wrapper .markdown-body,
-.dark .editor-wrapper .markdown-body,
-.dark .bytemd-preview .markdown-body,
-html.dark .markdown-body,
-.dark .markdown-body {
-  background: var(--vb-editor-dark-bg) !important;
-  background-color: var(--vb-editor-dark-bg) !important;
-  color: var(--vb-editor-dark-text) !important;
+body[data-theme='dark'] .bytemd-preview .markdown-body,
+.dark .editor-wrapper .bytemd-preview .markdown-body,
+.dark .bytemd-preview .markdown-body {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: inherit !important;
 }
 
 html.dark body .bytemd.bytemd,
@@ -450,9 +448,7 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
   .bytemd-status,
   .bytemd-editor,
   .CodeMirror,
-  .CodeMirror-scroll,
-  .bytemd-preview,
-  .markdown-body {
+  .CodeMirror-scroll {
     background: #212428 !important;
     background-color: #212428 !important;
   }
@@ -472,6 +468,9 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
   }
   
   .bytemd-preview {
+    background: var(--vb-editor-dark-panel) !important;
+    background-color: var(--vb-editor-dark-panel) !important;
+
     &::-webkit-scrollbar-track {
       background: #2d2d2d;
     }
@@ -482,6 +481,11 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
       &:hover {
         background: #777;
       }
+    }
+
+    .markdown-body {
+      background: transparent !important;
+      background-color: transparent !important;
     }
   }
 

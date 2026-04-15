@@ -1,16 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useModel } from '@umijs/max';
 import { beforeSwitchTheme } from '../../services/van-blog/theme';
 import style from './index.less';
 export default function (props: { showText: boolean }) {
-  const { current } = useRef<any>({ hasInit: false });
-  const { current: currentTimer } = useRef<any>({ timer: null });
   const { initialState, setInitialState } = useModel('@@initialState');
-  const setTheme = (newTheme: 'auto' | 'light' | 'dark') => {
-    clearTimer();
-    if (newTheme == 'auto') {
-      setTimer();
-    }
+  const setTheme = (newTheme: 'light' | 'dark') => {
     const newSettings = {
       ...initialState?.settings,
       navTheme: beforeSwitchTheme(newTheme),
@@ -22,42 +16,15 @@ export default function (props: { showText: boolean }) {
     });
   };
   const theme = useMemo(() => {
-    return initialState?.theme || 'auto';
+    return initialState?.theme || 'light';
   }, [initialState]);
   const sysTheme = useMemo(() => {
     return initialState?.settings?.navTheme || 'light';
   }, [initialState]);
-  const clearTimer = () => {
-    clearInterval(currentTimer.timer);
-    currentTimer.timer = null;
-  };
-  const setTimer = () => {
-    clearTimer();
-    currentTimer.timer = setInterval(() => {
-      // console.log('auto theme timer running');
-      setTheme('auto');
-    }, 10000);
-  };
-  useEffect(() => {
-    if (!current.hasInit) {
-      current.hasInit = true;
-      if (theme.includes('auto')) {
-        setTimer();
-      } else {
-        clearTimer();
-      }
-    }
-    return () => {
-      clearTimer();
-    };
-  }, [current, clearTimer, theme, setTimer]);
 
   const handleSwitch = useCallback(() => {
-    clearTimer();
     if (theme == 'light') {
       setTheme('dark');
-    } else if (theme == 'dark') {
-      setTheme('auto');
     } else {
       setTheme('light');
     }
@@ -98,24 +65,8 @@ export default function (props: { showText: boolean }) {
         </svg>
       ),
     },
-    auto: {
-      label: '自动模式',
-      icon: (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width={iconSize}
-          height={iconSize}
-          viewBox="0 0 1024 1024"
-          fill="currentColor"
-          aria-label="auto icon"
-        >
-          <path d="M512 992C246.92 992 32 777.08 32 512S246.92 32 512 32s480 214.92 480 480-214.92 480-480 480zm0-840c-198.78 0-360 161.22-360 360 0 198.84 161.22 360 360 360s360-161.16 360-360c0-198.78-161.22-360-360-360zm0 660V212c165.72 0 300 134.34 300 300 0 165.72-134.28 300-300 300z"></path>
-        </svg>
-      ),
-    },
   };
-  const themeKey = theme.includes('auto') ? 'auto' : theme;
-  const currentDisplay = themeDisplayMap[themeKey] || themeDisplayMap.auto;
+  const currentDisplay = themeDisplayMap[theme] || themeDisplayMap.light;
 
   return (
     <button
@@ -125,7 +76,10 @@ export default function (props: { showText: boolean }) {
       aria-label="切换后台主题"
       onClick={handleSwitch}
     >
-      <div className={iconClassName} style={{ display: 'flex', height: iconSize }}>
+      <div
+        className={iconClassName}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', width: '100%', height: iconSize }}
+      >
         {currentDisplay.icon}
         {props.showText ? (
           <span style={textStyle} className="theme-text">

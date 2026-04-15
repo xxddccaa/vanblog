@@ -47,6 +47,7 @@ const AboutPage = (props: AboutPageProps) => {
     <Layout
       title="关于我"
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
       <PostCard

@@ -1036,6 +1036,8 @@ export class PublicController {
           siteDesc: siteInfo.siteDesc,
           siteLogo: siteInfo.siteLogo,
           favicon: siteInfo.favicon,
+          adminLogo: siteInfo.adminLogo || '',
+          adminFavicon: siteInfo.adminFavicon || '',
           beianNumber: siteInfo.beianNumber,
           beianUrl: siteInfo.beianUrl,
           gaBeianNumber: siteInfo.gaBeianNumber,

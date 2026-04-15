@@ -31,6 +31,21 @@ const codeBlockPlugin = () => (tree) => {
         },
         children: [],
       };
+
+      const codeWrapBtn = {
+        type: "element",
+        tagName: "div",
+        properties: {
+          class: "code-wrap-btn ml-1",
+          title: "自动换行",
+        },
+        children: [
+          {
+            type: "text",
+            value: "自动换行",
+          },
+        ],
+      };
       
       // 展开/收起按钮
       const codeToggleBtn = {
@@ -71,7 +86,7 @@ const codeBlockPlugin = () => (tree) => {
           class: "header-right flex",
           style: "color: #6f7177",
         },
-        children: [languageTag, codeCopyBtn, codeToggleBtn],
+        children: [languageTag, codeCopyBtn, codeWrapBtn, codeToggleBtn],
       };
       
       // 代码内容包装器，用于控制展开/收起
@@ -139,6 +154,28 @@ const onClickToggleCode = (e: PointerEvent) => {
   }
 }
 
+const onClickToggleWrap = (e: PointerEvent) => {
+  const wrapBtn = e.target as HTMLElement;
+  const codeBlockWrapper = wrapBtn.closest('.code-block-wrapper');
+  const codeContentWrapper = codeBlockWrapper?.querySelector('.code-content-wrapper') as HTMLElement;
+
+  if (!codeContentWrapper) return;
+
+  const isWrapped = codeContentWrapper.classList.contains('code-wrap-enabled');
+
+  if (isWrapped) {
+    codeContentWrapper.classList.remove('code-wrap-enabled');
+    wrapBtn.classList.remove('code-wrap-enabled');
+    wrapBtn.textContent = '自动换行';
+    wrapBtn.title = '自动换行';
+  } else {
+    codeContentWrapper.classList.add('code-wrap-enabled');
+    wrapBtn.classList.add('code-wrap-enabled');
+    wrapBtn.textContent = '取消换行';
+    wrapBtn.title = '取消换行';
+  }
+}
+
 // 检查代码是否超过指定行数
 const shouldCollapseCode = (codeElement: Element, maxLines: number = 15): boolean => {
   const codeText = codeElement.textContent || '';
@@ -157,16 +194,24 @@ export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
     viewerEffect: ({ markdownBody }) => {
       markdownBody.querySelectorAll(".code-block-wrapper").forEach((codeBlock) => {
         const copyBtn = codeBlock.querySelector(".code-copy-btn") as HTMLElement;
+        const wrapBtn = codeBlock.querySelector(".code-wrap-btn") as HTMLElement;
         const toggleBtn = codeBlock.querySelector(".code-toggle-btn") as HTMLElement;
         const codeContentWrapper = codeBlock.querySelector(".code-content-wrapper") as HTMLElement;
         const codeElement = codeBlock.querySelector("code");
         
         // 移除之前的事件监听器
         copyBtn?.removeEventListener("click", onClickCopyCode);
+        wrapBtn?.removeEventListener("click", onClickToggleWrap);
         toggleBtn?.removeEventListener("click", onClickToggleCode);
-        
+
         // 添加复制按钮事件
         copyBtn?.addEventListener("click", onClickCopyCode);
+        wrapBtn?.addEventListener("click", onClickToggleWrap);
+
+        if (wrapBtn && !codeContentWrapper?.classList.contains('code-wrap-enabled')) {
+          wrapBtn.textContent = '自动换行';
+          wrapBtn.title = '自动换行';
+        }
         
         // 检查是否需要折叠，使用传入的maxLines参数
         if (codeElement && shouldCollapseCode(codeElement, maxLines)) {

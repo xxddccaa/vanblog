@@ -68,6 +68,7 @@ vi.mock("../utils/getLayoutProps", () => ({
     showDonateButton: "true",
     showCopyRight: "true",
     codeMaxLines: 12,
+        articleWidthMode: "standard",
   } as any),
   getAuthorCardShellProps: vi.fn().mockReturnValue({
     author: 'Site Author',
@@ -125,6 +126,7 @@ describe("post page cache shell", () => {
         showDonateButton: "true",
         showCopyRight: "true",
         codeMaxLines: 12,
+        articleWidthMode: "standard",
       },
       article: {
         id: 7,
@@ -171,6 +173,7 @@ describe("post page cache shell", () => {
           showDonateButton: "true",
           showCopyRight: "true",
           codeMaxLines: 12,
+        articleWidthMode: "standard",
         },
         article: {
           id: 7,
@@ -212,6 +215,7 @@ describe("post page cache shell", () => {
           showDonateButton: "true",
           showCopyRight: "true",
           codeMaxLines: 12,
+        articleWidthMode: "standard",
         },
         article: {
           id: 7,
@@ -254,6 +258,7 @@ describe("post page cache shell", () => {
         showDonateButton: "true",
         showCopyRight: "true",
         codeMaxLines: 12,
+        articleWidthMode: "standard",
       },
       pay: ["/ali.png", "/wechat.png"],
       payDark: ["/ali-dark.png", "/wechat-dark.png"],

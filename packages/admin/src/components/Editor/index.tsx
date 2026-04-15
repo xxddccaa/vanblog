@@ -13,6 +13,8 @@ import '../../style/github-markdown.css';
 import '../../style/code-light.css';
 import '../../style/code-dark.css';
 import '../../style/custom-container.css';
+import { useAdminMarkdownTheme } from '@/utils/markdownTheme';
+import type { MarkdownThemeConfig } from '@/utils/markdownTheme';
 import { emoji } from './emoji';
 import { imgUploadPlugin, uploadImg } from './imgUpload';
 import './index.less';
@@ -48,14 +50,17 @@ export default function EditorComponent(props: {
   onChange: (string: string) => void;
   loading: boolean;
   setLoading: (l: boolean) => void;
+  themeConfig?: MarkdownThemeConfig;
+  codeMaxLines?: number;
 }) {
   const { loading, setLoading } = props;
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
+  useAdminMarkdownTheme(props.themeConfig);
 
-  // 编辑器预览：默认不折叠代码块（避免编辑时还要点"展开代码"）
-  const EDITOR_CODE_MAX_LINES = 1000000;
+  // 编辑器预览跟随站点代码折叠设置，保持与前台和文档预览一致
+  const editorCodeMaxLines = Math.max(props.codeMaxLines || 15, 5);
 
   // 让后台编辑器支持 html.dark 类，用于基础的暗色/亮色切换
   useEffect(() => {
@@ -94,11 +99,11 @@ export default function EditorComponent(props: {
       rawHTML(),
       historyIcon(),
       Heading(),
-      customCodeBlock(EDITOR_CODE_MAX_LINES),
+      customCodeBlock(editorCodeMaxLines),
       LinkTarget(),
       smartCodeBlock(),
     ];
-  }, [setLoading]);
+  }, [editorCodeMaxLines, setLoading]);
 
   return (
     <div style={{ height: '100%' }} className={themeClass}>

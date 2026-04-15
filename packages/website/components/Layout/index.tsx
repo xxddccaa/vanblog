@@ -85,6 +85,7 @@ export default function (props: {
   title: string;
   sideBar: any;
   children: any;
+  contentWidthMode?: LayoutProps["articleWidthMode"];
 }) {
   // console.log("css", props.option.customCss);
   // console.log("html", props.option.customHtml);
@@ -252,7 +253,11 @@ export default function (props: {
           />
 
           <div className=" mx-auto  lg:px-6  md:py-4 py-2 px-2 md:px-4  text-gray-700 ">
-            <LayoutBody children={props.children} sideBar={props.sideBar} />
+            <LayoutBody
+              children={props.children}
+              sideBar={props.sideBar}
+              contentWidthMode={props.contentWidthMode}
+            />
             <Footer
               ipcHref={props.option.ipcHref}
               ipcNumber={props.option.ipcNumber}

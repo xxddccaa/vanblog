@@ -1,15 +1,19 @@
 export const getInitTheme = () => {
-  let theme = 'auto';
-  if (!('theme' in localStorage) || localStorage.theme == 'auto') {
-    return 'auto';
-  } else {
-    if (localStorage.theme === 'dark') {
-      theme = 'dark';
-    } else {
-      theme = 'light';
-    }
+  if (!('theme' in localStorage)) {
+    return 'light';
   }
-  return theme;
+
+  if (localStorage.theme === 'dark') {
+    return 'dark';
+  }
+
+  if (localStorage.theme === 'auto') {
+    const migratedTheme = decodeAutoTheme() === 'realDark' ? 'dark' : 'light';
+    localStorage.theme = migratedTheme;
+    return migratedTheme;
+  }
+
+  return 'light';
 };
 export const decodeAutoTheme = () => {
   const d = new Date().getHours();
@@ -22,15 +26,11 @@ export const decodeAutoTheme = () => {
 };
 export const mapTheme = (theme) => {
   // 把自己定义的主题变成系统的
-  if (theme == 'auto') {
-    return decodeAutoTheme();
-  } else {
-    if (theme == 'light') {
-      return 'light';
-    } else {
-      return 'realDark';
-    }
+  if (theme == 'light') {
+    return 'light';
   }
+
+  return 'realDark';
 };
 
 export const applyThemeToDocument = (theme) => {
@@ -59,8 +59,6 @@ export const applyThemeToDocument = (theme) => {
 export const beforeSwitchTheme = (to) => {
   if (to == 'light') {
     localStorage.theme = 'light';
-  } else if (to == 'auto') {
-    localStorage.theme = 'auto';
   } else {
     localStorage.theme = 'dark';
   }

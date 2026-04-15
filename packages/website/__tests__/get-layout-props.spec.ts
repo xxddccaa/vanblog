@@ -48,4 +48,63 @@ describe("getLayoutProps", () => {
 
     expect(layoutProps.defaultTheme).toBe("dark");
   });
+
+  it("defaults article width mode to standard and preserves explicit width modes", () => {
+    const defaultLayoutProps = getLayoutProps({
+      version: "1.2.0",
+      tags: [],
+      totalArticles: 0,
+      totalWordCount: 0,
+      menus: [],
+      meta: {
+        categories: [],
+        socials: [],
+        siteInfo: {
+          favicon: "/favicon.ico",
+          siteName: "VanBlog",
+          siteDesc: "Cache-first blog",
+        },
+      },
+    } as any);
+
+    const ultraWideLayoutProps = getLayoutProps({
+      version: "1.2.0",
+      tags: [],
+      totalArticles: 0,
+      totalWordCount: 0,
+      menus: [],
+      meta: {
+        categories: [],
+        socials: [],
+        siteInfo: {
+          favicon: "/favicon.ico",
+          siteName: "VanBlog",
+          siteDesc: "Cache-first blog",
+          articleWidthMode: "ultraWide",
+        },
+      },
+    } as any);
+
+    const fullLayoutProps = getLayoutProps({
+      version: "1.2.0",
+      tags: [],
+      totalArticles: 0,
+      totalWordCount: 0,
+      menus: [],
+      meta: {
+        categories: [],
+        socials: [],
+        siteInfo: {
+          favicon: "/favicon.ico",
+          siteName: "VanBlog",
+          siteDesc: "Cache-first blog",
+          articleWidthMode: "full",
+        },
+      },
+    } as any);
+
+    expect(defaultLayoutProps.articleWidthMode).toBe("standard");
+    expect(ultraWideLayoutProps.articleWidthMode).toBe("ultraWide");
+    expect(fullLayoutProps.articleWidthMode).toBe("full");
+  });
 });

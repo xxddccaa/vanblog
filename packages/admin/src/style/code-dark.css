@@ -15,6 +15,11 @@
   color: #dcdcdc;
 }
 
+.dark .hljs.language-markdown .hljs-code,
+.dark .hljs.language-md .hljs-code {
+  color: #d7ba7d;
+}
+
 .dark .hljs-keyword,
 .dark .hljs-literal,
 .dark .hljs-name,

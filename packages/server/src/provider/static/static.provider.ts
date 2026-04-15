@@ -496,6 +496,24 @@ export class StaticProvider {
         }
       }
 
+      // 检查是否是后台 Logo
+      if (siteInfo?.adminLogo && each.realPath) {
+        const adminLogoFileName = siteInfo.adminLogo.split('/').pop();
+        const currentFileName = each.realPath.split('/').pop();
+        if (adminLogoFileName === currentFileName) {
+          shouldSkip = true;
+        }
+      }
+
+      // 检查是否是后台图标
+      if (siteInfo?.adminFavicon && each.realPath) {
+        const adminFaviconFileName = siteInfo.adminFavicon.split('/').pop();
+        const currentFileName = each.realPath.split('/').pop();
+        if (adminFaviconFileName === currentFileName) {
+          shouldSkip = true;
+        }
+      }
+
       if (shouldSkip) {
         skippedCount++;
         console.log(`跳过删除必要图片: ${each.name || each.realPath}`);
@@ -508,7 +526,7 @@ export class StaticProvider {
     return {
       deletedCount,
       skippedCount,
-      message: `成功删除 ${deletedCount} 张图片，跳过 ${skippedCount} 张必要图片（网站图标、用户头像、站点Logo）`,
+      message: `成功删除 ${deletedCount} 张图片，跳过 ${skippedCount} 张必要图片（网站图标、用户头像、站点Logo、后台品牌图）`,
     };
   }
 }

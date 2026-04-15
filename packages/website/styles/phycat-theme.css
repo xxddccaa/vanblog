@@ -104,25 +104,37 @@
 
 /* H2 */
 .markdown-body h2 {
-  color: var(--head-title-h2-color);
+  color: var(--head-title-color);
   font-size: 1.4rem;
   line-height: 1.5;
-  width: fit-content;
+  width: auto;
   font-weight: bold;
   margin: 20px 0;
-  padding: 5px 12px;
-  border-radius: 8px;
-  background: var(--head-title-h2-background);
-  background-size: 200% auto;
-  background-position: 0% center;
-  box-shadow: 0 2px 5px rgba(61, 184, 211, 0.15);
-  transition: background-position 0.5s ease-out, transform 0.4s ease, box-shadow 0.4s ease;
+  padding: 0 0 6px 14px;
+  border-radius: 0;
+  background: transparent;
+  border-bottom: 1px solid color-mix(in srgb, var(--head-title-color) 24%, transparent);
+  box-shadow: none;
+  position: relative;
+  transition: color 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+}
+
+.markdown-body h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.38em;
+  width: 6px;
+  height: 1.05em;
+  border-radius: 999px;
+  background: var(--head-title-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--head-title-color) 12%, transparent);
 }
 
 .markdown-body h2:hover {
-  background-position: 100% center;
-  transform: scale(1.01);
-  box-shadow: 0 8px 20px rgba(61, 184, 211, 0.35);
+  color: var(--element-color-deep);
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--head-title-color) 40%, transparent);
 }
 
 /* H3 */

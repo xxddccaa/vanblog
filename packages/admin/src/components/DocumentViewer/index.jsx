@@ -18,6 +18,7 @@ import '../../style/github-markdown.css';
 import '../../style/code-light.css';
 import '../../style/code-dark.css';
 import '../../style/custom-container.css';
+import { useAdminMarkdownTheme } from '@/utils/markdownTheme';
 import './index.less';
 
 const sanitize = (schema) => {
@@ -37,11 +38,12 @@ const sanitize = (schema) => {
 };
 
 export default function DocumentViewer(props) {
-  const { value, codeMaxLines = 15 } = props;
+  const { value, codeMaxLines = 15, themeConfig } = props;
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
   const viewerRef = useRef(null);
+  useAdminMarkdownTheme(themeConfig);
   
   const plugins = useMemo(() => {
     return [

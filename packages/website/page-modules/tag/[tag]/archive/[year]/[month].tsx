@@ -23,6 +23,7 @@ const TagArchiveMonthPage = (props: TagArchiveMonthPageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={`${props.tag} - ${label}`}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

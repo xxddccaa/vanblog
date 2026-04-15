@@ -20,6 +20,7 @@ const CategoryArchivePage = (props: CategoryArchivePageProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={props.category}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >

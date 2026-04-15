@@ -22,6 +22,7 @@ const ArchiveMonthRoute = (props: ArchiveMonthRouteProps) => {
   return (
     <Layout
       option={props.layoutProps}
+      contentWidthMode={props.layoutProps.articleWidthMode}
       title={label}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
     >
