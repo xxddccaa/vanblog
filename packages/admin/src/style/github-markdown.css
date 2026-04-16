@@ -354,13 +354,13 @@
     Consolas,
     Liberation Mono,
     monospace;
-  line-height: 10px;
+  line-height: 9px;
   color: var(--color-fg-default);
   vertical-align: middle;
   background-color: var(--color-canvas-subtle);
   border: solid 1px var(--color-neutral-muted);
   border-bottom-color: var(--color-neutral-muted);
-  border-radius: 6px;
+  border-radius: 5px;
   box-shadow: inset 0 -1px 0 var(--color-neutral-muted);
 }
 
@@ -918,7 +918,7 @@
   margin: 0;
   font-size: 85%;
   background-color: var(--color-neutral-muted);
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .markdown-body code br,
@@ -959,7 +959,7 @@
   font-size: 85%;
   line-height: 1.45;
   background-color: var(--color-canvas-subtle) !important;
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .markdown-body pre code,
@@ -1025,7 +1025,7 @@
   pointer-events: none;
   content: '';
   border: 2px solid var(--color-accent-emphasis);
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .markdown-body .footnotes li:target {
@@ -1093,7 +1093,7 @@
   align-items: center;
   text-align: center;
   background-color: #f8f5ff !important;
-  border-radius: 8px;
+  border-radius: 5px;
   padding: 16px;
   margin: 16px 0;
   border: 1px solid #e0e0e0;
@@ -1151,7 +1151,7 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar {
 
 body .markdown-body .code-block-wrapper::-webkit-scrollbar-thumb,
 body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .markdown-body .code-block-wrapper {
@@ -1160,13 +1160,17 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
 
 .markdown-body .header-right {
   position: absolute !important;
-  top: 2px !important;
-  right: 2px !important;
+  top: 6px !important;
+  right: 7px !important;
   z-index: 10 !important;
   line-height: 1 !important;
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
-  gap: 4px !important;
+  gap: 2px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .markdown-body .code-copy-btn {
@@ -1174,15 +1178,16 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
   padding: 0;
   transition:
     background-color 0.2s ease-in-out,
-    border-color 0.2s ease-in-out,
     color 0.2s ease-in-out;
-  border-radius: 999px;
+  border-radius: 5px;
+  border: 0;
+  background: transparent;
   color: #6f7177;
 }
 
@@ -1204,35 +1209,30 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
   padding: 0 !important;
   transition:
     background-color 0.2s ease-in-out,
-    border-color 0.2s ease-in-out,
     color 0.2s ease-in-out !important;
-  border-radius: 999px !important;
+  border-radius: 5px !important;
   color: #6f7177 !important;
-  border: 1px solid #d0d7de !important;
-  background-color: #fff !important;
+  border: 0 !important;
+  background-color: transparent !important;
   user-select: none !important;
 }
 
 .markdown-body .code-toggle-btn:hover {
   background-color: rgb(229 231 235) !important;
-  border-color: #bbb !important;
 }
 
 .dark .markdown-body .code-toggle-btn {
-  border-color: #3e4145 !important;
   color: #8b949e !important;
-  background-color: #212428 !important;
 }
 
 .dark .markdown-body .code-toggle-btn:hover {
   background-color: rgb(55 65 81) !important;
-  border-color: #555 !important;
 }
 
 .markdown-body .code-wrap-btn {
@@ -1240,54 +1240,49 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
   padding: 0 !important;
   transition:
     background-color 0.2s ease-in-out,
-    border-color 0.2s ease-in-out,
     color 0.2s ease-in-out !important;
-  border-radius: 999px !important;
+  border-radius: 5px !important;
   color: #6f7177 !important;
-  border: 1px solid #d0d7de !important;
-  background-color: #fff !important;
+  border: 0 !important;
+  background-color: transparent !important;
   user-select: none !important;
 }
 
 .markdown-body .code-wrap-btn:hover {
   background-color: rgb(229 231 235) !important;
-  border-color: #bbb !important;
 }
 
 .markdown-body .code-wrap-btn.code-wrap-enabled {
   color: #fff !important;
-  background-color: #1772b4 !important;
-  border-color: #1772b4 !important;
+  background-color: rgb(23 114 180 / 0.18) !important;
+  box-shadow: inset 0 0 0 1px rgb(23 114 180 / 0.32) !important;
 }
 
 .dark .markdown-body .code-wrap-btn {
-  border-color: #3e4145 !important;
   color: #8b949e !important;
-  background-color: #212428 !important;
 }
 
 .dark .markdown-body .code-wrap-btn:hover {
   background-color: rgb(55 65 81) !important;
-  border-color: #555 !important;
 }
 
 .dark .markdown-body .code-wrap-btn.code-wrap-enabled {
   color: #f8fafc !important;
-  background-color: #1772b4 !important;
-  border-color: #1772b4 !important;
+  background-color: rgb(23 114 180 / 0.22) !important;
+  box-shadow: inset 0 0 0 1px rgb(125 211 252 / 0.24) !important;
 }
 
 .markdown-body .code-copy-btn svg,
 .markdown-body .code-toggle-btn svg,
 .markdown-body .code-wrap-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 9px;
+  height: 9px;
   display: block;
   pointer-events: none;
 }

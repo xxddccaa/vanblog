@@ -76,23 +76,22 @@
         display: inline-flex !important;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        min-width: 28px;
-        height: 28px;
+        width: 16px;
+        min-width: 16px;
+        height: 16px;
         padding: 0 !important;
         transition:
           background-color 0.2s ease-in-out,
-          border-color 0.2s ease-in-out,
           color 0.2s ease-in-out !important;
-        border-radius: 999px !important;
+        border-radius: 5px !important;
         color: var(--vb-doc-code-btn-text) !important;
-        border: 1px solid var(--vb-doc-code-btn-border) !important;
-        background-color: var(--vb-doc-code-btn-bg) !important;
+        border: 0 !important;
+        background-color: transparent !important;
         user-select: none !important;
+        box-shadow: none !important;
 
         &:hover {
           background-color: var(--vb-doc-code-btn-hover) !important;
-          border-color: var(--vb-doc-code-btn-border) !important;
         }
       }
 
@@ -100,8 +99,8 @@
       .code-wrap-btn {
         &.code-wrap-enabled {
           color: #fff !important;
-          background-color: #1772b4 !important;
-          border-color: #1772b4 !important;
+          background-color: rgb(23 114 180 / 0.18) !important;
+          box-shadow: inset 0 0 0 1px rgb(23 114 180 / 0.32) !important;
         }
       }
 
@@ -111,8 +110,8 @@
       .code-toggle-btn svg,
       .markdown-body .code-wrap-btn svg,
       .code-wrap-btn svg {
-        width: 14px;
-        height: 14px;
+        width: 9px;
+        height: 9px;
         display: block;
         pointer-events: none;
       }
@@ -170,13 +169,17 @@
       .markdown-body .header-right,
       .header-right {
         position: absolute !important;
-        top: 2px !important;
-        right: 2px !important;
+        top: 6px !important;
+        right: 7px !important;
         z-index: 10 !important;
         line-height: 1 !important;
-        display: flex !important;
+        display: inline-flex !important;
         align-items: center !important;
-        gap: 4px !important;
+        gap: 2px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
       }
     }
   }

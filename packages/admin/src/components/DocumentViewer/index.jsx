@@ -93,9 +93,9 @@ export default function DocumentViewer(props) {
             if (shouldCollapse) {
               contentWrapper.classList.add('code-collapsed');
               toggleBtn.classList.add('code-collapsed');
-              toggleBtn.textContent = '展开代码';
               toggleBtn.title = '展开代码';
-              toggleBtn.style.display = 'block';
+              toggleBtn.setAttribute('aria-label', '展开代码');
+              toggleBtn.style.display = 'inline-flex';
               
               // 动态设置折叠高度
               const lineHeight = 1.4;

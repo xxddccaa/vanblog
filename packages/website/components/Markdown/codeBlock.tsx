@@ -156,7 +156,7 @@ const codeBlockPlugin = () => (tree) => {
         type: "element",
         tagName: "div",
         properties: {
-          class: "code-wrap-btn ml-1",
+          class: "code-wrap-btn",
           title: "自动换行",
           role: "button",
           tabIndex: "0",
@@ -169,7 +169,7 @@ const codeBlockPlugin = () => (tree) => {
         type: "element",
         tagName: "div",
         properties: {
-          class: "code-toggle-btn ml-1",
+          class: "code-toggle-btn",
           title: "展开代码",
           role: "button",
           tabIndex: "0",
@@ -182,8 +182,7 @@ const codeBlockPlugin = () => (tree) => {
         type: "element",
         tagName: "span",
         properties: {
-          class: "language-tag mr-1",
-          style: "line-height: 21px",
+          class: "language-tag",
         },
         children: [
           {

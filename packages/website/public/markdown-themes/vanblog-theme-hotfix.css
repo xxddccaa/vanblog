@@ -678,7 +678,7 @@
 ) .markdown-body .code-block-wrapper {
   position: relative;
   overflow: hidden;
-  padding: 14px 14px 12px;
+  padding: 11px 11px 9px;
   border-radius: 20px;
   background: var(--vb-md-code-panel-bg) !important;
   border: 1px solid var(--vb-md-code-panel-border) !important;
@@ -742,19 +742,19 @@
   [data-vb-markdown-dark-theme-id].dark,
   .dark [data-vb-markdown-dark-theme-id]:not(.light)
 ) .markdown-body .header-right {
-  top: 10px !important;
-  right: 10px !important;
+  top: 6px !important;
+  right: 7px !important;
   z-index: 2 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 6px !important;
-  border-radius: 999px !important;
-  background: var(--vb-md-code-header-bg) !important;
-  border: 1px solid var(--vb-md-code-header-border) !important;
+  gap: 2px !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
   color: var(--vb-md-code-header-text) !important;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12) !important;
-  backdrop-filter: blur(14px);
+  box-shadow: none !important;
+  backdrop-filter: none !important;
 }
 
 :is(
@@ -770,15 +770,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--vb-md-code-language-bg) !important;
+  min-height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
   color: var(--vb-md-code-language-text) !important;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 :is(
@@ -794,15 +793,19 @@
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 0 10px !important;
-  border-radius: 999px !important;
-  border: 1px solid var(--vb-md-code-btn-border) !important;
-  background: var(--vb-md-code-btn-bg) !important;
+  width: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  height: 16px;
+  padding: 0 !important;
+  border-radius: 5px !important;
+  border: 0 !important;
+  background: transparent !important;
   color: var(--vb-md-code-btn-text) !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 600;
   white-space: nowrap !important;
+  box-shadow: none !important;
 }
 
 :is(
@@ -816,7 +819,6 @@
   .dark [data-vb-markdown-dark-theme-id]:not(.light)
 ) .markdown-body :is(.code-copy-btn, .code-toggle-btn, .code-wrap-btn):hover {
   background: var(--vb-md-code-btn-hover) !important;
-  border-color: color-mix(in srgb, var(--vb-md-code-language-text) 28%, transparent) !important;
   color: var(--vb-md-code-btn-active-text) !important;
 }
 
@@ -832,7 +834,7 @@
 ) .markdown-body .code-wrap-btn.code-wrap-enabled {
   background: var(--vb-md-code-btn-active) !important;
   color: var(--vb-md-code-btn-active-text) !important;
-  border-color: color-mix(in srgb, var(--vb-md-code-language-text) 36%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--vb-md-code-language-text) 26%, transparent) !important;
 }
 
 :is(
@@ -849,7 +851,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   position: relative;
-  padding-top: 34px;
+  padding-top: 24px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--vb-md-code-language-text) 32%, transparent) transparent;
 }

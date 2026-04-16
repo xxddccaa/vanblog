@@ -5,6 +5,23 @@ export interface NavItem {
   text: string;
 }
 
+const escapeAttributeSelectorValue = (value: string) =>
+  value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+const queryHeadingByAttr = (tagName: string, attr: string, value: string) => {
+  try {
+    return document.querySelectorAll(
+      `${tagName}[${attr}="${escapeAttributeSelectorValue(value)}"]`
+    );
+  } catch (error) {
+    console.warn(
+      `Could not query selector for heading: ${tagName}[${attr}]="${value}"`,
+      error
+    );
+    return [];
+  }
+};
+
 // Enhanced code block removal with better detection
 export const washMarkdownContent = (source: string) => {
   if (!source) return "";
@@ -265,10 +282,10 @@ const trimArrZero = (arr: any) => {
 export const getEl = (item: NavItem, all: NavItem[]) => {
   const tagName = `h${item.level}`;
   
-  let els = document.querySelectorAll(`${tagName}[data-id="${item.text}"]`);
+  let els = queryHeadingByAttr(tagName, "data-id", item.text);
   
   if (els.length === 0) {
-    els = document.querySelectorAll(`${tagName}[id="${item.text}"]`);
+    els = queryHeadingByAttr(tagName, "id", item.text);
   }
   
   if (els.length === 0) {
