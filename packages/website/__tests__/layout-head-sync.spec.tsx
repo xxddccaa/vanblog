@@ -122,6 +122,8 @@ describe("layout head sync", () => {
               showRunningTime: "false",
               backgroundImage: "https://www.dong-blog.fun/static/img/bg.webp",
               backgroundImageDark: "https://www.dong-blog.fun/static/img/bg-dark.webp",
+              frontCardBackgroundColor: "#f5fbff",
+              frontCardBackgroundColorDark: "#15314d",
               markdownLightThemeUrl: "/markdown-themes/light.css",
               markdownDarkThemeUrl: "/markdown-themes/dark.css",
             },
@@ -148,6 +150,26 @@ describe("layout head sync", () => {
     expect(
       document.head.querySelector("link[data-vanblog-theme-link][data-theme-for='dark']")?.getAttribute("href"),
     ).toBe("/markdown-themes/dark.css");
+    expect(
+      document.head.querySelector("link[data-vanblog-theme-hotfix='true']")?.getAttribute("href"),
+    ).toBe("/markdown-themes/vanblog-theme-hotfix.css");
+    expect(
+      document.querySelector("[data-vb-markdown-light-theme-id='light'][data-vb-markdown-dark-theme-id='dark']"),
+    ).toBeTruthy();
+    expect(
+      document
+        .querySelector("[data-vb-front-surface-scope='true']")
+        ?.style.getPropertyValue("--vb-front-card-bg-light"),
+    ).toBe("#f5fbff");
+    expect(
+      document
+        .querySelector("[data-vb-front-surface-scope='true']")
+        ?.style.getPropertyValue("--vb-front-card-bg-dark"),
+    ).toBe("#15314d");
+    expect(document.documentElement.style.getPropertyValue("--vb-front-page-bg-dark")).toBe(
+      "#153350",
+    );
+    expect(document.documentElement.style.backgroundColor).toBe("rgb(21, 51, 80)");
 
     await act(async () => {
       root.unmount();

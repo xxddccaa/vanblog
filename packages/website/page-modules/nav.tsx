@@ -241,7 +241,7 @@ export default function NavPage({
         title={`导航 - ${siteName}`}
         sideBar={<AuthorCard option={authorCardProps} />}
       >
-        <div className="bg-white dark:text-dark card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8 max-w-4xl mx-auto">
+        <div className="vb-surface-card dark:text-dark card-shadow dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8 max-w-4xl mx-auto">
           <div className={styles.navSearchSection}>
             <input
               id="nav-search-bar"

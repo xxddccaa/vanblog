@@ -18,7 +18,7 @@ import '../../style/github-markdown.css';
 import '../../style/code-light.css';
 import '../../style/code-dark.css';
 import '../../style/custom-container.css';
-import { useAdminMarkdownTheme } from '@/utils/markdownTheme';
+import { getMarkdownThemeId, useAdminMarkdownTheme } from '@/utils/markdownTheme';
 import './index.less';
 
 const sanitize = (schema) => {
@@ -43,7 +43,9 @@ export default function DocumentViewer(props) {
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
   const viewerRef = useRef(null);
-  useAdminMarkdownTheme(themeConfig);
+  const resolvedThemeConfig = useAdminMarkdownTheme(themeConfig);
+  const lightThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownLightThemeUrl);
+  const darkThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownDarkThemeUrl);
   
   const plugins = useMemo(() => {
     return [
@@ -116,6 +118,8 @@ export default function DocumentViewer(props) {
     <div 
       ref={viewerRef}
       className={`document-viewer ${themeClass}`}
+      data-vb-markdown-light-theme-id={lightThemeId || undefined}
+      data-vb-markdown-dark-theme-id={darkThemeId || undefined}
       style={{ 
         height: '100%',
         width: '100%',

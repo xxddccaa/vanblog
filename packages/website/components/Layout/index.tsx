@@ -18,6 +18,11 @@ import { Toaster } from "react-hot-toast";
 import Footer from "../Footer";
 import LayoutBody from "../LayoutBody";
 import { checkLoginAsync } from "../../utils/auth";
+import { resolveFrontCardSurfaceColors } from "../../utils/frontCardSurface";
+import {
+  getMarkdownThemeId,
+  MARKDOWN_THEME_HOTFIX_URL,
+} from "../../utils/markdownTheme";
 
 const NavBarMobile = dynamic(() => import("../NavBarMobile"), {
   ssr: false,
@@ -27,6 +32,7 @@ const MANAGED_DESCRIPTION_META = "meta[name='description'][data-vanblog-managed=
 const MANAGED_ROBOTS_META = "meta[name='robots'][data-vanblog-managed='true']";
 const MANAGED_ICON_LINK = "link[rel='icon'][data-vanblog-managed='true']";
 const MANAGED_THEME_LINK = 'link[data-vanblog-theme-link]';
+const MANAGED_THEME_HOTFIX_LINK = "link[data-vanblog-theme-hotfix='true']";
 
 const upsertHeadMeta = (selector: string, name: string, content: string) => {
   let element = document.head.querySelector(selector) as HTMLMetaElement | null;
@@ -80,6 +86,23 @@ const syncThemeStylesheet = (theme: "light" | "dark", href: string) => {
   document.head.appendChild(link);
 };
 
+const syncThemeHotfixStylesheet = () => {
+  const existing = document.head.querySelector(
+    MANAGED_THEME_HOTFIX_LINK,
+  ) as HTMLLinkElement | null;
+
+  if (existing) {
+    existing.setAttribute("href", MARKDOWN_THEME_HOTFIX_URL);
+    return;
+  }
+
+  const link = document.createElement("link");
+  link.setAttribute("rel", "stylesheet");
+  link.setAttribute("href", MARKDOWN_THEME_HOTFIX_URL);
+  link.setAttribute("data-vanblog-theme-hotfix", "true");
+  document.head.appendChild(link);
+};
+
 export default function (props: {
   option: LayoutProps;
   title: string;
@@ -93,6 +116,32 @@ export default function (props: {
   const [isOpen, setIsOpen] = useState(false);
   const { current } = useRef({ hasInit: false });
   const [theme, setTheme] = useState<RealThemeType>(getTheme(props.option.defaultTheme));
+  const lightThemeId = getMarkdownThemeId(props.option.markdownLightThemeUrl);
+  const darkThemeId = getMarkdownThemeId(props.option.markdownDarkThemeUrl);
+  const frontCardSurfaces = resolveFrontCardSurfaceColors({
+    frontCardBackgroundColor: props.option.frontCardBackgroundColor,
+    frontCardBackgroundColorDark: props.option.frontCardBackgroundColorDark,
+  });
+  const frontSurfaceVars = {
+    ["--vb-front-card-bg-light" as string]: frontCardSurfaces.light,
+    ["--vb-front-card-bg-light-soft" as string]: frontCardSurfaces.lightSoft,
+    ["--vb-front-card-bg-light-deep" as string]: frontCardSurfaces.lightDeep,
+    ["--vb-front-card-bg-dark" as string]: frontCardSurfaces.dark,
+    ["--vb-front-card-bg-dark-soft" as string]: frontCardSurfaces.darkSoft,
+    ["--vb-front-card-bg-dark-deep" as string]: frontCardSurfaces.darkDeep,
+    ["--vb-front-page-bg-light" as string]: frontCardSurfaces.lightDeep,
+    ["--vb-front-page-bg-dark" as string]: frontCardSurfaces.darkPage,
+    ["--vb-front-dark-hover" as string]: frontCardSurfaces.darkHover,
+    ["--vb-front-dark-hover-soft" as string]: frontCardSurfaces.darkHoverSoft,
+    ["--vb-front-dark-border" as string]: frontCardSurfaces.darkBorder,
+    ["--vb-front-dark-border-strong" as string]: frontCardSurfaces.darkBorderStrong,
+    ["--vb-front-dark-text" as string]: frontCardSurfaces.darkText,
+    ["--vb-front-dark-text-muted" as string]: frontCardSurfaces.darkTextMuted,
+    ["--vb-front-dark-text-soft" as string]: frontCardSurfaces.darkTextSoft,
+    ["--vb-front-dark-text-strong" as string]: frontCardSurfaces.darkTextStrong,
+    ["--vb-front-dark-text-on-accent" as string]: frontCardSurfaces.darkTextOnAccent,
+    ["--vb-front-dark-fill" as string]: frontCardSurfaces.darkFill,
+  } as React.CSSProperties;
   const handleClose = () => {
     console.log("关闭或刷新页面");
     localStorage.removeItem("saidHello");
@@ -164,6 +213,7 @@ export default function (props: {
 
     syncThemeStylesheet("light", props.option.markdownLightThemeUrl || "");
     syncThemeStylesheet("dark", props.option.markdownDarkThemeUrl || "");
+    syncThemeHotfixStylesheet();
   }, [
     props.option.backgroundImage,
     props.option.backgroundImageDark,
@@ -173,6 +223,49 @@ export default function (props: {
     props.option.markdownLightThemeUrl,
     props.option.siteDesc,
     props.title,
+  ]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--vb-front-card-bg-light", frontCardSurfaces.light);
+    root.style.setProperty("--vb-front-card-bg-light-soft", frontCardSurfaces.lightSoft);
+    root.style.setProperty("--vb-front-card-bg-light-deep", frontCardSurfaces.lightDeep);
+    root.style.setProperty("--vb-front-card-bg-dark", frontCardSurfaces.dark);
+    root.style.setProperty("--vb-front-card-bg-dark-soft", frontCardSurfaces.darkSoft);
+    root.style.setProperty("--vb-front-card-bg-dark-deep", frontCardSurfaces.darkDeep);
+    root.style.setProperty("--vb-front-page-bg-light", frontCardSurfaces.lightDeep);
+    root.style.setProperty("--vb-front-page-bg-dark", frontCardSurfaces.darkPage);
+    root.style.setProperty("--vb-front-dark-hover", frontCardSurfaces.darkHover);
+    root.style.setProperty("--vb-front-dark-hover-soft", frontCardSurfaces.darkHoverSoft);
+    root.style.setProperty("--vb-front-dark-border", frontCardSurfaces.darkBorder);
+    root.style.setProperty("--vb-front-dark-border-strong", frontCardSurfaces.darkBorderStrong);
+    root.style.setProperty("--vb-front-dark-text", frontCardSurfaces.darkText);
+    root.style.setProperty("--vb-front-dark-text-muted", frontCardSurfaces.darkTextMuted);
+    root.style.setProperty("--vb-front-dark-text-soft", frontCardSurfaces.darkTextSoft);
+    root.style.setProperty("--vb-front-dark-text-strong", frontCardSurfaces.darkTextStrong);
+    root.style.setProperty("--vb-front-dark-text-on-accent", frontCardSurfaces.darkTextOnAccent);
+    root.style.setProperty("--vb-front-dark-fill", frontCardSurfaces.darkFill);
+    root.style.backgroundColor =
+      theme === "dark" ? frontCardSurfaces.darkPage : frontCardSurfaces.lightDeep;
+  }, [
+    frontCardSurfaces.dark,
+    frontCardSurfaces.darkDeep,
+    frontCardSurfaces.darkFill,
+    frontCardSurfaces.darkPage,
+    frontCardSurfaces.darkBorder,
+    frontCardSurfaces.darkBorderStrong,
+    frontCardSurfaces.darkSoft,
+    frontCardSurfaces.darkHover,
+    frontCardSurfaces.darkHoverSoft,
+    frontCardSurfaces.darkText,
+    frontCardSurfaces.darkTextMuted,
+    frontCardSurfaces.darkTextSoft,
+    frontCardSurfaces.darkTextStrong,
+    frontCardSurfaces.darkTextOnAccent,
+    frontCardSurfaces.light,
+    frontCardSurfaces.lightDeep,
+    frontCardSurfaces.lightSoft,
+    theme,
   ]);
 
   return (
@@ -205,6 +298,12 @@ export default function (props: {
             data-theme-for="dark"
           />
         )}
+        <link
+          rel="stylesheet"
+          href={MARKDOWN_THEME_HOTFIX_URL}
+          key="markdown-theme-hotfix"
+          data-vanblog-theme-hotfix="true"
+        />
       </Head>
       <BackToTopBtn></BackToTopBtn>
       <MusicPlayer />
@@ -223,53 +322,59 @@ export default function (props: {
           theme,
         }}
       >
-        <Toaster />
-        {/* <ImageProvider> */}
-          <NavBar
-            openArticleLinksInNewWindow={
-              props.option.openArticleLinksInNewWindow == "true"
-            }
-            showRSS={props.option.showRSS}
-            defaultTheme={props.option.defaultTheme}
-            showSubMenu={props.option.showSubMenu}
-            headerLeftContent={props.option.headerLeftContent}
-            subMenuOffset={props.option.subMenuOffset}
-            showAdminButton={props.option.showAdminButton}
-            menus={props.option.menus}
-            siteName={props.option.siteName}
-            logo={props.option.logo}
-            categories={props.option.categories}
-            isOpen={isOpen}
-            setOpen={setIsOpen}
-            logoDark={props.option.logoDark}
-            showFriends={props.option.showFriends}
-          ></NavBar>
-          <NavBarMobile
-            isOpen={isOpen}
-            setIsOpen={setIsOpen}
-            showAdminButton={props.option.showAdminButton}
-            showFriends={props.option.showFriends}
-            menus={props.option.menus}
-          />
+        <div data-vb-front-surface-scope="true" style={frontSurfaceVars}>
+          <Toaster />
+          {/* <ImageProvider> */}
+            <NavBar
+              openArticleLinksInNewWindow={
+                props.option.openArticleLinksInNewWindow == "true"
+              }
+              showRSS={props.option.showRSS}
+              defaultTheme={props.option.defaultTheme}
+              showSubMenu={props.option.showSubMenu}
+              headerLeftContent={props.option.headerLeftContent}
+              subMenuOffset={props.option.subMenuOffset}
+              showAdminButton={props.option.showAdminButton}
+              menus={props.option.menus}
+              siteName={props.option.siteName}
+              logo={props.option.logo}
+              categories={props.option.categories}
+              isOpen={isOpen}
+              setOpen={setIsOpen}
+              logoDark={props.option.logoDark}
+              showFriends={props.option.showFriends}
+            ></NavBar>
+            <NavBarMobile
+              isOpen={isOpen}
+              setIsOpen={setIsOpen}
+              showAdminButton={props.option.showAdminButton}
+              showFriends={props.option.showFriends}
+              menus={props.option.menus}
+            />
 
-          <div className=" mx-auto  lg:px-6  md:py-4 py-2 px-2 md:px-4  text-gray-700 ">
-            <LayoutBody
-              children={props.children}
-              sideBar={props.sideBar}
-              contentWidthMode={props.contentWidthMode}
-            />
-            <Footer
-              ipcHref={props.option.ipcHref}
-              ipcNumber={props.option.ipcNumber}
-              since={props.option.since}
-              version={props.option.version}
-              gaBeianLogoUrl={props.option.gaBeianLogoUrl}
-              gaBeianNumber={props.option.gaBeianNumber}
-              gaBeianUrl={props.option.gaBeianUrl}
-              showRunningTime={props.option.showRunningTime}
-            />
-          </div>
-        {/* </ImageProvider> */}
+            <div
+              className=" mx-auto  lg:px-6  md:py-4 py-2 px-2 md:px-4  text-gray-700 "
+              data-vb-markdown-light-theme-id={lightThemeId || undefined}
+              data-vb-markdown-dark-theme-id={darkThemeId || undefined}
+            >
+              <LayoutBody
+                children={props.children}
+                sideBar={props.sideBar}
+                contentWidthMode={props.contentWidthMode}
+              />
+              <Footer
+                ipcHref={props.option.ipcHref}
+                ipcNumber={props.option.ipcNumber}
+                since={props.option.since}
+                version={props.option.version}
+                gaBeianLogoUrl={props.option.gaBeianLogoUrl}
+                gaBeianNumber={props.option.gaBeianNumber}
+                gaBeianUrl={props.option.gaBeianUrl}
+                showRunningTime={props.option.showRunningTime}
+              />
+            </div>
+          {/* </ImageProvider> */}
+        </div>
       </ThemeContext.Provider>
       {props.option.enableCustomizing == "true" && (
         <CustomLayout

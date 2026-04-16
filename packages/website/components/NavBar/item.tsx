@@ -69,7 +69,7 @@ function LinkItemWithChildren(props: { item: MenuItem }) {
         />
 
         <div
-          className="card-shadow bg-white block transition-all dark:text-dark dark:bg-dark-1 dark:card-shadow-dark"
+          className="card-shadow vb-surface-card-subtle block transition-all dark:text-dark dark:card-shadow-dark"
           style={{
             position: "absolute",
             minWidth: 100,

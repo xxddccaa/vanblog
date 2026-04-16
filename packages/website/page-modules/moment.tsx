@@ -207,7 +207,7 @@ export default function MomentPage({
 
         {/* 发布动态区域 - 仅管理员可见 */}
         {isAdmin && (
-          <div className="bg-white dark:bg-dark-1 rounded-lg shadow-md p-6 mb-8">
+          <div className="vb-surface-card-subtle rounded-lg shadow-md p-6 mb-8">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-dark mb-4">
               发布动态
             </h2>
@@ -247,7 +247,7 @@ export default function MomentPage({
           {moments.map((moment, index) => (
             <div
               key={moment.id}
-              className={`bg-white dark:bg-dark-1 rounded-lg shadow-md p-6
+              className={`vb-surface-card-subtle rounded-lg shadow-md p-6
                          border border-gray-200 dark:border-dark-3 transition-all duration-500
                          ${justPublished && index === 0 ? 'ring-2 ring-green-400 ring-opacity-50 bg-green-50 dark:bg-green-900/20' : ''}`}
             >

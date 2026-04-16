@@ -53,7 +53,7 @@ export default function TimelinePage(props: TimelinePageProps) {
   };
 
   return (
-    <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
+    <div className="vb-surface-card card-shadow dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
       <div className="text-center mb-8">
         <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-4">
           {props.pageTitle}
@@ -88,7 +88,7 @@ export default function TimelinePage(props: TimelinePageProps) {
 
                 <div className="flex-1 min-w-0">
                   <div
-                    className="bg-white dark:bg-dark-1 border border-gray-200 dark:border-dark-2 rounded-lg overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer"
+                    className="vb-surface-card-subtle border border-gray-200 dark:border-dark-2 rounded-lg overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer"
                     onClick={() => toggleYear(year)}
                   >
                     <div className="p-4 hover:bg-gray-50 dark:hover:bg-dark-2 transition-colors duration-200">

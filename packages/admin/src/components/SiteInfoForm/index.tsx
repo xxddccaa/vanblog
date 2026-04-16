@@ -4,7 +4,59 @@ import {
   ProFormSelect,
   ProFormText,
 } from '@ant-design/pro-components';
+import { Form, Input, Space } from 'antd';
 import UrlFormItem from '../UrlFormItem';
+
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+const ColorValueInput = (props: {
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder: string;
+  defaultValue: string;
+}) => {
+  const previewValue = HEX_COLOR_RE.test(props.value || '')
+    ? (props.value || '').toLowerCase()
+    : props.defaultValue;
+
+  return (
+    <Space.Compact style={{ width: '100%' }}>
+      <Input
+        type="color"
+        value={previewValue}
+        onChange={(event) => props.onChange?.(event.target.value.toLowerCase())}
+        style={{ width: 56, padding: 4 }}
+      />
+      <Input
+        value={props.value || ''}
+        onChange={(event) => props.onChange?.(event.target.value)}
+        placeholder={props.placeholder}
+        suffix={
+          <a
+            onClick={(event) => {
+              event.preventDefault();
+              props.onChange?.('');
+            }}
+          >
+            默认
+          </a>
+        }
+      />
+    </Space.Compact>
+  );
+};
+
+const optionalHexRule = {
+  validator(_: any, value: string) {
+    if (!value || value.trim() === '') {
+      return Promise.resolve();
+    }
+    if (HEX_COLOR_RE.test(value.trim())) {
+      return Promise.resolve();
+    }
+    return Promise.reject(new Error('请输入 #RRGGBB 格式的颜色值'));
+  },
+};
 
 export default function (props: {
   showOption: boolean;
@@ -490,6 +542,28 @@ export default function (props: {
             required={false}
             isBackground={true}
           />
+          <Form.Item
+            name="frontCardBackgroundColor"
+            label="前台卡片背景色"
+            tooltip="用于前台主要内容卡片、导航壳层与侧栏卡片。留空使用默认亮色白底。"
+            rules={[optionalHexRule]}
+          >
+            <ColorValueInput
+              placeholder="#ffffff，留空使用默认亮色白底"
+              defaultValue="#ffffff"
+            />
+          </Form.Item>
+          <Form.Item
+            name="frontCardBackgroundColorDark"
+            label="前台卡片背景色（暗色模式）"
+            tooltip="默认使用蓝青色，与当前后台预览区的暗色背景风格一致。"
+            rules={[optionalHexRule]}
+          >
+            <ColorValueInput
+              placeholder="#102033，留空使用默认暗色蓝青"
+              defaultValue="#102033"
+            />
+          </Form.Item>
         </>
       )}
     </>

@@ -10,7 +10,7 @@ export default function (props: { link: LinkItem }) {
         target="_blank"
         rel="referrer"
         style={{ overflow: "hidden" }}
-        className="flex p-3 sm:p-4 dark:bg-dark-2 card-shadow dark:card-shadow-dark transition  sm:hover:-translate-y-2 hover:-translate-y-1 duration-300 "
+        className="flex p-3 sm:p-4 vb-surface-card-deep card-shadow dark:card-shadow-dark transition  sm:hover:-translate-y-2 hover:-translate-y-1 duration-300 "
       >
         <div className="mr-2 flex-shrink-0 sm:mr-4 flex  items-center justify-center">
           <ImageBox

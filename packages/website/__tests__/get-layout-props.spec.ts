@@ -107,4 +107,47 @@ describe("getLayoutProps", () => {
     expect(ultraWideLayoutProps.articleWidthMode).toBe("ultraWide");
     expect(fullLayoutProps.articleWidthMode).toBe("full");
   });
+
+  it("defaults front card surface colors and preserves explicit overrides", () => {
+    const defaultLayoutProps = getLayoutProps({
+      version: "1.2.0",
+      tags: [],
+      totalArticles: 0,
+      totalWordCount: 0,
+      menus: [],
+      meta: {
+        categories: [],
+        socials: [],
+        siteInfo: {
+          favicon: "/favicon.ico",
+          siteName: "VanBlog",
+          siteDesc: "Cache-first blog",
+        },
+      },
+    } as any);
+
+    const customLayoutProps = getLayoutProps({
+      version: "1.2.0",
+      tags: [],
+      totalArticles: 0,
+      totalWordCount: 0,
+      menus: [],
+      meta: {
+        categories: [],
+        socials: [],
+        siteInfo: {
+          favicon: "/favicon.ico",
+          siteName: "VanBlog",
+          siteDesc: "Cache-first blog",
+          frontCardBackgroundColor: "#f5fbff",
+          frontCardBackgroundColorDark: "#15314d",
+        },
+      },
+    } as any);
+
+    expect(defaultLayoutProps.frontCardBackgroundColor).toBe("#ffffff");
+    expect(defaultLayoutProps.frontCardBackgroundColorDark).toBe("#102033");
+    expect(customLayoutProps.frontCardBackgroundColor).toBe("#f5fbff");
+    expect(customLayoutProps.frontCardBackgroundColorDark).toBe("#15314d");
+  });
 });

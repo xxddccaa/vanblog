@@ -51,7 +51,7 @@ const LinkPage = (props: LinkPageProps) => {
       title="友情链接"
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
-      <div className="bg-white dark:text-dark card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
+      <div className="vb-surface-card dark:text-dark card-shadow dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
         <div className="text-center mb-8">
           <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-4">
             友情链接

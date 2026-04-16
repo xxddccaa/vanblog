@@ -72,6 +72,7 @@ module.exports = withBundleAnalyzer({
   reactStrictMode: true,
   generateEtags: true,
   output: "standalone",
+  allowedDevOrigins: isDev ? ["127.0.0.1", "localhost"] : undefined,
   experimental: {
     largePageDataBytes: 1024 * 1024 * 10,
   },

@@ -139,7 +139,7 @@ export default function (props: { item: SocialItem }) {
               arrowClassName="popover-arrow "
             >
               <div
-                className="card-shadow bg-white dark:bg-dark-2 dark:card-shadow-dark p-4 rounded-lg"
+                className="card-shadow vb-surface-card-deep dark:card-shadow-dark p-4 rounded-lg"
                 style={{ maxWidth: 300 }}
               >
                 <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -212,7 +212,7 @@ export default function (props: { item: SocialItem }) {
               arrowClassName="popover-arrow "
             >
               <div
-                className="card-shadow bg-white dark:bg-dark-2 dark:card-shadow-dark"
+                className="card-shadow vb-surface-card-deep dark:card-shadow-dark"
                 style={{ height: 280 }}
               >
                 <ImageBox

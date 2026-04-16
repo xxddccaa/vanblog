@@ -68,7 +68,7 @@ const Home = (props: IndexPageProps) => {
           target={getTarget(
             props.layoutProps.openArticleLinksInNewWindow == "true"
           )}
-          className="mt-3 inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm text-white transition hover:bg-gray-700 dark:bg-dark-hover dark:text-dark-r dark:hover:bg-dark-light"
+          className="mt-3 inline-flex items-center rounded-lg bg-gray-900 px-4 py-2 text-sm text-white transition hover:bg-gray-700 dark:bg-dark-hover dark:text-dark-hover dark:hover:bg-dark-light"
         >
           查看全部归档
         </Link>

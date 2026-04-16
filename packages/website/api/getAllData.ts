@@ -188,6 +188,9 @@ export interface MetaProps {
     // 网站背景图
     backgroundImage?: string;
     backgroundImageDark?: string;
+    // 前台卡片背景色（亮色 / 暗色）
+    frontCardBackgroundColor?: string;
+    frontCardBackgroundColorDark?: string;
     // Markdown 渲染主题 CSS（亮色 / 暗色）
     markdownLightThemeUrl?: string;
     markdownDarkThemeUrl?: string;
@@ -261,6 +264,8 @@ const defaultMeta: MetaProps = {
     showRunningTime: "false",
     backgroundImage: "",
     backgroundImageDark: "",
+    frontCardBackgroundColor: "#ffffff",
+    frontCardBackgroundColorDark: "#102033",
     markdownLightThemeUrl: MARKDOWN_THEME_DEFAULTS.light,
     markdownDarkThemeUrl: MARKDOWN_THEME_DEFAULTS.dark,
   },

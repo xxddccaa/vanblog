@@ -1,17 +1,185 @@
-.light pre .code-block-wrapper {
+.light .markdown-body,
+html:not(.dark) .markdown-body {
+  --vb-code-panel-bg: rgba(255, 255, 255, 0.94);
+  --vb-code-panel-border: rgba(15, 23, 42, 0.1);
+  --vb-code-panel-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+  --vb-code-header-bg: rgba(248, 250, 252, 0.92);
+  --vb-code-header-border: rgba(15, 23, 42, 0.08);
+  --vb-code-header-text: #475569;
+  --vb-code-language-bg: rgba(59, 130, 246, 0.12);
+  --vb-code-language-text: #1d4ed8;
+  --vb-code-btn-bg: rgba(255, 255, 255, 0.82);
+  --vb-code-btn-border: rgba(148, 163, 184, 0.32);
+  --vb-code-btn-text: #475569;
+  --vb-code-btn-hover: rgba(241, 245, 249, 0.96);
+  --vb-code-btn-active: rgba(59, 130, 246, 0.16);
+  --vb-code-btn-active-text: #0f172a;
+  --vb-code-body-text: #0f172a;
+  --vb-code-muted-text: #64748b;
+  --vb-code-selection-bg: rgba(59, 130, 246, 0.16);
+  --vb-code-selection-text: #0f172a;
+  --vb-code-added-shadow: rgba(22, 163, 74, 0.26);
+  --vb-code-added-text: #166534;
+  --vb-code-deleted-shadow: rgba(220, 38, 38, 0.24);
+  --vb-code-deleted-text: #b91c1c;
+  --vb-code-fade: rgba(255, 255, 255, 0.96);
+}
+
+.light .markdown-body pre,
+html:not(.dark) .markdown-body pre {
+  background: transparent !important;
+}
+
+.light pre .code-block-wrapper,
+html:not(.dark) pre .code-block-wrapper {
+  display: block;
+  overflow: hidden;
+  padding: 14px 14px 12px;
+  border-radius: 20px;
+  background: var(--vb-md-code-panel-bg, var(--vb-code-panel-bg)) !important;
+  border: 1px solid var(--vb-md-code-panel-border, var(--vb-code-panel-border)) !important;
+  box-shadow: var(--vb-md-code-panel-shadow, var(--vb-code-panel-shadow)) !important;
+}
+
+.light .markdown-body .header-right,
+html:not(.dark) .markdown-body .header-right {
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: var(--vb-md-code-header-bg, var(--vb-code-header-bg)) !important;
+  border: 1px solid var(--vb-md-code-header-border, var(--vb-code-header-border)) !important;
+  color: var(--vb-md-code-header-text, var(--vb-code-header-text)) !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.light .markdown-body .language-tag,
+html:not(.dark) .markdown-body .language-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--vb-md-code-language-bg, var(--vb-code-language-bg)) !important;
+  color: var(--vb-md-code-language-text, var(--vb-code-language-text)) !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.light .markdown-body .code-copy-btn,
+.light .markdown-body .code-toggle-btn,
+.light .markdown-body .code-wrap-btn,
+html:not(.dark) .markdown-body .code-copy-btn,
+html:not(.dark) .markdown-body .code-toggle-btn,
+html:not(.dark) .markdown-body .code-wrap-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--vb-md-code-btn-border, var(--vb-code-btn-border)) !important;
+  background: var(--vb-md-code-btn-bg, var(--vb-code-btn-bg)) !important;
+  color: var(--vb-md-code-btn-text, var(--vb-code-btn-text)) !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  white-space: nowrap !important;
+}
+
+.light .markdown-body .code-copy-btn:hover,
+.light .markdown-body .code-toggle-btn:hover,
+.light .markdown-body .code-wrap-btn:hover,
+html:not(.dark) .markdown-body .code-copy-btn:hover,
+html:not(.dark) .markdown-body .code-toggle-btn:hover,
+html:not(.dark) .markdown-body .code-wrap-btn:hover {
+  background: var(--vb-md-code-btn-hover, var(--vb-code-btn-hover)) !important;
+  border-color: color-mix(in srgb, var(--vb-md-code-language-text, var(--vb-code-language-text)) 24%, transparent) !important;
+  color: var(--vb-md-code-btn-active-text, var(--vb-code-btn-active-text)) !important;
+}
+
+.light .markdown-body .code-wrap-btn.code-wrap-enabled,
+html:not(.dark) .markdown-body .code-wrap-btn.code-wrap-enabled {
+  background: var(--vb-md-code-btn-active, var(--vb-code-btn-active)) !important;
+  color: var(--vb-md-code-btn-active-text, var(--vb-code-btn-active-text)) !important;
+  border-color: color-mix(in srgb, var(--vb-md-code-language-text, var(--vb-code-language-text)) 34%, transparent) !important;
+}
+
+.light .markdown-body .code-content-wrapper,
+html:not(.dark) .markdown-body .code-content-wrapper {
   display: block;
   overflow-x: auto;
-  padding: 22px 16px 16px;
+  overflow-y: hidden;
+  position: relative;
+  padding-top: 34px;
+  scrollbar-width: thin;
 }
 
-/* .light code.hljs {
-  padding: 3px 5px
+.light .markdown-body .code-content-wrapper.code-collapsed,
+html:not(.dark) .markdown-body .code-content-wrapper.code-collapsed {
+  max-height: var(--code-max-height, 21em);
 }
-*/
 
-.light .hljs {
+.light .markdown-body .code-content-wrapper.code-collapsed::after,
+html:not(.dark) .markdown-body .code-content-wrapper.code-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3em;
+  background: linear-gradient(transparent, var(--vb-md-code-fade, var(--vb-code-fade)));
+  pointer-events: none;
+}
+
+.light .hljs,
+.light .markdown-body pre code,
+.light .markdown-body .code-block-wrapper code,
+html:not(.dark) .hljs,
+html:not(.dark) .markdown-body pre code,
+html:not(.dark) .markdown-body .code-block-wrapper code {
   background: transparent !important;
-  color: #000
+  color: var(--vb-md-code-body-text, var(--vb-code-body-text));
+}
+
+.light .hljs span,
+.light .markdown-body pre code span,
+.light .markdown-body .code-block-wrapper code span,
+html:not(.dark) .hljs span,
+html:not(.dark) .markdown-body pre code span,
+html:not(.dark) .markdown-body .code-block-wrapper code span {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.light .markdown-body pre code *,
+.light .markdown-body .code-block-wrapper code *,
+html:not(.dark) .markdown-body pre code *,
+html:not(.dark) .markdown-body .code-block-wrapper code * {
+  text-decoration: none !important;
+}
+
+.light .markdown-body pre ::selection,
+.light .markdown-body pre code::selection,
+.light .markdown-body pre code *::selection,
+.light .markdown-body .code-content-wrapper::selection,
+.light .markdown-body .code-content-wrapper *::selection,
+html:not(.dark) .markdown-body pre ::selection,
+html:not(.dark) .markdown-body pre code::selection,
+html:not(.dark) .markdown-body pre code *::selection,
+html:not(.dark) .markdown-body .code-content-wrapper::selection,
+html:not(.dark) .markdown-body .code-content-wrapper *::selection {
+  background: var(--vb-md-code-selection-bg, var(--vb-code-selection-bg)) !important;
+  color: var(--vb-md-code-selection-text, var(--vb-code-selection-text)) !important;
 }
 
 .light .hljs.language-markdown .hljs-code,
@@ -21,30 +189,26 @@ html:not(.dark) .hljs.language-md .hljs-code {
   color: #795e26;
 }
 
-/* 移除所有 hljs span 元素的背景色，避免代码看起来像被选中 */
-.light .hljs span {
-  background: transparent !important;
-}
-
-.light .markdown-body pre code,
-.light .markdown-body pre code span,
-.light .markdown-body .code-block-wrapper code,
-.light .markdown-body .code-block-wrapper code span {
-  background: transparent !important;
-}
-
 .light .hljs-comment,
 .light .hljs-quote,
-.light .hljs-variable {
-  color: green
+.light .hljs-variable,
+html:not(.dark) .hljs-comment,
+html:not(.dark) .hljs-quote,
+html:not(.dark) .hljs-variable {
+  color: #15803d;
 }
 
 .light .hljs-built_in,
 .light .hljs-keyword,
 .light .hljs-name,
 .light .hljs-selector-tag,
-.light .hljs-tag {
-  color: #00f
+.light .hljs-tag,
+html:not(.dark) .hljs-built_in,
+html:not(.dark) .hljs-keyword,
+html:not(.dark) .hljs-name,
+html:not(.dark) .hljs-selector-tag,
+html:not(.dark) .hljs-tag {
+  color: #2563eb;
 }
 
 .light .hljs-addition,
@@ -55,69 +219,70 @@ html:not(.dark) .hljs.language-md .hljs-code {
 .light .hljs-template-tag,
 .light .hljs-template-variable,
 .light .hljs-title,
-.light .hljs-type {
-  color: #a31515
+.light .hljs-type,
+html:not(.dark) .hljs-addition,
+html:not(.dark) .hljs-attribute,
+html:not(.dark) .hljs-literal,
+html:not(.dark) .hljs-section,
+html:not(.dark) .hljs-string,
+html:not(.dark) .hljs-template-tag,
+html:not(.dark) .hljs-template-variable,
+html:not(.dark) .hljs-title,
+html:not(.dark) .hljs-type {
+  color: #a31515;
 }
 
 .light .hljs-deletion,
 .light .hljs-meta,
 .light .hljs-selector-attr,
-.light .hljs-selector-pseudo {
-  color: #2b91af
+.light .hljs-selector-pseudo,
+html:not(.dark) .hljs-deletion,
+html:not(.dark) .hljs-meta,
+html:not(.dark) .hljs-selector-attr,
+html:not(.dark) .hljs-selector-pseudo {
+  color: #0f766e;
 }
 
-.light .hljs-doctag {
-  color: grey
+.light .hljs-doctag,
+html:not(.dark) .hljs-doctag {
+  color: #6b7280;
 }
 
-.light .hljs-attr {
-  color: red
+.light .hljs-attr,
+html:not(.dark) .hljs-attr {
+  color: #dc2626;
 }
 
 .light .hljs-bullet,
 .light .hljs-link,
-.light .hljs-symbol {
-  color: #00b0e8;
-  text-decoration: none
+.light .hljs-symbol,
+html:not(.dark) .hljs-bullet,
+html:not(.dark) .hljs-link,
+html:not(.dark) .hljs-symbol {
+  color: #0891b2;
+  text-decoration: none;
 }
 
-/* 确保代码块中所有元素都没有下划线 */
-.light .markdown-body pre code *,
-.light .markdown-body .code-block-wrapper code * {
-  text-decoration: none !important;
+.light .hljs-emphasis,
+html:not(.dark) .hljs-emphasis {
+  font-style: italic;
 }
 
-.light .hljs-emphasis {
-  font-style: italic
+.light .hljs-strong,
+html:not(.dark) .hljs-strong {
+  font-weight: 700;
 }
 
-.light .hljs-strong {
-  font-weight: 700
+.light .hljs-addition,
+html:not(.dark) .hljs-addition {
+  background: transparent !important;
+  box-shadow: inset 0 -0.08em 0 var(--vb-md-code-added-shadow, var(--vb-code-added-shadow));
+  color: var(--vb-md-code-added-text, var(--vb-code-added-text));
 }
 
-/* 亮色主题下的代码折叠样式 */
-.light pre .code-content-wrapper {
-  display: block;
-  overflow: hidden;
-  position: relative;
+.light .hljs-deletion,
+html:not(.dark) .hljs-deletion {
+  background: transparent !important;
+  box-shadow: inset 0 -0.08em 0 var(--vb-md-code-deleted-shadow, var(--vb-code-deleted-shadow));
+  color: var(--vb-md-code-deleted-text, var(--vb-code-deleted-text));
 }
-
-.light pre .code-content-wrapper.code-collapsed {
-  max-height: var(--code-max-height, 21em); /* 调整为更适合的高度，约15行 * 1.4em line-height */
-}
-
-.light pre .code-content-wrapper.code-collapsed::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3em;
-  background: linear-gradient(transparent, var(--color-canvas-subtle));
-  pointer-events: none;
-}
-
-/* 亮色主题 - 代码切换按钮图标 */
-/* .light .markdown-body .code-toggle-btn::before {
-  content: url("data:image/svg+xml,%3Csvg%0Awidth%3D%2214%22%0Aheight%3D%2214%22%0AviewBox%3D%220%200%2024%2024%22%0Afill%3D%22none%22%0Axmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%0A%3E%0A%3Cpath%0Ad%3D%22M6%209l6%206%206-6%22%0Astroke%3D%22%236f7177%22%0Astroke-width%3D%222%22%0Astroke-linecap%3D%22round%22%0Astroke-linejoin%3D%22round%22%0A%3E%3C%2Fpath%3E%0A%3C%2Fsvg%3E");
-} */

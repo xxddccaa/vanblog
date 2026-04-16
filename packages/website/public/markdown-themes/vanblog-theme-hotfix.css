@@ -1,0 +1,1029 @@
+/*
+ * Shared Markdown theme hotfix.
+ *
+ * Goals:
+ * - remove over-decorated h2 wrappers while keeping theme accents
+ * - make admin preview and frontend use the same readable typography contract
+ * - unify code block structure across themes
+ * - keep theme personality via derived accent/surface variables instead of token background fills
+ */
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark)
+) .markdown-body {
+  --vb-md-accent-primary: var(
+    --vb-link,
+    var(--vb-accent, var(--element-color, var(--primary-color, #2563eb)))
+  );
+  --vb-md-accent-secondary: var(
+    --vb-link-hover,
+    var(
+      --vb-accent-hover,
+      var(--element-color-shallow, color-mix(in srgb, var(--vb-md-accent-primary) 78%, #0f172a 22%))
+    )
+  );
+  --vb-md-body-text: var(--vb-body-text, var(--vb-text, var(--text-color, #162033)));
+  --vb-md-body-strong: var(
+    --vb-body-strong,
+    color-mix(in srgb, var(--vb-md-body-text) 86%, #020617 14%)
+  );
+  --vb-md-body-muted: var(
+    --vb-body-muted,
+    var(--vb-text-muted, var(--text-color-secondary, var(--text-color-muted, #64748b)))
+  );
+  --vb-md-link: var(--vb-link, var(--link-color, var(--vb-md-accent-primary)));
+  --vb-md-link-hover: var(
+    --vb-link-hover,
+    var(--link-hover-color, var(--vb-accent-hover, var(--vb-md-accent-secondary)))
+  );
+  --vb-md-surface-1: var(
+    --vb-surface-1,
+    var(--vb-paper, var(--vb-bg, var(--surface-color, #f8fafc)))
+  );
+  --vb-md-surface-2: var(
+    --vb-surface-2,
+    var(
+      --vb-panel,
+      var(
+        --vb-card,
+        color-mix(in srgb, var(--vb-md-surface-1) 90%, var(--vb-md-accent-primary) 10%)
+      )
+    )
+  );
+  --vb-md-surface-3: var(
+    --vb-surface-3,
+    var(
+      --vb-hover-bg,
+      color-mix(in srgb, var(--vb-md-surface-1) 82%, var(--vb-md-accent-primary) 18%)
+    )
+  );
+  --vb-md-border: var(
+    --vb-border-soft,
+    var(--vb-border, var(--border-color, rgba(15, 23, 42, 0.12)))
+  );
+  --vb-md-border-strong: var(
+    --vb-border-strong,
+    color-mix(in srgb, var(--vb-md-link) 38%, transparent)
+  );
+  --vb-md-inline-code-bg: var(
+    --vb-inline-code-bg,
+    var(
+      --vb-code-bg,
+      var(
+        --code-inline-bg-color,
+        var(
+          --element-color-linecode-background,
+          color-mix(in srgb, var(--vb-md-surface-2) 88%, var(--vb-md-link) 12%)
+        )
+      )
+    )
+  );
+  --vb-md-inline-code-text: var(
+    --vb-inline-code-text,
+    var(--element-color-linecode, var(--vb-md-link))
+  );
+  --vb-md-mark-bg: var(
+    --vb-mark-bg,
+    color-mix(in srgb, var(--vb-md-link) 14%, var(--vb-md-surface-1) 86%)
+  );
+  --vb-md-mark-text: var(--vb-mark-text, var(--vb-md-body-strong));
+  --vb-md-heading-soft: var(
+    --vb-heading-soft,
+    color-mix(in srgb, var(--vb-md-body-strong) 70%, var(--vb-md-link) 30%)
+  );
+  --vb-md-code-panel-bg: color-mix(in srgb, var(--vb-md-surface-1) 90%, white 10%);
+  --vb-md-code-panel-border: color-mix(in srgb, var(--vb-md-border) 70%, var(--vb-md-link) 30%);
+  --vb-md-code-panel-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  --vb-md-code-header-bg: color-mix(in srgb, var(--vb-md-surface-2) 84%, white 16%);
+  --vb-md-code-header-border: color-mix(in srgb, var(--vb-md-border) 78%, transparent);
+  --vb-md-code-header-text: color-mix(in srgb, var(--vb-md-body-muted) 48%, var(--vb-md-body-strong) 52%);
+  --vb-md-code-language-bg: color-mix(in srgb, var(--vb-md-link) 12%, white 88%);
+  --vb-md-code-language-text: color-mix(in srgb, var(--vb-md-link) 72%, var(--vb-md-body-strong) 28%);
+  --vb-md-code-btn-bg: color-mix(in srgb, var(--vb-md-surface-1) 84%, white 16%);
+  --vb-md-code-btn-border: color-mix(in srgb, var(--vb-md-border) 76%, transparent);
+  --vb-md-code-btn-text: var(--vb-md-body-muted);
+  --vb-md-code-btn-hover: color-mix(in srgb, var(--vb-md-surface-3) 80%, white 20%);
+  --vb-md-code-btn-active: color-mix(in srgb, var(--vb-md-link) 14%, var(--vb-md-surface-2) 86%);
+  --vb-md-code-btn-active-text: var(--vb-md-body-strong);
+  --vb-md-code-body-text: color-mix(in srgb, var(--vb-md-body-text) 94%, #020617 6%);
+  --vb-md-code-muted-text: var(--vb-md-body-muted);
+  --vb-md-code-selection-bg: color-mix(in srgb, var(--vb-md-link) 20%, transparent);
+  --vb-md-code-selection-text: var(--vb-md-body-strong);
+  --vb-md-code-added-shadow: color-mix(in srgb, #22c55e 28%, transparent);
+  --vb-md-code-added-text: #166534;
+  --vb-md-code-deleted-shadow: color-mix(in srgb, #ef4444 24%, transparent);
+  --vb-md-code-deleted-text: #b91c1c;
+  --vb-md-code-fade: color-mix(in srgb, var(--vb-md-code-panel-bg) 92%, white 8%);
+  color: var(--vb-md-body-text) !important;
+}
+
+:is(
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body {
+  --vb-md-accent-primary: var(
+    --vb-link,
+    var(
+      --vb-accent,
+      var(
+        --vb-blood,
+        var(
+          --vb-green-2,
+          var(
+            --vb-green,
+            var(
+              --vb-c1,
+              var(--vb-cyan, var(--primary-color, var(--element-color, #7cc7ff)))
+            )
+          )
+        )
+      )
+    )
+  );
+  --vb-md-accent-secondary: var(
+    --vb-link-hover,
+    var(
+      --vb-accent-hover,
+      var(
+        --vb-accent-light,
+        var(
+          --vb-accent-2,
+          var(
+            --vb-c2,
+            var(
+              --vb-purple,
+              var(
+                --vb-pink,
+                var(
+                  --vb-magenta,
+                  var(--link-hover-color, var(--element-color-shallow, #d8e7f8))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+  --vb-md-body-text: var(--vb-body-text, var(--vb-text, var(--text-color, #e7eef8)));
+  --vb-md-body-strong: var(
+    --vb-body-strong,
+    color-mix(in srgb, var(--vb-md-body-text) 88%, white 12%)
+  );
+  --vb-md-body-muted: var(
+    --vb-body-muted,
+    var(--vb-text-muted, var(--text-color-muted, var(--vb-muted, #bdd0e5)))
+  );
+  --vb-md-link: var(--vb-link, var(--link-color, var(--element-color-shallow, var(--vb-md-accent-primary))));
+  --vb-md-link-hover: var(
+    --vb-link-hover,
+    var(--link-hover-color, var(--vb-accent-hover, var(--vb-md-accent-secondary)))
+  );
+  --vb-md-surface-1: var(
+    --vb-surface-1,
+    var(
+      --vb-panel,
+      var(
+        --vb-paper,
+        var(--vb-bg, var(--vb-soft, var(--surface-color, rgba(10, 20, 36, 0.78))))
+      )
+    )
+  );
+  --vb-md-surface-2: var(
+    --vb-surface-2,
+    var(
+      --vb-panel-2,
+      var(
+        --vb-panel-bg-2,
+        color-mix(in srgb, var(--vb-md-surface-1) 86%, var(--vb-md-accent-primary) 14%)
+      )
+    )
+  );
+  --vb-md-surface-3: var(
+    --vb-surface-3,
+    var(
+      --vb-hover-bg,
+      color-mix(in srgb, var(--vb-md-surface-1) 78%, var(--vb-md-accent-primary) 22%)
+    )
+  );
+  --vb-md-border: var(
+    --vb-border-soft,
+    var(--vb-border, var(--vb-line, var(--border-color, rgba(116, 183, 255, 0.18))))
+  );
+  --vb-md-border-strong: var(
+    --vb-border-strong,
+    color-mix(in srgb, var(--vb-md-link) 42%, transparent)
+  );
+  --vb-md-inline-code-bg: var(
+    --vb-inline-code-bg,
+    var(
+      --vb-code-bg,
+      var(
+        --code-inline-bg-color,
+        var(
+          --element-color-linecode-background,
+          color-mix(in srgb, var(--vb-md-surface-2) 84%, var(--vb-md-link) 16%)
+        )
+      )
+    )
+  );
+  --vb-md-inline-code-text: var(
+    --vb-inline-code-text,
+    var(--element-color-linecode, var(--vb-md-link))
+  );
+  --vb-md-mark-bg: var(
+    --vb-mark-bg,
+    color-mix(in srgb, var(--vb-md-link) 16%, var(--vb-md-surface-1) 84%)
+  );
+  --vb-md-mark-text: var(--vb-mark-text, var(--vb-md-body-strong));
+  --vb-md-heading-soft: var(
+    --vb-heading-soft,
+    color-mix(in srgb, var(--vb-md-body-strong) 70%, var(--vb-md-link) 30%)
+  );
+  /*
+   * Keep dark code panels substantially opaque so decorative theme backdrops
+   * do not bleed through and make tokens look individually wrapped.
+   */
+  --vb-md-code-panel-bg: linear-gradient(
+    180deg,
+    rgba(7, 16, 31, 0.94),
+    rgba(5, 12, 24, 0.97)
+  );
+  --vb-md-code-panel-border: color-mix(in srgb, var(--vb-md-border) 72%, var(--vb-md-link) 28%);
+  --vb-md-code-panel-shadow: 0 18px 38px rgba(2, 6, 23, 0.28);
+  --vb-md-code-header-bg: color-mix(
+    in srgb,
+    rgba(15, 27, 45, 0.94) 82%,
+    var(--vb-md-link) 18%
+  );
+  --vb-md-code-header-border: color-mix(in srgb, var(--vb-md-border) 78%, transparent);
+  --vb-md-code-header-text: color-mix(in srgb, var(--vb-md-body-muted) 38%, var(--vb-md-body-strong) 62%);
+  --vb-md-code-language-bg: color-mix(in srgb, var(--vb-md-link) 16%, transparent);
+  --vb-md-code-language-text: color-mix(in srgb, var(--vb-md-link) 72%, white 28%);
+  --vb-md-code-btn-bg: color-mix(in srgb, var(--vb-md-surface-1) 76%, transparent);
+  --vb-md-code-btn-border: color-mix(in srgb, var(--vb-md-border) 76%, transparent);
+  --vb-md-code-btn-text: var(--vb-md-body-muted);
+  --vb-md-code-btn-hover: color-mix(in srgb, var(--vb-md-surface-3) 88%, transparent);
+  --vb-md-code-btn-active: color-mix(in srgb, var(--vb-md-link) 18%, var(--vb-md-surface-2) 82%);
+  --vb-md-code-btn-active-text: var(--vb-md-body-strong);
+  --vb-md-code-body-text: color-mix(in srgb, var(--vb-md-body-text) 96%, white 4%);
+  --vb-md-code-muted-text: var(--vb-md-body-muted);
+  --vb-md-code-selection-bg: color-mix(in srgb, var(--vb-md-link) 22%, transparent);
+  --vb-md-code-selection-text: #f8fbff;
+  --vb-md-code-added-shadow: color-mix(in srgb, #4ade80 34%, transparent);
+  --vb-md-code-added-text: #86efac;
+  --vb-md-code-deleted-shadow: color-mix(in srgb, #fb7185 36%, transparent);
+  --vb-md-code-deleted-text: #fda4af;
+  --vb-md-code-fade: color-mix(in srgb, var(--vb-md-code-panel-bg) 94%, black 6%);
+  color: var(--vb-md-body-text) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(p, li, dd, td, th, summary, figcaption, label, blockquote, blockquote p, blockquote li) {
+  color: var(--vb-md-body-text) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(strong, b) {
+  color: var(--vb-md-body-strong) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(em, i) {
+  color: color-mix(in srgb, var(--vb-md-body-strong) 88%, var(--vb-md-link) 12%) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body del {
+  color: var(--vb-md-body-muted) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(ul li::marker, ol li::marker) {
+  color: color-mix(in srgb, var(--vb-md-link) 72%, var(--vb-md-body-muted) 28%) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body a {
+  color: var(--vb-md-link) !important;
+  background: transparent !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--vb-md-link) 34%, transparent) !important;
+  text-decoration: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body a:hover {
+  color: var(--vb-md-link-hover) !important;
+  background: color-mix(in srgb, var(--vb-md-link) 12%, transparent) !important;
+  border-bottom-color: color-mix(in srgb, var(--vb-md-link-hover) 52%, transparent) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body blockquote {
+  background: var(--vb-md-surface-1) !important;
+  border: 1px solid var(--vb-md-border) !important;
+  border-left: 3px solid var(--vb-md-border-strong) !important;
+  box-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body mark {
+  background: var(--vb-md-mark-bg) !important;
+  color: var(--vb-md-mark-text) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(:not(pre) > code, kbd, samp) {
+  background: color-mix(in srgb, var(--vb-md-inline-code-bg) 86%, transparent) !important;
+  color: var(--vb-md-inline-code-text) !important;
+  border: 0 !important;
+  border-radius: 0.45rem !important;
+  padding: 0.14em 0.42em !important;
+  box-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body code.code-inline {
+  background: color-mix(in srgb, var(--vb-md-inline-code-bg) 86%, transparent) !important;
+  color: var(--vb-md-inline-code-text) !important;
+  border: 0 !important;
+  border-radius: 0.45rem !important;
+  padding: 0.14em 0.42em !important;
+  box-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body hr {
+  border-top-color: var(--vb-md-border-strong) !important;
+  opacity: 0.9;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body table {
+  border: 1px solid var(--vb-md-border) !important;
+  background: color-mix(in srgb, var(--vb-md-surface-1) 78%, transparent) !important;
+  box-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body table th {
+  background: var(--vb-md-surface-2) !important;
+  color: var(--vb-md-body-strong) !important;
+  border-color: var(--vb-md-border) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body table :is(td, th) {
+  border-color: var(--vb-md-border) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body table tbody :is(tr:hover td, td:hover) {
+  background: var(--vb-md-surface-3) !important;
+  color: var(--vb-md-body-strong) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body h2 {
+  display: block !important;
+  width: auto !important;
+  margin: 1.55em 0 1rem !important;
+  padding: 0 0 0.6rem 1rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, currentColor 10%, transparent),
+    transparent 72%
+  ) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  position: relative !important;
+  overflow: visible !important;
+  animation: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body h2::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0.2em !important;
+  width: 4px !important;
+  height: 1.18em !important;
+  border-radius: 999px !important;
+  background: currentColor !important;
+  opacity: 0.82 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body h2::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 1rem !important;
+  bottom: 0 !important;
+  width: clamp(72px, 18%, 144px) !important;
+  height: 2px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, currentColor 44%, transparent) !important;
+  opacity: 0.42 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body h2:hover {
+  transform: none !important;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, currentColor 14%, transparent),
+    transparent 76%
+  ) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body h2:hover::before {
+  opacity: 0.96 !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body h2:hover::after {
+  width: clamp(92px, 22%, 164px) !important;
+  opacity: 0.55 !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body pre {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-block-wrapper {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 14px 12px;
+  border-radius: 20px;
+  background: var(--vb-md-code-panel-bg) !important;
+  border: 1px solid var(--vb-md-code-panel-border) !important;
+  box-shadow: var(--vb-md-code-panel-shadow) !important;
+  isolation: isolate;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-block-wrapper::before,
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-block-wrapper::after,
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .header-right::before,
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .header-right::after {
+  content: none !important;
+  display: none !important;
+  box-shadow: none !important;
+  background: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .header-right {
+  top: 10px !important;
+  right: 10px !important;
+  z-index: 2 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px !important;
+  border-radius: 999px !important;
+  background: var(--vb-md-code-header-bg) !important;
+  border: 1px solid var(--vb-md-code-header-border) !important;
+  color: var(--vb-md-code-header-text) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12) !important;
+  backdrop-filter: blur(14px);
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .language-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--vb-md-code-language-bg) !important;
+  color: var(--vb-md-code-language-text) !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(.code-copy-btn, .code-toggle-btn, .code-wrap-btn) {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--vb-md-code-btn-border) !important;
+  background: var(--vb-md-code-btn-bg) !important;
+  color: var(--vb-md-code-btn-text) !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  white-space: nowrap !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(.code-copy-btn, .code-toggle-btn, .code-wrap-btn):hover {
+  background: var(--vb-md-code-btn-hover) !important;
+  border-color: color-mix(in srgb, var(--vb-md-code-language-text) 28%, transparent) !important;
+  color: var(--vb-md-code-btn-active-text) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-wrap-btn.code-wrap-enabled {
+  background: var(--vb-md-code-btn-active) !important;
+  color: var(--vb-md-code-btn-active-text) !important;
+  border-color: color-mix(in srgb, var(--vb-md-code-language-text) 36%, transparent) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-content-wrapper {
+  display: block;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  padding-top: 34px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--vb-md-code-language-text) 32%, transparent) transparent;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-content-wrapper.code-collapsed {
+  max-height: var(--code-max-height, 21em);
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-content-wrapper.code-collapsed::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3em;
+  background: linear-gradient(transparent, var(--vb-md-code-fade));
+  pointer-events: none;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-content-wrapper :is(pre, code, .hljs) {
+  min-width: max-content;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .code-content-wrapper.code-wrap-enabled :is(pre, code, .hljs) {
+  min-width: 100%;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(.hljs, pre code, .code-block-wrapper code) {
+  background: transparent !important;
+  color: var(--vb-md-code-body-text) !important;
+  border: 0 !important;
+  border-bottom: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(.hljs span, pre code span, .code-block-wrapper code span) {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(pre code *, .code-block-wrapper code *) {
+  text-shadow: none !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(pre > code, .code-content-wrapper > code, .code-content-wrapper pre > code, .code-block-wrapper code) {
+  display: block !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body :is(pre ::selection, pre code::selection, pre code *::selection, .code-content-wrapper::selection, .code-content-wrapper *::selection) {
+  background: var(--vb-md-code-selection-bg) !important;
+  color: var(--vb-md-code-selection-text) !important;
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .hljs-addition {
+  background: transparent !important;
+  color: var(--vb-md-code-added-text) !important;
+  box-shadow: inset 0 -0.08em 0 var(--vb-md-code-added-shadow);
+}
+
+:is(
+  html:not(.dark) [data-vb-markdown-light-theme-id]:not(.dark),
+  html[data-theme='light'] [data-vb-markdown-light-theme-id]:not(.dark),
+  [data-vb-markdown-light-theme-id].light,
+  .light [data-vb-markdown-light-theme-id]:not(.dark),
+  html.dark [data-vb-markdown-dark-theme-id]:not(.light),
+  html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
+  [data-vb-markdown-dark-theme-id].dark,
+  .dark [data-vb-markdown-dark-theme-id]:not(.light)
+) .markdown-body .hljs-deletion {
+  background: transparent !important;
+  color: var(--vb-md-code-deleted-text) !important;
+  box-shadow: inset 0 -0.08em 0 var(--vb-md-code-deleted-shadow);
+}

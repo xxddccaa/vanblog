@@ -1,7 +1,124 @@
 import { BytemdPlugin } from "bytemd";
-import { visit } from "unist-util-visit";
-import copy from 'copy-to-clipboard';
+import copy from "copy-to-clipboard";
 import toast from "react-hot-toast";
+import { visit } from "unist-util-visit";
+
+type CodeActionIcon = "copy" | "wrap" | "toggle";
+
+const createIconNode = (icon: CodeActionIcon) => {
+  const svgProperties = {
+    viewBox: "0 0 16 16",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "1.6",
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+    "aria-hidden": "true",
+    focusable: "false",
+  };
+
+  if (icon === "copy") {
+    return {
+      type: "element",
+      tagName: "svg",
+      properties: svgProperties,
+      children: [
+        {
+          type: "element",
+          tagName: "rect",
+          properties: {
+            x: "5",
+            y: "3",
+            width: "8",
+            height: "10",
+            rx: "2",
+          },
+          children: [],
+        },
+        {
+          type: "element",
+          tagName: "path",
+          properties: {
+            d: "M3.5 10.5H3A2 2 0 0 1 1 8.5v-6A2 2 0 0 1 3 0.5h5.5",
+          },
+          children: [],
+        },
+      ],
+    };
+  }
+
+  if (icon === "wrap") {
+    return {
+      type: "element",
+      tagName: "svg",
+      properties: svgProperties,
+      children: [
+        {
+          type: "element",
+          tagName: "path",
+          properties: {
+            d: "M2 4h8a2 2 0 1 1 0 4H8",
+          },
+          children: [],
+        },
+        {
+          type: "element",
+          tagName: "path",
+          properties: {
+            d: "M2 8h6",
+          },
+          children: [],
+        },
+        {
+          type: "element",
+          tagName: "path",
+          properties: {
+            d: "M8 6.5L6 8l2 1.5",
+          },
+          children: [],
+        },
+        {
+          type: "element",
+          tagName: "path",
+          properties: {
+            d: "M2 12h12",
+          },
+          children: [],
+        },
+      ],
+    };
+  }
+
+  return {
+    type: "element",
+    tagName: "svg",
+    properties: svgProperties,
+    children: [
+      {
+        type: "element",
+        tagName: "path",
+        properties: {
+          d: "M4 6l4 4 4-4",
+        },
+        children: [],
+      },
+    ],
+  };
+};
+
+const setWrapButtonState = (wrapBtn: HTMLElement, isWrapped: boolean) => {
+  wrapBtn.classList.toggle("code-wrap-enabled", isWrapped);
+  const label = isWrapped ? "取消自动换行" : "自动换行";
+  wrapBtn.title = label;
+  wrapBtn.setAttribute("aria-label", label);
+};
+
+const setToggleButtonState = (toggleBtn: HTMLElement, isCollapsed: boolean) => {
+  toggleBtn.classList.toggle("code-collapsed", isCollapsed);
+  const label = isCollapsed ? "展开代码" : "收起代码";
+  toggleBtn.title = label;
+  toggleBtn.setAttribute("aria-label", label);
+};
 
 // FIXME: Addd Types
 const codeBlockPlugin = () => (tree) => {
@@ -21,15 +138,18 @@ const codeBlockPlugin = () => (tree) => {
         }
       }
       if (language === "mermaid") return;
-      
-      // 复制按钮
+
       const codeCopyBtn = {
         type: "element",
         tagName: "div",
         properties: {
           class: "code-copy-btn",
+          title: "复制代码",
+          role: "button",
+          tabIndex: "0",
+          "aria-label": "复制代码",
         },
-        children: [],
+        children: [createIconNode("copy")],
       };
 
       const codeWrapBtn = {
@@ -38,31 +158,26 @@ const codeBlockPlugin = () => (tree) => {
         properties: {
           class: "code-wrap-btn ml-1",
           title: "自动换行",
+          role: "button",
+          tabIndex: "0",
+          "aria-label": "自动换行",
         },
-        children: [
-          {
-            type: "text",
-            value: "自动换行",
-          },
-        ],
+        children: [createIconNode("wrap")],
       };
-      
-      // 展开/收起按钮
+
       const codeToggleBtn = {
         type: "element",
         tagName: "div",
         properties: {
           class: "code-toggle-btn ml-1",
-          title: "展开/收起代码",
+          title: "展开代码",
+          role: "button",
+          tabIndex: "0",
+          "aria-label": "展开代码",
         },
-        children: [
-          {
-            type: "text",
-            value: "展开代码",
-          },
-        ],
+        children: [createIconNode("toggle")],
       };
-      
+
       const languageTag = {
         type: "element",
         tagName: "span",
@@ -77,8 +192,7 @@ const codeBlockPlugin = () => (tree) => {
           },
         ],
       };
-      
-      // 上方右侧 header
+
       const headerRight = {
         type: "element",
         tagName: "div",
@@ -88,8 +202,7 @@ const codeBlockPlugin = () => (tree) => {
         },
         children: [languageTag, codeCopyBtn, codeWrapBtn, codeToggleBtn],
       };
-      
-      // 代码内容包装器，用于控制展开/收起
+
       const codeContentWrapper = {
         type: "element",
         tagName: "div",
@@ -98,8 +211,7 @@ const codeBlockPlugin = () => (tree) => {
         },
         children: [...oldChildren],
       };
-      
-      // 包裹的 div
+
       const wrapperDiv = {
         type: "element",
         tagName: "div",
@@ -122,126 +234,122 @@ const codeBlockPlugin = () => (tree) => {
 };
 
 const onClickCopyCode = (e: PointerEvent) => {
-  const copyBtn = e.target as HTMLElement;
-  const code = copyBtn.parentElement?.parentElement?.querySelector("code")?.innerText;
+  const copyBtn = (e.target as HTMLElement | null)?.closest(".code-copy-btn") as
+    | HTMLElement
+    | null;
+  const code = copyBtn
+    ?.closest(".code-block-wrapper")
+    ?.querySelector("code")
+    ?.innerText;
+
+  if (!code) return;
+
   copy(code);
   toast.success("复制成功", {
     className: "toast",
-  })
-}
+  });
+};
 
 const onClickToggleCode = (e: PointerEvent) => {
-  const toggleBtn = e.target as HTMLElement;
-  const codeBlockWrapper = toggleBtn.closest('.code-block-wrapper');
-  const codeContentWrapper = codeBlockWrapper?.querySelector('.code-content-wrapper') as HTMLElement;
-  
-  if (!codeContentWrapper) return;
-  
-  const isCollapsed = codeContentWrapper.classList.contains('code-collapsed');
-  
-  if (isCollapsed) {
-    codeContentWrapper.classList.remove('code-collapsed');
-    toggleBtn.classList.remove('code-collapsed');
-    // 清除可能残留的内联 max-height，确保真正展开
-    codeContentWrapper.style.removeProperty('max-height');
-    toggleBtn.textContent = '收起代码';
-    toggleBtn.title = '收起代码';
-  } else {
-    codeContentWrapper.classList.add('code-collapsed');
-    toggleBtn.classList.add('code-collapsed');
-    toggleBtn.textContent = '展开代码';
-    toggleBtn.title = '展开代码';
+  const toggleBtn = (e.target as HTMLElement | null)?.closest(
+    ".code-toggle-btn"
+  ) as HTMLElement | null;
+  const codeBlockWrapper = toggleBtn?.closest(".code-block-wrapper");
+  const codeContentWrapper = codeBlockWrapper?.querySelector(
+    ".code-content-wrapper"
+  ) as HTMLElement | null;
+
+  if (!toggleBtn || !codeContentWrapper) return;
+
+  const isCollapsed = codeContentWrapper.classList.contains("code-collapsed");
+  const nextCollapsed = !isCollapsed;
+
+  codeContentWrapper.classList.toggle("code-collapsed", nextCollapsed);
+  if (!nextCollapsed) {
+    codeContentWrapper.style.removeProperty("max-height");
   }
-}
+  setToggleButtonState(toggleBtn, nextCollapsed);
+};
 
 const onClickToggleWrap = (e: PointerEvent) => {
-  const wrapBtn = e.target as HTMLElement;
-  const codeBlockWrapper = wrapBtn.closest('.code-block-wrapper');
-  const codeContentWrapper = codeBlockWrapper?.querySelector('.code-content-wrapper') as HTMLElement;
+  const wrapBtn = (e.target as HTMLElement | null)?.closest(
+    ".code-wrap-btn"
+  ) as HTMLElement | null;
+  const codeBlockWrapper = wrapBtn?.closest(".code-block-wrapper");
+  const codeContentWrapper = codeBlockWrapper?.querySelector(
+    ".code-content-wrapper"
+  ) as HTMLElement | null;
 
-  if (!codeContentWrapper) return;
+  if (!wrapBtn || !codeContentWrapper) return;
 
-  const isWrapped = codeContentWrapper.classList.contains('code-wrap-enabled');
-
-  if (isWrapped) {
-    codeContentWrapper.classList.remove('code-wrap-enabled');
-    wrapBtn.classList.remove('code-wrap-enabled');
-    wrapBtn.textContent = '自动换行';
-    wrapBtn.title = '自动换行';
-  } else {
-    codeContentWrapper.classList.add('code-wrap-enabled');
-    wrapBtn.classList.add('code-wrap-enabled');
-    wrapBtn.textContent = '取消换行';
-    wrapBtn.title = '取消换行';
-  }
-}
+  const nextWrapped = !codeContentWrapper.classList.contains(
+    "code-wrap-enabled"
+  );
+  codeContentWrapper.classList.toggle("code-wrap-enabled", nextWrapped);
+  setWrapButtonState(wrapBtn, nextWrapped);
+};
 
 // 检查代码是否超过指定行数
-const shouldCollapseCode = (codeElement: Element, maxLines: number = 15): boolean => {
-  const codeText = codeElement.textContent || '';
-  // 移除首尾空白字符，然后按换行符分割
-  const lines = codeText.trim().split('\n');
-  // 过滤掉空行，只计算有内容的行数
-  const nonEmptyLines = lines.filter(line => line.trim().length > 0);
-  // 如果总行数超过设定行数，或者非空行数超过设定行数-3，就需要折叠
-  return lines.length > maxLines || nonEmptyLines.length > Math.max(maxLines - 3, 5);
-}
+const shouldCollapseCode = (
+  codeElement: Element,
+  maxLines: number = 15
+): boolean => {
+  const codeText = codeElement.textContent || "";
+  const lines = codeText.trim().split("\n");
+  const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+  return (
+    lines.length > maxLines ||
+    nonEmptyLines.length > Math.max(maxLines - 3, 5)
+  );
+};
 
 export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
   return {
-    rehype: (processor) =>
-      processor.use(codeBlockPlugin),
+    rehype: (processor) => processor.use(codeBlockPlugin),
     viewerEffect: ({ markdownBody }) => {
       markdownBody.querySelectorAll(".code-block-wrapper").forEach((codeBlock) => {
         const copyBtn = codeBlock.querySelector(".code-copy-btn") as HTMLElement;
         const wrapBtn = codeBlock.querySelector(".code-wrap-btn") as HTMLElement;
-        const toggleBtn = codeBlock.querySelector(".code-toggle-btn") as HTMLElement;
-        const codeContentWrapper = codeBlock.querySelector(".code-content-wrapper") as HTMLElement;
+        const toggleBtn = codeBlock.querySelector(
+          ".code-toggle-btn"
+        ) as HTMLElement;
+        const codeContentWrapper = codeBlock.querySelector(
+          ".code-content-wrapper"
+        ) as HTMLElement;
         const codeElement = codeBlock.querySelector("code");
-        
-        // 移除之前的事件监听器
+
         copyBtn?.removeEventListener("click", onClickCopyCode);
         wrapBtn?.removeEventListener("click", onClickToggleWrap);
         toggleBtn?.removeEventListener("click", onClickToggleCode);
 
-        // 添加复制按钮事件
         copyBtn?.addEventListener("click", onClickCopyCode);
         wrapBtn?.addEventListener("click", onClickToggleWrap);
 
-        if (wrapBtn && !codeContentWrapper?.classList.contains('code-wrap-enabled')) {
-          wrapBtn.textContent = '自动换行';
-          wrapBtn.title = '自动换行';
+        if (wrapBtn) {
+          setWrapButtonState(
+            wrapBtn,
+            codeContentWrapper?.classList.contains("code-wrap-enabled") ?? false
+          );
         }
-        
-        // 检查是否需要折叠，使用传入的maxLines参数
+
         if (codeElement && shouldCollapseCode(codeElement, maxLines)) {
-          // 默认折叠状态
-          codeContentWrapper?.classList.add('code-collapsed');
-          toggleBtn?.classList.add('code-collapsed');
+          codeContentWrapper?.classList.add("code-collapsed");
           if (toggleBtn) {
-            toggleBtn.textContent = '展开代码';
-            toggleBtn.title = '展开代码';
-          }
-          // 显示切换按钮
-          if (toggleBtn) {
-            toggleBtn.style.display = 'block';
+            setToggleButtonState(toggleBtn, true);
+            toggleBtn.style.display = "inline-flex";
             toggleBtn.addEventListener("click", onClickToggleCode);
           }
-          
-          // 动态设置折叠高度
+
           if (codeContentWrapper) {
-            // 计算高度：每行约1.4em，加上一些padding
             const lineHeight = 1.4;
-            const padding = 1; // 额外的padding
-            const maxHeight = (maxLines * lineHeight + padding) + 'em';
-            codeContentWrapper.style.setProperty('--code-max-height', maxHeight);
-            // 不设置内联 max-height，避免展开时被内联样式覆盖
+            const padding = 1;
+            const maxHeight = maxLines * lineHeight + padding + "em";
+            codeContentWrapper.style.setProperty("--code-max-height", maxHeight);
           }
-        } else {
-          // 代码行数不多，隐藏切换按钮
-          if (toggleBtn) {
-            toggleBtn.style.display = 'none';
-          }
+        } else if (toggleBtn) {
+          codeContentWrapper?.classList.remove("code-collapsed");
+          setToggleButtonState(toggleBtn, false);
+          toggleBtn.style.display = "none";
         }
       });
     },

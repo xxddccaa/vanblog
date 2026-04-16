@@ -36,12 +36,24 @@
     min-width: 300px;
     max-width: 340px;
     padding: 16px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    transition: transform 0.25s ease, opacity 0.25s ease;
 
     &.minimized {
       min-width: 56px;
       max-width: 56px;
       padding: 10px;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
     }
+  }
+
+  @media (pointer: coarse), (hover: none) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    transition: transform 0.25s ease, opacity 0.25s ease;
   }
 
   // 暗色主题支持

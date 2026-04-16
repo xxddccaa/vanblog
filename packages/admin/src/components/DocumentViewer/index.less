@@ -1,5 +1,6 @@
 .document-viewer {
   --vb-doc-surface: #f8fafc;
+  --vb-doc-surface-soft: #eef6ff;
   --vb-doc-scroll-track: #f1f1f1;
   --vb-doc-scroll-thumb: #c1c1c1;
   --vb-doc-code-btn-border: #d0d7de;
@@ -10,16 +11,19 @@
   height: 100%;
   width: 100%;
   overflow: auto;
+  background:
+    linear-gradient(180deg, var(--vb-doc-surface-soft), var(--vb-doc-surface)) !important;
 
   &.dark {
-    --vb-doc-surface: #111827;
-    --vb-doc-scroll-track: #2d2d2d;
-    --vb-doc-scroll-thumb: #555;
-    --vb-doc-code-btn-border: #3e4145;
-    --vb-doc-code-btn-text: #8b949e;
-    --vb-doc-code-btn-bg: #1f2226;
-    --vb-doc-code-btn-hover: rgb(55 65 81);
-    --vb-doc-code-fade: #1f2226;
+    --vb-doc-surface: #102033;
+    --vb-doc-surface-soft: #132235;
+    --vb-doc-scroll-track: #132235;
+    --vb-doc-scroll-thumb: #3f678e;
+    --vb-doc-code-btn-border: rgba(111, 186, 255, 0.2);
+    --vb-doc-code-btn-text: #c5d8ed;
+    --vb-doc-code-btn-bg: rgba(19, 34, 53, 0.92);
+    --vb-doc-code-btn-hover: rgba(28, 48, 73, 0.96);
+    --vb-doc-code-fade: #102033;
   }
 
   &::-webkit-scrollbar {
@@ -62,18 +66,29 @@
         position: relative !important;
       }
 
+      .markdown-body .code-copy-btn,
+      .code-copy-btn,
       .markdown-body .code-toggle-btn,
-      .code-toggle-btn {
+      .code-toggle-btn,
+      .markdown-body .code-wrap-btn,
+      .code-wrap-btn {
         cursor: pointer !important;
-        transition: background-color 0.2s ease-in-out !important;
-        border-radius: 4px !important;
-        padding: 4px 8px !important;
-        font-size: 12px !important;
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        min-width: 28px;
+        height: 28px;
+        padding: 0 !important;
+        transition:
+          background-color 0.2s ease-in-out,
+          border-color 0.2s ease-in-out,
+          color 0.2s ease-in-out !important;
+        border-radius: 999px !important;
         color: var(--vb-doc-code-btn-text) !important;
         border: 1px solid var(--vb-doc-code-btn-border) !important;
         background-color: var(--vb-doc-code-btn-bg) !important;
         user-select: none !important;
-        display: inline-block !important;
 
         &:hover {
           background-color: var(--vb-doc-code-btn-hover) !important;
@@ -83,27 +98,33 @@
 
       .markdown-body .code-wrap-btn,
       .code-wrap-btn {
-        cursor: pointer !important;
-        transition: background-color 0.2s ease-in-out !important;
-        border-radius: 4px !important;
-        padding: 4px 8px !important;
-        font-size: 12px !important;
-        color: var(--vb-doc-code-btn-text) !important;
-        border: 1px solid var(--vb-doc-code-btn-border) !important;
-        background-color: var(--vb-doc-code-btn-bg) !important;
-        user-select: none !important;
-        display: inline-block !important;
-
-        &:hover {
-          background-color: var(--vb-doc-code-btn-hover) !important;
-          border-color: var(--vb-doc-code-btn-border) !important;
-        }
-
         &.code-wrap-enabled {
           color: #fff !important;
           background-color: #1772b4 !important;
           border-color: #1772b4 !important;
         }
+      }
+
+      .markdown-body .code-copy-btn svg,
+      .code-copy-btn svg,
+      .markdown-body .code-toggle-btn svg,
+      .code-toggle-btn svg,
+      .markdown-body .code-wrap-btn svg,
+      .code-wrap-btn svg {
+        width: 14px;
+        height: 14px;
+        display: block;
+        pointer-events: none;
+      }
+
+      .markdown-body .code-toggle-btn svg,
+      .code-toggle-btn svg {
+        transition: transform 0.2s ease-in-out;
+      }
+
+      .markdown-body .code-toggle-btn.code-collapsed svg,
+      .code-toggle-btn.code-collapsed svg {
+        transform: rotate(180deg);
       }
 
       .markdown-body .code-content-wrapper,
@@ -158,5 +179,37 @@
         gap: 4px !important;
       }
     }
+  }
+
+  > .markdown-body,
+  .bytemd-viewer > .markdown-body {
+    padding: 16px;
+    max-width: none;
+    min-height: calc(100% - 32px);
+    background-color: transparent !important;
+    overflow: visible;
+    word-wrap: break-word;
+    line-height: 1.6;
+  }
+
+  &.dark,
+  &.dark .bytemd-viewer {
+    background:
+      linear-gradient(180deg, rgba(19, 34, 53, 0.96), rgba(16, 32, 51, 0.98)) !important;
+    background-color: var(--vb-doc-surface) !important;
+  }
+
+  &.dark > .markdown-body,
+  &.dark .bytemd-viewer .markdown-body {
+    color: #e9f3ff !important;
+    background-color: transparent !important;
+    --color-fg-default: #e9f3ff !important;
+    --color-fg-muted: #cbdcf0 !important;
+    --color-fg-subtle: #94a8c2 !important;
+    --color-canvas-default: transparent !important;
+    --color-canvas-subtle: rgba(19, 34, 53, 0.4) !important;
+    --color-border-default: rgba(111, 186, 255, 0.24) !important;
+    --color-border-muted: rgba(111, 186, 255, 0.18) !important;
+    --color-neutral-muted: rgba(111, 186, 255, 0.14) !important;
   }
 }

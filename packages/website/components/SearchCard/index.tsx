@@ -121,7 +121,7 @@ export default function (props: {
     >
       <div
         ref={innerRef}
-        className="bg-white w-full max-w-3xl xl:max-w-4xl p-4 rounded-xl card-shadow dark:card-shadow-dark transition-all dark:bg-dark"
+        className="vb-surface-card w-full max-w-3xl xl:max-w-4xl p-4 rounded-xl card-shadow dark:card-shadow-dark transition-all"
         style={{
           minHeight: "280px",
           minWidth: 360,

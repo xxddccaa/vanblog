@@ -30,7 +30,7 @@ export default function (props: {
     <div className="sticky" id="toc-card">
       <div
         id="toc-container"
-        className="bg-white w-60 card-shadow dark:card-shadow-dark ml-2 dark:bg-dark overflow-y-auto pb-2"
+        className="vb-surface-card w-60 card-shadow dark:card-shadow-dark ml-2 overflow-y-auto pb-2"
         style={{ maxHeight: 'calc(100vh - 200px)' }}
       >
         <MarkdownTocBar content={props.content} headingOffset={56} />

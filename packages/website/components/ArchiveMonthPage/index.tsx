@@ -9,7 +9,7 @@ export default function ArchiveMonthPage(props: {
   openArticleLinksInNewWindow: boolean;
 }) {
   return (
-    <div className="bg-white card-shadow dark:bg-dark dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
+    <div className="vb-surface-card card-shadow dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
       <div className="text-center mb-6">
         <h1 className="text-2xl md:text-3xl text-gray-700 dark:text-dark font-bold mb-2">
           {props.title}

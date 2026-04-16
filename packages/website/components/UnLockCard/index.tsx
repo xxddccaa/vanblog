@@ -93,7 +93,7 @@ export default function (props: {
             文章已加密，请输入密码后查看：
           </p>
           <div className="flex items-center">
-            <div className=" bg-gray-100 rounded-md dark:bg-dark-2 overflow-hidden flex-grow">
+            <div className="vb-surface-card-subtle rounded-md overflow-hidden flex-grow">
               <input
                 type="password"
                 value={value}
@@ -113,7 +113,7 @@ export default function (props: {
             </div>
             <button
               onClick={handleClick}
-              className="flex-grow-0 text-gray-500 dark:text-dark ml-2 rounded-md dark:bg-dark-2 bg-gray-200 transition-all hover:text-lg  w-20 h-8"
+              className="flex-grow-0 ml-2 h-8 w-20 rounded-md vb-surface-card-subtle text-gray-600 dark:text-dark transition-all hover:text-lg"
             >
               确认
             </button>

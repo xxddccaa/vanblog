@@ -13,7 +13,7 @@ import '../../style/github-markdown.css';
 import '../../style/code-light.css';
 import '../../style/code-dark.css';
 import '../../style/custom-container.css';
-import { useAdminMarkdownTheme } from '@/utils/markdownTheme';
+import { getMarkdownThemeId, useAdminMarkdownTheme } from '@/utils/markdownTheme';
 import type { MarkdownThemeConfig } from '@/utils/markdownTheme';
 import { emoji } from './emoji';
 import { imgUploadPlugin, uploadImg } from './imgUpload';
@@ -57,7 +57,9 @@ export default function EditorComponent(props: {
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
-  useAdminMarkdownTheme(props.themeConfig);
+  const resolvedThemeConfig = useAdminMarkdownTheme(props.themeConfig);
+  const lightThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownLightThemeUrl);
+  const darkThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownDarkThemeUrl);
 
   // 编辑器预览跟随站点代码折叠设置，保持与前台和文档预览一致
   const editorCodeMaxLines = Math.max(props.codeMaxLines || 15, 5);
@@ -79,18 +81,18 @@ export default function EditorComponent(props: {
       else root.classList.remove('dark');
     };
   }, [navTheme]);
-  
+
   const plugins = useMemo(() => {
     return [
       customContainer(),
       gfm({ locale: cn }),
       highlight(),
-      math({ 
+      math({
         locale: cn,
         katexOptions: {
           strict: false,
           throwOnError: false,
-        }
+        },
       }),
       customMermaidPlugin(),
       imgUploadPlugin(setLoading),
@@ -107,7 +109,11 @@ export default function EditorComponent(props: {
 
   return (
     <div style={{ height: '100%' }} className={themeClass}>
-      <div className="editor-wrapper">
+      <div
+        className="editor-wrapper"
+        data-vb-markdown-light-theme-id={lightThemeId || undefined}
+        data-vb-markdown-dark-theme-id={darkThemeId || undefined}
+      >
         <Spin spinning={loading}>
           <Editor
             value={props.value}

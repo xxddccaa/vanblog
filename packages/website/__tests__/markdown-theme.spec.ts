@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { getLayoutProps } from '../utils/getLayoutProps';
 import {
+  getMarkdownThemeId,
   MARKDOWN_THEME_DEFAULTS,
+  MARKDOWN_THEME_HOTFIX_URL,
   MARKDOWN_THEME_PLAIN_PRESET,
   resolveMarkdownThemeConfig,
 } from '../utils/markdownTheme';
@@ -119,5 +121,12 @@ describe('markdown theme resolution', () => {
 
     expect(layoutProps.markdownLightThemeUrl).toBe('/markdown-themes/custom-light.css');
     expect(layoutProps.markdownDarkThemeUrl).toBe('/markdown-themes/custom-dark.css');
+  });
+
+  it('extracts theme ids from css urls for hotfix targeting', () => {
+    expect(getMarkdownThemeId(MARKDOWN_THEME_DEFAULTS.light)).toBe('phycat-sky-light-only');
+    expect(getMarkdownThemeId('/markdown-themes/custom-dark.css?v=2#hash')).toBe('custom-dark');
+    expect(getMarkdownThemeId('')).toBe('');
+    expect(MARKDOWN_THEME_HOTFIX_URL).toBe('/markdown-themes/vanblog-theme-hotfix.css');
   });
 });

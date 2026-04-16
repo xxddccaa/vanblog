@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import throttle from "lodash/throttle";
 import { getEl, NavItem } from "./tools";
 import { scrollTo } from "../../utils/scroll";
@@ -9,43 +9,54 @@ export default function (props: {
 }) {
   const { items } = props;
   const [currIndex, setCurrIndex] = useState(-1);
+  const currIndexRef = useRef(-1);
 
   const updateHash = (hash: string) => {
     if (hash) {
       window.history.replaceState(null, "", `#${hash}`);
     }
-  }
-  const handleScroll = throttle((ev: Event) => {
-    ev.stopPropagation();
-    ev.preventDefault();
+  };
 
-    let top: any = null;
-    let topEl: any = null;
-    let lastMin = 9999999999;
-    for (const each of items) {
-      const el: any = getEl(each, items);
+  const handleScroll = useMemo(
+    () =>
+      throttle(() => {
+        if (!items.length) {
+          return;
+        }
 
-      if (!topEl) {
-        top = each;
-        topEl = el;
-      }
-      if (el) {
         const scrollTop =
           window.pageYOffset ||
           document.documentElement.scrollTop ||
           document.body.scrollTop ||
           0;
-        const v = Math.abs(scrollTop + props.headingOffset - el.offsetTop);
-        if (v <= lastMin) {
-          lastMin = v;
-          top = each;
-          topEl = el;
+
+        let top = items[0];
+        let lastMin = Number.POSITIVE_INFINITY;
+
+        for (const each of items) {
+          const el: any = getEl(each, items);
+          if (!el) {
+            continue;
+          }
+
+          const distance = Math.abs(scrollTop + props.headingOffset - el.offsetTop);
+          if (distance <= lastMin) {
+            lastMin = distance;
+            top = each;
+          }
         }
-      }
-    }
-    setCurrIndex(top.index);
-    updateHash(top.text);
-  }, 100);
+
+        if (currIndexRef.current !== top.index) {
+          currIndexRef.current = top.index;
+          setCurrIndex(top.index);
+
+          if (!props.mobile) {
+            updateHash(top.text);
+          }
+        }
+      }, props.mobile ? 180 : 120),
+    [items, props.headingOffset, props.mobile]
+  );
 
   
   useEffect(() => {
@@ -75,11 +86,20 @@ export default function (props: {
 
   //TODO 逻辑完善的 hash 更新
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll);
+    const shouldTrackScroll =
+      props.mobile || window.matchMedia("(min-width: 1024px)").matches;
+
+    if (!shouldTrackScroll) {
+      return;
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      handleScroll.cancel();
     };
-  }, []);
+  }, [handleScroll]);
   const res = [];
   for (const each of items) {
     const cls = `title-anchor title-level${each.level} ${

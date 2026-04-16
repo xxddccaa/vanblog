@@ -6,6 +6,18 @@ import { UpdateSiteInfoDto } from 'src/types/site.dto';
 
 const normalizeDefaultTheme = (theme?: string | null) =>
   theme === 'light' ? 'light' : 'dark';
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+const normalizeSiteColor = (value: unknown, fallback: string) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) {
+    return '';
+  }
+  if (!HEX_COLOR_RE.test(raw)) {
+    return fallback;
+  }
+  return raw.toLowerCase();
+};
 import { RewardItem } from 'src/types/reward.dto';
 import { SocialItem, SocialType } from 'src/types/social.dto';
 import { LinkItem } from 'src/types/link.dto';
@@ -370,10 +382,34 @@ export class MetaProvider {
     // @ts-ignore eslint-disable-next-line @typescript-eslint/ban-ts-comment
     const { name, password, ...updateDto } = updateSiteInfoDto;
     const oldSiteInfo = await this.getSiteInfo();
+    const nextLightFrontCardColor = Object.prototype.hasOwnProperty.call(
+      updateDto,
+      'frontCardBackgroundColor',
+    )
+      ? normalizeSiteColor(
+          (updateDto as any)?.frontCardBackgroundColor,
+          oldSiteInfo?.frontCardBackgroundColor || '#ffffff',
+        )
+      : oldSiteInfo?.frontCardBackgroundColor;
+    const nextDarkFrontCardColor = Object.prototype.hasOwnProperty.call(
+      updateDto,
+      'frontCardBackgroundColorDark',
+    )
+      ? normalizeSiteColor(
+          (updateDto as any)?.frontCardBackgroundColorDark,
+          oldSiteInfo?.frontCardBackgroundColorDark || '#102033',
+        )
+      : oldSiteInfo?.frontCardBackgroundColorDark;
     const normalizedUpdateDto = {
       ...updateDto,
       ...(Object.prototype.hasOwnProperty.call(updateDto, 'defaultTheme')
         ? { defaultTheme: normalizeDefaultTheme((updateDto as any)?.defaultTheme) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(updateDto, 'frontCardBackgroundColor')
+        ? { frontCardBackgroundColor: nextLightFrontCardColor }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(updateDto, 'frontCardBackgroundColorDark')
+        ? { frontCardBackgroundColorDark: nextDarkFrontCardColor }
         : {}),
     };
     return await this.syncMetaPatch({

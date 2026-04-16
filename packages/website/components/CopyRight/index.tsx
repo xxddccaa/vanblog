@@ -22,7 +22,7 @@ export default function (props: {
 
   return (
     <div
-      className={`bg-gray-100 px-5 border-l-4 border-red-500  py-2 text-sm space-y-1 dark:text-dark  dark:bg-dark ${
+      className={`vb-surface-card-subtle px-5 border-l-4 border-red-500 py-2 text-sm space-y-1 text-gray-700 dark:text-dark ${
         !props.showDonate ? "mt-8" : ""
       }`}
     >

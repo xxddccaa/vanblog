@@ -59,6 +59,8 @@ export interface LayoutProps {
   showRunningTime?: 'true' | 'false';
   backgroundImage?: string;
   backgroundImageDark?: string;
+  frontCardBackgroundColor?: string;
+  frontCardBackgroundColorDark?: string;
   // Markdown 主题 CSS（亮色 / 暗色）
   markdownLightThemeUrl?: string;
   markdownDarkThemeUrl?: string;
@@ -216,6 +218,8 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     showRunningTime: siteInfo?.showRunningTime || "false",
     backgroundImage: siteInfo?.backgroundImage || "",
     backgroundImageDark: siteInfo?.backgroundImageDark || "",
+    frontCardBackgroundColor: siteInfo?.frontCardBackgroundColor || "#ffffff",
+    frontCardBackgroundColorDark: siteInfo?.frontCardBackgroundColorDark || "#102033",
     markdownLightThemeUrl: markdownThemeConfig.markdownLightThemeUrl,
     markdownDarkThemeUrl: markdownThemeConfig.markdownDarkThemeUrl,
     ...customSetting,

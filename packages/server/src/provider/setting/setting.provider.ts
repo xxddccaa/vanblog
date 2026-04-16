@@ -319,6 +319,21 @@ export class SettingProvider {
 
   private generateSnowflakeJS(config: any): string {
     return `
+const shouldDisableVanblogMotionEffects = () => {
+  try {
+    return Boolean(
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ||
+      window.matchMedia?.('(pointer: coarse)')?.matches ||
+      window.matchMedia?.('(hover: none)')?.matches ||
+      (navigator.maxTouchPoints || 0) > 0 ||
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '')
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
 class SnowflakeSystem {
   constructor() {
     this.snowflakes = [];
@@ -489,7 +504,7 @@ class SnowflakeSystem {
 
 let snowSystem;
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
   window.addEventListener('DOMContentLoaded', () => {
     snowSystem = new SnowflakeSystem();
   });
@@ -570,9 +585,28 @@ if (typeof window !== 'undefined') {
 // Canvas-nest.js 粒子连线动画 - 修复版本
 (function() {
   'use strict';
+
+  const shouldDisableVanblogMotionEffects = () => {
+    try {
+      return Boolean(
+        window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ||
+        window.matchMedia?.('(pointer: coarse)')?.matches ||
+        window.matchMedia?.('(hover: none)')?.matches ||
+        (navigator.maxTouchPoints || 0) > 0 ||
+        window.innerWidth <= 768 ||
+        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '')
+      );
+    } catch (error) {
+      return false;
+    }
+  };
   
   // 全局唯一标识符，避免多次初始化
   if (window.CANVAS_NEST_INITIALIZED) {
+    return;
+  }
+
+  if (shouldDisableVanblogMotionEffects()) {
     return;
   }
   
@@ -1079,6 +1113,25 @@ if (typeof window !== 'undefined') {
 // 心形点击爆炸效果系统 - 增强版粒子爆炸
 (function(window, document, undefined) {
   'use strict';
+
+  const shouldDisableVanblogMotionEffects = () => {
+    try {
+      return Boolean(
+        window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ||
+        window.matchMedia?.('(pointer: coarse)')?.matches ||
+        window.matchMedia?.('(hover: none)')?.matches ||
+        (navigator.maxTouchPoints || 0) > 0 ||
+        window.innerWidth <= 768 ||
+        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '')
+      );
+    } catch (error) {
+      return false;
+    }
+  };
+
+  if (shouldDisableVanblogMotionEffects()) {
+    return;
+  }
   
   var hearts = [];
   var particles = [];
@@ -1328,6 +1381,21 @@ if (typeof window !== 'undefined') {
 
   private generateMouseDragJS(config: any): string {
     return `
+const shouldDisableVanblogMotionEffects = () => {
+  try {
+    return Boolean(
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ||
+      window.matchMedia?.('(pointer: coarse)')?.matches ||
+      window.matchMedia?.('(hover: none)')?.matches ||
+      (navigator.maxTouchPoints || 0) > 0 ||
+      window.innerWidth <= 768 ||
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '')
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
 class MouseDragSystem {
   constructor() {
     this.canvas = null;
@@ -1512,7 +1580,7 @@ class MouseDragSystem {
 }
 
 // 初始化鼠标拖动系统
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
   document.addEventListener('DOMContentLoaded', function() {
     if (window.mouseDragSystem) {
       window.mouseDragSystem.destroy();

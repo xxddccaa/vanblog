@@ -155,7 +155,7 @@ export default function MomentPage({ initialMoments, initialTotal, authorCardPro
         </div>
 
         {isAdmin && (
-          <div className="bg-white dark:bg-dark-1 rounded-lg shadow-md p-6 mb-8">
+          <div className="vb-surface-card-subtle rounded-lg shadow-md p-6 mb-8">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-dark mb-4">发布动态</h2>
             <textarea
               value={newMoment}
@@ -181,7 +181,7 @@ export default function MomentPage({ initialMoments, initialTotal, authorCardPro
 
         <div className="space-y-6">
           {moments.map((moment, index) => (
-            <div key={moment.id} className="bg-white dark:bg-dark rounded-lg shadow-md p-6">
+            <div key={moment.id} className="vb-surface-card rounded-lg shadow-md p-6">
               <div className="prose dark:prose-invert max-w-none">
                 <Markdown content={moment.content} />
               </div>

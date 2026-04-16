@@ -30,14 +30,22 @@
   --color-prettylights-syntax-brackethighlighter-angle: #8b949e;
   --color-prettylights-syntax-sublimelinter-gutter-mark: #484f58;
   --color-prettylights-syntax-constant-other-reference-link: #a5d6ff;
-  --color-fg-default: rgb(158, 158, 158);
-  --color-fg-muted: rgb(120, 120, 120);
-  --color-fg-subtle: rgb(80, 80, 80);
-  --color-canvas-default: #1f2226;
-  --color-canvas-subtle: rgb(30, 30, 30);
-  --color-border-default: #30363d;
-  --color-border-muted: #3e4145;
-  --color-neutral-muted: rgba(110, 118, 129, 0.4);
+  --color-fg-default: var(--vb-front-dark-text, #c2ced6);
+  --color-fg-muted: var(--vb-front-dark-text-muted, #889bad);
+  --color-fg-subtle: var(--vb-front-dark-text-soft, #62798c);
+  --color-canvas-default: var(--vb-front-card-bg-dark, #102033);
+  --color-canvas-subtle: var(--vb-front-card-bg-dark-soft, #11253a);
+  --color-border-default: var(--vb-front-dark-border, #364d63);
+  --color-border-muted: color-mix(
+    in srgb,
+    var(--vb-front-dark-border-strong, #6f8295) 62%,
+    transparent
+  );
+  --color-neutral-muted: color-mix(
+    in srgb,
+    var(--vb-front-dark-border, #364d63) 58%,
+    transparent
+  );
   --color-accent-fg: #58a6ff;
   --color-accent-emphasis: #1f6feb;
   --color-attention-subtle: rgba(187, 128, 9, 0.15);
@@ -1078,8 +1086,19 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
 
 .markdown-body .code-copy-btn {
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+  border-radius: 999px;
+  color: #6f7177;
 }
 
 .markdown-body .code-copy-btn:hover {
@@ -1091,18 +1110,24 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
 }
 
 .markdown-body .code-copy-btn::before {
-  content: url("data:image/svg+xml,%3Csvg%0Awidth%3D%2214%22%0Aheight%3D%2214%22%0AviewBox%3D%220%200%2015%2019%22%0Afill%3D%22currentColor%22%0Axmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%0A%3E%0A%3Cpath%0A%20%20d%3D%22M11.0475%200.905273H1.67197C0.812542%200.905273%200.109375%201.60844%200.109375%202.46787V13.406H1.67197V2.46787H11.0475V0.905273ZM13.3914%204.03046H4.79716C3.93773%204.03046%203.23456%204.73363%203.23456%205.59306V16.5312C3.23456%2017.3906%203.93773%2018.0938%204.79716%2018.0938H13.3914C14.2509%2018.0938%2014.954%2017.3906%2014.954%2016.5312V5.59306C14.954%204.73363%2014.2509%204.03046%2013.3914%204.03046ZM13.3914%2016.5312H4.79716V5.59306H13.3914V16.5312Z%22%0A%20%20fill%3D%22%236f7177%22%0A%3E%3C%2Fpath%3E%0A%3C%2Fsvg%3E");
-  display: inline-block;
-  padding: 4px 8px;
+  content: none;
 }
 
 /* 代码展开/收起按钮样式 */
 .markdown-body .code-toggle-btn {
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+  border-radius: 999px;
   color: #6f7177;
   border: 1px solid #d0d7de;
   background-color: var(--color-canvas-default);
@@ -1126,16 +1151,22 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
 
 .markdown-body .code-wrap-btn {
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+  border-radius: 999px;
   color: #6f7177;
   border: 1px solid #d0d7de;
   background-color: var(--color-canvas-default);
   user-select: none;
-  display: inline-block;
-  white-space: nowrap;
 }
 
 .markdown-body .code-wrap-btn:hover {
@@ -1163,6 +1194,23 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   color: #f8fafc;
   background-color: #1772b4;
   border-color: #1772b4;
+}
+
+.markdown-body .code-copy-btn svg,
+.markdown-body .code-toggle-btn svg,
+.markdown-body .code-wrap-btn svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+  pointer-events: none;
+}
+
+.markdown-body .code-toggle-btn svg {
+  transition: transform 0.2s ease-in-out;
+}
+
+.markdown-body .code-toggle-btn.code-collapsed svg {
+  transform: rotate(180deg);
 }
 
 /* 展开状态的图标 */
