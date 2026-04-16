@@ -1,29 +1,29 @@
 .document-viewer {
-  --vb-doc-surface: #f8fafc;
-  --vb-doc-surface-soft: #eef6ff;
-  --vb-doc-scroll-track: #f1f1f1;
-  --vb-doc-scroll-thumb: #c1c1c1;
-  --vb-doc-code-btn-border: #d0d7de;
-  --vb-doc-code-btn-text: #6f7177;
-  --vb-doc-code-btn-bg: #fff;
-  --vb-doc-code-btn-hover: rgb(229 231 235);
-  --vb-doc-code-fade: #f6f8fa;
+  --vb-doc-surface: var(--admin-document-preview-bg, #f8fafc);
+  --vb-doc-surface-soft: var(--admin-document-preview-bg-soft, #eef6ff);
+  --vb-doc-scroll-track: var(--admin-document-scroll-track, #f1f5f9);
+  --vb-doc-scroll-thumb: var(--admin-document-scroll-thumb, #c1c9d4);
+  --vb-doc-code-btn-border: var(--admin-surface-border, #d0d7de);
+  --vb-doc-code-btn-text: var(--admin-document-code-btn-text, #6f7177);
+  --vb-doc-code-btn-bg: var(--admin-surface-bg-elevated, #fff);
+  --vb-doc-code-btn-hover: var(--admin-document-code-btn-hover, rgb(229 231 235));
+  --vb-doc-code-fade: var(--admin-document-code-fade, #f6f8fa);
   height: 100%;
   width: 100%;
   overflow: auto;
-  background:
-    linear-gradient(180deg, var(--vb-doc-surface-soft), var(--vb-doc-surface)) !important;
+  background: linear-gradient(180deg, var(--vb-doc-surface-soft), var(--vb-doc-surface)) !important;
+  color: var(--admin-editor-text, inherit);
 
   &.dark {
-    --vb-doc-surface: #102033;
-    --vb-doc-surface-soft: #132235;
-    --vb-doc-scroll-track: #132235;
-    --vb-doc-scroll-thumb: #3f678e;
-    --vb-doc-code-btn-border: rgba(111, 186, 255, 0.2);
-    --vb-doc-code-btn-text: #c5d8ed;
-    --vb-doc-code-btn-bg: rgba(19, 34, 53, 0.92);
-    --vb-doc-code-btn-hover: rgba(28, 48, 73, 0.96);
-    --vb-doc-code-fade: #102033;
+    --vb-doc-surface: var(--admin-document-preview-bg, #102033);
+    --vb-doc-surface-soft: var(--admin-document-preview-bg-soft, #132235);
+    --vb-doc-scroll-track: var(--admin-document-scroll-track, #132235);
+    --vb-doc-scroll-thumb: var(--admin-document-scroll-thumb, #3f678e);
+    --vb-doc-code-btn-border: var(--admin-editor-border, rgba(111, 186, 255, 0.2));
+    --vb-doc-code-btn-text: var(--admin-document-code-btn-text, #c5d8ed);
+    --vb-doc-code-btn-bg: var(--admin-document-toolbar-bg, rgba(19, 34, 53, 0.92));
+    --vb-doc-code-btn-hover: var(--admin-document-code-btn-hover, rgba(28, 48, 73, 0.96));
+    --vb-doc-code-fade: var(--admin-document-code-fade, #102033);
   }
 
   &::-webkit-scrollbar {
@@ -98,9 +98,9 @@
       .markdown-body .code-wrap-btn,
       .code-wrap-btn {
         &.code-wrap-enabled {
-          color: #fff !important;
-          background-color: rgb(23 114 180 / 0.18) !important;
-          box-shadow: inset 0 0 0 1px rgb(23 114 180 / 0.32) !important;
+          color: var(--admin-editor-text, #fff) !important;
+          background-color: var(--admin-primary-soft-bg, rgb(23 114 180 / 0.18)) !important;
+          box-shadow: inset 0 0 0 1px var(--admin-primary-soft-border, rgb(23 114 180 / 0.32)) !important;
         }
       }
 
@@ -128,7 +128,9 @@
 
       .markdown-body .code-content-wrapper,
       .code-content-wrapper {
-        transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out !important;
+        transition:
+          max-height 0.3s ease-in-out,
+          opacity 0.3s ease-in-out !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
         position: relative !important;
@@ -197,22 +199,25 @@
 
   &.dark,
   &.dark .bytemd-viewer {
-    background:
-      linear-gradient(180deg, rgba(19, 34, 53, 0.96), rgba(16, 32, 51, 0.98)) !important;
+    background: linear-gradient(
+      180deg,
+      var(--vb-doc-surface-soft),
+      var(--vb-doc-surface)
+    ) !important;
     background-color: var(--vb-doc-surface) !important;
   }
 
   &.dark > .markdown-body,
   &.dark .bytemd-viewer .markdown-body {
-    color: #e9f3ff !important;
+    color: var(--admin-editor-text, #e9f3ff) !important;
     background-color: transparent !important;
-    --color-fg-default: #e9f3ff !important;
-    --color-fg-muted: #cbdcf0 !important;
-    --color-fg-subtle: #94a8c2 !important;
+    --color-fg-default: var(--admin-editor-text, #e9f3ff) !important;
+    --color-fg-muted: var(--admin-editor-muted, #cbdcf0) !important;
+    --color-fg-subtle: var(--admin-editor-subtle, #94a8c2) !important;
     --color-canvas-default: transparent !important;
-    --color-canvas-subtle: rgba(19, 34, 53, 0.4) !important;
-    --color-border-default: rgba(111, 186, 255, 0.24) !important;
-    --color-border-muted: rgba(111, 186, 255, 0.18) !important;
-    --color-neutral-muted: rgba(111, 186, 255, 0.14) !important;
+    --color-canvas-subtle: var(--admin-editor-panel-bg-alt, rgba(19, 34, 53, 0.4)) !important;
+    --color-border-default: var(--admin-editor-border-strong, rgba(111, 186, 255, 0.24)) !important;
+    --color-border-muted: var(--admin-editor-border, rgba(111, 186, 255, 0.18)) !important;
+    --color-neutral-muted: var(--admin-editor-hover, rgba(111, 186, 255, 0.14)) !important;
   }
 }

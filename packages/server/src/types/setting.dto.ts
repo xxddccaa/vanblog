@@ -19,6 +19,7 @@ export type SettingType =
   | 'version'
   | 'isr'
   | 'adminLayout'
+  | 'adminTheme'
   | 'autoBackup'
   | 'music';
 
@@ -30,6 +31,7 @@ export type SettingValue =
   | VersionSetting
   | ISRSetting
   | AdminLayoutSetting
+  | AdminThemeSetting
   | AutoBackupSetting
   | MusicSetting;
 
@@ -155,6 +157,13 @@ export interface AdminLayoutSetting {
   menuItems: AdminMenuItem[];
 }
 
+export interface AdminThemeSetting {
+  lightPrimaryColor: string;
+  darkPrimaryColor: string;
+  lightBackgroundColor: string;
+  darkBackgroundColor: string;
+}
+
 export interface AdminMenuItem {
   key: string;
   name: string;
@@ -249,6 +258,13 @@ export const defaultAdminLayoutSetting: AdminLayoutSetting = {
       visible: true,
     },
   ],
+};
+
+export const defaultAdminThemeSetting: AdminThemeSetting = {
+  lightPrimaryColor: '#1772b4',
+  darkPrimaryColor: '#60a5fa',
+  lightBackgroundColor: '#f4f8fb',
+  darkBackgroundColor: '#111827',
 };
 
 export interface AutoBackupSetting {

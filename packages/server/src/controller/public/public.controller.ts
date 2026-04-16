@@ -172,8 +172,7 @@ export class PublicController {
     const data = await this.getCachedPublicPayload(
       `public:customPage:${normalizedPath}`,
       300,
-      async () =>
-      this.customPageProvider.getCustomPageByPath(path),
+      async () => this.customPageProvider.getCustomPageByPath(path),
     );
     this.setLastModified(res, data?.updatedAt, data?.createdAt);
 
@@ -1027,7 +1026,10 @@ export class PublicController {
   @Get('/site-info')
   async getBasicSiteInfo(@Res({ passthrough: true }) res?: Response) {
     const payload = await this.getCachedPublicPayload('public:site-info', 300, async () => {
-      const meta = await this.metaProvider.getAll();
+      const [meta, adminTheme] = await Promise.all([
+        this.metaProvider.getAll(),
+        this.settingProvider.getAdminThemeSetting(),
+      ]);
       const siteInfo = (meta as any)?.siteInfo || {};
       return {
         __lastModified: (meta as any)?.updatedAt || siteInfo.updatedAt,
@@ -1038,6 +1040,7 @@ export class PublicController {
           favicon: siteInfo.favicon,
           adminLogo: siteInfo.adminLogo || '',
           adminFavicon: siteInfo.adminFavicon || '',
+          adminTheme,
           beianNumber: siteInfo.beianNumber,
           beianUrl: siteInfo.beianUrl,
           gaBeianNumber: siteInfo.gaBeianNumber,

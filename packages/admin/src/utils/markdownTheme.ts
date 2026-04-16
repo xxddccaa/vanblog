@@ -2,6 +2,9 @@ import { useEffect, useMemo } from 'react';
 
 export const MARKDOWN_THEME_PLAIN_PRESET = '__vanblog_plain__';
 export const MARKDOWN_THEME_HOTFIX_URL = '/markdown-themes/vanblog-theme-hotfix.css';
+export const MARKDOWN_THEME_CACHE_BUST_PARAM = 'vbv';
+export const MARKDOWN_THEME_ASSET_VERSION =
+  process.env.NEXT_PUBLIC_MARKDOWN_THEME_ASSET_VERSION || 'dev';
 
 export const MARKDOWN_THEME_DEFAULTS = {
   light: '/markdown-themes/phycat-sky-light-only.css',
@@ -15,6 +18,31 @@ type MarkdownThemeConfig = {
   markdownDarkThemeUrl?: string;
   markdownLightThemePreset?: string;
   markdownDarkThemePreset?: string;
+};
+
+const isManagedMarkdownThemeAsset = (href: string) => {
+  try {
+    const pathname = new URL(href, 'https://vanblog.local').pathname;
+    return pathname.startsWith('/markdown-themes/');
+  } catch (error) {
+    return href.startsWith('/markdown-themes/');
+  }
+};
+
+export const withMarkdownThemeAssetVersion = (href?: string) => {
+  if (!href || !isManagedMarkdownThemeAsset(href)) {
+    return href || '';
+  }
+
+  try {
+    const url = new URL(href, 'https://vanblog.local');
+    url.searchParams.set(MARKDOWN_THEME_CACHE_BUST_PARAM, MARKDOWN_THEME_ASSET_VERSION);
+    return href.startsWith('http://') || href.startsWith('https://')
+      ? url.toString()
+      : `${url.pathname}${url.search}${url.hash}`;
+  } catch (error) {
+    return href;
+  }
 };
 
 const MANAGED_THEME_LINK_SELECTOR = 'link[data-vanblog-admin-markdown-theme-link]';
@@ -74,14 +102,16 @@ const syncThemeStylesheet = (theme: MarkdownThemeMode, href: string) => {
     return;
   }
 
+  const versionedHref = withMarkdownThemeAssetVersion(href);
+
   if (existing) {
-    existing.setAttribute('href', href);
+    existing.setAttribute('href', versionedHref);
     return;
   }
 
   const link = document.createElement('link');
   link.setAttribute('rel', 'stylesheet');
-  link.setAttribute('href', href);
+  link.setAttribute('href', versionedHref);
   link.setAttribute('data-theme-for', theme);
   link.setAttribute('data-vanblog-admin-markdown-theme-link', 'true');
   document.head.appendChild(link);
@@ -97,13 +127,13 @@ const syncThemeHotfixStylesheet = () => {
   ) as HTMLLinkElement | null;
 
   if (existing) {
-    existing.setAttribute('href', MARKDOWN_THEME_HOTFIX_URL);
+    existing.setAttribute('href', withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
     return;
   }
 
   const link = document.createElement('link');
   link.setAttribute('rel', 'stylesheet');
-  link.setAttribute('href', MARKDOWN_THEME_HOTFIX_URL);
+  link.setAttribute('href', withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
   link.setAttribute('data-vanblog-admin-markdown-theme-hotfix', 'true');
   document.head.appendChild(link);
 };

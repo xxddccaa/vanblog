@@ -13,13 +13,21 @@ import { ProFormText, StepsForm } from '@ant-design/pro-components';
 import SiteInfoForm from '@/components/SiteInfoForm';
 import { encryptPwd } from '@/services/van-blog/encryptPwd';
 import { useRef } from 'react';
+import { getAdminAssetPath } from '@/utils/getAssetPath';
 
 const InitPage = () => {
   const formMapRef = useRef<React.MutableRefObject<ProFormInstance<any> | undefined>[]>([]);
   const formRef1 = useRef<ProFormInstance>();
   const formRef2 = useRef<ProFormInstance>();
   return (
-    <div className={styles.container}>
+    <div
+      className={styles.container}
+      style={
+        {
+          '--init-background-image': `url(${getAdminAssetPath('background.svg')})`,
+        } as any
+      }
+    >
       <AuthThemeSync />
       <div className={styles.content}>
         <ProCard

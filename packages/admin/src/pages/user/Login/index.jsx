@@ -96,7 +96,7 @@ const Login = () => {
     const { beianNumber, beianUrl, gaBeianNumber, gaBeianUrl, gaBeianLogoUrl, since } = siteInfo;
     const currentYear = new Date().getFullYear();
     const sinceYear = since ? new Date(since).getFullYear() : currentYear;
-    
+
     const footerStyle = {
       textAlign: 'center',
       fontSize: '12px',
@@ -113,48 +113,50 @@ const Login = () => {
     const linkHoverStyle = {
       textDecoration: 'underline',
     };
-    
+
     return (
       <footer style={footerStyle}>
         {beianNumber && (
           <p style={{ marginBottom: '4px' }}>
             ICP 编号:&nbsp;
-            <a 
-              href={beianUrl || "https://beian.miit.gov.cn"} 
-              target="_blank" 
+            <a
+              href={beianUrl || 'https://beian.miit.gov.cn'}
+              target="_blank"
               rel="noopener noreferrer"
               style={linkStyle}
-              onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
-              onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+              onMouseOver={(e) => (e.target.style.textDecoration = 'underline')}
+              onMouseOut={(e) => (e.target.style.textDecoration = 'none')}
             >
               {beianNumber}
             </a>
           </p>
         )}
         {gaBeianNumber && (
-          <p style={{ 
-            marginBottom: '4px',
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            flexWrap: 'wrap'
-          }}>
+          <p
+            style={{
+              marginBottom: '4px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
+          >
             <span>公安备案:&nbsp;</span>
             {gaBeianLogoUrl && (
-              <img 
-                src={gaBeianLogoUrl} 
-                alt="公安备案 logo" 
-                width="20" 
+              <img
+                src={gaBeianLogoUrl}
+                alt="公安备案 logo"
+                width="20"
                 style={{ marginRight: '4px', verticalAlign: 'middle' }}
               />
             )}
-            <a 
-              href={gaBeianUrl || "https://beian.mps.gov.cn/#/query/webSearch"} 
-              target="_blank" 
+            <a
+              href={gaBeianUrl || 'https://beian.mps.gov.cn/#/query/webSearch'}
+              target="_blank"
               rel="noopener noreferrer"
               style={linkStyle}
-              onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
-              onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+              onMouseOver={(e) => (e.target.style.textDecoration = 'underline')}
+              onMouseOut={(e) => (e.target.style.textDecoration = 'none')}
             >
               {gaBeianNumber}
             </a>
@@ -176,7 +178,7 @@ const Login = () => {
         '--login-background-image': `url(${getAdminAssetPath('background.svg')})`,
       }}
     >
-      <AuthThemeSync />
+      <AuthThemeSync siteInfo={siteInfo} />
       <div className={styles.content}>
         <LoginForm
           className={styles.loginForm}
@@ -247,7 +249,7 @@ const Login = () => {
             </a>
           </div>
         </LoginForm>
-        
+
         {renderBeianFooter()}
       </div>
       <Footer />

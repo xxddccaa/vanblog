@@ -1,22 +1,23 @@
 "use client";
 
-import React from "react";
-import { Viewer } from "@bytemd/react"
+import React, { useContext, useMemo } from "react";
+import { Viewer } from "@bytemd/react";
 import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
-import { customMermaidPlugin } from './mermaidTheme';
-import { customContainer } from './customContainer';;
+import { customMermaidPlugin, normalizeMermaidThemeMode } from './mermaidTheme';
+import { customContainer } from './customContainer';
 import "katex/dist/katex.min.css";
 import rawHTML from "./rawHTML";
 import { customCodeBlock } from "./codeBlock";
 import { LinkTarget } from "./linkTarget";
 import { Heading } from "./heading";
 import { Img } from "./img";
+import { ThemeContext } from "../../utils/themeContext";
 
 const sanitize = (schema) => {
-  schema.protocols.src.push('data')
-  schema.tagNames.push("center")
+  schema.protocols.src.push('data');
+  schema.tagNames.push("center");
   schema.tagNames.push("iframe");
   schema.tagNames.push("script");
   schema.attributes["*"].push("style");
@@ -27,31 +28,45 @@ const sanitize = (schema) => {
   schema.attributes["*"].push("framespacing");
   schema.attributes["*"].push("allowfullscreen");
   schema.strip = [];
-  return schema
-}
+  return schema;
+};
 
 export default function ({ content, codeMaxLines = 15 }: { content: string; codeMaxLines?: number }) {
-  const plugins = [
-    rawHTML(),
-    gfm(),
-    highlight(),
-    math({
-      katexOptions: {
-        strict: false,
-        throwOnError: false,
-      }
-    }),
-    customMermaidPlugin(),
-    customContainer(),
-    customCodeBlock(codeMaxLines),
-    LinkTarget(),
-    Heading(),
-    Img(),
-  ];
+  const { theme } = useContext(ThemeContext);
+  const mermaidThemeMode = normalizeMermaidThemeMode(theme);
+
+  const plugins = useMemo(
+    () => [
+      rawHTML(),
+      gfm(),
+      highlight(),
+      math({
+        katexOptions: {
+          strict: false,
+          throwOnError: false,
+        },
+      }),
+      customMermaidPlugin(mermaidThemeMode),
+      customContainer(),
+      customCodeBlock(codeMaxLines),
+      LinkTarget(),
+      Heading(),
+      Img(),
+    ],
+    [codeMaxLines, mermaidThemeMode],
+  );
 
   // 为了更好兼容常见编辑器（如外部 Markdown 主题通常以 #write 作为根容器），
   // 这里同时提供 id="write" 和 className="markdown-body"。
-  return <div id="write" className="markdown-body">
-    <Viewer value={content} plugins={plugins} remarkRehype={{ allowDangerousHtml: true }} sanitize={sanitize} />
-  </div>
+  return (
+    <div id="write" className="markdown-body" data-vb-mermaid-theme={mermaidThemeMode}>
+      <Viewer
+        key={`markdown-viewer-${mermaidThemeMode}`}
+        value={content}
+        plugins={plugins}
+        remarkRehype={{ allowDangerousHtml: true }}
+        sanitize={sanitize}
+      />
+    </div>
+  );
 }

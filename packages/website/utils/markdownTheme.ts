@@ -1,5 +1,8 @@
 export const MARKDOWN_THEME_PLAIN_PRESET = '__vanblog_plain__';
 export const MARKDOWN_THEME_HOTFIX_URL = '/markdown-themes/vanblog-theme-hotfix.css';
+export const MARKDOWN_THEME_CACHE_BUST_PARAM = 'vbv';
+export const MARKDOWN_THEME_ASSET_VERSION =
+  process.env.NEXT_PUBLIC_MARKDOWN_THEME_ASSET_VERSION || 'dev';
 
 export const MARKDOWN_THEME_DEFAULTS = {
   light: '/markdown-themes/phycat-sky-light-only.css',
@@ -13,6 +16,31 @@ export type MarkdownThemeConfig = {
   markdownDarkThemeUrl?: string;
   markdownLightThemePreset?: string;
   markdownDarkThemePreset?: string;
+};
+
+const isManagedMarkdownThemeAsset = (href: string) => {
+  try {
+    const pathname = new URL(href, 'https://vanblog.local').pathname;
+    return pathname.startsWith('/markdown-themes/');
+  } catch (error) {
+    return href.startsWith('/markdown-themes/');
+  }
+};
+
+export const withMarkdownThemeAssetVersion = (href?: string) => {
+  if (!href || !isManagedMarkdownThemeAsset(href)) {
+    return href || '';
+  }
+
+  try {
+    const url = new URL(href, 'https://vanblog.local');
+    url.searchParams.set(MARKDOWN_THEME_CACHE_BUST_PARAM, MARKDOWN_THEME_ASSET_VERSION);
+    return href.startsWith('http://') || href.startsWith('https://')
+      ? url.toString()
+      : `${url.pathname}${url.search}${url.hash}`;
+  } catch (error) {
+    return href;
+  }
 };
 
 export const resolveMarkdownThemeUrl = (

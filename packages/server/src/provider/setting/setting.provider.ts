@@ -13,6 +13,8 @@ import {
   defaultStaticSetting,
   AdminLayoutSetting,
   defaultAdminLayoutSetting,
+  AdminThemeSetting,
+  defaultAdminThemeSetting,
   AutoBackupSetting,
   defaultAutoBackupSetting,
   MusicSetting,
@@ -27,6 +29,8 @@ import { StructuredDataService } from 'src/storage/structured-data.service';
 @Injectable()
 export class SettingProvider {
   logger = new Logger(SettingProvider.name);
+  private static readonly adminThemeColorPattern = /^#[0-9a-f]{6}$/i;
+
   constructor(
     @InjectModel('Setting')
     private settingModel: Model<SettingDocument>,
@@ -135,10 +139,7 @@ export class SettingProvider {
     }
     return await this.settingModel.find({}).lean().exec();
   }
-  async importAllSettings(
-    settings: Array<{ type: string; value: any }>,
-    overwrite = false,
-  ) {
+  async importAllSettings(settings: Array<{ type: string; value: any }>, overwrite = false) {
     for (const setting of settings || []) {
       if (!setting?.type) {
         continue;
@@ -193,6 +194,49 @@ export class SettingProvider {
       return defaultAdminLayoutSetting;
     }
   }
+
+  private normalizeAdminThemeColor(value: unknown, fallback: string) {
+    const normalized = String(value || '')
+      .trim()
+      .toLowerCase();
+
+    if (SettingProvider.adminThemeColorPattern.test(normalized)) {
+      return normalized;
+    }
+
+    return fallback;
+  }
+
+  private normalizeAdminThemeSetting(value?: Partial<AdminThemeSetting> | null): AdminThemeSetting {
+    return {
+      lightPrimaryColor: this.normalizeAdminThemeColor(
+        value?.lightPrimaryColor,
+        defaultAdminThemeSetting.lightPrimaryColor,
+      ),
+      darkPrimaryColor: this.normalizeAdminThemeColor(
+        value?.darkPrimaryColor,
+        defaultAdminThemeSetting.darkPrimaryColor,
+      ),
+      lightBackgroundColor: this.normalizeAdminThemeColor(
+        value?.lightBackgroundColor,
+        defaultAdminThemeSetting.lightBackgroundColor,
+      ),
+      darkBackgroundColor: this.normalizeAdminThemeColor(
+        value?.darkBackgroundColor,
+        defaultAdminThemeSetting.darkBackgroundColor,
+      ),
+    };
+  }
+
+  async getAdminThemeSetting(): Promise<AdminThemeSetting> {
+    const res = await this.findSettingRecord('adminTheme');
+    if (res?.value) {
+      return this.normalizeAdminThemeSetting(res.value as AdminThemeSetting);
+    }
+
+    await this.createSettingValue('adminTheme', defaultAdminThemeSetting);
+    return defaultAdminThemeSetting;
+  }
   async getLoginSetting(): Promise<LoginSetting> {
     const res = await this.findSettingRecord('login');
     if (res) {
@@ -212,26 +256,26 @@ export class SettingProvider {
       return null;
     }
     const res: any = {};
-    
+
     // 首先处理动画，生成额外的CSS和Script
     let additionalCss = '';
     let additionalScript = '';
-    
+
     // 如果总开关启用，或者任何子动画启用，都生成动画代码
-    const hasAnyAnimationEnabled = dto.animations && (
-      dto.animations.enabled || 
-      dto.animations.snowflake?.enabled || 
-      dto.animations.particles?.enabled || 
-      dto.animations.heartClick?.enabled ||
-      dto.animations.mouseDrag?.enabled
-    );
-    
+    const hasAnyAnimationEnabled =
+      dto.animations &&
+      (dto.animations.enabled ||
+        dto.animations.snowflake?.enabled ||
+        dto.animations.particles?.enabled ||
+        dto.animations.heartClick?.enabled ||
+        dto.animations.mouseDrag?.enabled);
+
     if (hasAnyAnimationEnabled) {
       const animationCode = this.generateAnimationCode(dto.animations);
       additionalCss = animationCode.css || '';
       additionalScript = animationCode.script || '';
     }
-    
+
     // 然后处理其他字段
     for (const key of Object.keys(dto)) {
       if (key == 'head') {
@@ -253,7 +297,7 @@ export class SettingProvider {
         res[key] = encode(dto[key]);
       }
     }
-    
+
     // 如果没有原始的css/script字段但有动画代码，需要添加它们
     if (additionalCss && !dto.css) {
       res.css = encode(additionalCss);
@@ -261,7 +305,7 @@ export class SettingProvider {
     if (additionalScript && !dto.script) {
       res.script = encode(additionalScript);
     }
-    
+
     return res;
   }
 
@@ -530,7 +574,7 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     // 根据主题模式设置不同的默认颜色
     const lightColor = config.color || '0,0,0';
     const darkColor = config.darkColor || '255,255,255';
-    
+
     return `
 .particles-container {
   position: fixed;
@@ -554,26 +598,29 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     // 颜色转换函数：十六进制转RGB
     const hexToRgb = (hex: string): string => {
       if (!hex) return '0,0,0';
-      
+
       // 移除#号和空格
       let cleanHex = hex.replace(/[#\s]/g, '');
-      
+
       // 处理3位十六进制颜色（如#fff）
       if (cleanHex.length === 3) {
-        cleanHex = cleanHex.split('').map(char => char + char).join('');
+        cleanHex = cleanHex
+          .split('')
+          .map((char) => char + char)
+          .join('');
       }
-      
+
       // 确保是6位十六进制
       if (cleanHex.length !== 6 || !/^[0-9A-Fa-f]{6}$/.test(cleanHex)) {
         console.warn(`Invalid hex color: ${hex}, using default`);
         return '0,0,0';
       }
-      
+
       // 解析RGB值
       const r = parseInt(cleanHex.substring(0, 2), 16);
       const g = parseInt(cleanHex.substring(2, 4), 16);
       const b = parseInt(cleanHex.substring(4, 6), 16);
-      
+
       return `${r},${g},${b}`;
     };
 
@@ -1629,6 +1676,11 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     const newValue = { ...oldValue, ...dto };
     return await this.upsertSettingValue('adminLayout', newValue);
   }
+  async updateAdminThemeSetting(dto: AdminThemeSetting) {
+    const newValue = this.normalizeAdminThemeSetting(dto);
+    await this.upsertSettingValue('adminTheme', newValue);
+    return newValue;
+  }
   async updateHttpsSetting(dto: HttpsSetting) {
     const oldValue = await this.getHttpsSetting();
     const newValue = { ...oldValue, ...dto };
@@ -1665,10 +1717,10 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     if (!setting || !setting.value) {
       return defaultAutoBackupSetting;
     }
-    
+
     // 类型断言，因为我们知道这是 AutoBackupSetting 类型
     const autoBackupValue = setting.value as AutoBackupSetting;
-    
+
     // 合并默认设置以确保新增字段有默认值
     return {
       ...defaultAutoBackupSetting,
@@ -1694,7 +1746,10 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     }
   }
 
-  async getMusicSettingRecord(): Promise<{ value: MusicSetting; updatedAt?: Date | string } | null> {
+  async getMusicSettingRecord(): Promise<{
+    value: MusicSetting;
+    updatedAt?: Date | string;
+  } | null> {
     const res = await this.findSettingRecord('music');
     if (res) {
       return {

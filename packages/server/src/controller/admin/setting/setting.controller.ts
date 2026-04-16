@@ -2,7 +2,16 @@ import { Body, Controller, Get, Put, Post, UseGuards } from '@nestjs/common';
 
 import { ApiTags } from '@nestjs/swagger';
 import { config } from 'src/config/index';
-import { LayoutSetting, LoginSetting, StaticSetting, WalineSetting, AdminLayoutSetting, defaultAdminLayoutSetting } from 'src/types/setting.dto';
+import {
+  LayoutSetting,
+  LoginSetting,
+  StaticSetting,
+  WalineSetting,
+  AdminLayoutSetting,
+  defaultAdminLayoutSetting,
+  AdminThemeSetting,
+  defaultAdminThemeSetting,
+} from 'src/types/setting.dto';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { SettingProvider } from 'src/provider/setting/setting.provider';
@@ -141,6 +150,48 @@ export class SettingController {
     };
   }
 
+  @Get('adminTheme')
+  async getAdminThemeSetting() {
+    const res = await this.settingProvider.getAdminThemeSetting();
+    return {
+      statusCode: 200,
+      data: res,
+    };
+  }
+
+  @Put('adminTheme')
+  async updateAdminThemeSetting(@Body() body: AdminThemeSetting) {
+    if (config?.demo == true || config?.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改定制化设置！',
+      };
+    }
+    const res = await this.settingProvider.updateAdminThemeSetting(body);
+    await this.isrProvider.activeAll('更新 admin theme 设置');
+    return {
+      statusCode: 200,
+      data: res,
+    };
+  }
+
+  @Post('adminTheme/reset')
+  async resetAdminThemeToDefault() {
+    if (config?.demo == true || config?.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+    await this.settingProvider.updateAdminThemeSetting(defaultAdminThemeSetting);
+    await this.isrProvider.activeAll('恢复默认后台主题色设置触发增量渲染！');
+    return {
+      statusCode: 200,
+      data: defaultAdminThemeSetting,
+      message: '恢复默认后台主题色设置成功！',
+    };
+  }
+
   @Post('adminLayout/reset')
   async resetAdminLayoutToDefault() {
     if (config?.demo == true || config?.demo == 'true') {
@@ -150,7 +201,7 @@ export class SettingController {
       };
     }
     await this.settingProvider.updateAdminLayoutSetting(defaultAdminLayoutSetting);
-    const data = await this.isrProvider.activeAll('恢复默认后台布局设置触发增量渲染！');
+    await this.isrProvider.activeAll('恢复默认后台布局设置触发增量渲染！');
     return {
       statusCode: 200,
       data: '恢复默认后台布局设置成功！',

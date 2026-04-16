@@ -54,16 +54,16 @@
 
 html[data-theme='dark'] {
   .document-page-container {
-    background-color: #111827 !important;
+    background-color: var(--admin-app-background) !important;
 
     .resize-handle {
       &:hover {
-        background-color: rgba(148, 163, 184, 0.12) !important;
+        background-color: var(--admin-surface-bg-subtle) !important;
         color: #93c5fd !important;
       }
 
       &:active {
-        background-color: rgba(59, 130, 246, 0.18) !important;
+        background-color: var(--admin-primary-soft-bg) !important;
         color: #bfdbfe !important;
       }
     }
@@ -187,17 +187,25 @@ html[data-theme='dark'] {
 html[data-theme='dark'] {
   .document-page {
     &-content,
-    &-viewer,
-    &-library-info,
+    &-viewer {
+      background-color: var(--admin-document-preview-bg) !important;
+      color: #e5e7eb !important;
+    }
+
+    &-library-info {
+      background-color: var(--admin-surface-bg-elevated) !important;
+      color: #e5e7eb !important;
+    }
+
     &-editor-container {
-      background-color: #111827 !important;
+      background-color: var(--admin-document-editor-bg) !important;
       color: #e5e7eb !important;
     }
 
     &-viewer,
     &-library-info,
     &-editor-container {
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-top: 1px solid var(--admin-document-divider);
     }
 
     &-library-info {
@@ -258,24 +266,24 @@ html[data-theme='dark'] {
   .ant-card {
     &.document-tree-card,
     &.document-content-card {
-      background-color: #111827 !important;
-      border-color: rgba(255, 255, 255, 0.08) !important;
+      background-color: var(--admin-surface-bg-elevated) !important;
+      border-color: var(--admin-surface-border) !important;
       box-shadow: none;
     }
 
     &.document-tree-card {
       .ant-card-head,
       .ant-card-body {
-        background-color: #111827 !important;
-        border-color: rgba(255, 255, 255, 0.08) !important;
+        background-color: var(--admin-document-tree-bg) !important;
+        border-color: var(--admin-surface-border) !important;
       }
     }
 
     &.document-content-card {
       .ant-card-head,
       .ant-card-body {
-        background-color: #111827 !important;
-        border-color: rgba(255, 255, 255, 0.08) !important;
+        background-color: var(--admin-surface-bg-elevated) !important;
+        border-color: var(--admin-surface-border) !important;
       }
     }
   }

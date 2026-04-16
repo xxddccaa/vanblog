@@ -25,6 +25,22 @@ export async function getLoginConfig() {
     method: 'GET',
   });
 }
+export async function getAdminThemeConfig() {
+  return request('/api/admin/setting/adminTheme', {
+    method: 'GET',
+  });
+}
+export async function updateAdminThemeConfig(body) {
+  return request('/api/admin/setting/adminTheme', {
+    method: 'PUT',
+    data: body,
+  });
+}
+export async function resetAdminThemeToDefault() {
+  return request('/api/admin/setting/adminTheme/reset', {
+    method: 'POST',
+  });
+}
 export async function updateLoginConfig(body) {
   return request('/api/admin/setting/login', {
     method: 'PUT',
@@ -573,7 +589,7 @@ export async function getMoments(option) {
   }
   queryString = queryString.substring(0, queryString.length - 1);
   queryString = encodeQuerystring(queryString);
-  
+
   return request(`/api/admin/moment?${queryString}`, {
     method: 'GET',
   });

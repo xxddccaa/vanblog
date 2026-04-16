@@ -1,4 +1,5 @@
 import { PublicController } from './public.controller';
+import { defaultAdminThemeSetting } from 'src/types/setting.dto';
 
 describe('PublicController', () => {
   const createController = () => {
@@ -122,6 +123,7 @@ describe('PublicController', () => {
           favicon: '/favicon.ico',
           adminLogo: '/admin-custom-logo.png',
           adminFavicon: '/admin-custom-favicon.png',
+          adminTheme: defaultAdminThemeSetting,
           beianNumber: 'ICP',
           beianUrl: 'https://example.com',
           gaBeianNumber: '',
@@ -141,6 +143,7 @@ describe('PublicController', () => {
         favicon: '/favicon.ico',
         adminLogo: '/admin-custom-logo.png',
         adminFavicon: '/admin-custom-favicon.png',
+        adminTheme: defaultAdminThemeSetting,
         beianNumber: 'ICP',
         beianUrl: 'https://example.com',
         gaBeianNumber: '',
@@ -166,6 +169,7 @@ describe('PublicController', () => {
         updatedAt: '2026-04-08T00:00:00.000Z',
         layout: 'default',
       }),
+      getAdminThemeSetting: jest.fn().mockResolvedValue(defaultAdminThemeSetting),
       encodeLayoutSetting: jest.fn().mockReturnValue({
         layout: 'default',
       }),
@@ -205,15 +209,13 @@ describe('PublicController', () => {
       checkSuperAdminSessionToken: jest.fn().mockResolvedValue(true),
     };
     const iconProvider = {
-      getAllIcons: jest
-        .fn()
-        .mockResolvedValue([
-          {
-            name: 'github',
-            createdAt: '2026-04-08T00:00:00.000Z',
-            updatedAt: '2026-04-10T00:00:00.000Z',
-          },
-        ]),
+      getAllIcons: jest.fn().mockResolvedValue([
+        {
+          name: 'github',
+          createdAt: '2026-04-08T00:00:00.000Z',
+          updatedAt: '2026-04-10T00:00:00.000Z',
+        },
+      ]),
       getIconByName: jest.fn().mockResolvedValue({
         name: 'github',
         createdAt: '2026-04-08T00:00:00.000Z',
@@ -608,6 +610,7 @@ describe('PublicController', () => {
         favicon: '/favicon.ico',
         adminLogo: '/admin-custom-logo.png',
         adminFavicon: '/admin-custom-favicon.png',
+        adminTheme: defaultAdminThemeSetting,
         beianNumber: 'ICP',
         beianUrl: 'https://example.com',
         gaBeianNumber: '',
@@ -638,6 +641,7 @@ describe('PublicController', () => {
         favicon: '/favicon.ico',
         adminLogo: '/admin-custom-logo.png',
         adminFavicon: '/admin-custom-favicon.png',
+        adminTheme: defaultAdminThemeSetting,
         beianNumber: 'ICP',
         beianUrl: 'https://example.com',
         gaBeianNumber: '',
@@ -660,6 +664,7 @@ describe('PublicController', () => {
           favicon: '/favicon.ico',
           adminLogo: '/admin-custom-logo.png',
           adminFavicon: '/admin-custom-favicon.png',
+          adminTheme: defaultAdminThemeSetting,
           beianNumber: 'ICP',
           beianUrl: 'https://example.com',
           gaBeianNumber: '',

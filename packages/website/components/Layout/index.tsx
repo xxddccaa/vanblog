@@ -22,6 +22,7 @@ import { resolveFrontCardSurfaceColors } from "../../utils/frontCardSurface";
 import {
   getMarkdownThemeId,
   MARKDOWN_THEME_HOTFIX_URL,
+  withMarkdownThemeAssetVersion,
 } from "../../utils/markdownTheme";
 
 const NavBarMobile = dynamic(() => import("../NavBarMobile"), {
@@ -73,14 +74,16 @@ const syncThemeStylesheet = (theme: "light" | "dark", href: string) => {
     return;
   }
 
+  const versionedHref = withMarkdownThemeAssetVersion(href);
+
   if (existing) {
-    existing.setAttribute("href", href);
+    existing.setAttribute("href", versionedHref);
     return;
   }
 
   const link = document.createElement("link");
   link.setAttribute("rel", "stylesheet");
-  link.setAttribute("href", href);
+  link.setAttribute("href", versionedHref);
   link.setAttribute("data-theme-for", theme);
   link.setAttribute("data-vanblog-theme-link", "true");
   document.head.appendChild(link);
@@ -92,13 +95,13 @@ const syncThemeHotfixStylesheet = () => {
   ) as HTMLLinkElement | null;
 
   if (existing) {
-    existing.setAttribute("href", MARKDOWN_THEME_HOTFIX_URL);
+    existing.setAttribute("href", withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
     return;
   }
 
   const link = document.createElement("link");
   link.setAttribute("rel", "stylesheet");
-  link.setAttribute("href", MARKDOWN_THEME_HOTFIX_URL);
+  link.setAttribute("href", withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
   link.setAttribute("data-vanblog-theme-hotfix", "true");
   document.head.appendChild(link);
 };
@@ -116,6 +119,15 @@ export default function (props: {
   const [isOpen, setIsOpen] = useState(false);
   const { current } = useRef({ hasInit: false });
   const [theme, setTheme] = useState<RealThemeType>(getTheme(props.option.defaultTheme));
+  const versionedMarkdownLightThemeUrl = withMarkdownThemeAssetVersion(
+    props.option.markdownLightThemeUrl,
+  );
+  const versionedMarkdownDarkThemeUrl = withMarkdownThemeAssetVersion(
+    props.option.markdownDarkThemeUrl,
+  );
+  const versionedMarkdownThemeHotfixUrl = withMarkdownThemeAssetVersion(
+    MARKDOWN_THEME_HOTFIX_URL,
+  );
   const lightThemeId = getMarkdownThemeId(props.option.markdownLightThemeUrl);
   const darkThemeId = getMarkdownThemeId(props.option.markdownDarkThemeUrl);
   const frontCardSurfaces = resolveFrontCardSurfaceColors({
@@ -285,7 +297,7 @@ export default function (props: {
         {props.option.markdownLightThemeUrl && (
           <link
             rel="stylesheet"
-            href={props.option.markdownLightThemeUrl}
+            href={versionedMarkdownLightThemeUrl}
             key="markdown-light-theme"
             data-theme-for="light"
           />
@@ -293,14 +305,14 @@ export default function (props: {
         {props.option.markdownDarkThemeUrl && (
           <link
             rel="stylesheet"
-            href={props.option.markdownDarkThemeUrl}
+            href={versionedMarkdownDarkThemeUrl}
             key="markdown-dark-theme"
             data-theme-for="dark"
           />
         )}
         <link
           rel="stylesheet"
-          href={MARKDOWN_THEME_HOTFIX_URL}
+          href={versionedMarkdownThemeHotfixUrl}
           key="markdown-theme-hotfix"
           data-vanblog-theme-hotfix="true"
         />

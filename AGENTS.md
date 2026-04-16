@@ -72,6 +72,7 @@ Treat release and deployment work as documented workflows, not guesswork.
 - If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.
 - For release or deployment changes, prefer validating with `pnpm test:full`; if you only need a narrower config/routing check, at minimum run `pnpm test:blog-flow`, and also run `pnpm test:deploy` for config- or routing-focused changes.
 - Keep production exposure assumptions intact: public entry is through Caddy on `80/443`, `postgres` and `redis` should not gain host ports, and the Caddy admin API `2019` must stay private.
+- Any CSS served from `/markdown-themes/` must be referenced through the versioned helper in `packages/website/utils/markdownTheme.ts` or `packages/admin/src/utils/markdownTheme.ts`; do not ship bare fixed URLs for these assets, or Cloudflare may keep serving stale theme files after a release.
 
 ## Host Debug Workflow
 This machine now has two sanctioned `18080` debug workflows documented in `docs/host-debug.md`.

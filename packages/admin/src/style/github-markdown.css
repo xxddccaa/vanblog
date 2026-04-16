@@ -1078,32 +1078,35 @@
 }
 
 .language-mermaid {
-  background-color: white;
+  background-color: transparent;
 }
 
 .dark .language-mermaid {
-  background-color: #f8f5ff !important;
+  background-color: transparent !important;
 }
 
-/* 后台 Mermaid 使用统一的浅色画布，避免暗色主题下图内文字发白或布局漂移 */
+/* 后台 Mermaid 容器只负责留白和边界，让 Mermaid 官方主题自己控制 SVG 颜色。 */
 .markdown-body .mermaid,
 .markdown-body .bytemd-mermaid {
   display: flex;
   justify-content: center;
   align-items: center;
   text-align: center;
-  background-color: #f8f5ff !important;
-  border-radius: 5px;
+  background-color: rgba(148, 163, 184, 0.08);
+  border-radius: 12px;
   padding: 16px;
   margin: 16px 0;
-  border: 1px solid #e0e0e0;
+  border: 1px solid rgba(148, 163, 184, 0.28);
   overflow: auto;
-  color: #0d47a1 !important;
 }
 
 .dark .markdown-body .mermaid,
-.dark .markdown-body .bytemd-mermaid {
-  border-color: #30363d;
+.dark .markdown-body .bytemd-mermaid,
+html[data-theme='dark'] .markdown-body .mermaid,
+html[data-theme='dark'] .markdown-body .bytemd-mermaid,
+body[data-theme='dark'] .markdown-body .mermaid,
+body[data-theme='dark'] .markdown-body .bytemd-mermaid {
+  border-color: var(--admin-editor-border, rgba(111, 186, 255, 0.28));
 }
 
 .markdown-body .mermaid svg,
@@ -1113,31 +1116,6 @@
   max-width: 100%;
   height: auto;
   background-color: transparent !important;
-}
-
-.markdown-body .mermaid text,
-.markdown-body .mermaid tspan,
-.markdown-body .bytemd-mermaid text,
-.markdown-body .bytemd-mermaid tspan,
-.markdown-body .mermaid foreignObject,
-.markdown-body .mermaid foreignObject *,
-.markdown-body .bytemd-mermaid foreignObject,
-.markdown-body .bytemd-mermaid foreignObject * {
-  fill: #0d47a1 !important;
-  color: #0d47a1 !important;
-}
-
-.markdown-body .mermaid line,
-.markdown-body .bytemd-mermaid line,
-.markdown-body .mermaid path[class*='messageLine'],
-.markdown-body .bytemd-mermaid path[class*='messageLine'] {
-  stroke: #0d47a1 !important;
-}
-
-.markdown-body .mermaid rect.actor,
-.markdown-body .bytemd-mermaid rect.actor {
-  fill: #e1f5fe !important;
-  stroke: #1976d2 !important;
 }
 
 body .markdown-body pre {

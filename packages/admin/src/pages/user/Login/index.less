@@ -1,5 +1,4 @@
 @layout-body-background: #f0f2f5;
-@primary-color: #1677ff;
 @screen-md-min: 768px;
 
 .container {
@@ -8,7 +7,7 @@
   height: 100vh;
   min-height: 100vh;
   overflow: auto;
-  background: @layout-body-background;
+  background: var(--admin-auth-background, @layout-body-background);
   justify-content: center;
 }
 
@@ -16,62 +15,55 @@
   flex: 0;
   padding: 32px 0;
   transform: translateY(-10%);
+
+  :global(.ant-pro-form-login-container) {
+    padding: 28px 32px 24px;
+    border: 1px solid var(--admin-auth-panel-border);
+    border-radius: 24px;
+    background: var(--admin-auth-panel-bg);
+    box-shadow: var(--admin-auth-panel-shadow);
+    backdrop-filter: blur(18px);
+  }
+
+  :global(.ant-pro-form-login-title),
+  :global(.ant-pro-form-login-desc),
+  :global(.ant-checkbox + span),
+  :global(.ant-input-affix-wrapper .anticon),
+  :global(.ant-input-password-icon.anticon),
+  :global(.ant-input-show-count-suffix),
+  :global(.ant-form-item-explain-error) {
+    color: var(--admin-auth-text);
+  }
+
+  :global(.ant-input),
+  :global(.ant-input-affix-wrapper) {
+    color: var(--admin-auth-text);
+    background: var(--admin-auth-input-bg);
+    border-color: var(--admin-auth-input-border);
+  }
+
+  :global(.ant-input::placeholder) {
+    color: var(--admin-auth-text-secondary);
+  }
+
+  :global(a) {
+    color: var(--admin-auth-link);
+  }
 }
 
-:global(html[data-theme='dark']) {
-  .container {
-    background-color: #0f172a;
-    background-image:
-      radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 42%),
-      radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.12), transparent 36%),
-      linear-gradient(180deg, #0f172a 0%, #111827 100%);
-  }
-
-  .content {
-    :global(.ant-pro-form-login-container) {
-      padding: 28px 32px 24px;
-      border: 1px solid rgba(148, 163, 184, 0.22);
-      border-radius: 24px;
-      background: rgba(15, 23, 42, 0.84);
-      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.42);
-      backdrop-filter: blur(18px);
-    }
-
-    :global(.ant-pro-form-login-title),
-    :global(.ant-pro-form-login-desc),
-    :global(.ant-checkbox + span),
-    :global(.ant-input-affix-wrapper .anticon) {
-      color: #e2e8f0;
-    }
-
-    :global(.ant-input),
-    :global(.ant-input-affix-wrapper) {
-      color: #f8fafc;
-      background: rgba(15, 23, 42, 0.72);
-      border-color: rgba(148, 163, 184, 0.24);
-    }
-
-    :global(.ant-input::placeholder) {
-      color: #94a3b8;
-    }
-
-    :global(a) {
-      color: #93c5fd;
-    }
-  }
-
-  :global(footer),
-  :global(footer a) {
-    color: #94a3b8 !important;
-  }
+:global(footer),
+:global(footer a) {
+  color: var(--admin-auth-text-secondary) !important;
 }
 
 @media (min-width: @screen-md-min) {
   .container {
-    background-image: var(--login-background-image);
-    background-repeat: no-repeat;
-    background-position: center 110px;
-    background-size: 100%;
+    background-image: var(--login-background-image), var(--admin-auth-background);
+    background-repeat: no-repeat, no-repeat;
+    background-position:
+      center 110px,
+      center;
+    background-size: 100%, cover;
   }
 
   .content {
@@ -81,13 +73,13 @@
 
 .icon {
   margin-left: 8px;
-  color: rgba(0, 0, 0, 0.2);
+  color: var(--admin-auth-text-secondary);
   font-size: 24px;
   vertical-align: middle;
   cursor: pointer;
   transition: color 0.3s;
 
   &:hover {
-    color: @primary-color;
+    color: var(--admin-primary);
   }
 }

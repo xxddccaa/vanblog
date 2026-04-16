@@ -2,7 +2,13 @@
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true",
 });
+const rootPackage = require("../../package.json");
 const isDev = process.env.NODE_ENV == "development";
+const markdownThemeAssetVersion =
+  process.env.VANBLOG_MARKDOWN_THEME_ASSET_VERSION ||
+  process.env.VAN_BLOG_VERSION ||
+  rootPackage.version ||
+  "dev";
 const walineDevRewrites = [
   "/api/comment",
   "/api/user",
@@ -72,6 +78,9 @@ module.exports = withBundleAnalyzer({
   reactStrictMode: true,
   generateEtags: true,
   output: "standalone",
+  env: {
+    NEXT_PUBLIC_MARKDOWN_THEME_ASSET_VERSION: markdownThemeAssetVersion,
+  },
   allowedDevOrigins: isDev ? ["127.0.0.1", "localhost"] : undefined,
   experimental: {
     largePageDataBytes: 1024 * 1024 * 10,

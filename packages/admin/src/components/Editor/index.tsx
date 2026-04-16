@@ -3,7 +3,7 @@ import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
 // import mermaid from '@bytemd/plugin-mermaid';
-import { customMermaidPlugin } from './mermaidTheme';
+import { customMermaidPlugin, normalizeMermaidThemeMode } from './mermaidTheme';
 import { Editor } from '@bytemd/react';
 import { Spin } from 'antd';
 import 'bytemd/dist/index.css';
@@ -57,6 +57,7 @@ export default function EditorComponent(props: {
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
+  const mermaidThemeMode = normalizeMermaidThemeMode(themeClass);
   const resolvedThemeConfig = useAdminMarkdownTheme(props.themeConfig);
   const lightThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownLightThemeUrl);
   const darkThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownDarkThemeUrl);
@@ -94,7 +95,7 @@ export default function EditorComponent(props: {
           throwOnError: false,
         },
       }),
-      customMermaidPlugin(),
+      customMermaidPlugin(mermaidThemeMode),
       imgUploadPlugin(setLoading),
       emoji(),
       insertMore(),
@@ -105,7 +106,7 @@ export default function EditorComponent(props: {
       LinkTarget(),
       smartCodeBlock(),
     ];
-  }, [editorCodeMaxLines, setLoading]);
+  }, [editorCodeMaxLines, mermaidThemeMode, setLoading]);
 
   return (
     <div style={{ height: '100%' }} className={themeClass}>

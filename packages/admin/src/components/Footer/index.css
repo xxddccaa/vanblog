@@ -6,7 +6,7 @@
   user-select: none;
 }
 .ua.blue {
-  color: #1772b4;
+  color: var(--admin-primary);
 }
 .ua {
   position: relative;
@@ -15,13 +15,13 @@
   text-decoration: none;
 }
 .ua.blue:hover {
-  color: #1772b4;
+  color: var(--admin-primary);
 }
 .ua:hover {
   color: #333;
 }
 .blue.ua::before {
-  background: #1772b4;
+  background: var(--admin-primary);
 }
 .ua:before {
   position: absolute;

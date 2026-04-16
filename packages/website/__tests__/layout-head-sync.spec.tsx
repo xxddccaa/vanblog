@@ -3,6 +3,10 @@ import React from "react";
 import { act } from "react-dom/test-utils";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  MARKDOWN_THEME_HOTFIX_URL,
+  withMarkdownThemeAssetVersion,
+} from "../utils/markdownTheme";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -146,13 +150,13 @@ describe("layout head sync", () => {
     );
     expect(
       document.head.querySelector("link[data-vanblog-theme-link][data-theme-for='light']")?.getAttribute("href"),
-    ).toBe("/markdown-themes/light.css");
+    ).toBe(withMarkdownThemeAssetVersion("/markdown-themes/light.css"));
     expect(
       document.head.querySelector("link[data-vanblog-theme-link][data-theme-for='dark']")?.getAttribute("href"),
-    ).toBe("/markdown-themes/dark.css");
+    ).toBe(withMarkdownThemeAssetVersion("/markdown-themes/dark.css"));
     expect(
       document.head.querySelector("link[data-vanblog-theme-hotfix='true']")?.getAttribute("href"),
-    ).toBe("/markdown-themes/vanblog-theme-hotfix.css");
+    ).toBe(withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
     expect(
       document.querySelector("[data-vb-markdown-light-theme-id='light'][data-vb-markdown-dark-theme-id='dark']"),
     ).toBeTruthy();

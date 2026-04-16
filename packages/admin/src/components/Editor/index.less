@@ -27,7 +27,7 @@ body .emoji-categories {
 
 /* 编辑器预览区域背景色 - 与前台一致 */
 body .bytemd-preview {
-  background: #f8fafc;
+  background: var(--admin-editor-preview-bg, #f8fafc);
 }
 
 body .bytemd-preview .markdown-body {
@@ -41,13 +41,12 @@ body .bytemd-preview .markdown-body {
     justify-content: center;
     align-items: center;
     text-align: center;
-    background: #f8f5ff !important;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
+    background: rgba(148, 163, 184, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 12px;
     padding: 16px;
     margin: 16px 0;
     overflow: auto;
-    color: #0d47a1 !important;
   }
 
   .mermaid svg,
@@ -57,35 +56,6 @@ body .bytemd-preview .markdown-body {
     max-width: 100%;
     height: auto;
     background: transparent !important;
-  }
-
-  .mermaid text,
-  .mermaid tspan,
-  .bytemd-mermaid text,
-  .bytemd-mermaid tspan {
-    fill: #0d47a1 !important;
-    color: #0d47a1 !important;
-  }
-
-  .mermaid foreignObject,
-  .mermaid foreignObject *,
-  .bytemd-mermaid foreignObject,
-  .bytemd-mermaid foreignObject * {
-    color: #0d47a1 !important;
-  }
-
-  .mermaid .label,
-  .mermaid .nodeLabel,
-  .mermaid .edgeLabel,
-  .mermaid .messageText,
-  .mermaid .actor,
-  .bytemd-mermaid .label,
-  .bytemd-mermaid .nodeLabel,
-  .bytemd-mermaid .edgeLabel,
-  .bytemd-mermaid .messageText,
-  .bytemd-mermaid .actor {
-    color: #0d47a1 !important;
-    fill: #0d47a1 !important;
   }
 }
 
@@ -97,21 +67,21 @@ html.dark,
 html.dark body,
 body.dark,
 .dark {
-  --vb-editor-dark-canvas: #0b1422;
-  --vb-editor-dark-bg: #0f1b2d;
-  --vb-editor-dark-panel: #132235;
-  --vb-editor-dark-panel-2: #172941;
-  --vb-editor-dark-preview: #102033;
-  --vb-editor-dark-border: rgba(111, 186, 255, 0.18);
-  --vb-editor-dark-border-strong: rgba(111, 214, 255, 0.3);
-  --vb-editor-dark-text: #e9f3ff;
-  --vb-editor-dark-muted: #bdd1e8;
-  --vb-editor-dark-subtle: #8da7c5;
-  --vb-editor-dark-accent: #67d7ff;
-  --vb-editor-dark-accent-strong: #7cb7ff;
-  --vb-editor-dark-hover: rgba(103, 215, 255, 0.12);
-  --vb-editor-dark-active: rgba(124, 183, 255, 0.18);
-  --vb-editor-dark-shadow: 0 20px 54px rgba(4, 12, 28, 0.34);
+  --vb-editor-dark-canvas: var(--admin-editor-canvas-bg, #0b1422);
+  --vb-editor-dark-bg: var(--admin-editor-bg, #0f1b2d);
+  --vb-editor-dark-panel: var(--admin-editor-panel-bg, #132235);
+  --vb-editor-dark-panel-2: var(--admin-editor-panel-bg-alt, #172941);
+  --vb-editor-dark-preview: var(--admin-editor-preview-bg, #102033);
+  --vb-editor-dark-border: var(--admin-editor-border, rgba(111, 186, 255, 0.18));
+  --vb-editor-dark-border-strong: var(--admin-editor-border-strong, rgba(111, 214, 255, 0.3));
+  --vb-editor-dark-text: var(--admin-editor-text, #e9f3ff);
+  --vb-editor-dark-muted: var(--admin-editor-muted, #bdd1e8);
+  --vb-editor-dark-subtle: var(--admin-editor-subtle, #8da7c5);
+  --vb-editor-dark-accent: var(--admin-editor-accent, #67d7ff);
+  --vb-editor-dark-accent-strong: var(--admin-editor-accent-strong, #7cb7ff);
+  --vb-editor-dark-hover: var(--admin-editor-hover, rgba(103, 215, 255, 0.12));
+  --vb-editor-dark-active: var(--admin-editor-active, rgba(124, 183, 255, 0.18));
+  --vb-editor-dark-shadow: var(--admin-editor-shadow, 0 20px 54px rgba(4, 12, 28, 0.34));
 }
 
 html.dark body .bytemd-preview.bytemd-preview,
@@ -123,7 +93,11 @@ body[data-theme='dark'] .editor-wrapper .bytemd-preview,
 body.dark .bytemd-preview,
 .dark .editor-wrapper .bytemd-preview,
 .dark .bytemd-preview {
-  background: linear-gradient(180deg, rgba(19, 34, 53, 0.96), rgba(16, 32, 51, 0.98)) !important;
+  background: linear-gradient(
+    180deg,
+    var(--vb-editor-dark-panel-2),
+    var(--vb-editor-dark-preview)
+  ) !important;
   background-color: var(--vb-editor-dark-preview) !important;
 }
 
@@ -136,11 +110,11 @@ body[data-theme='dark'] .bytemd-preview .markdown-body,
   background: transparent !important;
   background-color: transparent !important;
   color: var(--vb-editor-dark-text) !important;
-  --color-fg-default: #e9f3ff !important;
-  --color-fg-muted: #cbdcf0 !important;
-  --color-fg-subtle: #94a8c2 !important;
-  --color-border-default: rgba(111, 186, 255, 0.24) !important;
-  --color-border-muted: rgba(111, 186, 255, 0.18) !important;
+  --color-fg-default: var(--vb-editor-dark-text) !important;
+  --color-fg-muted: var(--vb-editor-dark-muted) !important;
+  --color-fg-subtle: var(--vb-editor-dark-subtle) !important;
+  --color-border-default: var(--vb-editor-dark-border-strong) !important;
+  --color-border-muted: var(--vb-editor-dark-border) !important;
 }
 
 html.dark body .bytemd.bytemd,
@@ -152,7 +126,11 @@ html[data-theme='dark'] .bytemd,
 body[data-theme='dark'] .editor-wrapper .bytemd,
 .dark .editor-wrapper .bytemd,
 .dark .bytemd {
-  background: linear-gradient(180deg, rgba(15, 27, 45, 0.98), rgba(11, 20, 34, 0.98)) !important;
+  background: linear-gradient(
+    180deg,
+    var(--vb-editor-dark-bg),
+    var(--vb-editor-dark-canvas)
+  ) !important;
   background-color: var(--vb-editor-dark-bg) !important;
   border-color: var(--vb-editor-dark-border) !important;
 }
@@ -166,7 +144,11 @@ html[data-theme='dark'] .bytemd-body,
 body[data-theme='dark'] .editor-wrapper .bytemd-body,
 .dark .editor-wrapper .bytemd-body,
 .dark .bytemd-body {
-  background: linear-gradient(180deg, rgba(15, 27, 45, 0.96), rgba(13, 24, 39, 0.98)) !important;
+  background: linear-gradient(
+    180deg,
+    var(--vb-editor-dark-bg),
+    var(--vb-editor-dark-canvas)
+  ) !important;
   background-color: var(--vb-editor-dark-bg) !important;
 }
 
@@ -178,7 +160,11 @@ body[data-theme='dark'] .editor-wrapper .bytemd-toolbar,
 body[data-theme='dark'] .editor-wrapper .bytemd-status,
 .dark .editor-wrapper .bytemd-toolbar,
 .dark .editor-wrapper .bytemd-status {
-  background: linear-gradient(180deg, rgba(23, 41, 65, 0.98), rgba(19, 34, 53, 0.98)) !important;
+  background: linear-gradient(
+    180deg,
+    var(--vb-editor-dark-panel),
+    var(--vb-editor-dark-panel-2)
+  ) !important;
   background-color: var(--vb-editor-dark-panel) !important;
   border-color: var(--vb-editor-dark-border) !important;
   color: var(--vb-editor-dark-text) !important;
@@ -202,8 +188,8 @@ body[data-theme='dark'] .editor-wrapper .bytemd-toolbar-icon.bytemd-toolbar-acti
 .dark .editor-wrapper .bytemd-toolbar-icon.bytemd-toolbar-active {
   background: linear-gradient(
     180deg,
-    rgba(103, 215, 255, 0.16),
-    rgba(124, 183, 255, 0.12)
+    var(--vb-editor-dark-active),
+    var(--vb-editor-dark-hover)
   ) !important;
   color: var(--vb-editor-dark-text) !important;
 }
@@ -219,7 +205,11 @@ html.dark .tippy-box,
 html[data-theme='dark'] .tippy-box,
 body[data-theme='dark'] .tippy-box,
 .dark .tippy-box {
-  background: linear-gradient(180deg, rgba(19, 34, 53, 0.98), rgba(15, 27, 45, 0.98)) !important;
+  background: linear-gradient(
+    180deg,
+    var(--vb-editor-dark-panel),
+    var(--vb-editor-dark-panel-2)
+  ) !important;
   background-color: var(--vb-editor-dark-panel) !important;
   color: var(--vb-editor-dark-text) !important;
   border: 1px solid var(--vb-editor-dark-border);
@@ -281,7 +271,11 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror-lines,
 .dark .editor-wrapper .CodeMirror-scroll,
 .dark .editor-wrapper .CodeMirror-gutters,
 .dark .editor-wrapper .CodeMirror-lines {
-  background: linear-gradient(180deg, rgba(15, 27, 45, 0.96), rgba(11, 20, 34, 0.98)) !important;
+  background: linear-gradient(
+    180deg,
+    var(--vb-editor-dark-bg),
+    var(--vb-editor-dark-canvas)
+  ) !important;
   background-color: var(--vb-editor-dark-bg) !important;
   color: var(--vb-editor-dark-text) !important;
   border-color: var(--vb-editor-dark-border) !important;
@@ -305,7 +299,7 @@ html.dark .editor-wrapper .CodeMirror-selected,
 html[data-theme='dark'] .editor-wrapper .CodeMirror-selected,
 body[data-theme='dark'] .editor-wrapper .CodeMirror-selected,
 .dark .editor-wrapper .CodeMirror-selected {
-  background: rgba(103, 215, 255, 0.16) !important;
+  background: var(--admin-editor-selection, rgba(103, 215, 255, 0.16)) !important;
 }
 
 html.dark .editor-wrapper .CodeMirror pre,
@@ -327,7 +321,7 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-url,
 .dark .editor-wrapper .CodeMirror .cm-header,
 .dark .editor-wrapper .CodeMirror .cm-link,
 .dark .editor-wrapper .CodeMirror .cm-url {
-  color: #7dd3fc !important;
+  color: var(--vb-editor-dark-accent) !important;
 }
 
 html.dark .editor-wrapper .CodeMirror .cm-comment,
@@ -349,7 +343,7 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-variable-2,
 body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
 .dark .editor-wrapper .CodeMirror .cm-variable-2,
 .dark .editor-wrapper .CodeMirror .cm-strong {
-  color: #f8fbff !important;
+  color: var(--vb-editor-dark-text) !important;
 }
 
 .editor-wrapper {
@@ -472,7 +466,11 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
   }
 
   .bytemd-body {
-    background: linear-gradient(180deg, rgba(15, 27, 45, 0.96), rgba(11, 20, 34, 0.98)) !important;
+    background: linear-gradient(
+      180deg,
+      var(--vb-editor-dark-bg),
+      var(--vb-editor-dark-canvas)
+    ) !important;
   }
 
   .bytemd-editor {
@@ -482,24 +480,24 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
   .bytemd-editor .CodeMirror .CodeMirror-scroll,
   .bytemd-preview {
     &::-webkit-scrollbar-track {
-      background: rgba(11, 20, 34, 0.9);
+      background: var(--vb-editor-dark-canvas);
       border-radius: 999px;
     }
 
     &::-webkit-scrollbar-thumb {
-      background: rgba(111, 186, 255, 0.32);
+      background: var(--vb-editor-dark-border-strong);
       border-radius: 999px;
 
       &:hover {
-        background: rgba(103, 215, 255, 0.44);
+        background: var(--vb-editor-dark-accent-strong);
       }
     }
 
-    scrollbar-color: rgba(111, 186, 255, 0.32) rgba(11, 20, 34, 0.9);
+    scrollbar-color: var(--vb-editor-dark-border-strong) var(--vb-editor-dark-canvas);
   }
 
   .bytemd-preview {
-    border-left: 1px solid rgba(111, 186, 255, 0.12);
+    border-left: 1px solid var(--vb-editor-dark-border);
 
     .markdown-body {
       background: transparent !important;
@@ -508,34 +506,11 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
 
     .mermaid,
     .bytemd-mermaid {
-      background: linear-gradient(180deg, #eef7ff, #f7fbff) !important;
-      border-color: rgba(103, 215, 255, 0.3) !important;
+      background: rgba(148, 163, 184, 0.08);
+      border-color: var(--vb-editor-dark-border-strong) !important;
       box-shadow:
         0 10px 26px rgba(10, 30, 56, 0.12),
-        inset 0 0 0 1px rgba(111, 186, 255, 0.24) !important;
-      color: #0f4f8a !important;
-    }
-
-    .mermaid text,
-    .mermaid tspan,
-    .bytemd-mermaid text,
-    .bytemd-mermaid tspan,
-    .mermaid foreignObject,
-    .mermaid foreignObject *,
-    .bytemd-mermaid foreignObject,
-    .bytemd-mermaid foreignObject *,
-    .mermaid .label,
-    .mermaid .nodeLabel,
-    .mermaid .edgeLabel,
-    .mermaid .messageText,
-    .mermaid .actor,
-    .bytemd-mermaid .label,
-    .bytemd-mermaid .nodeLabel,
-    .bytemd-mermaid .edgeLabel,
-    .bytemd-mermaid .messageText,
-    .bytemd-mermaid .actor {
-      color: #0f4f8a !important;
-      fill: #0f4f8a !important;
+        inset 0 0 0 1px rgba(255, 255, 255, 0.03) !important;
     }
   }
 }

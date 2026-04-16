@@ -1,3 +1,5 @@
+import { AdminThemeSetting } from './setting.dto';
+
 export class SiteInfo {
   updatedAt?: Date;
   author: string;
@@ -9,6 +11,7 @@ export class SiteInfo {
   favicon: string;
   adminLogo?: string;
   adminFavicon?: string;
+  adminTheme?: AdminThemeSetting;
   siteName: string;
   siteDesc: string;
   beianNumber: string;

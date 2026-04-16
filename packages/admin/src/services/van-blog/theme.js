@@ -1,3 +1,5 @@
+import { applyAdminTheme } from '@/utils/adminTheme';
+
 export const getInitTheme = () => {
   if (!('theme' in localStorage)) {
     return 'light';
@@ -33,7 +35,7 @@ export const mapTheme = (theme) => {
   return 'realDark';
 };
 
-export const applyThemeToDocument = (theme) => {
+export const applyThemeToDocument = (theme, adminThemeConfig) => {
   if (typeof document === 'undefined') {
     return mapTheme(theme);
   }
@@ -52,6 +54,10 @@ export const applyThemeToDocument = (theme) => {
     body.style.colorScheme = documentTheme;
     body.classList.toggle('dark', isDark);
   }
+
+  applyAdminTheme(documentTheme, adminThemeConfig, {
+    persist: adminThemeConfig !== undefined,
+  });
 
   return resolvedTheme;
 };

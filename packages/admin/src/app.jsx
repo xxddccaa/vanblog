@@ -2,8 +2,8 @@ import Footer from '@/components/Footer';
 import { logoutAndRedirect } from '@/components/LogoutButton';
 import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
 import { getStoredUser } from '@/utils/getStoredUser';
-import { 
-  HomeOutlined, 
+import {
+  HomeOutlined,
   LogoutOutlined,
   ProjectOutlined,
   SmileOutlined,
@@ -21,9 +21,16 @@ import moment from 'moment';
 import { history, Link } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import defaultSettings from '../config/defaultSettings';
-import { fetchAllMeta, getAdminLayoutConfig } from './services/van-blog/api';
+import { fetchAllMeta, getAdminLayoutConfig, getAdminThemeConfig } from './services/van-blog/api';
 import { checkUrl } from './services/van-blog/checkUrl';
 import { applyThemeToDocument, beforeSwitchTheme, getInitTheme } from './services/van-blog/theme';
+import {
+  getAdminLayoutToken,
+  getAdminPrimaryColor,
+  readStoredAdminThemeConfig,
+  resolveAdminThemeMode,
+  storeAdminThemeConfig,
+} from './utils/adminTheme';
 const loginPath = '/user/login';
 const ADMIN_SIDER_COLLAPSE_STORAGE_KEY = 'vanblog.admin.sider.collapsed';
 const ADMIN_SIDER_NARROW_BREAKPOINT = 768;
@@ -43,13 +50,13 @@ const iconMapping = {
 };
 /** 获取用户信息比较慢的时候会展示一个 loading */
 
-const ThemeSync = ({ theme, navTheme }) => {
+const ThemeSync = ({ theme, navTheme, adminThemeConfig }) => {
   useEffect(() => {
     const nextTheme = theme || getInitTheme() || (navTheme === 'realDark' ? 'dark' : 'light');
 
     // ProLayout may briefly stamp light-theme markers during mount, so re-apply
     // the stored theme once the layout and async children have settled.
-    const syncTheme = () => applyThemeToDocument(nextTheme);
+    const syncTheme = () => applyThemeToDocument(nextTheme, adminThemeConfig);
     syncTheme();
 
     let frameId = null;
@@ -68,7 +75,7 @@ const ThemeSync = ({ theme, navTheme }) => {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [theme, navTheme]);
+  }, [adminThemeConfig, theme, navTheme]);
 
   return null;
 };
@@ -131,51 +138,7 @@ const ThemeDarkIcon = ({ size = 16 }) => (
 );
 
 const getResolvedThemeMode = (initialState) =>
-  initialState?.settings?.navTheme === 'realDark' ? 'dark' : 'light';
-
-const getLayoutToken = (themeMode) => {
-  if (themeMode === 'dark') {
-    return {
-      layout: {
-        sider: {
-          colorMenuBackground: '#0f172a',
-          colorBgCollapsedButton: '#0f172a',
-          colorTextCollapsedButton: '#e5e7eb',
-          colorTextCollapsedButtonHover: '#f8fafc',
-          colorMenuItemDivider: 'rgba(148, 163, 184, 0.18)',
-          colorTextMenu: '#cbd5e1',
-          colorTextMenuSecondary: '#94a3b8',
-          colorTextMenuTitle: '#f8fafc',
-          colorTextMenuItemHover: '#f8fafc',
-          colorTextMenuActive: '#f8fafc',
-          colorTextMenuSelected: '#f8fafc',
-          colorBgMenuItemHover: 'rgba(148, 163, 184, 0.12)',
-          colorBgMenuItemSelected: 'rgba(59, 130, 246, 0.18)',
-        },
-      },
-    };
-  }
-
-  return {
-    layout: {
-      sider: {
-        colorMenuBackground: '#ffffff',
-        colorBgCollapsedButton: '#ffffff',
-        colorTextCollapsedButton: 'rgba(0, 0, 0, 0.65)',
-        colorTextCollapsedButtonHover: 'rgba(0, 0, 0, 0.88)',
-        colorMenuItemDivider: 'rgba(5, 5, 5, 0.06)',
-        colorTextMenu: 'rgba(0, 0, 0, 0.65)',
-        colorTextMenuSecondary: 'rgba(0, 0, 0, 0.45)',
-        colorTextMenuTitle: 'rgba(0, 0, 0, 0.88)',
-        colorTextMenuItemHover: 'rgba(0, 0, 0, 0.88)',
-        colorTextMenuActive: 'rgba(0, 0, 0, 0.88)',
-        colorTextMenuSelected: '#1772b4',
-        colorBgMenuItemHover: 'rgba(23, 114, 180, 0.08)',
-        colorBgMenuItemSelected: 'rgba(23, 114, 180, 0.12)',
-      },
-    },
-  };
-};
+  resolveAdminThemeMode(initialState?.settings?.navTheme);
 
 const getSiderCollapseButton = () =>
   typeof document === 'undefined'
@@ -194,7 +157,10 @@ const isSiderCollapsed = () => {
     return footer.classList.contains('ant-pro-sider-footer-collapsed');
   }
 
-  return getSiderCollapseButton()?.classList.contains('ant-pro-sider-collapsed-button-collapsed') || false;
+  return (
+    getSiderCollapseButton()?.classList.contains('ant-pro-sider-collapsed-button-collapsed') ||
+    false
+  );
 };
 
 const SiderCollapseSync = () => {
@@ -299,15 +265,17 @@ const SiderCollapseSync = () => {
 
 const AdminSiderFooter = ({ collapsed, initialState, setInitialState }) => {
   const theme = initialState?.theme || 'light';
-  const themeDisplay = theme === 'dark'
-    ? { label: '暗色', icon: <ThemeDarkIcon /> }
-    : { label: '亮色', icon: <ThemeLightIcon /> };
+  const themeDisplay =
+    theme === 'dark'
+      ? { label: '暗色', icon: <ThemeDarkIcon /> }
+      : { label: '亮色', icon: <ThemeLightIcon /> };
 
   const handleThemeToggle = useCallback(() => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
     const nextSettings = {
       ...initialState?.settings,
       navTheme: beforeSwitchTheme(nextTheme),
+      primaryColor: getAdminPrimaryColor(nextTheme, initialState?.adminThemeConfig),
     };
 
     setInitialState({
@@ -498,10 +466,7 @@ const WalinePrewarm = () => {
       disposed = true;
       if (typeof idleHandle === 'number') {
         window.clearTimeout(idleHandle);
-      } else if (
-        idleHandle !== null &&
-        typeof window.cancelIdleCallback === 'function'
-      ) {
+      } else if (idleHandle !== null && typeof window.cancelIdleCallback === 'function') {
         window.cancelIdleCallback(idleHandle);
       }
       prefetchLink?.remove();
@@ -543,8 +508,27 @@ export async function getInitialState() {
     }
   };
 
+  const fetchAdminThemeData = async (shouldRequestAdminTheme) => {
+    const fallbackThemeConfig = readStoredAdminThemeConfig();
+
+    if (!shouldRequestAdminTheme) {
+      return fallbackThemeConfig;
+    }
+
+    try {
+      const { data } = await getAdminThemeConfig();
+      return storeAdminThemeConfig(data);
+    } catch (error) {
+      return fallbackThemeConfig;
+    }
+  };
+
   // 如果不是登录页面，执行
   let option = {};
+  const shouldRequestAdminTheme = Boolean(
+    localStorage.getItem('token') &&
+      ![loginPath, '/init', '/user/restore'].includes(history.location.pathname),
+  );
   if (
     history.location.pathname == loginPath ||
     history.location.pathname == '/init' ||
@@ -552,8 +536,11 @@ export async function getInitialState() {
   ) {
     option.skipErrorHandler = true;
   }
-  const initData = await fetchInitData(option);
-  const adminLayoutData = await fetchAdminLayoutData();
+  const [initData, adminLayoutData, adminThemeConfig] = await Promise.all([
+    fetchInitData(option),
+    fetchAdminLayoutData(),
+    fetchAdminThemeData(shouldRequestAdminTheme),
+  ]);
 
   const { latestVersion, updatedAt, baseUrl, allowDomains, version } = initData;
 
@@ -640,12 +627,17 @@ export async function getInitialState() {
   }
   // 暗色模式
   const theme = getInitTheme();
-  const sysTheme = applyThemeToDocument(theme);
+  const sysTheme = applyThemeToDocument(theme, adminThemeConfig);
   return {
     fetchInitData,
     ...initData,
     adminLayoutConfig: adminLayoutData,
-    settings: { ...defaultSettings, navTheme: sysTheme },
+    adminThemeConfig,
+    settings: {
+      ...defaultSettings,
+      navTheme: sysTheme,
+      primaryColor: getAdminPrimaryColor(theme, adminThemeConfig),
+    },
     theme,
   };
 } // ProLayout 支持的api https://procomponents.ant.design/components/layout
@@ -669,14 +661,14 @@ export const layout = ({ initialState, setInitialState }) => {
   // 动态菜单渲染函数
   const menuDataRender = (menuList) => {
     const { adminLayoutConfig } = initialState || {};
-    
+
     if (!adminLayoutConfig || !adminLayoutConfig.menuItems) {
       return menuList;
     }
 
     // 创建菜单项映射
     const menuMapping = {};
-    menuList.forEach(menu => {
+    menuList.forEach((menu) => {
       if (menu.path === '/welcome') menuMapping.welcome = menu;
       else if (menu.path === '/article') menuMapping.article = menu;
       else if (menu.path === '/moment') menuMapping.moment = menu;
@@ -690,9 +682,9 @@ export const layout = ({ initialState, setInitialState }) => {
 
     // 根据配置生成新的菜单
     const configuredMenus = adminLayoutConfig.menuItems
-      .filter(item => item.visible)
+      .filter((item) => item.visible)
       .sort((a, b) => a.order - b.order)
-      .map(item => {
+      .map((item) => {
         const originalMenu = menuMapping[item.key];
         if (originalMenu) {
           return {
@@ -716,11 +708,7 @@ export const layout = ({ initialState, setInitialState }) => {
         data-testid="admin-sider-logo"
         style={{ display: 'flex', alignItems: 'center', gap: 12, color: siderHeaderColor }}
       >
-        <img
-          src={adminLogo}
-          alt="VanBlog logo"
-          style={{ width: 32, height: 32, flexShrink: 0 }}
-        />
+        <img src={adminLogo} alt="VanBlog logo" style={{ width: 32, height: 32, flexShrink: 0 }} />
         {!props?.collapsed ? (
           <h1 style={{ margin: 0, fontSize: 18, lineHeight: '32px', color: siderHeaderColor }}>
             VanBlog
@@ -770,6 +758,7 @@ export const layout = ({ initialState, setInitialState }) => {
           <ThemeSync
             theme={initialState?.theme}
             navTheme={initialState?.settings?.navTheme}
+            adminThemeConfig={initialState?.adminThemeConfig}
           />
           <AdminBrandSync siteInfo={initialState} />
           <SiderCollapseSync />
@@ -778,7 +767,7 @@ export const layout = ({ initialState, setInitialState }) => {
         </>
       );
     },
-    token: getLayoutToken(themeMode),
+    token: getAdminLayoutToken(themeMode, initialState?.adminThemeConfig),
     defaultCollapsed: false,
     ...initialState?.settings,
     logo: adminLogo,

@@ -1056,10 +1056,10 @@
   list-style: decimal;
 }
 .dark .language-mermaid {
-  background-color: #212428;
+  background-color: transparent;
 }
 .language-mermaid {
-  background-color: white;
+  background-color: transparent;
 }
 
 body .markdown-body pre {
@@ -1275,69 +1275,41 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   overflow-wrap: anywhere;
 }
 
-/* mermaid图表通用样式 - 不依赖主题 */
-.mermaid {
+/* Mermaid 容器只负责版式和留白，让官方 SVG 主题自己控制颜色。 */
+.markdown-body {
+  --vb-mermaid-surface: rgba(148, 163, 184, 0.08);
+  --vb-mermaid-border: rgba(148, 163, 184, 0.28);
+}
+
+html[data-theme='dark'] .markdown-body,
+body[data-theme='dark'] .markdown-body,
+.dark .markdown-body {
+  --vb-mermaid-surface: rgba(148, 163, 184, 0.08);
+  --vb-mermaid-border: var(--vb-front-dark-border, rgba(148, 163, 184, 0.24));
+}
+
+.markdown-body .mermaid,
+.markdown-body .bytemd-mermaid {
   display: flex;
   justify-content: center;
   align-items: center;
   text-align: center;
-  background-color: #f8f5ff !important; /* 淡紫色背景 */
-  border-radius: 5px;
+  background-color: var(--vb-mermaid-surface);
+  border-radius: 12px;
   padding: 16px;
   margin: 16px 0;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--vb-mermaid-border);
   overflow: auto;
 }
 
-/* ByteMD mermaid容器样式 */
-.bytemd-mermaid {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  background-color: #f8f5ff !important; /* 淡紫色背景 */
-  border-radius: 5px;
-  padding: 16px;
-  margin: 16px 0;
-  border: 1px solid #e0e0e0;
-  overflow: auto;
-}
-
-/* 黑色主题下的mermaid样式 */
-.dark .mermaid {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  background-color: #f8f5ff !important; /* 淡紫色背景 */
-  border-radius: 5px;
-  padding: 16px;
-  margin: 16px 0;
-  border: 1px solid #30363d;
-  overflow: auto;
-}
-
-/* 黑色主题下的ByteMD mermaid容器样式 */
-.dark .bytemd-mermaid {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  background-color: #f8f5ff !important; /* 淡紫色背景 */
-  border-radius: 5px;
-  padding: 16px;
-  margin: 16px 0;
-  border: 1px solid #30363d;
-  overflow: auto;
-}
-
-/* 确保mermaid图表容器有足够的空间 */
-.mermaid svg,
-.bytemd-mermaid svg {
+/* 确保 Mermaid 图表容器有足够的空间 */
+.markdown-body .mermaid svg,
+.markdown-body .bytemd-mermaid svg {
   display: block;
   margin: 0 auto;
   max-width: 100%;
   height: auto;
+  background-color: transparent !important;
 }
 
 /* 强制移除代码块中所有元素的下划线和边框线 */

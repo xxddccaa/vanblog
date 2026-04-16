@@ -2,7 +2,7 @@ import { Viewer } from '@bytemd/react';
 import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
-import { customMermaidPlugin } from '../Editor/mermaidTheme';
+import { customMermaidPlugin, normalizeMermaidThemeMode } from '../Editor/mermaidTheme';
 import { cn } from '../Editor/locales';
 import { customContainer } from '../Editor/plugins/customContainer';
 import { customCodeBlock } from '../Editor/plugins/codeBlock';
@@ -42,6 +42,7 @@ export default function DocumentViewer(props) {
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
+  const mermaidThemeMode = normalizeMermaidThemeMode(themeClass);
   const viewerRef = useRef(null);
   const resolvedThemeConfig = useAdminMarkdownTheme(themeConfig);
   const lightThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownLightThemeUrl);
@@ -59,14 +60,14 @@ export default function DocumentViewer(props) {
           throwOnError: false,
         }
       }),
-      customMermaidPlugin(),
+      customMermaidPlugin(mermaidThemeMode),
       customCodeBlock(codeMaxLines),
       LinkTarget(),
       rawHTML(),
       Heading(),
       smartCodeBlock(),
     ];
-  }, [codeMaxLines]);
+  }, [codeMaxLines, mermaidThemeMode]);
 
   // 确保样式在渲染后正确应用
   useEffect(() => {
@@ -127,6 +128,7 @@ export default function DocumentViewer(props) {
       }}
     >
       <Viewer
+        key={`document-viewer-${mermaidThemeMode}`}
         value={value || ''}
         plugins={plugins}
         sanitize={sanitize}
