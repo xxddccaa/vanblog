@@ -7,6 +7,7 @@ import { cn } from '../Editor/locales';
 import { customContainer } from '../Editor/plugins/customContainer';
 import { customCodeBlock } from '../Editor/plugins/codeBlock';
 import { LinkTarget } from '../Editor/plugins/linkTarget';
+import { customMermaidExportPlugin } from '../Editor/plugins/mermaidExport';
 import rawHTML from '../Editor/rawHTML';
 import { Heading } from '../Editor/plugins/heading';
 import { smartCodeBlock } from '../Editor/plugins/smartCodeBlock';
@@ -61,6 +62,7 @@ export default function DocumentViewer(props) {
         }
       }),
       customMermaidPlugin(mermaidThemeMode),
+      customMermaidExportPlugin(mermaidThemeMode),
       customCodeBlock(codeMaxLines),
       LinkTarget(),
       rawHTML(),

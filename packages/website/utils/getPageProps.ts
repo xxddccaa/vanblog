@@ -195,11 +195,13 @@ export async function getPostPagesProps(curId: string): Promise<PostPagesProps> 
     ],
   };
   const currArticleProps = await getArticleByIdOrPathname(curId);
-  const { article } = currArticleProps;
+  const rawArticle = currArticleProps.article;
+  const hasValidArticle = Boolean(rawArticle?.id && rawArticle?.title);
+  const article = hasValidArticle ? toStableArticleShell(rawArticle) : null;
   const author = article?.author || data.meta.siteInfo.author;
   return {
     layoutProps,
-    article: toStableArticleShell(currArticleProps.article),
+    article,
     ...payProps,
     author,
     showSubMenu: layoutProps.showSubMenu,

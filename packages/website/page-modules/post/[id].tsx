@@ -16,7 +16,7 @@ import Custom404 from "../404";
 
 export interface PostPagesProps {
   layoutProps: LayoutProps;
-  article: Article;
+  article: Article | null;
   pay: string[];
   payDark: string[];
   author: string;
@@ -103,9 +103,16 @@ export async function getStaticPaths() {
 
 export async function getStaticProps({
   params,
-}: any): Promise<{ props: PostPagesProps; revalidate?: number }> {
+}: any): Promise<{ props: PostPagesProps; revalidate?: number } | { notFound: true; revalidate?: number }> {
+  const props = await getPostPagesProps(params.id);
+  if (!props.article) {
+    return {
+      notFound: true,
+      ...revalidate,
+    };
+  }
   return {
-    props: await getPostPagesProps(params.id),
+    props,
     ...revalidate,
   };
 }

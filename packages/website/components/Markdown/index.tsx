@@ -5,6 +5,7 @@ import { Viewer } from "@bytemd/react";
 import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
+import { customMermaidExportPlugin } from './mermaidExport';
 import { customMermaidPlugin, normalizeMermaidThemeMode } from './mermaidTheme';
 import { customContainer } from './customContainer';
 import "katex/dist/katex.min.css";
@@ -47,6 +48,7 @@ export default function ({ content, codeMaxLines = 15 }: { content: string; code
         },
       }),
       customMermaidPlugin(mermaidThemeMode),
+      customMermaidExportPlugin(mermaidThemeMode),
       customContainer(),
       customCodeBlock(codeMaxLines),
       LinkTarget(),

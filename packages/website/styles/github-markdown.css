@@ -1290,6 +1290,7 @@ body[data-theme='dark'] .markdown-body,
 
 .markdown-body .mermaid,
 .markdown-body .bytemd-mermaid {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1310,6 +1311,66 @@ body[data-theme='dark'] .markdown-body,
   max-width: 100%;
   height: auto;
   background-color: transparent !important;
+}
+
+.markdown-body .vb-mermaid-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  z-index: 10;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--color-canvas-default) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-border-default) 78%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(6px);
+}
+
+.markdown-body .vb-mermaid-action-btn {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0;
+  transition:
+    background-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-fg-default) 78%, var(--color-fg-muted));
+  user-select: none;
+  appearance: none;
+}
+
+.markdown-body .vb-mermaid-action-btn:hover {
+  background-color: color-mix(in srgb, var(--color-border-default) 34%, transparent);
+}
+
+.dark .markdown-body .vb-mermaid-action-btn {
+  color: color-mix(in srgb, var(--vb-front-dark-text, #c2ced6) 84%, white 16%);
+}
+
+.dark .markdown-body .vb-mermaid-action-btn:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--vb-front-dark-border-strong, #6f8295) 32%,
+    transparent
+  );
+}
+
+.markdown-body .vb-mermaid-action-btn svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+  pointer-events: none;
 }
 
 /* 强制移除代码块中所有元素的下划线和边框线 */

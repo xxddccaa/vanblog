@@ -678,7 +678,7 @@
 ) .markdown-body .code-block-wrapper {
   position: relative;
   overflow: hidden;
-  padding: 11px 11px 9px;
+  padding: 8px 11px 9px;
   border-radius: 20px;
   background: var(--vb-md-code-panel-bg) !important;
   border: 1px solid var(--vb-md-code-panel-border) !important;
@@ -742,7 +742,7 @@
   [data-vb-markdown-dark-theme-id].dark,
   .dark [data-vb-markdown-dark-theme-id]:not(.light)
 ) .markdown-body .header-right {
-  top: 6px !important;
+  top: 4px !important;
   right: 7px !important;
   z-index: 2 !important;
   display: inline-flex !important;
@@ -851,7 +851,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   position: relative;
-  padding-top: 24px;
+  padding-top: 11px;
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--vb-md-code-language-text) 32%, transparent) transparent;
 }

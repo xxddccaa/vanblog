@@ -27,6 +27,7 @@ import rawHTML from './rawHTML';
 import { Heading } from './plugins/heading';
 import { customCodeBlock } from './plugins/codeBlock';
 import { LinkTarget } from './plugins/linkTarget';
+import { customMermaidExportPlugin } from './plugins/mermaidExport';
 import { smartCodeBlock } from './plugins/smartCodeBlock';
 
 const sanitize = (schema) => {
@@ -96,6 +97,7 @@ export default function EditorComponent(props: {
         },
       }),
       customMermaidPlugin(mermaidThemeMode),
+      customMermaidExportPlugin(mermaidThemeMode),
       imgUploadPlugin(setLoading),
       emoji(),
       insertMore(),

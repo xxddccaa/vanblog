@@ -40,7 +40,7 @@ html[data-theme='dark'] pre .code-block-wrapper,
 body[data-theme='dark'] pre .code-block-wrapper {
   display: block;
   overflow: hidden;
-  padding: 11px 11px 9px;
+  padding: 8px 11px 9px;
   border-radius: 20px;
   background: var(--vb-md-code-panel-bg, var(--vb-code-panel-bg)) !important;
   border: 1px solid var(--vb-md-code-panel-border, var(--vb-code-panel-border)) !important;
@@ -51,7 +51,7 @@ body[data-theme='dark'] pre .code-block-wrapper {
 html.dark .markdown-body .header-right,
 html[data-theme='dark'] .markdown-body .header-right,
 body[data-theme='dark'] .markdown-body .header-right {
-  top: 6px !important;
+  top: 4px !important;
   right: 7px !important;
   z-index: 2 !important;
   display: inline-flex !important;
@@ -146,7 +146,7 @@ body[data-theme='dark'] .markdown-body .code-content-wrapper {
   overflow-x: auto;
   overflow-y: hidden;
   position: relative;
-  padding-top: 24px;
+  padding-top: 11px;
   scrollbar-width: thin;
 }
 

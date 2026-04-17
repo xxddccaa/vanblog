@@ -34,7 +34,7 @@ html:not(.dark) .markdown-body pre {
 html:not(.dark) pre .code-block-wrapper {
   display: block;
   overflow: hidden;
-  padding: 11px 11px 9px;
+  padding: 8px 11px 9px;
   border-radius: 20px;
   background: var(--vb-md-code-panel-bg, var(--vb-code-panel-bg)) !important;
   border: 1px solid var(--vb-md-code-panel-border, var(--vb-code-panel-border)) !important;
@@ -43,7 +43,7 @@ html:not(.dark) pre .code-block-wrapper {
 
 .light .markdown-body .header-right,
 html:not(.dark) .markdown-body .header-right {
-  top: 6px;
+  top: 4px;
   right: 7px;
   z-index: 2;
   display: inline-flex;
@@ -120,7 +120,7 @@ html:not(.dark) .markdown-body .code-content-wrapper {
   overflow-x: auto;
   overflow-y: hidden;
   position: relative;
-  padding-top: 24px;
+  padding-top: 11px;
   scrollbar-width: thin;
 }
 

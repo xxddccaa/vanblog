@@ -2,6 +2,7 @@
 const withBundleAnalyzer = require("@next/bundle-analyzer")({
   enabled: process.env.ANALYZE === "true",
 });
+const os = require("os");
 const rootPackage = require("../../package.json");
 const isDev = process.env.NODE_ENV == "development";
 const markdownThemeAssetVersion =
@@ -56,6 +57,49 @@ const getAllowDomains = () => {
     return [];
   }
 };
+
+const normalizeOriginHost = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed)) {
+      return new URL(trimmed).hostname || null;
+    }
+  } catch (error) {
+    return null;
+  }
+
+  return trimmed.split("/")[0].split(":")[0] || null;
+};
+
+const getAllowedDevOrigins = () => {
+  const allowed = new Set(["127.0.0.1", "localhost"]);
+
+  getAllowDomains().forEach((domain) => {
+    const host = normalizeOriginHost(domain);
+    if (host) {
+      allowed.add(host);
+    }
+  });
+
+  Object.values(os.networkInterfaces() || {}).forEach((entries) => {
+    (entries || []).forEach((entry) => {
+      if (entry && entry.family === "IPv4" && !entry.internal && entry.address) {
+        allowed.add(entry.address);
+      }
+    });
+  });
+
+  return Array.from(allowed);
+};
+
 const getCdnUrl = () => {
   if (isDev) {
     return {};
@@ -81,7 +125,7 @@ module.exports = withBundleAnalyzer({
   env: {
     NEXT_PUBLIC_MARKDOWN_THEME_ASSET_VERSION: markdownThemeAssetVersion,
   },
-  allowedDevOrigins: isDev ? ["127.0.0.1", "localhost"] : undefined,
+  allowedDevOrigins: isDev ? getAllowedDevOrigins() : undefined,
   experimental: {
     largePageDataBytes: 1024 * 1024 * 10,
   },

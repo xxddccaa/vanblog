@@ -1088,6 +1088,7 @@
 /* 后台 Mermaid 容器只负责留白和边界，让 Mermaid 官方主题自己控制 SVG 颜色。 */
 .markdown-body .mermaid,
 .markdown-body .bytemd-mermaid {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1116,6 +1117,66 @@ body[data-theme='dark'] .markdown-body .bytemd-mermaid {
   max-width: 100%;
   height: auto;
   background-color: transparent !important;
+}
+
+.markdown-body .vb-mermaid-toolbar {
+  position: absolute !important;
+  top: 6px !important;
+  right: 7px !important;
+  z-index: 10 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  padding: 2px !important;
+  background: color-mix(in srgb, var(--color-canvas-default) 82%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--color-border-default) 78%, transparent) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.16) !important;
+  backdrop-filter: blur(6px) !important;
+}
+
+.markdown-body .vb-mermaid-action-btn {
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 !important;
+  transition:
+    background-color 0.2s ease-in-out,
+    color 0.2s ease-in-out !important;
+  border-radius: 999px !important;
+  color: color-mix(in srgb, var(--color-fg-default) 78%, var(--color-fg-muted)) !important;
+  border: 0 !important;
+  background-color: transparent !important;
+  user-select: none !important;
+  appearance: none;
+}
+
+.markdown-body .vb-mermaid-action-btn:hover {
+  background-color: color-mix(in srgb, var(--color-border-default) 34%, transparent) !important;
+}
+
+.dark .markdown-body .vb-mermaid-action-btn {
+  color: color-mix(in srgb, var(--admin-editor-text, #e9f3ff) 84%, white 16%) !important;
+}
+
+.dark .markdown-body .vb-mermaid-action-btn:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--admin-editor-border-strong, rgba(111, 214, 255, 0.3)) 40%,
+    transparent
+  ) !important;
+}
+
+.markdown-body .vb-mermaid-action-btn svg {
+  width: 10px;
+  height: 10px;
+  display: block;
+  pointer-events: none;
 }
 
 body .markdown-body pre {

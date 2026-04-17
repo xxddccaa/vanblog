@@ -71,7 +71,9 @@
       .markdown-body .code-toggle-btn,
       .code-toggle-btn,
       .markdown-body .code-wrap-btn,
-      .code-wrap-btn {
+      .code-wrap-btn,
+      .markdown-body .vb-mermaid-action-btn,
+      .vb-mermaid-action-btn {
         cursor: pointer !important;
         display: inline-flex !important;
         align-items: center;
@@ -109,7 +111,9 @@
       .markdown-body .code-toggle-btn svg,
       .code-toggle-btn svg,
       .markdown-body .code-wrap-btn svg,
-      .code-wrap-btn svg {
+      .code-wrap-btn svg,
+      .markdown-body .vb-mermaid-action-btn svg,
+      .vb-mermaid-action-btn svg {
         width: 9px;
         height: 9px;
         display: block;
@@ -170,6 +174,22 @@
 
       .markdown-body .header-right,
       .header-right {
+        position: absolute !important;
+        top: 6px !important;
+        right: 7px !important;
+        z-index: 10 !important;
+        line-height: 1 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 2px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+      }
+
+      .markdown-body .vb-mermaid-toolbar,
+      .vb-mermaid-toolbar {
         position: absolute !important;
         top: 6px !important;
         right: 7px !important;

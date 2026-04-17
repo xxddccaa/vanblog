@@ -2,6 +2,7 @@ import PostPage from '../../../page-components/post/[id]';
 import { getArticlesByOption } from '../../../api/getArticles';
 import { getArticlePath } from '../../../utils/getArticlePath';
 import { getPostPagesProps } from '../../../utils/getPageProps';
+import { notFound } from 'next/navigation';
 
 export const dynamicParams = true;
 
@@ -17,5 +18,8 @@ export async function generateStaticParams() {
 export default async function PostRoute({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
   const props = await getPostPagesProps(resolvedParams.id);
+  if (!props.article) {
+    notFound();
+  }
   return <PostPage {...props} />;
 }
