@@ -1,3 +1,9 @@
+.mindmap-editor-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .mindmap-editor-card {
   height: calc(100vh - 200px);
   
@@ -7,3 +13,35 @@
   }
 }
 
+.mindmap-editor-page-mobile {
+  .mindmap-editor-layout {
+    height: 100%;
+    min-height: 0;
+    gap: 12px;
+  }
+
+  .mindmap-editor-mobile-toolbar {
+    flex-shrink: 0;
+  }
+
+  .mindmap-editor-mobile-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mindmap-editor-mobile-save {
+    grid-column: 1 / -1;
+  }
+
+  .mindmap-editor-card {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+    border-radius: 18px;
+
+    .ant-card-body {
+      min-height: 0;
+      height: 100%;
+    }
+  }
+}

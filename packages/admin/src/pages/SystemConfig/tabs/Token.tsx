@@ -1,9 +1,11 @@
+import AdminMobileCardList from '@/components/AdminMobileCardList';
 import { createApiToken, getAllApiTokens, deleteApiToken } from '@/services/van-blog/api';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { ModalForm, ProFormText, ProTable } from '@ant-design/pro-components';
 import type { ActionType } from '@ant-design/pro-components';
-import { Button, Card, message, Modal, Space, Typography } from 'antd';
+import { Button, Card, Space, Tag, Typography, message, Modal } from 'antd';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 const columns = [
   { dataIndex: '_id', title: 'ID' },
   { dataIndex: 'name', title: '名称' },
@@ -42,7 +44,23 @@ const columns = [
   },
 ];
 export default function () {
+  const { mobile } = useAdminResponsive();
   const actionRef = useRef<ActionType>();
+  const [tokens, setTokens] = useState<any[]>([]);
+
+  const fetchTokens = async () => {
+    const { data } = await getAllApiTokens();
+    setTokens(data || []);
+    return data;
+  };
+
+  useEffect(() => {
+    if (!mobile) {
+      return;
+    }
+    fetchTokens();
+  }, [mobile]);
+
   return (
     <>
       <Card
@@ -57,6 +75,7 @@ export default function () {
               onFinish={async (vals) => {
                 await createApiToken(vals);
                 actionRef.current?.reload();
+                fetchTokens();
                 return true;
               }}
             >
@@ -101,29 +120,65 @@ export default function () {
           </Space>
         }
       >
-        <ProTable
-          rowKey="id"
-          columns={columns}
-          dateFormatter="string"
-          actionRef={actionRef}
-          search={false}
-          options={false}
-          pagination={{
-            hideOnSinglePage: true,
-            simple: true,
-          }}
-          request={async (params = {}) => {
-            let { data } = await getAllApiTokens();
-            return {
-              data,
-              // success 请返回 true，
-              // 不然 table 会停止解析数据，即使有数据
-              success: true,
-              // 不传会使用 data 的长度，如果是分页一定要传
-              total: data.length,
-            };
-          }}
-        />
+        {mobile ? (
+          <div style={{ padding: 14 }}>
+            <AdminMobileCardList
+              items={tokens}
+              rowKey="_id"
+              emptyText="暂无 Token"
+              renderCard={(record) => (
+                <Card className="admin-mobile-record-card">
+                  <div className="admin-mobile-record-title-row">
+                    <div className="admin-mobile-record-title">{record.name}</div>
+                    <Tag>ID {record._id}</Tag>
+                  </div>
+                  <div className="admin-mobile-record-copy" style={{ marginBottom: 0 }}>
+                    <Typography.Text copyable>{record.token}</Typography.Text>
+                  </div>
+                  <div className="admin-mobile-record-actions">
+                    <Button
+                      danger
+                      onClick={() => {
+                        Modal.confirm({
+                          title: '删除确认',
+                          content: '是否确认删除该 Token？',
+                          onOk: async () => {
+                            await deleteApiToken(record._id);
+                            await fetchTokens();
+                            message.success('删除成功！');
+                          },
+                        });
+                      }}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </Card>
+              )}
+            />
+          </div>
+        ) : (
+          <ProTable
+            rowKey="id"
+            columns={columns}
+            dateFormatter="string"
+            actionRef={actionRef}
+            search={false}
+            options={false}
+            pagination={{
+              hideOnSinglePage: true,
+              simple: mobile,
+            }}
+            request={async () => {
+              let data = await fetchTokens();
+              return {
+                data,
+                success: true,
+                total: data.length,
+              };
+            }}
+          />
+        )}
       </Card>
     </>
   );

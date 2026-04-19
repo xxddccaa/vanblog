@@ -1,7 +1,9 @@
+import AdminMobileCardList from '@/components/AdminMobileCardList';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { getLog } from '@/services/van-blog/api';
 import { ProTable } from '@ant-design/pro-components';
-import { Tag } from 'antd';
-import { useRef } from 'react';
+import { Card, Tag } from 'antd';
+import { useEffect, useRef, useState } from 'react';
 
 const columns = [
   {
@@ -54,38 +56,79 @@ const columns = [
   },
 ];
 export default function () {
+  const { mobile } = useAdminResponsive();
   const actionRef = useRef();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const { data } = await getLog('login', 1, 20);
+      setItems(data?.data || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!mobile) {
+      return;
+    }
+    fetchLogs();
+  }, [mobile]);
+
   return (
     <>
-      <ProTable
-        // ghost
-        cardBordered
-        rowKey="time"
-        columns={columns}
-        search={false}
-        dateFormatter="string"
-        actionRef={actionRef}
-        options={true}
-        headerTitle="登录日志"
-        pagination={{
-          pageSize: 10,
-          simple: true,
-          hideOnSinglePage: true,
-        }}
-        request={async (params) => {
-          // console.log(params);
-          // const data = await fetchData();
-          const { data } = await getLog('login', params.current, params.pageSize);
-          return {
-            data: data.data,
-            // success 请返回 true，
-            // 不然 table 会停止解析数据，即使有数据
-            success: true,
-            // 不传会使用 data 的长度，如果是分页一定要传
-            total: data.total,
-          };
-        }}
-      />
+      {mobile ? (
+        <AdminMobileCardList
+          items={items}
+          loading={loading}
+          rowKey="time"
+          emptyText="暂无登录日志"
+          renderCard={(record) => (
+            <Card className="admin-mobile-record-card">
+              <div className="admin-mobile-record-title-row">
+                <div className="admin-mobile-record-title">{record.address || '未知地址'}</div>
+                <Tag color={record.success ? 'success' : 'error'}>
+                  {record.success ? '成功' : '失败'}
+                </Tag>
+              </div>
+              <div className="admin-mobile-record-meta">
+                <span>{new Date(record.time).toLocaleString()}</span>
+                <span>{record.ip}</span>
+              </div>
+              <div className="admin-mobile-record-copy" style={{ marginBottom: 0 }}>
+                登录设备：{record.platform || '-'}
+              </div>
+            </Card>
+          )}
+        />
+      ) : (
+        <ProTable
+          cardBordered
+          rowKey="time"
+          columns={columns}
+          search={false}
+          dateFormatter="string"
+          actionRef={actionRef}
+          options={true}
+          headerTitle="登录日志"
+          pagination={{
+            pageSize: 10,
+            simple: true,
+            hideOnSinglePage: true,
+          }}
+          request={async (params) => {
+            const { data } = await getLog('login', params.current, params.pageSize);
+            return {
+              data: data.data,
+              success: true,
+              total: data.total,
+            };
+          }}
+        />
+      )}
     </>
   );
 }

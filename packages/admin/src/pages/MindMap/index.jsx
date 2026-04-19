@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
+import AdminMobileCardList from '@/components/AdminMobileCardList';
 import { PageContainer } from '@ant-design/pro-layout';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { Card, Button, Space, message, Modal, Input, Table, Tag, Tooltip } from 'antd';
 import { 
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
-  EyeOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { history } from '@umijs/max';
@@ -19,6 +20,7 @@ import {
 import './index.less';
 
 export default function MindMap() {
+  const { mobile } = useAdminResponsive();
   const [loading, setLoading] = useState(false);
   const [mindMaps, setMindMaps] = useState([]);
   const [total, setTotal] = useState(0);
@@ -193,50 +195,143 @@ export default function MindMap() {
     },
   ];
 
+  const mobileHeroStats = [
+    { label: '总数', value: total },
+    { label: '当前页', value: page },
+    { label: '每页', value: pageSize },
+  ];
+
   return (
     <PageContainer
-      title="思维导图管理"
+      title={mobile ? false : '思维导图管理'}
       extra={
-        <Space>
-          <Input.Search
-            placeholder="搜索思维导图"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            onSearch={handleSearch}
-            style={{ width: 250 }}
-            allowClear
-          />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setShowCreateModal(true)}
-          >
-            新建思维导图
-          </Button>
-        </Space>
+        mobile ? null : (
+          <Space>
+            <Input.Search
+              placeholder="搜索思维导图"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onSearch={handleSearch}
+              style={{ width: 250 }}
+              allowClear
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setShowCreateModal(true)}
+            >
+              新建思维导图
+            </Button>
+          </Space>
+        )
       }
     >
-      <Card>
-        <Table
-          loading={loading}
-          columns={columns}
-          dataSource={mindMaps}
-          rowKey="_id"
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 个思维导图`,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-              loadMindMaps(p, ps);
-            },
-          }}
-        />
-      </Card>
+      {mobile ? (
+        <div className="admin-mobile-section-shell mindmap-page-mobile">
+          <Card className="admin-mobile-toolbar-card admin-mobile-hero-card">
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <div className="admin-mobile-toolbar-head">
+                <div>
+                  <div className="admin-mobile-toolbar-title">思维导图管理</div>
+                  <div className="admin-mobile-toolbar-subtitle">
+                    手机上优先处理搜索、创建与进入画布，列表按卡片方式保持清晰。
+                  </div>
+                </div>
+                <div className="admin-mobile-toolbar-badge">脑图面板</div>
+              </div>
+              <div className="admin-mobile-toolbar-stats">
+                {mobileHeroStats.map((item) => (
+                  <div key={item.label} className="admin-mobile-toolbar-stat">
+                    <div className="admin-mobile-toolbar-stat-label">{item.label}</div>
+                    <div className="admin-mobile-toolbar-stat-value">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+              <Input.Search
+                placeholder="搜索思维导图"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onSearch={handleSearch}
+                allowClear
+                enterButton="搜索"
+              />
+              <div className="admin-mobile-action-grid admin-mobile-action-grid-single">
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  新建思维导图
+                </Button>
+              </div>
+            </Space>
+          </Card>
+
+          <AdminMobileCardList
+            items={mindMaps}
+            loading={loading}
+            rowKey="_id"
+            emptyText="暂无思维导图"
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              pageSizeOptions: ['10', '20', '50'],
+              showSizeChanger: true,
+              onChange: (p, ps) => {
+                setPage(p);
+                setPageSize(ps);
+                loadMindMaps(p, ps);
+              },
+            }}
+            renderCard={(record) => (
+              <Card className="admin-mobile-record-card mindmap-mobile-record-card">
+                <div className="admin-mobile-record-title-row">
+                  <div className="admin-mobile-record-title">{record.title}</div>
+                  <Tag color="blue">{record.viewer || 0} 浏览</Tag>
+                </div>
+                <div className="admin-mobile-record-meta">
+                  <span>{record.author || '未知作者'}</span>
+                  <span>{moment(record.updatedAt).format('YYYY-MM-DD HH:mm')}</span>
+                </div>
+                <div className="admin-mobile-record-copy admin-mobile-record-copy-clamp mindmap-mobile-record-copy">
+                  {record.description || '未填写描述'}
+                </div>
+                <div className="admin-mobile-record-actions">
+                  <Button type="primary" onClick={() => history.push(`/mindmap/editor?id=${record._id}`)}>
+                    编辑
+                  </Button>
+                  <Button danger onClick={() => handleDelete(record._id)}>
+                    删除
+                  </Button>
+                </div>
+              </Card>
+            )}
+          />
+        </div>
+      ) : (
+        <Card>
+          <Table
+            loading={loading}
+            columns={columns}
+            dataSource={mindMaps}
+            rowKey="_id"
+            pagination={{
+              current: page,
+              pageSize: pageSize,
+              total: total,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total) => `共 ${total} 个思维导图`,
+              onChange: (p, ps) => {
+                setPage(p);
+                setPageSize(ps);
+                loadMindMaps(p, ps);
+              },
+            }}
+          />
+        </Card>
+      )}
 
       <Modal
         title="新建思维导图"
@@ -275,4 +370,3 @@ export default function MindMap() {
     </PageContainer>
   );
 }
-

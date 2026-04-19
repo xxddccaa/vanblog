@@ -184,6 +184,43 @@ html[data-theme='dark'] {
   }
 }
 
+.document-mobile-layout {
+  align-items: start;
+}
+
+.document-mobile-drawer {
+  .ant-drawer-body {
+    padding: 12px;
+    background: var(--admin-app-background);
+  }
+}
+
+.document-mobile-context-card {
+  .ant-card-body {
+    display: grid;
+    gap: 10px;
+  }
+}
+
+.document-mobile-empty-card,
+.document-mobile-context-card,
+.document-content-card-mobile {
+  border-radius: 18px;
+}
+
+.document-content-card-mobile {
+  overflow: hidden;
+
+  .ant-card-body {
+    min-height: 0 !important;
+  }
+}
+
+.document-page-viewer-mobile {
+  min-height: auto;
+  padding: 0;
+}
+
 html[data-theme='dark'] {
   .document-page {
     &-content,
@@ -287,6 +324,20 @@ html[data-theme='dark'] {
       }
     }
   }
+
+  .document-mobile-drawer {
+    .ant-drawer-content,
+    .ant-drawer-header,
+    .ant-drawer-body {
+      background: var(--admin-app-background) !important;
+      border-color: var(--admin-surface-border) !important;
+    }
+
+    .ant-drawer-title,
+    .ant-drawer-close {
+      color: #e5e7eb !important;
+    }
+  }
 }
 
 /* 响应式调整 */
@@ -318,6 +369,18 @@ html[data-theme='dark'] {
       }
     }
   }
+
+  .document-page {
+    &-viewer {
+      padding: 16px;
+      min-height: auto;
+    }
+
+    &-library-info {
+      padding: 18px 16px;
+      text-align: left;
+    }
+  }
   
   .document-page-container {
     /* 在移动端隐藏拖拽手柄 */
@@ -330,4 +393,12 @@ html[data-theme='dark'] {
       transition: none;
     }
   }
-} 
+
+  .document-content-card-mobile {
+    min-height: auto !important;
+
+    .ant-card-body {
+      min-height: auto !important;
+    }
+  }
+}

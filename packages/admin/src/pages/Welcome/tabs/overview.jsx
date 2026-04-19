@@ -2,18 +2,17 @@ import NumSelect from '@/components/NumSelect';
 import { getWelcomeData } from '@/services/van-blog/api';
 import { useNum } from '@/services/van-blog/useNum';
 import { Area, Line } from '@ant-design/plots';
-import { Spin, Progress, Row, Col, Empty } from 'antd';
+import { Empty, Progress, Segmented, Spin } from 'antd';
 import {
-  FileTextOutlined,
+  BarChartOutlined,
+  CalendarOutlined,
   EyeOutlined,
+  FileTextOutlined,
+  HeartOutlined,
+  TrophyOutlined,
   UserOutlined,
   EditOutlined,
-  TrophyOutlined,
-  CalendarOutlined,
-  BarChartOutlined,
-  HeartOutlined,
 } from '@ant-design/icons';
-import RcResizeObserver from 'rc-resize-observer';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import style from '../index.less';
 import {
@@ -23,48 +22,45 @@ import {
   useWelcomeThemePalette,
 } from '../theme';
 
-const OverView = () => {
+const OverView = ({ compact = false }) => {
   const [data, setData] = useState();
   const [loading, setLoading] = useState(true);
   const [num, setNum] = useNum(5);
-  const [responsive, setResponsive] = useState(false);
+  const [trendMode, setTrendMode] = useState('visited');
+  const [totalTrendMode, setTotalTrendMode] = useState('totalVisited');
   const palette = useWelcomeThemePalette();
 
   const fetchData = useCallback(async () => {
     const { data: res } = await getWelcomeData('overview', num);
     setData(res);
-  }, [setData, num]);
+  }, [num]);
 
   useEffect(() => {
     setLoading(true);
-    fetchData().then(() => {
+    fetchData().finally(() => {
       setLoading(false);
     });
-  }, [fetchData, setLoading]);
+  }, [fetchData]);
 
-  const eachData = useMemo(() => {
-    const res = [];
-    for (const each of data?.viewer?.grid?.each || []) {
-      res.push({
-        date: each.date,
-        访客数: each.visited,
-        访问量: each.viewer,
-      });
-    }
-    return res;
-  }, [data]);
+  const eachData = useMemo(
+    () =>
+      (data?.viewer?.grid?.each || []).map((item) => ({
+        date: item.date,
+        访客数: item.visited,
+        访问量: item.viewer,
+      })),
+    [data],
+  );
 
-  const totalData = useMemo(() => {
-    const res = [];
-    for (const each of data?.viewer?.grid?.total || []) {
-      res.push({
-        date: each.date,
-        访客数: each.visited,
-        访问量: each.viewer,
-      });
-    }
-    return res;
-  }, [data]);
+  const totalData = useMemo(
+    () =>
+      (data?.viewer?.grid?.total || []).map((item) => ({
+        date: item.date,
+        访客数: item.visited,
+        访问量: item.viewer,
+      })),
+    [data],
+  );
 
   const interestingMetrics = useMemo(() => {
     if (!data) return null;
@@ -86,313 +82,421 @@ const OverView = () => {
     };
   }, [data]);
 
-  const lineConfig = useMemo(
-    () => ({
-      data: totalData,
+  const buildLineConfig = useCallback(
+    ({ chartData, yField, colorPair, useArea = false }) => ({
+      data: chartData,
       xField: 'date',
-      yField: '访问量',
-      height: 200,
+      yField,
+      height: compact ? 190 : 220,
       smooth: true,
-      color: WELCOME_CHART_COLORS.primary[0],
+      color: colorPair[0],
       point: {
-        size: 4,
-        color: WELCOME_CHART_COLORS.primary[0],
+        size: compact ? 3 : 4,
+        color: colorPair[0],
       },
-      xAxis: getWelcomeAxisStyle(palette),
-      yAxis: getWelcomeAxisStyle(palette, true),
-      area: {
-        style: {
-          fill: getWelcomeAreaFill(
-            WELCOME_CHART_COLORS.primary[0],
-            WELCOME_CHART_COLORS.primary[1],
-            palette,
-          ),
-          fillOpacity: palette.isDark ? 0.2 : 0.3,
+      xAxis: {
+        ...getWelcomeAxisStyle(palette),
+        label: {
+          ...getWelcomeAxisStyle(palette).label,
+          autoHide: true,
+          autoRotate: false,
         },
       },
+      yAxis: getWelcomeAxisStyle(palette, true),
+      area: useArea
+        ? {
+            style: {
+              fill: getWelcomeAreaFill(colorPair[0], colorPair[1], palette),
+              fillOpacity: palette.isDark ? 0.2 : 0.3,
+            },
+          }
+        : undefined,
     }),
-    [palette, totalData],
+    [compact, palette],
   );
 
-  const eachConfig = useMemo(
-    () => ({
-      data: eachData,
-      xField: 'date',
-      yField: '访客数',
-      height: 200,
-      smooth: true,
-      color: WELCOME_CHART_COLORS.accent[0],
-      point: {
-        size: 4,
-        color: WELCOME_CHART_COLORS.accent[0],
-      },
-      xAxis: getWelcomeAxisStyle(palette),
-      yAxis: getWelcomeAxisStyle(palette, true),
-      area: {
-        style: {
-          fill: getWelcomeAreaFill(
-            WELCOME_CHART_COLORS.accent[0],
-            WELCOME_CHART_COLORS.accent[1],
-            palette,
-          ),
-          fillOpacity: palette.isDark ? 0.2 : 0.3,
-        },
-      },
-    }),
-    [eachData, palette],
+  const visitorTrendConfig = useMemo(
+    () =>
+      buildLineConfig({
+        chartData: eachData,
+        yField: '访客数',
+        colorPair: WELCOME_CHART_COLORS.accent,
+        useArea: true,
+      }),
+    [buildLineConfig, eachData],
+  );
+
+  const viewerTrendConfig = useMemo(
+    () =>
+      buildLineConfig({
+        chartData: eachData,
+        yField: '访问量',
+        colorPair: WELCOME_CHART_COLORS.primary,
+      }),
+    [buildLineConfig, eachData],
   );
 
   const totalVisitedConfig = useMemo(
-    () => ({
-      data: totalData,
-      xField: 'date',
-      yField: '访客数',
-      height: 200,
-      smooth: true,
-      color: WELCOME_CHART_COLORS.success[0],
-      point: {
-        size: 4,
-        color: WELCOME_CHART_COLORS.success[0],
-      },
-      xAxis: getWelcomeAxisStyle(palette),
-      yAxis: getWelcomeAxisStyle(palette, true),
-      area: {
-        style: {
-          fill: getWelcomeAreaFill(
-            WELCOME_CHART_COLORS.success[0],
-            WELCOME_CHART_COLORS.success[1],
-            palette,
-          ),
-          fillOpacity: palette.isDark ? 0.2 : 0.3,
-        },
-      },
-    }),
-    [palette, totalData],
+    () =>
+      buildLineConfig({
+        chartData: totalData,
+        yField: '访客数',
+        colorPair: WELCOME_CHART_COLORS.success,
+        useArea: true,
+      }),
+    [buildLineConfig, totalData],
   );
 
-  const hasVisitorTrendData = eachData.length >= 2;
-  const hasTotalTrendData = totalData.length >= 2;
-  const hasEnoughOverviewMetrics = Boolean(data);
+  const totalViewerConfig = useMemo(
+    () =>
+      buildLineConfig({
+        chartData: totalData,
+        yField: '访问量',
+        colorPair: WELCOME_CHART_COLORS.primary,
+      }),
+    [buildLineConfig, totalData],
+  );
 
-  const renderEmptyChart = (description) => (
-    <div
-      style={{
-        minHeight: 200,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
+  const hasDailyTrendData = eachData.length >= 2;
+  const hasTotalTrendData = totalData.length >= 2;
+
+  const kpiItems = [
+    {
+      icon: <FileTextOutlined />,
+      value: data?.total?.articleNum || 0,
+      label: '文章总数',
+      trend: `平均 ${interestingMetrics?.avgWordsPerArticle || 0} 字/篇`,
+    },
+    {
+      icon: <EditOutlined />,
+      value: data?.total?.wordCount || 0,
+      label: '总字数',
+      trend: `约 ${Math.round((data?.total?.wordCount || 0) / 500)} 页书`,
+    },
+    {
+      icon: <UserOutlined />,
+      value: data?.viewer?.now?.visited || 0,
+      label: '总访客数',
+      trend: `回访率 ${interestingMetrics?.retentionRate || 0}%`,
+    },
+    {
+      icon: <EyeOutlined />,
+      value: data?.viewer?.now?.viewer || 0,
+      label: '总访问数',
+      trend: `今日增长 ${interestingMetrics?.todayGrowthRate || 0}%`,
+    },
+  ];
+
+  const todayMetrics = [
+    {
+      label: '今日新增访客',
+      value: data?.viewer?.add?.visited || 0,
+      helper: '近一天新增独立访客',
+      percent: Math.min(100, (data?.viewer?.add?.visited || 0) * 2),
+      strokeColor: WELCOME_CHART_COLORS.primary[0],
+    },
+    {
+      label: '今日新增访问',
+      value: data?.viewer?.add?.viewer || 0,
+      helper: '近一天新增访问次数',
+      percent: Math.min(100, (data?.viewer?.add?.viewer || 0) * 1.5),
+      strokeColor: WELCOME_CHART_COLORS.accent[0],
+    },
+    {
+      label: '平均文章热度',
+      value: interestingMetrics?.avgViewerPerArticle || 0,
+      helper: '单篇文章平均访问量',
+      percent: Math.min(100, (interestingMetrics?.avgViewerPerArticle || 0) / 2),
+      strokeColor: WELCOME_CHART_COLORS.cyan[0],
+    },
+  ];
+
+  const scoreCards = [
+    {
+      label: '创作评分',
+      value: interestingMetrics?.productivityScore || 0,
+      note: '基于文章数量与总字数综合计算。',
+      strokeColor: WELCOME_CHART_COLORS.success[0],
+    },
+    {
+      label: '受欢迎度',
+      value: interestingMetrics?.engagementScore || 0,
+      note: '基于访问量与访客量衡量内容吸引力。',
+      strokeColor: WELCOME_CHART_COLORS.accent[0],
+    },
+  ];
+
+  const renderEmptyChart = (description, compactHeight = false) => (
+    <div className={`${style['chart-empty']} ${compactHeight ? style['compact-empty'] : ''}`}>
       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={description} />
     </div>
   );
 
-  const renderDashboardProgress = (score, strokeColor) => (
-    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
-      <Progress
-        type="dashboard"
-        percent={Math.max(0, Math.min(100, score || 0))}
-        strokeColor={strokeColor}
-        trailColor={palette.progressTrail}
-        format={() => <span style={{ color: palette.textPrimary }}>{score || 0}分</span>}
-      />
+  const renderPanel = ({ title, icon, extra, children, note }) => (
+    <section className={style['chart-container']}>
+      <div className={style['chart-header']}>
+        <div className={style['chart-title']}>
+          {icon}
+          <span>{title}</span>
+        </div>
+        {extra ? <div className={style['chart-extra']}>{extra}</div> : null}
+      </div>
+      {children}
+      {note ? <div className={style['section-note']}>{note}</div> : null}
+    </section>
+  );
+
+  const renderMetricList = (items) => (
+    <div className={style['metric-list']}>
+      {items.map((item) => (
+        <div key={item.label}>
+          <div className={style['metric-row-head']}>
+            <span className={style['metric-label']}>{item.label}</span>
+            <span className={style['metric-value']}>{item.value}</span>
+          </div>
+          {item.helper ? <div className={style['metric-helper']}>{item.helper}</div> : null}
+          <Progress
+            percent={Math.max(0, Math.min(100, item.percent || 0))}
+            strokeColor={item.strokeColor}
+            trailColor={palette.progressTrail}
+            size="small"
+            className={style['metric-progress']}
+            showInfo={false}
+          />
+        </div>
+      ))}
     </div>
   );
 
+  const dailyViews = {
+    visited: {
+      title: '访客数趋势',
+      node: hasDailyTrendData ? (
+        <Area {...visitorTrendConfig} />
+      ) : (
+        renderEmptyChart('至少需要 2 天访客数据', true)
+      ),
+    },
+    viewer: {
+      title: '访问量趋势',
+      node: hasDailyTrendData ? (
+        <Line {...viewerTrendConfig} />
+      ) : (
+        renderEmptyChart('至少需要 2 天访问数据', true)
+      ),
+    },
+  };
+
+  const totalViews = {
+    totalVisited: {
+      title: '累计访客',
+      node: hasTotalTrendData ? (
+        <Area {...totalVisitedConfig} />
+      ) : (
+        renderEmptyChart('至少需要 2 天累计访客数据', true)
+      ),
+    },
+    totalViewer: {
+      title: '累计访问',
+      node: hasTotalTrendData ? (
+        <Line {...totalViewerConfig} />
+      ) : (
+        renderEmptyChart('至少需要 2 天累计访问数据', true)
+      ),
+    },
+  };
+
   return (
-    <div className={style['modern-welcome']}>
-      <RcResizeObserver
-        key="resize-observer"
-        onResize={(offset) => {
-          setResponsive(offset.width < 596);
-        }}
-      >
-        <Spin spinning={loading}>
-          <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-            <Col xs={24} sm={12} lg={6}>
-              <div className={style['stat-card']}>
-                <div className={style['stat-icon']}>
-                  <FileTextOutlined />
-                </div>
-                <div className={style['stat-number']}>{data?.total?.articleNum || 0}</div>
-                <div className={style['stat-label']}>文章总数</div>
-                <div className={style['stat-trend'] + ' up'}>
-                  📝 平均 {interestingMetrics?.avgWordsPerArticle || 0} 字/篇
-                </div>
+    <div className={style['welcome-tab-panel']}>
+      <Spin spinning={loading}>
+        <div className={style['section-stack']}>
+          <section className={style['kpi-grid']}>
+            {kpiItems.map((item) => (
+              <div key={item.label} className={style['stat-card']}>
+                <div className={style['stat-icon']}>{item.icon}</div>
+                <div className={style['stat-number']}>{item.value}</div>
+                <div className={style['stat-label']}>{item.label}</div>
+                <div className={style['stat-trend']}>{item.trend}</div>
               </div>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <div className={style['stat-card']}>
-                <div className={style['stat-icon']}>
-                  <EditOutlined />
-                </div>
-                <div className={style['stat-number']}>{data?.total?.wordCount || 0}</div>
-                <div className={style['stat-label']}>总字数</div>
-                <div className={style['stat-trend'] + ' up'}>
-                  ✍️ 相当于 {Math.round((data?.total?.wordCount || 0) / 500)} 页书
-                </div>
-              </div>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <div className={style['stat-card']}>
-                <div className={style['stat-icon']}>
-                  <UserOutlined />
-                </div>
-                <div className={style['stat-number']}>{data?.viewer?.now?.visited || 0}</div>
-                <div className={style['stat-label']}>总访客数</div>
-                <div className={style['stat-trend'] + ' up'}>
-                  🎯 回访率 {interestingMetrics?.retentionRate || 0}%
-                </div>
-              </div>
-            </Col>
-            <Col xs={24} sm={12} lg={6}>
-              <div className={style['stat-card']}>
-                <div className={style['stat-icon']}>
-                  <EyeOutlined />
-                </div>
-                <div className={style['stat-number']}>{data?.viewer?.now?.viewer || 0}</div>
-                <div className={style['stat-label']}>总访问数</div>
-                <div className={style['stat-trend'] + ' up'}>
-                  📈 今日增长 {interestingMetrics?.todayGrowthRate || 0}%
-                </div>
-              </div>
-            </Col>
-          </Row>
+            ))}
+          </section>
 
-          <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-            <Col xs={24} lg={12}>
-              <div className={style['chart-container']}>
-                <div className={style['chart-header']}>
-                  <div className={style['chart-title']}>
-                    <BarChartOutlined className={style['chart-icon']} />
-                    访客数趋势
-                  </div>
-                  <NumSelect d="天" value={num} setValue={setNum} />
-                </div>
-                {hasVisitorTrendData ? <Area {...eachConfig} /> : renderEmptyChart('访客趋势数据不足，至少需要 2 天数据')}
-              </div>
-            </Col>
-            <Col xs={24} lg={12}>
-              <div className={style['chart-container']}>
-                <div className={style['chart-header']}>
-                  <div className={style['chart-title']}>
-                    <BarChartOutlined className={style['chart-icon']} />
-                    访问量趋势
-                  </div>
-                  <NumSelect d="天" value={num} setValue={setNum} />
-                </div>
-                {hasTotalTrendData ? <Line {...lineConfig} /> : renderEmptyChart('访问趋势数据不足，至少需要 2 天数据')}
-              </div>
-            </Col>
-          </Row>
+          {compact ? (
+            <>
+              {renderPanel({
+                title: '今日表现',
+                icon: <CalendarOutlined className={style['chart-icon']} />,
+                children: renderMetricList(todayMetrics),
+                note: '把今天的增长放在首屏，方便手机上快速扫读。',
+              })}
 
-          <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-            <Col xs={24} lg={8}>
-              <div className={style['chart-container']}>
-                <div className={style['chart-header']}>
-                  <div className={style['chart-title']}>
-                    <TrophyOutlined className={style['chart-icon']} />
-                    创作力评估
-                  </div>
-                </div>
-                {hasEnoughOverviewMetrics
-                  ? renderDashboardProgress(interestingMetrics?.productivityScore || 0, '#30BF78')
-                  : renderEmptyChart('等待概览数据加载')}
-                <div className={style['section-note']}>基于文章数量和字数综合评估</div>
-              </div>
-            </Col>
-            <Col xs={24} lg={8}>
-              <div className={style['chart-container']}>
-                <div className={style['chart-header']}>
-                  <div className={style['chart-title']}>
-                    <HeartOutlined className={style['chart-icon']} />
-                    受欢迎程度
-                  </div>
-                </div>
-                {hasEnoughOverviewMetrics
-                  ? renderDashboardProgress(interestingMetrics?.engagementScore || 0, '#f093fb')
-                  : renderEmptyChart('等待概览数据加载')}
-                <div className={style['section-note']}>基于访问量和访客数综合评估</div>
-              </div>
-            </Col>
-            <Col xs={24} lg={8}>
-              <div className={style['chart-container']}>
-                <div className={style['chart-header']}>
-                  <div className={style['chart-title']}>
-                    <CalendarOutlined className={style['chart-icon']} />
-                    今日表现
-                  </div>
-                </div>
-                <div className={style['section-body']}>
-                  <div className={style['progress-metric']}>
-                    <div className={style['progress-meta']}>
-                      <span className={style['metric-label']}>今日新增访客</span>
-                      <span className={style['metric-value']}>{data?.viewer?.add?.visited || 0}</span>
+              {renderPanel({
+                title: dailyViews[trendMode].title,
+                icon: <BarChartOutlined className={style['chart-icon']} />,
+                extra: (
+                  <>
+                    <div className={style['chart-switch']}>
+                      <Segmented
+                        size="small"
+                        value={trendMode}
+                        onChange={setTrendMode}
+                        options={[
+                          { label: '访客', value: 'visited' },
+                          { label: '访问', value: 'viewer' },
+                        ]}
+                      />
                     </div>
+                    <NumSelect d="天" value={num} setValue={setNum} />
+                  </>
+                ),
+                children: dailyViews[trendMode].node,
+              })}
+
+              {renderPanel({
+                title: totalViews[totalTrendMode].title,
+                icon: <BarChartOutlined className={style['chart-icon']} />,
+                extra: (
+                  <>
+                    <div className={style['chart-switch']}>
+                      <Segmented
+                        size="small"
+                        value={totalTrendMode}
+                        onChange={setTotalTrendMode}
+                        options={[
+                          { label: '累计访客', value: 'totalVisited' },
+                          { label: '累计访问', value: 'totalViewer' },
+                        ]}
+                      />
+                    </div>
+                    <NumSelect d="天" value={num} setValue={setNum} />
+                  </>
+                ),
+                children: totalViews[totalTrendMode].node,
+              })}
+
+              <div className={style['compact-summary-grid']}>
+                {scoreCards.map((item) => (
+                  <div key={item.label} className={style['score-summary-card']}>
+                    <div className={style['score-summary-label']}>{item.label}</div>
+                    <div className={style['score-summary-value']}>{item.value}分</div>
                     <Progress
-                      percent={Math.min(100, (data?.viewer?.add?.visited || 0) * 2)}
-                      strokeColor={WELCOME_CHART_COLORS.primary[0]}
+                      percent={item.value}
+                      strokeColor={item.strokeColor}
                       trailColor={palette.progressTrail}
                       size="small"
+                      showInfo={false}
+                      className={style['metric-progress']}
                     />
+                    <div className={style['score-summary-note']}>{item.note}</div>
                   </div>
-                  <div className={style['progress-metric']}>
-                    <div className={style['progress-meta']}>
-                      <span className={style['metric-label']}>今日新增访问</span>
-                      <span className={style['metric-value']}>{data?.viewer?.add?.viewer || 0}</span>
-                    </div>
-                    <Progress
-                      percent={Math.min(100, (data?.viewer?.add?.viewer || 0) * 1.5)}
-                      strokeColor={WELCOME_CHART_COLORS.accent[0]}
-                      trailColor={palette.progressTrail}
-                      size="small"
-                    />
-                  </div>
-                  <div className={style['progress-metric']}>
-                    <div className={style['progress-meta']}>
-                      <span className={style['metric-label']}>平均文章热度</span>
-                      <span className={style['metric-value']}>{interestingMetrics?.avgViewerPerArticle || 0}</span>
-                    </div>
-                    <Progress
-                      percent={Math.min(100, (interestingMetrics?.avgViewerPerArticle || 0) / 2)}
-                      strokeColor={WELCOME_CHART_COLORS.cyan[0]}
-                      trailColor={palette.progressTrail}
-                      size="small"
-                    />
-                  </div>
-                </div>
+                ))}
               </div>
-            </Col>
-          </Row>
+            </>
+          ) : (
+            <>
+              <div className={style['section-grid-2']}>
+                {renderPanel({
+                  title: '访客数趋势',
+                  icon: <BarChartOutlined className={style['chart-icon']} />,
+                  extra: <NumSelect d="天" value={num} setValue={setNum} />,
+                  children: hasDailyTrendData ? (
+                    <Area {...visitorTrendConfig} />
+                  ) : (
+                    renderEmptyChart('访客趋势数据不足，至少需要 2 天数据')
+                  ),
+                })}
+                {renderPanel({
+                  title: '访问量趋势',
+                  icon: <BarChartOutlined className={style['chart-icon']} />,
+                  extra: <NumSelect d="天" value={num} setValue={setNum} />,
+                  children: hasDailyTrendData ? (
+                    <Line {...viewerTrendConfig} />
+                  ) : (
+                    renderEmptyChart('访问趋势数据不足，至少需要 2 天数据')
+                  ),
+                })}
+              </div>
 
-          <Row gutter={[24, 24]}>
-            <Col xs={24} lg={12}>
-              <div className={style['chart-container']}>
-                <div className={style['chart-header']}>
-                  <div className={style['chart-title']}>
-                    <BarChartOutlined className={style['chart-icon']} />
-                    累计访客数趋势
-                  </div>
-                  <NumSelect d="天" value={num} setValue={setNum} />
-                </div>
-                {hasTotalTrendData ? <Area {...totalVisitedConfig} /> : renderEmptyChart('累计访客趋势数据不足，至少需要 2 天数据')}
+              <div className={style['section-grid-3']}>
+                {renderPanel({
+                  title: '创作力评估',
+                  icon: <TrophyOutlined className={style['chart-icon']} />,
+                  children: (
+                    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+                      <Progress
+                        type="dashboard"
+                        percent={Math.max(
+                          0,
+                          Math.min(100, interestingMetrics?.productivityScore || 0),
+                        )}
+                        strokeColor={WELCOME_CHART_COLORS.success[0]}
+                        trailColor={palette.progressTrail}
+                        format={() => (
+                          <span style={{ color: palette.textPrimary }}>
+                            {interestingMetrics?.productivityScore || 0}分
+                          </span>
+                        )}
+                      />
+                    </div>
+                  ),
+                  note: '基于文章数量和字数综合评估。',
+                })}
+                {renderPanel({
+                  title: '受欢迎程度',
+                  icon: <HeartOutlined className={style['chart-icon']} />,
+                  children: (
+                    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12 }}>
+                      <Progress
+                        type="dashboard"
+                        percent={Math.max(
+                          0,
+                          Math.min(100, interestingMetrics?.engagementScore || 0),
+                        )}
+                        strokeColor={WELCOME_CHART_COLORS.accent[0]}
+                        trailColor={palette.progressTrail}
+                        format={() => (
+                          <span style={{ color: palette.textPrimary }}>
+                            {interestingMetrics?.engagementScore || 0}分
+                          </span>
+                        )}
+                      />
+                    </div>
+                  ),
+                  note: '基于访问量和访客数综合评估。',
+                })}
+                {renderPanel({
+                  title: '今日表现',
+                  icon: <CalendarOutlined className={style['chart-icon']} />,
+                  children: renderMetricList(todayMetrics),
+                })}
               </div>
-            </Col>
-            <Col xs={24} lg={12}>
-              <div className={style['chart-container']}>
-                <div className={style['chart-header']}>
-                  <div className={style['chart-title']}>
-                    <BarChartOutlined className={style['chart-icon']} />
-                    累计访问量趋势
-                  </div>
-                  <NumSelect d="天" value={num} setValue={setNum} />
-                </div>
-                {hasTotalTrendData ? <Line {...lineConfig} /> : renderEmptyChart('累计访问趋势数据不足，至少需要 2 天数据')}
+
+              <div className={style['section-grid-2']}>
+                {renderPanel({
+                  title: '累计访客数趋势',
+                  icon: <BarChartOutlined className={style['chart-icon']} />,
+                  extra: <NumSelect d="天" value={num} setValue={setNum} />,
+                  children: hasTotalTrendData ? (
+                    <Area {...totalVisitedConfig} />
+                  ) : (
+                    renderEmptyChart('累计访客趋势数据不足，至少需要 2 天数据')
+                  ),
+                })}
+                {renderPanel({
+                  title: '累计访问量趋势',
+                  icon: <BarChartOutlined className={style['chart-icon']} />,
+                  extra: <NumSelect d="天" value={num} setValue={setNum} />,
+                  children: hasTotalTrendData ? (
+                    <Line {...totalViewerConfig} />
+                  ) : (
+                    renderEmptyChart('累计访问趋势数据不足，至少需要 2 天数据')
+                  ),
+                })}
               </div>
-            </Col>
-          </Row>
-        </Spin>
-      </RcResizeObserver>
+            </>
+          )}
+        </div>
+      </Spin>
     </div>
   );
 };

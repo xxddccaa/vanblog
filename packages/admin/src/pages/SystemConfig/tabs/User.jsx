@@ -1,10 +1,13 @@
+import AdminMobileCardList from '@/components/AdminMobileCardList';
 import CollaboratorModal, { getPermissionLabel } from '@/components/CollaboratorModal';
 import Tags from '@/components/Tags';
 import { deleteCollaborator, getAllCollaborators, updateUser } from '@/services/van-blog/api';
 import { encryptPwd } from '@/services/van-blog/encryptPwd';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { ProForm, ProFormText, ProTable } from '@ant-design/pro-components';
-import { Button, Card, message, Modal, Space } from 'antd';
-import { useRef } from 'react';
+import { Button, Card, Dropdown, message, Modal, Space } from 'antd';
+import { MoreOutlined } from '@ant-design/icons';
+import { useEffect, useRef, useState } from 'react';
 import { history, useModel } from '@umijs/max';
 const columns = [
   { dataIndex: 'id', title: 'ID' },
@@ -57,15 +60,43 @@ const columns = [
   },
 ];
 export default function () {
+  const { mobile } = useAdminResponsive();
   const { initialState, setInitialState } = useModel('@@initialState');
   const actionRef = useRef();
+  const [collaborators, setCollaborators] = useState([]);
+
+  const fetchCollaborators = async () => {
+    const { data } = await getAllCollaborators();
+    setCollaborators(data || []);
+    return data;
+  };
+
+  useEffect(() => {
+    if (!mobile) {
+      return;
+    }
+    fetchCollaborators();
+  }, [mobile]);
+
+  const handleDeleteCollaborator = (record) => {
+    Modal.confirm({
+      title: '删除确认',
+      content: '是否确认删除该协作者？',
+      onOk: async () => {
+        await deleteCollaborator(record.id);
+        await fetchCollaborators();
+        message.success('删除成功！');
+      },
+    });
+  };
+
   return (
     <>
       <Card title="用户设置">
         <ProForm
           grid={true}
-          layout={'horizontal'}
-          labelCol={{ span: 6 }}
+          layout={mobile ? 'vertical' : 'horizontal'}
+          labelCol={mobile ? undefined : { span: 6 }}
           request={async (params) => {
             return {
               name: initialState?.user?.name || '',
@@ -121,6 +152,7 @@ export default function () {
               onFinish={() => {
                 message.success('新建协作者成功！');
                 actionRef.current?.reload();
+                fetchCollaborators();
               }}
               trigger={<Button type="primary">新建</Button>}
             />
@@ -140,7 +172,9 @@ export default function () {
                           帮助文档
                         </a>
                       </p>
-                      <p>协作者默认具有文章、草稿、图片的查看/上传权限；私密文档访问需显式授予文档权限。</p>
+                      <p>
+                        协作者默认具有文章、草稿、图片的查看/上传权限；私密文档访问需显式授予文档权限。
+                      </p>
                       <p>
                         协作者登录后将看到被精简的后台页面；即使授予“所有权限”，Token、备份恢复、Caddy、系统设置、自定义页面、流水线等系统级接口仍仅超管可用。
                       </p>
@@ -154,29 +188,75 @@ export default function () {
           </Space>
         }
       >
-        <ProTable
-          rowKey="id"
-          columns={columns}
-          dateFormatter="string"
-          actionRef={actionRef}
-          search={false}
-          options={false}
-          pagination={{
-            hideOnSinglePage: true,
-            simple: true,
-          }}
-          request={async (params = {}) => {
-            let { data } = await getAllCollaborators();
-            return {
-              data,
-              // success 请返回 true，
-              // 不然 table 会停止解析数据，即使有数据
-              success: true,
-              // 不传会使用 data 的长度，如果是分页一定要传
-              total: data.length,
-            };
-          }}
-        />
+        {mobile ? (
+          <div style={{ padding: 14 }}>
+            <AdminMobileCardList
+              items={collaborators}
+              rowKey="id"
+              emptyText="暂无协作者"
+              renderCard={(record) => (
+                <Card className="admin-mobile-record-card">
+                  <div className="admin-mobile-record-title-row">
+                    <div className="admin-mobile-record-title">
+                      {record.nickname || record.name}
+                    </div>
+                  </div>
+                  <div className="admin-mobile-record-meta">
+                    <span>ID {record.id}</span>
+                    <span>用户名 {record.name}</span>
+                  </div>
+                  <Tags tags={(record.permissions || []).map((item) => getPermissionLabel(item))} />
+                  <div className="admin-mobile-record-actions">
+                    <CollaboratorModal
+                      initialValues={record}
+                      id={record.id}
+                      onFinish={() => {
+                        fetchCollaborators();
+                        message.success('修改协作者成功！');
+                      }}
+                      trigger={<Button type="primary">修改</Button>}
+                    />
+                    <Dropdown
+                      menu={{
+                        items: [
+                          {
+                            key: 'delete',
+                            label: '删除',
+                            danger: true,
+                            onClick: () => handleDeleteCollaborator(record),
+                          },
+                        ],
+                      }}
+                    >
+                      <Button icon={<MoreOutlined />}>更多</Button>
+                    </Dropdown>
+                  </div>
+                </Card>
+              )}
+            />
+          </div>
+        ) : (
+          <ProTable
+            rowKey="id"
+            columns={columns}
+            dateFormatter="string"
+            actionRef={actionRef}
+            search={false}
+            options={false}
+            pagination={{
+              hideOnSinglePage: true,
+              simple: true,
+            }}
+            request={async () => {
+              let data = await fetchCollaborators();
+              return {
+                data,
+                success: true,
+                total: data.length,
+              };
+            }}
+          />
+        )}
       </Card>
     </>
   );

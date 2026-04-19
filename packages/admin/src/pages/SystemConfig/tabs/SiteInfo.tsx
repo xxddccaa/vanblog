@@ -1,21 +1,27 @@
+import ResponsivePageTabs from '@/components/ResponsivePageTabs';
 import SiteInfoForm from '@/components/SiteInfoForm';
 import { getSiteInfo, updateSiteInfo } from '@/services/van-blog/api';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { useTab } from '@/services/van-blog/useTab';
 import { ProForm } from '@ant-design/pro-components';
 import { Card, message, Modal } from 'antd';
 export default function () {
+  const { mobile } = useAdminResponsive();
   const tabList = [
     {
       key: 'basic',
-      tab: '基本设置',
+      label: '基本设置',
+      shortLabel: '基本',
     },
     {
       key: 'more',
-      tab: '高级设置',
+      label: '高级设置',
+      shortLabel: '高级',
     },
     {
       key: 'layout',
-      tab: '布局设置',
+      label: '布局设置',
+      shortLabel: '布局',
     },
   ];
   const tabKeys = tabList.map((item) => item.key);
@@ -23,12 +29,24 @@ export default function () {
   const [form] = ProForm.useForm();
 
   return (
-    <Card tabList={tabList} onTabChange={setTab} activeTabKey={tab}>
+    <Card
+      tabList={
+        mobile
+          ? undefined
+          : tabList.map((item) => ({
+              key: item.key,
+              tab: item.label,
+            }))
+      }
+      onTabChange={setTab}
+      activeTabKey={tab}
+    >
+      {mobile ? <ResponsivePageTabs items={tabList} activeKey={tab} onChange={setTab} /> : null}
       <ProForm
         form={form}
         grid={true}
-        layout={'horizontal'}
-        labelCol={{ span: 6 }}
+        layout={mobile ? 'vertical' : 'horizontal'}
+        labelCol={mobile ? undefined : { span: 6 }}
         request={async (params) => {
           const { data } = await getSiteInfo();
           return data;

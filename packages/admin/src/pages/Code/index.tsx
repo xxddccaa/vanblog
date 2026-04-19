@@ -1,5 +1,6 @@
 import CodeEditor from '@/components/CodeEditor';
 import UploadBtn from '@/components/UploadBtn';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import {
   getCustomPageByPath,
   getCustomPageFileDataByPath,
@@ -10,9 +11,9 @@ import {
   updatePipelineById,
   getPipelineConfig,
 } from '@/services/van-blog/api';
-import { DownOutlined } from '@ant-design/icons';
+import { DownOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-layout';
-import { Button, Dropdown, Menu, message, Modal, Space, Spin, Tag, Tree } from 'antd';
+import { Button, Drawer, Dropdown, Menu, message, Modal, Space, Spin, Tag, Tree } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { history } from '@umijs/max';
 import PipelineModal from '../Pipeline/components/PipelineModal';
@@ -21,6 +22,7 @@ import './index.less';
 const { DirectoryTree } = Tree;
 
 export default function () {
+  const { mobile } = useAdminResponsive();
   const [value, setValue] = useState('');
   const [currObj, setCurrObj] = useState<any>({});
   const [node, setNode] = useState<{ title?: string; key?: string; type?: string } | null>(null);
@@ -33,6 +35,7 @@ export default function () {
   const [treeLoading, setTreeLoading] = useState(true);
   const [editorWidth, setEditorWidth] = useState(400);
   const [editorHeight, setEditorHeight] = useState<string | number>('calc(100vh - 82px)');
+  const [treeDrawerOpen, setTreeDrawerOpen] = useState(false);
   const search = history.location?.search || window.location.search;
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const type = searchParams.get('type');
@@ -109,13 +112,13 @@ export default function () {
     const fullWidthString = window.getComputedStyle(el).width;
     const fullWidth = parseInt(fullWidthString.replace('px', ''));
 
-    const width = isFolder ? fullWidth - 1 - 200 : fullWidth;
+    const width = isFolder && !mobile ? fullWidth - 1 - 200 : fullWidth;
 
     setEditorWidth(width);
 
     const HeaderHeightString = window.getComputedStyle(el).height;
     const HeaderHeight = parseInt(HeaderHeightString.replace('px', ''));
-    setEditorHeight(`calc(100vh - ${HeaderHeight + 12}px)`);
+    setEditorHeight(`calc(100vh - ${HeaderHeight + (mobile ? 24 : 12)}px)`);
   };
 
   const onKeyDown = (ev) => {
@@ -307,6 +310,37 @@ export default function () {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const renderDirectoryTree = () => (
+    <DirectoryTree
+      style={{ height: editorHeight }}
+      className="file-tree"
+      defaultExpandAll
+      selectedKeys={selectedKeys}
+      onSelect={(keys, info) => {
+        if (editorLoading) {
+          message.warning('加载中请勿选择!');
+          return;
+        }
+        setSelectedKeys(keys);
+        const treeNode = info.node as any;
+
+        if (treeNode.type == 'file') {
+          fetchFileData(treeNode);
+          setNode(treeNode);
+          const arr = treeNode.key.split('/');
+          arr.pop();
+          setPathPrefix(arr.join('/'));
+          if (mobile) {
+            setTreeDrawerOpen(false);
+          }
+        } else {
+          setPathPrefix(treeNode.key);
+        }
+      }}
+      treeData={treeData}
+    />
+  );
   return (
     <PageContainer
       className="editor-full"
@@ -335,6 +369,17 @@ export default function () {
           </Space>
         ),
         extra: [
+          ...(mobile && isFolder
+            ? [
+                <Button
+                  key="treeBtn"
+                  onClick={() => setTreeDrawerOpen(true)}
+                  icon={<MenuUnfoldOutlined />}
+                >
+                  文件树
+                </Button>,
+              ]
+            : []),
           <Dropdown key="moreAction" overlay={actionMenu} trigger={['click']}>
             <Button size="middle" type="primary">
               操作
@@ -369,8 +414,19 @@ export default function () {
       }}
       footer={null}
     >
+      {mobile && isFolder ? (
+        <Drawer
+          title="文件树"
+          placement="left"
+          width="88vw"
+          open={treeDrawerOpen}
+          onClose={() => setTreeDrawerOpen(false)}
+        >
+          <Spin spinning={treeLoading}>{renderDirectoryTree()}</Spin>
+        </Drawer>
+      ) : null}
       <div style={{ height: '100%', display: 'flex' }} className="code-editor-content">
-        {isFolder && (
+        {isFolder && !mobile && (
           <>
             <Spin spinning={treeLoading}>
               <div
@@ -419,34 +475,7 @@ export default function () {
                     </div>
                   </div>
                 </div> */}
-                <DirectoryTree
-                  style={{ height: editorHeight }}
-                  className="file-tree"
-                  defaultExpandAll
-                  selectedKeys={selectedKeys}
-                  // onRightClick={({ event, node }) => {
-                  //   console.log(event);
-                  // }}
-                  onSelect={(keys, info) => {
-                    if (editorLoading) {
-                      message.warning('加载中请勿选择!');
-                      return;
-                    }
-                    setSelectedKeys(keys);
-                    const node = info.node as any;
-
-                    if (node.type == 'file') {
-                      fetchFileData(node);
-                      setNode(node);
-                      const arr = node.key.split('/');
-                      arr.pop();
-                      setPathPrefix(arr.join('/'));
-                    } else {
-                      setPathPrefix(node.key);
-                    }
-                  }}
-                  treeData={treeData}
-                />
+                {renderDirectoryTree()}
               </div>
             </Spin>
             <div className="divider-v"></div>

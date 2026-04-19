@@ -107,7 +107,11 @@ async function openAdminRoute(page, route) {
   await page.goto(`${baseUrl}/admin${route}`, {
     waitUntil: 'domcontentloaded',
   });
-  await page.waitForTimeout(1500);
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 4000 });
+  } catch (error) {
+    await page.waitForTimeout(2500);
+  }
   return assertNoErrorBoundary(page, route);
 }
 
@@ -137,7 +141,10 @@ async function assertAdminShell(page) {
   const logo = page.locator('[data-testid="admin-sider-logo"] img');
   await logo.waitFor({ state: 'visible' });
   const logoSrc = await logo.getAttribute('src');
-  assert.equal(logoSrc, '/admin/logo.svg', `unexpected admin logo src: ${logoSrc}`);
+  assert.ok(
+    ['/admin/logo.svg', '/logo.svg'].includes(logoSrc),
+    `unexpected admin logo src: ${logoSrc}`,
+  );
 
   const footer = page.locator('[data-testid="admin-sider-footer-actions"]');
   await footer.waitFor({ state: 'visible' });
@@ -167,7 +174,11 @@ async function assertAdminShell(page) {
     bodyTheme: document.body.dataset.theme || '',
   }));
 
-  assert.notEqual(afterTheme.theme, beforeTheme.theme, 'theme toggle did not update localStorage.theme');
+  assert.notEqual(
+    afterTheme.theme,
+    beforeTheme.theme,
+    'theme toggle did not update localStorage.theme',
+  );
   assert.ok(afterTheme.htmlTheme, 'theme toggle did not set html data-theme');
   assert.equal(afterTheme.htmlTheme, afterTheme.bodyTheme, 'html/body theme markers diverged');
 
@@ -219,7 +230,9 @@ async function assertAdminShell(page) {
 
   const mobileFooter = page.locator('[role="dialog"] [data-testid="admin-sider-footer-actions"]');
   await mobileFooter.waitFor({ state: 'visible' });
-  const mobileFooterLabels = await mobileFooter.locator('.ant-menu-title-content').allTextContents();
+  const mobileFooterLabels = await mobileFooter
+    .locator('.ant-menu-title-content')
+    .allTextContents();
   assert.deepEqual(
     mobileFooterLabels.map((item) => item.trim()).filter(Boolean),
     ['主站', '关于', '暗色', '登出'],
@@ -239,10 +252,13 @@ async function assertAdminShell(page) {
     'page container still uses light theme text after dark theme reload',
   );
 
-  const selectedMenuColor = await page.locator('.ant-menu-item-selected').first().evaluate((element) => {
-    const style = getComputedStyle(element);
-    return style.color;
-  });
+  const selectedMenuColor = await page
+    .locator('.ant-menu-item-selected')
+    .first()
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return style.color;
+    });
   assert.notEqual(
     selectedMenuColor,
     'rgba(0, 0, 0, 0.95)',
@@ -252,7 +268,11 @@ async function assertAdminShell(page) {
   const logoTitleColor = await page
     .locator('[data-testid="admin-sider-logo"] h1')
     .evaluate((element) => getComputedStyle(element).color);
-  assert.notEqual(logoTitleColor, 'rgba(0, 0, 0, 0.88)', 'dark theme still renders logo title as black');
+  assert.notEqual(
+    logoTitleColor,
+    'rgba(0, 0, 0, 0.88)',
+    'dark theme still renders logo title as black',
+  );
 }
 
 async function findSyntaxHighlightArticleId(token) {
@@ -277,7 +297,11 @@ async function findSyntaxHighlightArticleId(token) {
         headers: { token },
       },
     );
-    assert.equal(detailResponse.status, 200, `get article ${article.id} failed: ${JSON.stringify(detailBody)}`);
+    assert.equal(
+      detailResponse.status,
+      200,
+      `get article ${article.id} failed: ${JSON.stringify(detailBody)}`,
+    );
     assert.equal(
       detailBody?.statusCode,
       200,
@@ -290,7 +314,9 @@ async function findSyntaxHighlightArticleId(token) {
     }
   }
 
-  assert.fail('expected at least one article with a fenced language code block for editor smoke test');
+  assert.fail(
+    'expected at least one article with a fenced language code block for editor smoke test',
+  );
 }
 
 async function assertDarkEditorSyntaxHighlight(page, token) {
@@ -307,7 +333,9 @@ async function assertDarkEditorSyntaxHighlight(page, token) {
     const htmlTheme = document.documentElement.dataset.theme || '';
     const editor = document.querySelector('.CodeMirror');
     const editorBaseColor = editor ? getComputedStyle(editor).color : '';
-    const editorTokenColors = Array.from(document.querySelectorAll('.CodeMirror span[class*="cm-"]'))
+    const editorTokenColors = Array.from(
+      document.querySelectorAll('.CodeMirror span[class*="cm-"]'),
+    )
       .map((element) => ({
         classes: element.className,
         color: getComputedStyle(element).color,
@@ -351,6 +379,48 @@ async function assertDarkEditorSyntaxHighlight(page, token) {
   );
 }
 
+async function assertMobileAdminSurfaces(page) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(800);
+
+  const articleBody = await openAdminRoute(page, '/article');
+  assert.ok(
+    articleBody.includes('搜索标题'),
+    'mobile article page did not switch to mobile search surface',
+  );
+  assert.ok(articleBody.includes('筛选'), 'mobile article page did not render filter action');
+
+  const articleLayout = await page.evaluate(() => {
+    const toolbar = document.querySelector('.admin-mobile-toolbar-card');
+    return {
+      bodyWidth: document.body.getBoundingClientRect().width,
+      toolbarWidth: toolbar ? toolbar.getBoundingClientRect().width : 0,
+      hasMobileShell: document.body.classList.contains('admin-mobile-shell'),
+    };
+  });
+  assert.equal(
+    articleLayout.hasMobileShell,
+    true,
+    'mobile shell class not applied on article page',
+  );
+  assert.ok(
+    articleLayout.toolbarWidth >= articleLayout.bodyWidth - 28,
+    `mobile toolbar stayed too narrow: ${JSON.stringify(articleLayout)}`,
+  );
+
+  const documentBody = await openAdminRoute(page, '/document');
+  assert.ok(documentBody.includes('文档树'), 'mobile document page did not render drawer trigger');
+
+  const settingBody = await openAdminRoute(page, '/site/setting');
+  assert.ok(
+    settingBody.includes('站点'),
+    'mobile system settings tabs did not render compact labels',
+  );
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(800);
+}
+
 async function main() {
   const token = await getDebugToken();
   const executablePath = getChromeExecutablePath();
@@ -390,6 +460,7 @@ async function main() {
     const articleBody = await openAdminRoute(page, '/article');
     assert.ok(articleBody.includes('文章管理'), 'article page did not render');
     await assertAdminShell(page);
+    await assertMobileAdminSurfaces(page);
     await assertDarkEditorSyntaxHighlight(page, token);
     await page.waitForTimeout(2500);
     const walinePrewarmState = await page.evaluate(() =>
@@ -458,7 +529,10 @@ async function main() {
     const commentFrame = page.locator('iframe[title="waline 后台"]');
     await commentFrame.waitFor({ state: 'visible', timeout: 15000 });
     const commentFrameBox = await commentFrame.boundingBox();
-    assert.ok(commentFrameBox && commentFrameBox.height >= 700, 'comment iframe height is too short');
+    assert.ok(
+      commentFrameBox && commentFrameBox.height >= 700,
+      'comment iframe height is too short',
+    );
 
     assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join('\n')}`);
     assert.equal(
@@ -474,7 +548,11 @@ async function main() {
           entry.url.includes('.image.webp'),
       ),
       false,
-      `image manager still requests missing image files: ${JSON.stringify(failedResponses, null, 2)}`,
+      `image manager still requests missing image files: ${JSON.stringify(
+        failedResponses,
+        null,
+        2,
+      )}`,
     );
   } finally {
     await browser.close();

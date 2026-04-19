@@ -12,6 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useState, useEffect } from 'react';
 import { getDocumentTree, getLibraries, deleteDocument, exportLibraryDocuments, deleteLibrary } from '@/services/van-blog/api';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import NewDocumentModal from '../NewDocumentModal';
 import EditLibraryModal from '../EditLibraryModal';
 import EditDocumentModal from '../EditDocumentModal';
@@ -20,6 +21,7 @@ import './index.less';
 
 export default function DocumentTree(props) {
   const { onNodeSelect, selectedDocumentId, onRefresh } = props;
+  const { mobile } = useAdminResponsive();
   const [treeData, setTreeData] = useState([]);
   const [libraries, setLibraries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -145,7 +147,7 @@ export default function DocumentTree(props) {
           onClick={(e) => e.stopPropagation()}
         >
           {/* 根据文档类型显示不同的按钮 */}
-          {doc.type === 'library' ? (
+          {doc.type === 'library' || mobile ? (
             // 文档库只显示更多操作按钮
             <Dropdown
               menu={getNodeMenu(doc)}
@@ -447,7 +449,11 @@ export default function DocumentTree(props) {
   }, []);
 
   return (
-    <div className="document-tree-container">
+    <div
+      className={['document-tree-container', mobile ? 'document-tree-container-mobile' : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="document-tree-header">
         <NewDocumentModal
           type="library"

@@ -3,11 +3,13 @@ import { Button, Modal, Space, Spin, notification } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { history } from '@umijs/max';
 import TipTitle from '../../components/TipTitle';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 export default function () {
+  const { mobile } = useAdminResponsive();
   const [loading, setLoading] = useState(true);
   const { current } = useRef({ hasInit: false });
   const src = '/api/ui/';
-  const frameHeight = 'calc(100dvh - 170px)';
+  const frameHeight = mobile ? 'calc(100dvh - 150px)' : 'calc(100dvh - 170px)';
 
   const tipContent = (
     <div>
@@ -74,7 +76,7 @@ export default function () {
         <div
           style={{
             height: frameHeight,
-            minHeight: 720,
+            minHeight: mobile ? 520 : 720,
           }}
         >
           <iframe

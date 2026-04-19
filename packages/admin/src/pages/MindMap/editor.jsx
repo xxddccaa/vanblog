@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
 import { Card, Button, Space, message, Spin, Input, Modal } from 'antd';
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import {
   SaveOutlined,
   ArrowLeftOutlined,
@@ -13,6 +14,7 @@ import {
 import './editor.less';
 
 export default function MindMapEditor() {
+  const { mobile } = useAdminResponsive();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -423,66 +425,107 @@ export default function MindMapEditor() {
     }
   };
 
+  const currentTitleLabel = mindMapData?.title || '加载中...';
+
   return (
     <PageContainer
       title={
-        <Space>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => history.push('/mindmap')}
-          >
-            返回
-          </Button>
-          <span>{mindMapData?.title || '加载中...'}</span>
-        </Space>
+        mobile ? false : (
+          <Space>
+            <Button
+              icon={<ArrowLeftOutlined />}
+              onClick={() => history.push('/mindmap')}
+            >
+              返回
+            </Button>
+            <span>{currentTitleLabel}</span>
+          </Space>
+        )
       }
       extra={
-        <Space>
-          <Button onClick={() => setShowEditModal(true)}>
-            编辑信息
-          </Button>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={saving}
-            onClick={handleSave}
-            title="保存到数据库 (Ctrl+S)"
-          >
-            保存 (Ctrl+S)
-          </Button>
-        </Space>
+        mobile ? null : (
+          <Space>
+            <Button onClick={() => setShowEditModal(true)}>
+              编辑信息
+            </Button>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={saving}
+              onClick={handleSave}
+              title="保存到数据库 (Ctrl+S)"
+            >
+              保存 (Ctrl+S)
+            </Button>
+          </Space>
+        )
       }
+      className={mobile ? 'mindmap-editor-page editor-full t-0 mindmap-editor-page-mobile' : 'mindmap-editor-page'}
     >
-      <Card className="mindmap-editor-card" bodyStyle={{ padding: 0, height: 'calc(100vh - 200px)' }}>
-        {loading ? (
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            height: '100%' 
-          }}>
-            <Spin size="large" tip="加载中..." />
-          </div>
-        ) : (
-          <iframe
-            key={currentMindMapId}  // 添加 key，当 ID 变化时强制重建 iframe
-            ref={iframeRef}
-            src={`/admin/mindmap/index.html?v=${iframeCacheBuster}`}  // 使用稳定的缓存破坏参数
-            style={{
-              width: '100%',
-              height: '100%',
-              border: 'none',
-            }}
-            title="思维导图编辑器"
-            onLoad={() => {
-              console.log('iframe 加载完成，初始化思维导图');
-              // 立即初始化，不要延迟
-              // 因为我们需要在 JavaScript 执行之前设置好 takeOverApp 和方法
-              initMindMap(mindMapData);
-            }}
-          />
-        )}
-      </Card>
+      <div className={mobile ? 'mindmap-editor-layout mindmap-editor-layout-mobile' : 'mindmap-editor-layout'}>
+        {mobile ? (
+          <Card className="admin-mobile-toolbar-card admin-mobile-hero-card mindmap-editor-mobile-toolbar">
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <div className="admin-mobile-toolbar-head">
+                <div>
+                  <div className="admin-mobile-toolbar-title">{currentTitleLabel}</div>
+                  <div className="admin-mobile-toolbar-subtitle">
+                    画布优先占据主要视口，保存和信息编辑集中在上方操作区。
+                  </div>
+                </div>
+                <div className="admin-mobile-toolbar-badge">思维导图</div>
+              </div>
+              <div className="admin-mobile-action-grid mindmap-editor-mobile-action-grid">
+                <Button icon={<ArrowLeftOutlined />} onClick={() => history.push('/mindmap')}>
+                  返回列表
+                </Button>
+                <Button onClick={() => setShowEditModal(true)}>编辑信息</Button>
+                <Button
+                  className="mindmap-editor-mobile-save"
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  loading={saving}
+                  onClick={handleSave}
+                >
+                  保存
+                </Button>
+              </div>
+            </Space>
+          </Card>
+        ) : null}
+
+        <Card className="mindmap-editor-card" bodyStyle={{ padding: 0 }}>
+          {loading ? (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              height: '100%' 
+            }}>
+              <Spin size="large" tip="加载中..." />
+            </div>
+          ) : (
+            <iframe
+              key={currentMindMapId}  // 添加 key，当 ID 变化时强制重建 iframe
+              ref={iframeRef}
+              src={`/admin/mindmap/index.html?v=${iframeCacheBuster}`}  // 使用稳定的缓存破坏参数
+              style={{
+                width: '100%',
+                height: '100%',
+                minHeight: mobile ? '62dvh' : '100%',
+                border: 'none',
+              }}
+              title="思维导图编辑器"
+              onLoad={() => {
+                console.log('iframe 加载完成，初始化思维导图');
+                // 立即初始化，不要延迟
+                // 因为我们需要在 JavaScript 执行之前设置好 takeOverApp 和方法
+                initMindMap(mindMapData);
+              }}
+            />
+          )}
+        </Card>
+      </div>
 
       <Modal
         title="编辑思维导图信息"
@@ -521,4 +564,3 @@ export default function MindMapEditor() {
     </PageContainer>
   );
 }
-

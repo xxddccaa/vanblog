@@ -477,6 +477,33 @@ const WalinePrewarm = () => {
 
   return null;
 };
+
+const AdminViewportSync = () => {
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const syncViewport = () => {
+      const width = getViewportWidth();
+      const nextViewport = width < 768 ? 'mobile' : width < 992 ? 'tablet' : 'desktop';
+
+      document.body.dataset.adminViewport = nextViewport;
+      document.documentElement.dataset.adminViewport = nextViewport;
+      document.body.classList.toggle('admin-mobile-shell', nextViewport === 'mobile');
+      document.body.classList.toggle('admin-tablet-shell', nextViewport === 'tablet');
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+
+    return () => {
+      window.removeEventListener('resize', syncViewport);
+    };
+  }, []);
+
+  return null;
+};
 /**
  * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
  * */
@@ -762,6 +789,7 @@ export const layout = ({ initialState, setInitialState }) => {
           />
           <AdminBrandSync siteInfo={initialState} />
           <SiderCollapseSync />
+          <AdminViewportSync />
           <WalinePrewarm />
           {children}
         </>

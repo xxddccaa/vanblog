@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
-import { Row, Col, Card, Button, Space, message, Tooltip } from 'antd';
-import { 
+import { Row, Col, Card, Button, Drawer, Space, Tag, message, Tooltip } from 'antd';
+import {
   EditOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -13,8 +13,9 @@ import DocumentViewer from '@/components/DocumentViewer';
 import DocumentTree from '@/components/DocumentTree';
 import NewDocumentModal from '@/components/NewDocumentModal';
 import ContentSearchModal from '@/components/ContentSearchModal';
-import { 
-  getDocumentById, 
+import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
+import {
+  getDocumentById,
   getLibraries,
   createDocument,
   getSiteInfo,
@@ -22,6 +23,7 @@ import {
 import './index.less';
 
 export default function Document() {
+  const { mobile } = useAdminResponsive();
   const [currentDocument, setCurrentDocument] = useState(null);
   const [documentContent, setDocumentContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,6 +40,7 @@ export default function Document() {
   const [isResizing, setIsResizing] = useState(false);
   const [showContentSearch, setShowContentSearch] = useState(false);
   const [siteInfo, setSiteInfo] = useState(null);
+  const [treeDrawerOpen, setTreeDrawerOpen] = useState(false);
 
   // 处理搜索结果选择
   const handleSearchSelect = async (document) => {
@@ -49,6 +52,9 @@ export default function Document() {
     } else {
       // 如果是文档，加载内容
       await loadDocument(document.id);
+    }
+    if (mobile) {
+      setTreeDrawerOpen(false);
     }
     setShowContentSearch(false);
   };
@@ -76,7 +82,7 @@ export default function Document() {
   // 加载文档内容
   const loadDocument = useCallback(async (documentId) => {
     if (!documentId) return;
-    
+
     setLoading(true);
     try {
       const { data } = await getDocumentById(documentId);
@@ -90,8 +96,6 @@ export default function Document() {
     }
   }, []);
 
-
-
   // 处理文档树节点选择
   const handleDocumentSelect = async (document, action) => {
     if (document.type === 'library') {
@@ -99,6 +103,9 @@ export default function Document() {
       setCurrentDocument(document);
       setDocumentContent('');
       setSelectedDocumentId(document.id);
+      if (mobile) {
+        setTreeDrawerOpen(false);
+      }
       return;
     }
 
@@ -109,12 +116,11 @@ export default function Document() {
     } else {
       // 默认为查看模式
       await loadDocument(document.id);
+      if (mobile) {
+        setTreeDrawerOpen(false);
+      }
     }
   };
-
-
-
-
 
   // 刷新页面
   const handleRefresh = async () => {
@@ -125,18 +131,21 @@ export default function Document() {
   };
 
   // 处理新建文档完成后的回调
-  const handleNewDocumentFinish = useCallback(async (data) => {
-    // 先刷新本地数据
-    await fetchLibraries();
-    
-    // 如果创建的是文档，自动跳转到编辑页面
-    if (data && data.type === 'document') {
-      history.push(`/editor?type=document&id=${data.id}`);
-    }
-    
-    // 通知DocumentTree组件刷新
-    handleRefresh();
-  }, [handleRefresh]);
+  const handleNewDocumentFinish = useCallback(
+    async (data) => {
+      // 先刷新本地数据
+      await fetchLibraries();
+
+      // 如果创建的是文档，自动跳转到编辑页面
+      if (data && data.type === 'document') {
+        history.push(`/editor?type=document&id=${data.id}`);
+      }
+
+      // 通知DocumentTree组件刷新
+      handleRefresh();
+    },
+    [handleRefresh],
+  );
 
   // 切换文档树收起/展开状态
   const toggleTreeCollapse = () => {
@@ -159,18 +168,21 @@ export default function Document() {
     localStorage.setItem('document-tree-width', '6');
   };
 
-  const handleMouseMove = useCallback((e) => {
-    if (!isResizing || isTreeCollapsed) return;
-    
-    const containerRect = document.querySelector('.ant-row').getBoundingClientRect();
-    const mouseX = e.clientX - containerRect.left;
-    const containerWidth = containerRect.width;
-    const newWidthPercent = (mouseX / containerWidth) * 24; // 转换为栅格系统的24分制
-    
-    // 限制宽度在3-12之间
-    const clampedWidth = Math.min(Math.max(newWidthPercent, 3), 12);
-    setTreeWidth(Math.round(clampedWidth));
-  }, [isResizing, isTreeCollapsed]);
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isResizing || isTreeCollapsed) return;
+
+      const containerRect = document.querySelector('.ant-row').getBoundingClientRect();
+      const mouseX = e.clientX - containerRect.left;
+      const containerWidth = containerRect.width;
+      const newWidthPercent = (mouseX / containerWidth) * 24; // 转换为栅格系统的24分制
+
+      // 限制宽度在3-12之间
+      const clampedWidth = Math.min(Math.max(newWidthPercent, 3), 12);
+      setTreeWidth(Math.round(clampedWidth));
+    },
+    [isResizing, isTreeCollapsed],
+  );
 
   const handleMouseUp = useCallback(() => {
     if (isResizing) {
@@ -201,7 +213,7 @@ export default function Document() {
 
     // 初始检测
     handleResize();
-    
+
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -225,32 +237,45 @@ export default function Document() {
     fetchLibraries();
   }, []);
 
-  const renderContent = () => {
+  const mobileHeroStats = [
+    { label: '文档库', value: libraries.length },
+    { label: '当前', value: currentDocument ? (currentDocument.type === 'library' ? '文档库' : '文档') : '未选' },
+    { label: '入口', value: '文档树' },
+  ];
+
+  const renderDesktopContent = () => {
     if (!currentDocument) {
       return (
-        <Card 
-          className="document-content-card" 
-          style={{ minHeight: '600px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        <Card
+          className="document-content-card"
+          style={{
+            minHeight: '600px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <div style={{ textAlign: 'center', color: '#999' }}>
             <p style={{ fontSize: '16px', marginBottom: '16px' }}>请选择一个文档进行查看或编辑</p>
-            <p style={{ fontSize: '14px', color: '#ccc' }}>
-              在左侧文档树中创建文档库和文档
-            </p>
+            <p style={{ fontSize: '14px', color: '#ccc' }}>在左侧文档树中创建文档库和文档</p>
           </div>
         </Card>
       );
     }
 
     return (
-      <Card 
+      <Card
         className="document-content-card"
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>{currentDocument.title}</span>
             <Space>
               {currentDocument.type === 'document' && (
-                <Button type="primary" icon={<EditOutlined />} onClick={() => history.push(`/editor?type=document&id=${currentDocument.id}`)}>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => history.push(`/editor?type=document&id=${currentDocument.id}`)}
+                >
                   编辑
                 </Button>
               )}
@@ -277,9 +302,7 @@ export default function Document() {
               <p style={{ color: '#666', marginBottom: '20px' }}>
                 {currentDocument.description || currentDocument.content || '暂无描述'}
               </p>
-              <p style={{ color: '#999' }}>
-                请从左侧文档树选择要查看的文档
-              </p>
+              <p style={{ color: '#999' }}>请从左侧文档树选择要查看的文档</p>
             </div>
           ) : (
             <DocumentViewer
@@ -293,142 +316,288 @@ export default function Document() {
     );
   };
 
-  return (
-    <PageContainer
-      title="私密文档"
-      className="document-page-container"
-      extra={
-        <Space>
-          <Tooltip title="搜索文档内容">
-            <Button
-              icon={<SearchOutlined />}
-              onClick={() => setShowContentSearch(true)}
-            >
+  const renderMobileContent = () => {
+    if (!currentDocument) {
+      return (
+        <Card className="admin-mobile-empty-card document-mobile-empty-card">
+          <div className="admin-mobile-empty-title">先从文档树选择内容</div>
+          <div className="admin-mobile-empty-note">
+            手机上优先完成选树、搜索与预览，再进入编辑器做深度修改。
+          </div>
+          <div className="admin-mobile-action-grid">
+            <Button type="primary" icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
+              打开文档树
+            </Button>
+            <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
               内容搜索
             </Button>
-          </Tooltip>
-          <div style={{ color: '#666', fontSize: '12px' }}>
-            快捷键：Ctrl/Cmd + B 切换文档树
           </div>
-        </Space>
+        </Card>
+      );
+    }
+
+    const isLibrary = currentDocument.type === 'library';
+    const metaItems = [
+      isLibrary ? '文档库' : '文档',
+      currentDocument.id ? `ID ${currentDocument.id}` : null,
+      !isLibrary && currentDocument.library_id ? `文档库 ${currentDocument.library_id}` : null,
+    ].filter(Boolean);
+
+    const summary = isLibrary
+      ? currentDocument.description || currentDocument.content || '这个文档库还没有补充描述。'
+      : '正文预览已加载，向下滑动即可浏览内容；需要修改时可直接进入编辑器。';
+
+    return (
+      <>
+        <Card className="admin-mobile-selection-card document-mobile-context-card">
+          <div className="admin-mobile-selection-title-row">
+            <div className="admin-mobile-selection-title">{currentDocument.title}</div>
+            <Tag color={isLibrary ? 'blue' : 'green'}>{isLibrary ? '文档库' : '文档'}</Tag>
+          </div>
+          {metaItems.length ? (
+            <div className="admin-mobile-record-meta">
+              {metaItems.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+          ) : null}
+          <div className="admin-mobile-selection-summary">{summary}</div>
+          <div className="admin-mobile-action-grid" style={{ marginTop: 14 }}>
+            {isLibrary ? (
+              <>
+                <NewDocumentModal
+                  type="document"
+                  libraries={libraries}
+                  libraryId={currentDocument.id}
+                  onFinish={handleNewDocumentFinish}
+                />
+                <Button icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
+                  查看结构
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => history.push(`/editor?type=document&id=${currentDocument.id}`)}
+                >
+                  进入编辑
+                </Button>
+                <Button icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
+                  切换文档
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+
+        <Card className="document-content-card document-content-card-mobile" bodyStyle={{ padding: 0 }}>
+          <div className="document-page-viewer document-page-viewer-mobile">
+            {isLibrary ? (
+              <div className="document-page-library-info">
+                <h3>文档库：{currentDocument.title}</h3>
+                <p>{currentDocument.description || currentDocument.content || '暂无描述'}</p>
+                <p>打开文档树后可继续浏览或创建该文档库下的文档。</p>
+              </div>
+            ) : (
+              <DocumentViewer
+                value={documentContent}
+                codeMaxLines={siteInfo?.codeMaxLines || 15}
+                themeConfig={siteInfo}
+              />
+            )}
+          </div>
+        </Card>
+      </>
+    );
+  };
+
+  return (
+    <PageContainer
+      title={mobile ? false : '私密文档'}
+      className="document-page-container"
+      extra={
+        mobile ? null : (
+          <Space>
+            <Tooltip title="搜索文档内容">
+              <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
+                内容搜索
+              </Button>
+            </Tooltip>
+            <div style={{ color: '#666', fontSize: '12px' }}>快捷键：Ctrl/Cmd + B 切换文档树</div>
+          </Space>
+        )
       }
     >
-              <Row gutter={[16, 16]} style={{ minHeight: '600px' }}>
-        {!isTreeCollapsed && (
-          <Col 
-            xs={{ span: 24, order: 1 }} 
-            sm={{ span: 24, order: 1 }} 
-            md={{ span: Math.min(treeWidth + 2, 12), order: 1 }} 
-            lg={{ span: treeWidth, order: 1 }} 
-            xl={{ span: treeWidth, order: 1 }}
+      {mobile ? (
+        <>
+          <Drawer
+            title="文档树"
+            placement="left"
+            width="100vw"
+            className="document-mobile-drawer"
+            open={treeDrawerOpen}
+            onClose={() => setTreeDrawerOpen(false)}
+          >
+            <DocumentTree
+              onNodeSelect={handleDocumentSelect}
+              selectedDocumentId={selectedDocumentId}
+              onRefresh={handleRefresh}
+            />
+          </Drawer>
+          <div className="admin-mobile-section-shell document-mobile-layout">
+            <Card className="admin-mobile-toolbar-card admin-mobile-hero-card">
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div className="admin-mobile-toolbar-head">
+                  <div>
+                    <div className="admin-mobile-toolbar-title">私密文档</div>
+                    <div className="admin-mobile-toolbar-subtitle">
+                      手机上优先把文档树、搜索与预览串成顺手的浏览链路。
+                    </div>
+                  </div>
+                  <div className="admin-mobile-toolbar-badge">{libraries.length} 个文档库</div>
+                </div>
+                <div className="admin-mobile-toolbar-stats">
+                  {mobileHeroStats.map((item) => (
+                    <div key={item.label} className="admin-mobile-toolbar-stat">
+                      <div className="admin-mobile-toolbar-stat-label">{item.label}</div>
+                      <div className="admin-mobile-toolbar-stat-value">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="admin-mobile-action-grid">
+                  <Button icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
+                    文档树
+                  </Button>
+                  <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
+                    内容搜索
+                  </Button>
+                </div>
+              </Space>
+            </Card>
+            {renderMobileContent()}
+          </div>
+        </>
+      ) : (
+        <Row gutter={[16, 16]} style={{ minHeight: '600px' }}>
+          {!isTreeCollapsed && (
+            <Col
+              xs={{ span: 24, order: 1 }}
+              sm={{ span: 24, order: 1 }}
+              md={{ span: Math.min(treeWidth + 2, 12), order: 1 }}
+              lg={{ span: treeWidth, order: 1 }}
+              xl={{ span: treeWidth, order: 1 }}
+              style={{ position: 'relative' }}
+            >
+              <Card
+                className="document-tree-card"
+                title={
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <span>文档树</span>
+                    <Button
+                      type="text"
+                      icon={<MenuFoldOutlined />}
+                      size="small"
+                      onClick={toggleTreeCollapse}
+                      title="收起文档树 (Ctrl/Cmd + B)"
+                    />
+                  </div>
+                }
+                style={{
+                  minHeight: '600px',
+                  marginBottom: '16px',
+                }}
+                bodyStyle={{
+                  minHeight: '543px',
+                  padding: '16px',
+                  overflow: 'auto',
+                }}
+              >
+                <DocumentTree
+                  onNodeSelect={handleDocumentSelect}
+                  selectedDocumentId={selectedDocumentId}
+                  onRefresh={handleRefresh}
+                />
+              </Card>
+              <div
+                className="resize-handle"
+                onMouseDown={handleMouseDown}
+                onDoubleClick={handleDoubleClick}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: -8,
+                  width: 16,
+                  height: '100%',
+                  cursor: 'col-resize',
+                  zIndex: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#bfbfbf',
+                  fontSize: '12px',
+                  backgroundColor: isResizing ? '#f0f0f0' : 'transparent',
+                  borderRadius: '4px',
+                  transition: 'background-color 0.2s ease',
+                }}
+                title="拖拽调整宽度，双击重置"
+              >
+                <DragOutlined />
+                {isResizing && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '20px',
+                      transform: 'translateY(-50%)',
+                      background: '#1890ff',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      animation: 'fadeIn 0.2s ease',
+                    }}
+                  >
+                    宽度: {treeWidth}/24
+                  </div>
+                )}
+              </div>
+            </Col>
+          )}
+          <Col
+            xs={{ span: 24, order: 2 }}
+            sm={{ span: 24, order: 2 }}
+            md={{ span: isTreeCollapsed ? 24 : Math.max(24 - treeWidth - 2, 12), order: 2 }}
+            lg={{ span: isTreeCollapsed ? 24 : 24 - treeWidth, order: 2 }}
+            xl={{ span: isTreeCollapsed ? 24 : 24 - treeWidth, order: 2 }}
             style={{ position: 'relative' }}
           >
-            <Card 
-              className="document-tree-card"
-              title={
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>文档树</span>
-                                     <Button
-                     type="text"
-                     icon={<MenuFoldOutlined />}
-                     size="small"
-                     onClick={toggleTreeCollapse}
-                     title="收起文档树 (Ctrl/Cmd + B)"
-                   />
-                </div>
-              }
-              style={{ 
-                minHeight: '600px', 
-                marginBottom: '16px' 
-              }}
-              bodyStyle={{ 
-                minHeight: '543px', 
-                padding: '16px',
-                overflow: 'auto'
-              }}
-            >
-              <DocumentTree
-                onNodeSelect={handleDocumentSelect}
-                selectedDocumentId={selectedDocumentId}
-                onRefresh={handleRefresh}
+            {isTreeCollapsed && (
+              <Button
+                type="primary"
+                icon={<MenuUnfoldOutlined />}
+                size="small"
+                onClick={toggleTreeCollapse}
+                title="展开文档树 (Ctrl/Cmd + B)"
+                style={{
+                  position: 'absolute',
+                  top: 16,
+                  left: 16,
+                  zIndex: 100,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}
               />
-            </Card>
-            {/* 拖拽调整宽度的手柄 */}
-            <div
-              className="resize-handle"
-              onMouseDown={handleMouseDown}
-              onDoubleClick={handleDoubleClick}
-              style={{
-                position: 'absolute',
-                top: 0,
-                right: -8,
-                width: 16,
-                height: '100%',
-                cursor: 'col-resize',
-                zIndex: 10,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#bfbfbf',
-                fontSize: '12px',
-                backgroundColor: isResizing ? '#f0f0f0' : 'transparent',
-                borderRadius: '4px',
-                transition: 'background-color 0.2s ease',
-              }}
-              title="拖拽调整宽度，双击重置"
-            >
-              <DragOutlined />
-              {isResizing && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '20px',
-                    transform: 'translateY(-50%)',
-                    background: '#1890ff',
-                    color: 'white',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    whiteSpace: 'nowrap',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    animation: 'fadeIn 0.2s ease',
-                  }}
-                >
-                  宽度: {treeWidth}/24
-                </div>
-              )}
-            </div>
+            )}
+            {renderDesktopContent()}
           </Col>
-        )}
-        <Col 
-          xs={{ span: 24, order: 2 }} 
-          sm={{ span: 24, order: 2 }} 
-          md={{ span: isTreeCollapsed ? 24 : Math.max(24 - treeWidth - 2, 12), order: 2 }} 
-          lg={{ span: isTreeCollapsed ? 24 : 24 - treeWidth, order: 2 }} 
-          xl={{ span: isTreeCollapsed ? 24 : 24 - treeWidth, order: 2 }}
-          style={{ position: 'relative' }}
-        >
-                     {isTreeCollapsed && (
-             <Button
-               type="primary"
-               icon={<MenuUnfoldOutlined />}
-               size="small"
-               onClick={toggleTreeCollapse}
-               title="展开文档树 (Ctrl/Cmd + B)"
-               style={{
-                 position: 'absolute',
-                 top: 16,
-                 left: 16,
-                 zIndex: 100,
-                 boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-               }}
-             />
-           )}
-          {renderContent()}
-        </Col>
-      </Row>
-      
+        </Row>
+      )}
+
       {/* 内容搜索模态框 */}
       <ContentSearchModal
         visible={showContentSearch}
@@ -438,4 +607,4 @@ export default function Document() {
       />
     </PageContainer>
   );
-} 
+}
