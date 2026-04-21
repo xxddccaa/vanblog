@@ -1,6 +1,13 @@
 export type AiQaSourceType = 'article' | 'draft' | 'document';
 export type FastgptSearchMode = 'embedding' | 'fullTextRecall' | 'mixedRecall';
 export type AiQaMessageRole = 'user' | 'assistant';
+export type AiQaResourceManagementMode = 'manual' | 'managedV2';
+
+export interface AiQaManagedResourceNames {
+  dataset: string;
+  app: string;
+  apiKey: string;
+}
 
 export interface AiQaSyncSummary {
   total: number;
@@ -37,6 +44,11 @@ export interface AiQaConfig {
   datasetId: string;
   appId: string;
   apiKey: string;
+  blogInstanceId: string;
+  resourceManagementMode?: AiQaResourceManagementMode;
+  resourceNamingVersion: 2;
+  managedResourceNames?: AiQaManagedResourceNames;
+  legacyAutoMigrationPending: boolean;
   searchMode: FastgptSearchMode;
   limit: number;
   similarity: number;
@@ -59,11 +71,12 @@ export interface AiQaBundledModelConfigView {
   embedding: AiQaBundledModelConfigItemView;
 }
 
-export interface AiQaConfigView extends Omit<AiQaConfig, 'apiKey'> {
+export interface AiQaConfigView extends Omit<AiQaConfig, 'apiKey' | 'resourceManagementMode'> {
   apiKey: string;
   apiKeyConfigured: boolean;
   fastgptInternalUrl: string;
   fastgptRootPasswordConfigured: boolean;
+  resourceManagementMode: AiQaResourceManagementMode;
   bundledModels: AiQaBundledModelConfigView;
 }
 
@@ -174,6 +187,11 @@ export interface AiQaStatus {
   bundledModelMissingFields: string[];
   datasetId: string;
   appId: string;
+  blogInstanceId: string;
+  resourceManagementMode: AiQaResourceManagementMode;
+  resourceNamingVersion: 2;
+  managedResourceNames?: AiQaManagedResourceNames;
+  legacyAutoMigrationPending: boolean;
   totalSources: number;
   syncedSources: number;
   pendingSources: number;
@@ -206,11 +224,29 @@ export interface AiQaProvisionResult {
   apiKey: AiQaProvisionApiKeyResult;
 }
 
+export interface AiQaLegacyMigrationResult {
+  migrated: boolean;
+  skipped?: boolean;
+  reason?: string;
+  warning?: string;
+  config: AiQaConfigView;
+  status: AiQaStatus;
+  dataset?: AiQaProvisionResource;
+  app?: AiQaProvisionResource;
+  apiKey?: AiQaProvisionApiKeyResult;
+  syncSummary?: AiQaSyncSummary;
+}
+
 export const defaultAiQaConfig: AiQaConfig = {
   enabled: false,
   datasetId: '',
   appId: '',
   apiKey: '',
+  blogInstanceId: '',
+  resourceManagementMode: undefined,
+  resourceNamingVersion: 2,
+  managedResourceNames: undefined,
+  legacyAutoMigrationPending: false,
   searchMode: 'mixedRecall',
   limit: 5000,
   similarity: 0,

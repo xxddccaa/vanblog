@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { config } from 'src/config';
 import { AiQaProvider } from './ai-qa.provider';
 
 jest.mock('axios');
@@ -12,10 +13,13 @@ jest.mock('src/config', () => ({
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('AiQaProvider', () => {
+  const originalFastgptRootPassword = config.fastgptRootPassword;
+
   beforeEach(() => {
     mockedAxios.get.mockReset();
     mockedAxios.post.mockReset();
     mockedAxios.request.mockReset();
+    config.fastgptRootPassword = originalFastgptRootPassword;
   });
 
   const createSettingModel = () => ({
@@ -65,6 +69,13 @@ describe('AiQaProvider', () => {
       findById: jest.fn().mockResolvedValue(null),
       ...overrides.documentProvider,
     };
+    const metaProvider = {
+      getSiteInfo: jest.fn().mockResolvedValue({
+        baseUrl: 'https://blog.example.com',
+        siteName: 'VanBlog',
+      }),
+      ...overrides.metaProvider,
+    };
 
     return {
       provider: new AiQaProvider(
@@ -73,12 +84,14 @@ describe('AiQaProvider', () => {
         draftProvider as any,
         documentProvider as any,
         structuredDataService as any,
+        metaProvider as any,
       ),
       settingModel: overrides.settingModel || settingModel,
       structuredDataService,
       articleProvider,
       draftProvider,
       documentProvider,
+      metaProvider,
     };
   };
 
@@ -222,6 +235,94 @@ describe('AiQaProvider', () => {
           requestAuthConfigured: true,
         }),
       },
+    });
+  });
+
+  it('generates and persists blogInstanceId on first config read', async () => {
+    const { provider, settingModel } = createProvider();
+
+    const result = await provider.getConfig();
+
+    expect(result.blogInstanceId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(settingModel.updateOne).toHaveBeenCalledWith(
+      { type: 'aiQa' },
+      expect.objectContaining({
+        value: expect.objectContaining({
+          blogInstanceId: result.blogInstanceId,
+        }),
+      }),
+      { upsert: true },
+    );
+  });
+
+  it('reuses an existing blogInstanceId without persisting a new one', async () => {
+    const { provider, settingModel } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            blogInstanceId: '8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+          },
+        }),
+      },
+    });
+
+    const result = await provider.getConfig();
+
+    expect(result.blogInstanceId).toBe('8fe72b6b-c60d-438f-bb19-9fc7fba4da88');
+    expect(settingModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  it('switches to manual mode when dataset/app/api key ids are edited manually', async () => {
+    const { provider, settingModel } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            blogInstanceId: 'blog-instance-1',
+            datasetId: 'dataset-managed',
+            appId: 'app-managed',
+            apiKey: 'managed-secret',
+            resourceManagementMode: 'managedV2',
+            managedResourceNames: {
+              dataset: 'dataset-name',
+              app: 'app-name',
+              apiKey: 'api-key-name',
+            },
+            legacyAutoMigrationPending: true,
+          },
+        }),
+      },
+    });
+
+    const result = await provider.updateConfig({
+      datasetId: 'dataset-manual',
+      appId: 'app-manual',
+      apiKey: 'manual-secret',
+    } as any);
+
+    expect(settingModel.updateOne).toHaveBeenCalledWith(
+      { type: 'aiQa' },
+      expect.objectContaining({
+        value: expect.objectContaining({
+          datasetId: 'dataset-manual',
+          appId: 'app-manual',
+          apiKey: 'manual-secret',
+          resourceManagementMode: 'manual',
+          managedResourceNames: undefined,
+          legacyAutoMigrationPending: false,
+        }),
+      }),
+      { upsert: true },
+    );
+    expect(result).toMatchObject({
+      datasetId: 'dataset-manual',
+      appId: 'app-manual',
+      apiKey: '********',
+      resourceManagementMode: 'manual',
+      legacyAutoMigrationPending: false,
     });
   });
 
@@ -946,6 +1047,7 @@ describe('AiQaProvider', () => {
           type: 'aiQa',
           value: {
             enabled: false,
+            blogInstanceId: '8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
             bundledModels: {
               llm: {
                 requestUrl: 'https://llm.example/v1/chat/completions',
@@ -987,6 +1089,15 @@ describe('AiQaProvider', () => {
       bundledModelMissingFields: [],
       datasetId: 'dataset-1',
       appId: 'app-1',
+      blogInstanceId: '8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+      resourceManagementMode: 'managedV2',
+      resourceNamingVersion: 2,
+      managedResourceNames: {
+        dataset: 'VanBlog AI 问答知识库 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+        app: 'VanBlog AI 问答 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+        apiKey: 'VanBlog AI Key / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+      },
+      legacyAutoMigrationPending: false,
       totalSources: 0,
       syncedSources: 0,
       pendingSources: 0,
@@ -1039,6 +1150,13 @@ describe('AiQaProvider', () => {
           datasetId: 'dataset-1',
           appId: 'app-1',
           apiKey: 'fastgpt-secret',
+          resourceManagementMode: 'managedV2',
+          managedResourceNames: {
+            dataset:
+              'VanBlog AI 问答知识库 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+            app: 'VanBlog AI 问答 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+            apiKey: 'VanBlog AI Key / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+          },
         }),
       }),
       { upsert: true },
@@ -1052,7 +1170,7 @@ describe('AiQaProvider', () => {
           token: 'root-session-token',
         }),
         data: expect.objectContaining({
-          name: 'VanBlog AI 问答知识库',
+          name: 'VanBlog AI 问答知识库 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
           vectorModel: 'qwen-embedding',
           agentModel: 'qwen-chat',
         }),
@@ -1064,7 +1182,7 @@ describe('AiQaProvider', () => {
         method: 'POST',
         url: 'http://fastgpt-app:3000/api/core/app/create',
         data: expect.objectContaining({
-          name: 'VanBlog AI 问答',
+          name: 'VanBlog AI 问答 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
           type: 'simple',
         }),
       }),
@@ -1076,7 +1194,7 @@ describe('AiQaProvider', () => {
         url: 'http://fastgpt-app:3000/api/support/openapi/create',
         data: {
           appId: 'app-1',
-          name: 'VanBlog AI 问答',
+          name: 'VanBlog AI Key / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
           limit: {
             maxUsagePoints: -1,
           },
@@ -1101,7 +1219,578 @@ describe('AiQaProvider', () => {
         appId: 'app-1',
         apiKey: '********',
         apiKeyConfigured: true,
+        resourceManagementMode: 'managedV2',
+        blogInstanceId: '8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
       },
+    });
+  });
+
+  it('marks legacy auto-managed resources as pending migration in status', async () => {
+    const { provider, settingModel } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            enabled: false,
+            blogInstanceId: 'legacy-blog-1',
+            datasetId: 'legacy-dataset',
+            appId: 'legacy-app',
+            apiKey: 'legacy-key',
+            bundledModels: {
+              llm: {
+                requestUrl: 'https://llm.example/v1/chat/completions',
+                requestAuth: 'llm-secret',
+                model: 'qwen-chat',
+                name: 'Qwen Chat',
+              },
+              embedding: {
+                requestUrl: 'https://embedding.example/v1/embeddings',
+                requestAuth: '',
+                model: 'qwen-embedding',
+                name: 'Qwen Embedding',
+              },
+            },
+          },
+        }),
+      },
+    });
+
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        code: 200,
+        data: {
+          code: 'login-code',
+        },
+      },
+    } as any);
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        code: 200,
+        data: {
+          token: 'root-session-token',
+        },
+      },
+    } as any);
+    mockedAxios.request
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: {
+            _id: 'legacy-dataset',
+            name: 'VanBlog AI 问答知识库',
+            intro: 'VanBlog 自动创建的博客知识库，用于后台 AI 问答检索。',
+          },
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: {
+            _id: 'legacy-app',
+            name: 'VanBlog AI 问答',
+            intro: 'VanBlog 自动维护的博客知识问答应用。',
+            modules: [
+              { nodeId: 'workflowStartNodeId', inputs: [] },
+              {
+                nodeId: 'iKBoX2vIzETU',
+                inputs: [
+                  {
+                    key: 'datasets',
+                    value: [{ datasetId: 'legacy-dataset', name: 'VanBlog AI 问答知识库' }],
+                  },
+                ],
+              },
+              {
+                nodeId: '7BdojPlukIQw',
+                inputs: [
+                  {
+                    key: 'systemPrompt',
+                    value:
+                      '你是 VanBlog 的博客知识助手。知识库检索结果用于辅助回答站长关于博客内容的问题。请优先参考博客知识回答；当知识库没有直接覆盖问题时，可以结合通用知识做必要补充，但要明确区分哪些是博客里明确提到的内容、哪些是基于常识的补充判断，不要把补充内容说成博客原文，也不要编造博客中不存在的事实。',
+                  },
+                ],
+              },
+            ],
+            edges: [
+              { source: 'workflowStartNodeId', target: 'iKBoX2vIzETU' },
+              { source: 'iKBoX2vIzETU', target: '7BdojPlukIQw' },
+            ],
+          },
+        },
+      } as any);
+
+    const status = await provider.getStatus();
+
+    expect(status.legacyAutoMigrationPending).toBe(true);
+    expect(settingModel.updateOne).toHaveBeenCalledWith(
+      { type: 'aiQa' },
+      expect.objectContaining({
+        value: expect.objectContaining({
+          legacyAutoMigrationPending: true,
+        }),
+      }),
+      { upsert: true },
+    );
+  });
+
+  it('does not try to auto-migrate resources when the config is explicitly manual', async () => {
+    const { provider } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            blogInstanceId: 'manual-blog-1',
+            datasetId: 'manual-dataset',
+            appId: 'manual-app',
+            apiKey: 'manual-key',
+            resourceManagementMode: 'manual',
+          },
+        }),
+      },
+    });
+
+    const status = await provider.getStatus();
+
+    expect(status.resourceManagementMode).toBe('manual');
+    expect(status.legacyAutoMigrationPending).toBe(false);
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(mockedAxios.request).not.toHaveBeenCalled();
+  });
+
+  it('migrates legacy auto-managed resources to managed v2 names and deletes old resources', async () => {
+    const { provider, settingModel } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            enabled: false,
+            blogInstanceId: '8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+            datasetId: 'legacy-dataset',
+            appId: 'legacy-app',
+            apiKey: 'legacy-key',
+            legacyAutoMigrationPending: true,
+            bundledModels: {
+              llm: {
+                requestUrl: 'https://llm.example/v1/chat/completions',
+                requestAuth: 'llm-secret',
+                model: 'qwen-chat',
+                name: 'Qwen Chat',
+              },
+              embedding: {
+                requestUrl: 'https://embedding.example/v1/embeddings',
+                requestAuth: '',
+                model: 'qwen-embedding',
+                name: 'Qwen Embedding',
+              },
+            },
+          },
+        }),
+      },
+    });
+
+    jest.spyOn(provider, 'syncBundledModels').mockResolvedValue({
+      llm: {
+        model: 'qwen-chat',
+        name: 'Qwen Chat',
+        requestUrl: 'https://llm.example/v1/chat/completions',
+      },
+      embedding: {
+        model: 'qwen-embedding',
+        name: 'Qwen Embedding',
+        requestUrl: 'https://embedding.example/v1/embeddings',
+      },
+    });
+
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        code: 200,
+        data: {
+          code: 'login-code',
+        },
+      },
+    } as any);
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        code: 200,
+        data: {
+          token: 'root-session-token',
+        },
+      },
+    } as any);
+    mockedAxios.request
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: {
+            _id: 'legacy-dataset',
+            name: 'VanBlog AI 问答知识库',
+            intro: 'VanBlog 自动创建的博客知识库，用于后台 AI 问答检索。',
+          },
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: {
+            _id: 'legacy-app',
+            name: 'VanBlog AI 问答',
+            intro: 'VanBlog 自动维护的博客知识问答应用。',
+            modules: [
+              { nodeId: 'workflowStartNodeId', inputs: [] },
+              {
+                nodeId: 'iKBoX2vIzETU',
+                inputs: [
+                  {
+                    key: 'datasets',
+                    value: [{ datasetId: 'legacy-dataset', name: 'VanBlog AI 问答知识库' }],
+                  },
+                ],
+              },
+              {
+                nodeId: '7BdojPlukIQw',
+                inputs: [
+                  {
+                    key: 'systemPrompt',
+                    value:
+                      '你是 VanBlog 的博客知识助手。知识库检索结果用于辅助回答站长关于博客内容的问题。请优先参考博客知识回答；当知识库没有直接覆盖问题时，可以结合通用知识做必要补充，但要明确区分哪些是博客里明确提到的内容、哪些是基于常识的补充判断，不要把补充内容说成博客原文，也不要编造博客中不存在的事实。',
+                  },
+                ],
+              },
+            ],
+            edges: [
+              { source: 'workflowStartNodeId', target: 'iKBoX2vIzETU' },
+              { source: 'iKBoX2vIzETU', target: '7BdojPlukIQw' },
+            ],
+          },
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: 'dataset-v2',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: 'app-v2',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: 'api-v2-secret',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: true,
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: true,
+        },
+      } as any);
+
+    const result = await provider.migrateLegacyFastgptResources();
+
+    expect(result).toMatchObject({
+      migrated: true,
+      dataset: { id: 'dataset-v2', action: 'created' },
+      app: { id: 'app-v2', action: 'created' },
+      apiKey: { action: 'created', configured: true },
+      config: {
+        datasetId: 'dataset-v2',
+        appId: 'app-v2',
+        apiKey: '********',
+        resourceManagementMode: 'managedV2',
+        legacyAutoMigrationPending: false,
+      },
+      syncSummary: {
+        total: 0,
+        created: 0,
+        updated: 0,
+        skipped: 0,
+        deleted: 0,
+        failed: 0,
+        trigger: 'legacy-migration',
+      },
+    });
+    expect(settingModel.updateOne).toHaveBeenLastCalledWith(
+      { type: 'aiQa' },
+      expect.objectContaining({
+        value: expect.objectContaining({
+          datasetId: 'dataset-v2',
+          appId: 'app-v2',
+          apiKey: 'api-v2-secret',
+          resourceManagementMode: 'managedV2',
+          managedResourceNames: {
+            dataset:
+              'VanBlog AI 问答知识库 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+            app: 'VanBlog AI 问答 / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+            apiKey: 'VanBlog AI Key / blog.example.com / 8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+          },
+          legacyAutoMigrationPending: false,
+        }),
+      }),
+      { upsert: true },
+    );
+    expect(mockedAxios.request).toHaveBeenNthCalledWith(
+      6,
+      expect.objectContaining({
+        method: 'DELETE',
+        url: 'http://fastgpt-app:3000/api/core/app/del',
+        params: { appId: 'legacy-app' },
+      }),
+    );
+    expect(mockedAxios.request).toHaveBeenNthCalledWith(
+      7,
+      expect.objectContaining({
+        method: 'DELETE',
+        url: 'http://fastgpt-app:3000/api/core/dataset/delete',
+        params: { id: 'legacy-dataset' },
+      }),
+    );
+  });
+
+  it('skips legacy migration safely when the FastGPT root password is missing', async () => {
+    config.fastgptRootPassword = '';
+    const { provider } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            blogInstanceId: 'legacy-blog-1',
+            datasetId: 'legacy-dataset',
+            appId: 'legacy-app',
+            apiKey: 'legacy-key',
+            legacyAutoMigrationPending: true,
+            bundledModels: {
+              llm: {
+                requestUrl: 'https://llm.example/v1/chat/completions',
+                requestAuth: 'llm-secret',
+                model: 'qwen-chat',
+                name: 'Qwen Chat',
+              },
+              embedding: {
+                requestUrl: 'https://embedding.example/v1/embeddings',
+                requestAuth: '',
+                model: 'qwen-embedding',
+                name: 'Qwen Embedding',
+              },
+            },
+          },
+        }),
+      },
+    });
+
+    const result = await provider.migrateLegacyFastgptResources();
+
+    expect(result).toMatchObject({
+      migrated: false,
+      skipped: true,
+      reason: '未配置 FastGPT root 密码，暂不执行旧资源迁移',
+      config: {
+        datasetId: 'legacy-dataset',
+        appId: 'legacy-app',
+        resourceManagementMode: 'manual',
+        legacyAutoMigrationPending: true,
+      },
+    });
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(mockedAxios.request).not.toHaveBeenCalled();
+  });
+
+  it('skips legacy migration safely when bundled model config is incomplete', async () => {
+    const { provider } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            blogInstanceId: 'legacy-blog-1',
+            datasetId: 'legacy-dataset',
+            appId: 'legacy-app',
+            apiKey: 'legacy-key',
+            legacyAutoMigrationPending: true,
+            bundledModels: {
+              llm: {
+                requestUrl: '',
+                requestAuth: '',
+                model: '',
+                name: '',
+              },
+              embedding: {
+                requestUrl: '',
+                requestAuth: '',
+                model: '',
+                name: '',
+              },
+            },
+          },
+        }),
+      },
+    });
+
+    const result = await provider.migrateLegacyFastgptResources();
+
+    expect(result).toMatchObject({
+      migrated: false,
+      skipped: true,
+      reason: 'bundled FastGPT 模型配置缺失，暂不执行旧资源迁移',
+      config: {
+        datasetId: 'legacy-dataset',
+        appId: 'legacy-app',
+        legacyAutoMigrationPending: true,
+      },
+    });
+    expect(mockedAxios.get).not.toHaveBeenCalled();
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(mockedAxios.request).not.toHaveBeenCalled();
+  });
+
+  it('keeps the new config and returns a warning when deleting legacy resources fails', async () => {
+    const { provider } = createProvider({
+      structuredDataService: {
+        getSetting: jest.fn().mockResolvedValue({
+          type: 'aiQa',
+          value: {
+            enabled: false,
+            blogInstanceId: '8fe72b6b-c60d-438f-bb19-9fc7fba4da88',
+            datasetId: 'legacy-dataset',
+            appId: 'legacy-app',
+            apiKey: 'legacy-key',
+            legacyAutoMigrationPending: true,
+            bundledModels: {
+              llm: {
+                requestUrl: 'https://llm.example/v1/chat/completions',
+                requestAuth: 'llm-secret',
+                model: 'qwen-chat',
+                name: 'Qwen Chat',
+              },
+              embedding: {
+                requestUrl: 'https://embedding.example/v1/embeddings',
+                requestAuth: '',
+                model: 'qwen-embedding',
+                name: 'Qwen Embedding',
+              },
+            },
+          },
+        }),
+      },
+    });
+
+    jest.spyOn(provider, 'syncBundledModels').mockResolvedValue({
+      llm: {
+        model: 'qwen-chat',
+        name: 'Qwen Chat',
+        requestUrl: 'https://llm.example/v1/chat/completions',
+      },
+      embedding: {
+        model: 'qwen-embedding',
+        name: 'Qwen Embedding',
+        requestUrl: 'https://embedding.example/v1/embeddings',
+      },
+    });
+
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        code: 200,
+        data: {
+          code: 'login-code',
+        },
+      },
+    } as any);
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        code: 200,
+        data: {
+          token: 'root-session-token',
+        },
+      },
+    } as any);
+    mockedAxios.request
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: {
+            _id: 'legacy-dataset',
+            name: 'VanBlog AI 问答知识库',
+            intro: 'VanBlog 自动创建的博客知识库，用于后台 AI 问答检索。',
+          },
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: {
+            _id: 'legacy-app',
+            name: 'VanBlog AI 问答',
+            intro: 'VanBlog 自动维护的博客知识问答应用。',
+            modules: [
+              { nodeId: 'workflowStartNodeId', inputs: [] },
+              {
+                nodeId: 'iKBoX2vIzETU',
+                inputs: [
+                  {
+                    key: 'datasets',
+                    value: [{ datasetId: 'legacy-dataset', name: 'VanBlog AI 问答知识库' }],
+                  },
+                ],
+              },
+              {
+                nodeId: '7BdojPlukIQw',
+                inputs: [
+                  {
+                    key: 'systemPrompt',
+                    value:
+                      '你是 VanBlog 的博客知识助手。知识库检索结果用于辅助回答站长关于博客内容的问题。请优先参考博客知识回答；当知识库没有直接覆盖问题时，可以结合通用知识做必要补充，但要明确区分哪些是博客里明确提到的内容、哪些是基于常识的补充判断，不要把补充内容说成博客原文，也不要编造博客中不存在的事实。',
+                  },
+                ],
+              },
+            ],
+            edges: [
+              { source: 'workflowStartNodeId', target: 'iKBoX2vIzETU' },
+              { source: 'iKBoX2vIzETU', target: '7BdojPlukIQw' },
+            ],
+          },
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: 'dataset-v2',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: 'app-v2',
+        },
+      } as any)
+      .mockResolvedValueOnce({
+        data: {
+          code: 200,
+          data: 'api-v2-secret',
+        },
+      } as any)
+      .mockRejectedValueOnce(new Error('delete app failed'))
+      .mockRejectedValueOnce(new Error('delete dataset failed'));
+
+    const result = await provider.migrateLegacyFastgptResources();
+
+    expect(result.migrated).toBe(true);
+    expect(result.warning).toContain('删除旧版 FastGPT App 失败');
+    expect(result.warning).toContain('删除旧版 FastGPT Dataset 失败');
+    expect(result.config).toMatchObject({
+      datasetId: 'dataset-v2',
+      appId: 'app-v2',
+      resourceManagementMode: 'managedV2',
+      legacyAutoMigrationPending: false,
     });
   });
 

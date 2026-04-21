@@ -73,6 +73,13 @@ export async function provisionAIQAResources(data = {}) {
   });
 }
 
+export async function migrateLegacyAIQAResources(data = {}) {
+  return request('/api/admin/ai-qa/migrate-legacy', {
+    method: 'POST',
+    data,
+  });
+}
+
 export async function testBundledAIQAModels(data = {}) {
   return request('/api/admin/ai-qa/bundled-models/test', {
     method: 'POST',

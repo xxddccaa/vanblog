@@ -1,6 +1,6 @@
 # VanBlog
 
-这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线定为 `v1.4.0`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
+这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线定为 `v1.4.1`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
 
 这版开始，仓库除了原有博客主栈，还提供一套**可选启用**的 AI 工作台能力：后台管理员可以在 `/admin/ai` 使用基于博客知识检索增强的问答，但这部分不会并入默认部署，也不会影响不需要 AI 的用户。
 
@@ -16,7 +16,7 @@
 
 ## 当前基线
 
-- 当前代码版本：`v1.4.0`
+- 当前代码版本：`v1.4.1`
 - 默认维护分支：`master`
 - 后台入口：`/admin`
 - AI 工作台入口：`/admin/ai`
@@ -59,15 +59,15 @@ docker compose -f docker-compose.latest.ai.yml up -d
 
 默认公开拓扑保持下面 7 个核心服务：
 
-| 服务 | 端口 | 说明 |
-| --- | --- | --- |
-| `caddy` | 80 / 443 | 对外统一入口，负责 `/`、`/admin`、`/api`、评论等转发 |
-| `server` | 3000 | NestJS API、站点管理、AI 工作台后端接口 |
-| `website` | 3001 / 3011 | Next.js 前台站点与控制端点 |
-| `admin` | 3002 | Umi 构建后的后台静态页面 |
-| `waline` | 8360 / 8361 | 评论服务与控制端点 |
-| `postgres` | 5432 | 主业务数据库，仅在 compose 内部网络访问 |
-| `redis` | 6379 | 缓存与队列数据库，仅在 compose 内部网络访问 |
+| 服务       | 端口        | 说明                                                 |
+| ---------- | ----------- | ---------------------------------------------------- |
+| `caddy`    | 80 / 443    | 对外统一入口，负责 `/`、`/admin`、`/api`、评论等转发 |
+| `server`   | 3000        | NestJS API、站点管理、AI 工作台后端接口              |
+| `website`  | 3001 / 3011 | Next.js 前台站点与控制端点                           |
+| `admin`    | 3002        | Umi 构建后的后台静态页面                             |
+| `waline`   | 8360 / 8361 | 评论服务与控制端点                                   |
+| `postgres` | 5432        | 主业务数据库，仅在 compose 内部网络访问              |
+| `redis`    | 6379        | 缓存与队列数据库，仅在 compose 内部网络访问          |
 
 可选 AI 扩展不会改掉这套默认拓扑，而是额外叠加：
 
@@ -125,8 +125,7 @@ docker compose -f docker-compose.latest.ai.yml pull
 docker compose -f docker-compose.latest.ai.yml up -d
 ```
 
-这个文件适合快速体验 AI 工作台；如果你需要精确锁版与回滚，仍然优先使用 `docker-compose.image.yml`。
-其中 bundled FastGPT 的 4 个关键镜像已经改为从 `kevinchina/deeplearning` 备份标签拉取，避免后续直接依赖上游 GHCR tag。
+这个文件适合快速体验 AI 工作台；如果你需要精确锁版与回滚，仍然优先使用 `docker-compose.image.yml`。其中 bundled FastGPT 的 4 个关键镜像已经改为从 `kevinchina/deeplearning` 备份标签拉取，避免后续直接依赖上游 GHCR tag。
 
 ### 3. 锁定到某个正式发布版本
 
@@ -238,11 +237,11 @@ kevinchina/deeplearning
 标签示例：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-server-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-website-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-admin-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-waline-v1.4.0-<image-id>
+kevinchina/deeplearning:vanblog-caddy-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.4.1-<image-id>
 ```
 
 说明：
@@ -267,7 +266,7 @@ pnpm release:images:push
 - [`RELEASE.md`](RELEASE.md)
 - [`DEPLOY.md`](DEPLOY.md)
 - [`docs/releases/README.md`](docs/releases/README.md)
-- [`docs/releases/v1.4.0.md`](docs/releases/v1.4.0.md)
+- [`docs/releases/v1.4.1.md`](docs/releases/v1.4.1.md)
 
 ## 文档入口
 

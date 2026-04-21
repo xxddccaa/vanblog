@@ -10,7 +10,7 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 | --- | --- | --- | --- |
 | `EMAIL` | `caddy` | 使用内置 Caddy HTTPS 时申请证书的邮箱 | `someone@example.com` |
 | `VANBLOG_DOCKER_REPO` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的镜像仓库 | `kevinchina/deeplearning` |
-| `VANBLOG_RELEASE_SUFFIX` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的标签后缀，如 `v1.4.0-<image-id>` | 无 |
+| `VANBLOG_RELEASE_SUFFIX` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的标签后缀，如 `v1.4.1-<image-id>` | 无 |
 | `VAN_BLOG_DATABASE_URL` | `server` | PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/vanblog` |
 | `VAN_BLOG_WALINE_DB` | `server` / `waline` / `postgres` | 评论系统独立数据库名 | `waline` |
 | `VAN_BLOG_WALINE_DATABASE_URL` | `server` | Waline 独立 PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/waline` |

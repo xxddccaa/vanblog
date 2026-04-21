@@ -27,7 +27,7 @@ const referenceEnvDoc = fs.readFileSync('docs/reference/env.md', 'utf8');
 const referenceDirDoc = fs.readFileSync('docs/reference/dir.md', 'utf8');
 const referenceLogDoc = fs.readFileSync('docs/reference/log.md', 'utf8');
 const releasesIndexDoc = fs.readFileSync('docs/releases/README.md', 'utf8');
-const release140Doc = fs.readFileSync('docs/releases/v1.4.0.md', 'utf8');
+const release141Doc = fs.readFileSync('docs/releases/v1.4.1.md', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const releaseEnv = fs.readFileSync('.env.release.example', 'utf8');
 const fastgptConfigExample = fs.readFileSync('docker/fastgpt/config.json.example', 'utf8');
@@ -207,10 +207,10 @@ test('docker compose wires cross-container control endpoints', () => {
   assert.match(composeImage, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
 });
 
-test('docs reflect the v1.4.0 AI workspace baseline and optional deployment model', () => {
-  assert.equal(packageJson.version, '1.4.0');
+test('docs reflect the v1.4.1 AI workspace baseline and optional deployment model', () => {
+  assert.equal(packageJson.version, '1.4.1');
 
-  assert.match(readmeDoc, /v1\.4\.0/);
+  assert.match(readmeDoc, /v1\.4\.1/);
   assert.match(readmeDoc, /kevinchina\/deeplearning/);
   assert.match(readmeDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(readmeDoc, /docker-compose\.fastgpt\.yml/);
@@ -237,12 +237,14 @@ test('docs reflect the v1.4.0 AI workspace baseline and optional deployment mode
   assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-code-sandbox-v4\.14\.10/);
   assert.match(aiQaDoc, /mongo:5\.0\.32/);
 
-  assert.match(releasesIndexDoc, /v1\.4\.0/);
-  assert.match(release140Doc, /v1\.4\.0/);
-  assert.match(release140Doc, /\/admin\/ai/);
-  assert.match(release140Doc, /docker-compose\.ai-qa\.yml/);
-  assert.match(release140Doc, /docker-compose\.fastgpt\.yml/);
-  assert.match(release140Doc, /kevinchina\/deeplearning/);
+  assert.match(releasesIndexDoc, /v1\.4\.1/);
+  assert.match(release141Doc, /v1\.4\.1/);
+  assert.match(release141Doc, /\/admin\/ai/);
+  assert.match(release141Doc, /docker-compose\.ai-qa\.yml/);
+  assert.match(release141Doc, /docker-compose\.fastgpt\.yml/);
+  assert.match(release141Doc, /kevinchina\/deeplearning/);
+  assert.match(release141Doc, /blogInstanceId/);
+  assert.match(release141Doc, /managedV2/);
   assert.match(releaseDoc, /docker-compose\.yaml/);
   assert.match(releaseDoc, /docker-compose\.latest\.ai\.yml/);
   assert.match(releaseDoc, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
@@ -402,7 +404,7 @@ test('release env example and deploy guide document optional Cloudflare purge cr
   assert.match(releaseDoc, /waline\.jwt/);
   assert.match(releaseEnv, /VAN_BLOG_FASTGPT_INTERNAL_URL=http:\/\/fastgpt-app:3000/);
   assert.match(releaseEnv, /VANBLOG_DOCKER_REPO=kevinchina\/deeplearning/);
-  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.4\.0-replace-with-gitsha8/);
+  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.4\.1-replace-with-gitsha8/);
   assert.match(releaseEnv, /FASTGPT_ROOT_PASSWORD=replace-with-fastgpt-root-password/);
   assert.match(releaseEnv, /FASTGPT_FREE_PLAN_POINTS=100/);
   assert.match(releaseEnv, /FASTGPT_FREE_PLAN_DURATION_DAYS=30/);

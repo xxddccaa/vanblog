@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ResponsivePageTabs, { toPageContainerTabList } from '@/components/ResponsivePageTabs';
 import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { useTab } from '@/services/van-blog/useTab';
@@ -25,6 +25,7 @@ import {
   extractSecretState,
   formatTime,
   sanitizeConfigForForm,
+  shouldTriggerSilentLegacyMigration,
 } from './shared';
 import {
   chatWithAIQA,
@@ -33,6 +34,7 @@ import {
   getAIQAConversationDetail,
   getAIQAConversations,
   getAIQAStatus,
+  migrateLegacyAIQAResources,
   provisionAIQAResources,
   renameAIQAConversation,
   syncAIQAFull,
@@ -92,7 +94,11 @@ const upsertConversationAtTop = (list, conversation) => {
 export default function AIQA() {
   const [form] = Form.useForm();
   const { mobile } = useAdminResponsive();
-  const [tab, setTab] = useTab('chat', 'tab', tabs.map((item) => item.key));
+  const [tab, setTab] = useTab(
+    'chat',
+    'tab',
+    tabs.map((item) => item.key),
+  );
   const { initialState } = useModel('@@initialState');
   const { token } = theme.useToken();
   const navTheme = initialState?.settings?.navTheme || '';
@@ -110,6 +116,7 @@ export default function AIQA() {
   const [syncing, setSyncing] = useState(false);
   const [syncingBundledModels, setSyncingBundledModels] = useState(false);
   const [provisioningResources, setProvisioningResources] = useState(false);
+  const [silentMigratingLegacy, setSilentMigratingLegacy] = useState(false);
   const [testingBundledModels, setTestingBundledModels] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
 
@@ -128,6 +135,7 @@ export default function AIQA() {
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameTitle, setRenameTitle] = useState('');
   const [renamingConversation, setRenamingConversation] = useState(false);
+  const legacyMigrationAttemptedRef = useRef(new Set());
 
   const extensionQueryEnabled = Form.useWatch('datasetSearchUsingExtensionQuery', form);
 
@@ -231,7 +239,10 @@ export default function AIQA() {
         if (!append) {
           return nextItems;
         }
-        return [...current, ...nextItems.filter((item) => !current.some((it) => it.id === item.id))];
+        return [
+          ...current,
+          ...nextItems.filter((item) => !current.some((it) => it.id === item.id)),
+        ];
       });
     } catch (error) {
       message.error(error.message || '获取历史会话失败');
@@ -246,10 +257,7 @@ export default function AIQA() {
       const payload = buildConfigPayload(values, secretState);
       setSavingConfig(true);
       try {
-        const data = assertSuccessResponse(
-          await updateAIQAConfig(payload),
-          '保存 AI 问答配置失败',
-        );
+        const data = assertSuccessResponse(await updateAIQAConfig(payload), '保存 AI 问答配置失败');
         applyConfigView(data);
         if (!silent && successMessage) {
           message.success(successMessage);
@@ -268,6 +276,38 @@ export default function AIQA() {
     fetchStatus();
     fetchConversationList({ page: 1, append: false });
   }, [fetchConfig, fetchStatus, fetchConversationList]);
+
+  useEffect(() => {
+    if (!shouldTriggerSilentLegacyMigration(status, legacyMigrationAttemptedRef.current)) {
+      return undefined;
+    }
+
+    const attemptKey = status?.blogInstanceId || status?.datasetId || 'default';
+    legacyMigrationAttemptedRef.current.add(attemptKey);
+
+    let cancelled = false;
+    const runMigration = async () => {
+      setSilentMigratingLegacy(true);
+      try {
+        await migrateLegacyAIQAResources();
+        if (!cancelled) {
+          await Promise.all([fetchConfig(), fetchStatus()]);
+        }
+      } catch {
+        // Silent background migration should not interrupt the page.
+      } finally {
+        if (!cancelled) {
+          setSilentMigratingLegacy(false);
+        }
+      }
+    };
+
+    runMigration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchConfig, fetchStatus, status]);
 
   const handleSaveConfig = async () => {
     try {
@@ -529,7 +569,9 @@ export default function AIQA() {
       setConversationList((current) =>
         current.map((item) => (item.id === data.id ? { ...item, ...data } : item)),
       );
-      setActiveConversation((current) => (current?.id === data.id ? { ...current, ...data } : current));
+      setActiveConversation((current) =>
+        current?.id === data.id ? { ...current, ...data } : current,
+      );
       setRenameModalOpen(false);
       setRenameTarget(null);
       setRenameTitle('');
@@ -730,7 +772,11 @@ export default function AIQA() {
                     </>
                   ) : (
                     <>
-                      <Button icon={<ReloadOutlined />} onClick={fetchStatus} loading={statusLoading}>
+                      <Button
+                        icon={<ReloadOutlined />}
+                        onClick={fetchStatus}
+                        loading={statusLoading}
+                      >
                         刷新状态
                       </Button>
                       <Button
@@ -772,7 +818,7 @@ export default function AIQA() {
               testingConnection={testingConnection}
               syncing={syncing}
               syncingBundledModels={syncingBundledModels}
-              provisioningResources={provisioningResources}
+              provisioningResources={provisioningResources || silentMigratingLegacy}
               testingBundledModels={testingBundledModels}
               onSaveConfig={handleSaveConfig}
               onRefreshStatus={fetchStatus}

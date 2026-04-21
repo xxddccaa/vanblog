@@ -77,7 +77,7 @@ docker compose -f docker-compose.latest.ai.yml up -d
 1. 修改 `.env` 中的版本变量，例如：
 
 ```env
-VANBLOG_RELEASE_SUFFIX=v1.4.0-<image-id>
+VANBLOG_RELEASE_SUFFIX=v1.4.1-<image-id>
 ```
 
 2. 拉取并启动新版本：
@@ -104,7 +104,7 @@ docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml -f docker
 升级时请记住：
 
 - 核心镜像升级和 bundled FastGPT 基线不是一回事
-- 默认发布 `v1.4.0` 后续小版本时，不主动修改 `docker-compose.fastgpt.yml` 的固定版本矩阵
+- 默认发布 `v1.4.1` 及后续小版本时，不主动修改 `docker-compose.fastgpt.yml` 的固定版本矩阵
 - 如果只是 VanBlog 核心镜像升级，通常不需要顺带刷新 FastGPT 依赖
 
 ## 如何回滚

@@ -66,10 +66,7 @@ export class AiQaController {
   }
 
   @Get('/conversations')
-  async listConversations(
-    @Query('page') page: unknown,
-    @Query('pageSize') pageSize: unknown,
-  ) {
+  async listConversations(@Query('page') page: unknown, @Query('pageSize') pageSize: unknown) {
     const data = await this.aiQaProvider.listConversations(
       this.normalizePositiveInt(page, 1, 100000),
       this.normalizePositiveInt(pageSize, 20, 100),
@@ -142,6 +139,22 @@ export class AiQaController {
     }
 
     const data = await this.aiQaProvider.provisionFastgptResources();
+    return {
+      statusCode: 200,
+      data,
+    };
+  }
+
+  @Post('/migrate-legacy')
+  async migrateLegacy() {
+    if (config?.demo == true || config?.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改此项！',
+      };
+    }
+
+    const data = await this.aiQaProvider.migrateLegacyFastgptResources();
     return {
       statusCode: 200,
       data,

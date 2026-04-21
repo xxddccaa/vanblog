@@ -21,8 +21,11 @@ import {
   AiQaMessageRecord,
   AiQaConfig,
   AiQaConfigView,
+  AiQaLegacyMigrationResult,
+  AiQaManagedResourceNames,
   AiQaKnowledgeSource,
   AiQaProvisionResult,
+  AiQaResourceManagementMode,
   AiQaSourceType,
   AiQaStatus,
   AiQaSyncSummary,
@@ -32,11 +35,16 @@ import {
 import { ArticleProvider } from '../article/article.provider';
 import { DocumentProvider } from '../document/document.provider';
 import { DraftProvider } from '../draft/draft.provider';
+import { MetaProvider } from '../meta/meta.provider';
 
 const AI_QA_SETTING_TYPE = 'aiQa';
 const SECRET_MASK = '********';
 const FASTGPT_DATASET_NAME = 'VanBlog AI 问答知识库';
+const FASTGPT_DATASET_INTRO = 'VanBlog 自动创建的博客知识库，用于后台 AI 问答检索。';
 const FASTGPT_APP_NAME = 'VanBlog AI 问答';
+const FASTGPT_APP_INTRO = 'VanBlog 自动维护的博客知识问答应用。';
+const FASTGPT_API_KEY_NAME = 'VanBlog AI Key';
+const AI_QA_RESOURCE_NAMING_VERSION = 2 as const;
 const FASTGPT_APP_SYSTEM_PROMPT =
   '你是 VanBlog 的博客知识助手。知识库检索结果用于辅助回答站长关于博客内容的问题。请优先参考博客知识回答；当知识库没有直接覆盖问题时，可以结合通用知识做必要补充，但要明确区分哪些是博客里明确提到的内容、哪些是基于常识的补充判断，不要把补充内容说成博客原文，也不要编造博客中不存在的事实。';
 
@@ -51,6 +59,7 @@ export class AiQaProvider {
     private readonly draftProvider: DraftProvider,
     private readonly documentProvider: DocumentProvider,
     private readonly structuredDataService: StructuredDataService,
+    private readonly metaProvider: MetaProvider,
   ) {}
 
   private async enqueueSync<T>(task: () => Promise<T>): Promise<T> {
@@ -139,6 +148,34 @@ export class AiQaProvider {
     };
   }
 
+  private normalizeManagedResourceNames(
+    rawValue?: Partial<AiQaManagedResourceNames> | null,
+  ): AiQaManagedResourceNames | undefined {
+    const dataset = String(rawValue?.dataset || '').trim();
+    const app = String(rawValue?.app || '').trim();
+    const apiKey = String(rawValue?.apiKey || '').trim();
+    if (!dataset && !app && !apiKey) {
+      return undefined;
+    }
+    return {
+      dataset,
+      app,
+      apiKey,
+    };
+  }
+
+  private normalizeResourceManagementMode(value: unknown): AiQaResourceManagementMode | undefined {
+    const normalized = String(value || '').trim();
+    if (normalized === 'manual' || normalized === 'managedV2') {
+      return normalized;
+    }
+    return undefined;
+  }
+
+  private resolveResourceManagementMode(aiQaConfig: AiQaConfig): AiQaResourceManagementMode {
+    return aiQaConfig.resourceManagementMode || 'manual';
+  }
+
   private normalizeConfig(rawValue?: Partial<AiQaConfig> | null): AiQaConfig {
     const runtime = {
       ...(defaultAiQaConfig.runtime || {}),
@@ -152,6 +189,13 @@ export class AiQaProvider {
       datasetId: String(rawValue?.datasetId || '').trim(),
       appId: String(rawValue?.appId || '').trim(),
       apiKey: String(rawValue?.apiKey || '').trim(),
+      blogInstanceId: String(rawValue?.blogInstanceId || '').trim(),
+      resourceManagementMode: this.normalizeResourceManagementMode(
+        rawValue?.resourceManagementMode,
+      ),
+      resourceNamingVersion: AI_QA_RESOURCE_NAMING_VERSION,
+      managedResourceNames: this.normalizeManagedResourceNames(rawValue?.managedResourceNames),
+      legacyAutoMigrationPending: Boolean(rawValue?.legacyAutoMigrationPending),
       searchMode: this.normalizeSearchMode(rawValue?.searchMode),
       limit: this.clampLimit(rawValue?.limit),
       similarity: this.clampSimilarity(rawValue?.similarity),
@@ -171,6 +215,7 @@ export class AiQaProvider {
       apiKeyConfigured: Boolean(aiQaConfig.apiKey),
       fastgptInternalUrl: this.normalizeFastgptInternalUrl(config.fastgptInternalUrl),
       fastgptRootPasswordConfigured: Boolean(String(config.fastgptRootPassword || '').trim()),
+      resourceManagementMode: this.resolveResourceManagementMode(aiQaConfig),
       bundledModels: {
         llm: {
           ...aiQaConfig.bundledModels.llm,
@@ -211,6 +256,71 @@ export class AiQaProvider {
     );
     await this.structuredDataService.upsertSetting(AI_QA_SETTING_TYPE, nextConfig);
     return nextConfig;
+  }
+
+  private hasFastgptRootPasswordConfigured() {
+    return Boolean(String(config.fastgptRootPassword || '').trim());
+  }
+
+  private async ensureBlogInstanceId(aiQaConfig: AiQaConfig) {
+    if (aiQaConfig.blogInstanceId) {
+      return aiQaConfig;
+    }
+    const nextConfig = this.normalizeConfig({
+      ...aiQaConfig,
+      blogInstanceId: randomUUID(),
+    });
+    await this.persistConfig(nextConfig);
+    return nextConfig;
+  }
+
+  private sanitizeManagedSiteLabel(value: string) {
+    const normalized = String(value || '')
+      .normalize('NFKC')
+      .trim()
+      .replace(/[\/\\]+/g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/[^\p{L}\p{N}._-]+/gu, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^[-_.]+|[-_.]+$/g, '')
+      .slice(0, 48);
+    return normalized || 'blog';
+  }
+
+  private async resolveManagedSiteLabel() {
+    const siteInfo = ((await this.metaProvider.getSiteInfo()) || {}) as Record<string, any>;
+    const baseUrl = String(siteInfo?.baseUrl || '').trim();
+    if (baseUrl) {
+      try {
+        const hostname = new URL(baseUrl).hostname;
+        if (hostname) {
+          return this.sanitizeManagedSiteLabel(hostname);
+        }
+      } catch {
+        // ignore invalid baseUrl and continue to siteName fallback
+      }
+    }
+    const siteName = String(siteInfo?.siteName || '').trim();
+    if (siteName) {
+      return this.sanitizeManagedSiteLabel(siteName);
+    }
+    return 'blog';
+  }
+
+  private buildManagedResourceNames(
+    blogInstanceId: string,
+    siteLabel: string,
+  ): AiQaManagedResourceNames {
+    return {
+      dataset: `${FASTGPT_DATASET_NAME} / ${siteLabel} / ${blogInstanceId}`,
+      app: `${FASTGPT_APP_NAME} / ${siteLabel} / ${blogInstanceId}`,
+      apiKey: `${FASTGPT_API_KEY_NAME} / ${siteLabel} / ${blogInstanceId}`,
+    };
+  }
+
+  private async resolveManagedResourceNames(aiQaConfig: AiQaConfig) {
+    const siteLabel = await this.resolveManagedSiteLabel();
+    return this.buildManagedResourceNames(aiQaConfig.blogInstanceId, siteLabel);
   }
 
   private getMissingConfigFields(aiQaConfig: AiQaConfig) {
@@ -386,7 +496,7 @@ export class AiQaProvider {
   }
 
   private async requestFastgptAsRootUser(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'DELETE',
     pathname: string,
     rootToken: string,
     options: {
@@ -967,15 +1077,48 @@ export class AiQaProvider {
     });
   }
 
-  private async createFastgptDataset(rootToken: string, aiQaConfig: AiQaConfig) {
+  private async getFastgptAppDetail(rootToken: string, appId: string) {
+    return await this.requestFastgptAsRootUser('GET', '/api/core/app/detail', rootToken, {
+      params: {
+        appId,
+      },
+    });
+  }
+
+  private async updateFastgptDataset(
+    rootToken: string,
+    datasetId: string,
+    aiQaConfig: AiQaConfig,
+    datasetName: string,
+  ) {
+    await this.requestFastgptAsRootUser('POST', '/api/core/dataset/update', rootToken, {
+      body: {
+        id: datasetId,
+        name: datasetName,
+        intro: FASTGPT_DATASET_INTRO,
+        agentModel: aiQaConfig.bundledModels.llm.model,
+      },
+    });
+    return {
+      id: datasetId,
+      name: datasetName,
+      action: 'updated' as const,
+    };
+  }
+
+  private async createFastgptDataset(
+    rootToken: string,
+    aiQaConfig: AiQaConfig,
+    datasetName: string,
+  ) {
     const datasetId = await this.requestFastgptAsRootUser(
       'POST',
       '/api/core/dataset/create',
       rootToken,
       {
         body: {
-          name: FASTGPT_DATASET_NAME,
-          intro: 'VanBlog 自动创建的博客知识库，用于后台 AI 问答检索。',
+          name: datasetName,
+          intro: FASTGPT_DATASET_INTRO,
           type: 'dataset',
           avatar: '',
           vectorModel: aiQaConfig.bundledModels.embedding.model,
@@ -989,13 +1132,20 @@ export class AiQaProvider {
     }
     return {
       id: resolvedDatasetId,
-      name: FASTGPT_DATASET_NAME,
+      name: datasetName,
       action: 'created' as const,
     };
   }
 
-  private async ensureFastgptDataset(rootToken: string, aiQaConfig: AiQaConfig) {
-    const currentDatasetId = String(aiQaConfig.datasetId || '').trim();
+  private async ensureManagedV2FastgptDataset(
+    rootToken: string,
+    aiQaConfig: AiQaConfig,
+    managedResourceNames: AiQaManagedResourceNames,
+  ) {
+    const currentDatasetId =
+      aiQaConfig.resourceManagementMode === 'managedV2'
+        ? String(aiQaConfig.datasetId || '').trim()
+        : '';
     if (currentDatasetId) {
       try {
         const detail = await this.getFastgptDatasetDetail(rootToken, currentDatasetId);
@@ -1005,9 +1155,28 @@ export class AiQaProvider {
             `AI 问答 Dataset ${currentDatasetId} 的 embedding 模型为 ${vectorModel}，当前配置为 ${aiQaConfig.bundledModels.embedding.model}，将改为新建 Dataset。`,
           );
         } else {
+          const currentName = String(detail?.name || '').trim();
+          const currentIntro = String(detail?.intro || '').trim();
+          const currentAgentModel = String(
+            detail?.agentModel?.model || detail?.agentModel || '',
+          ).trim();
+          if (
+            currentName !== managedResourceNames.dataset ||
+            currentIntro !== FASTGPT_DATASET_INTRO ||
+            (aiQaConfig.bundledModels.llm.model &&
+              currentAgentModel &&
+              currentAgentModel !== aiQaConfig.bundledModels.llm.model)
+          ) {
+            return await this.updateFastgptDataset(
+              rootToken,
+              currentDatasetId,
+              aiQaConfig,
+              managedResourceNames.dataset,
+            );
+          }
           return {
             id: currentDatasetId,
-            name: String(detail?.name || FASTGPT_DATASET_NAME),
+            name: String(detail?.name || managedResourceNames.dataset),
             action: 'reused' as const,
           };
         }
@@ -1020,16 +1189,20 @@ export class AiQaProvider {
       }
     }
 
-    return await this.createFastgptDataset(rootToken, aiQaConfig);
+    return await this.createFastgptDataset(rootToken, aiQaConfig, managedResourceNames.dataset);
   }
 
-  private async ensureFastgptApp(
+  private async ensureManagedV2FastgptApp(
     rootToken: string,
     aiQaConfig: AiQaConfig,
     dataset: { id: string; name: string },
+    managedResourceNames: AiQaManagedResourceNames,
   ) {
     const workflow = this.buildProvisionAppWorkflow(aiQaConfig, dataset.id, dataset.name);
-    const currentAppId = String(aiQaConfig.appId || '').trim();
+    const currentAppId =
+      aiQaConfig.resourceManagementMode === 'managedV2'
+        ? String(aiQaConfig.appId || '').trim()
+        : '';
 
     if (currentAppId) {
       try {
@@ -1038,8 +1211,8 @@ export class AiQaProvider {
             appId: currentAppId,
           },
           body: {
-            name: FASTGPT_APP_NAME,
-            intro: 'VanBlog 自动维护的博客知识问答应用。',
+            name: managedResourceNames.app,
+            intro: FASTGPT_APP_INTRO,
             nodes: workflow.nodes,
             edges: workflow.edges,
             chatConfig: workflow.chatConfig,
@@ -1048,7 +1221,7 @@ export class AiQaProvider {
 
         return {
           id: currentAppId,
-          name: FASTGPT_APP_NAME,
+          name: managedResourceNames.app,
           action: 'updated' as const,
         };
       } catch (error) {
@@ -1060,8 +1233,8 @@ export class AiQaProvider {
 
     const appId = await this.requestFastgptAsRootUser('POST', '/api/core/app/create', rootToken, {
       body: {
-        name: FASTGPT_APP_NAME,
-        intro: 'VanBlog 自动维护的博客知识问答应用。',
+        name: managedResourceNames.app,
+        intro: FASTGPT_APP_INTRO,
         type: 'simple',
         modules: workflow.nodes,
         edges: workflow.edges,
@@ -1075,19 +1248,26 @@ export class AiQaProvider {
 
     return {
       id: resolvedAppId,
-      name: FASTGPT_APP_NAME,
+      name: managedResourceNames.app,
       action: 'created' as const,
     };
   }
 
-  private async ensureFastgptAppApiKey(
+  private async ensureManagedV2FastgptAppApiKey(
     rootToken: string,
     aiQaConfig: AiQaConfig,
     app: { id: string; action: 'created' | 'updated' },
+    managedResourceNames: AiQaManagedResourceNames,
   ) {
     const currentApiKey = String(aiQaConfig.apiKey || '').trim();
     const currentAppId = String(aiQaConfig.appId || '').trim();
-    if (currentApiKey && currentAppId && currentAppId === app.id && app.action === 'updated') {
+    if (
+      aiQaConfig.resourceManagementMode === 'managedV2' &&
+      currentApiKey &&
+      currentAppId &&
+      currentAppId === app.id &&
+      app.action === 'updated'
+    ) {
       return {
         apiKey: currentApiKey,
         action: 'reused' as const,
@@ -1101,7 +1281,7 @@ export class AiQaProvider {
       {
         body: {
           appId: app.id,
-          name: FASTGPT_APP_NAME,
+          name: managedResourceNames.apiKey,
           limit: {
             maxUsagePoints: -1,
           },
@@ -1117,6 +1297,146 @@ export class AiQaProvider {
       apiKey: resolvedApiKey,
       action: 'created' as const,
     };
+  }
+
+  private async deleteFastgptDataset(rootToken: string, datasetId: string) {
+    await this.requestFastgptAsRootUser('DELETE', '/api/core/dataset/delete', rootToken, {
+      params: {
+        id: datasetId,
+      },
+    });
+  }
+
+  private async deleteFastgptApp(rootToken: string, appId: string) {
+    await this.requestFastgptAsRootUser('DELETE', '/api/core/app/del', rootToken, {
+      params: {
+        appId,
+      },
+    });
+  }
+
+  private shouldInspectLegacyAutoResources(aiQaConfig: AiQaConfig) {
+    return (
+      !aiQaConfig.resourceManagementMode &&
+      Boolean(aiQaConfig.datasetId && aiQaConfig.appId && aiQaConfig.apiKey)
+    );
+  }
+
+  private findWorkflowNode(modules: any[], nodeId: string) {
+    return modules.find((item) => String(item?.nodeId || '').trim() === nodeId);
+  }
+
+  private findWorkflowInputValue(node: any, key: string) {
+    const inputs = Array.isArray(node?.inputs) ? node.inputs : [];
+    const input = inputs.find((item) => String(item?.key || '').trim() === key);
+    return input?.value;
+  }
+
+  private isLegacyFastgptDatasetDetail(detail: any) {
+    return (
+      String(detail?.name || '').trim() === FASTGPT_DATASET_NAME &&
+      String(detail?.intro || '').trim() === FASTGPT_DATASET_INTRO
+    );
+  }
+
+  private isLegacyFastgptAppDetail(detail: any, datasetId: string) {
+    if (
+      String(detail?.name || '').trim() !== FASTGPT_APP_NAME ||
+      String(detail?.intro || '').trim() !== FASTGPT_APP_INTRO
+    ) {
+      return false;
+    }
+
+    const modules = Array.isArray(detail?.modules) ? detail.modules : [];
+    const workflowStartNode = this.findWorkflowNode(modules, 'workflowStartNodeId');
+    const datasetNode = this.findWorkflowNode(modules, 'iKBoX2vIzETU');
+    const aiChatNode = this.findWorkflowNode(modules, '7BdojPlukIQw');
+    if (!workflowStartNode || !datasetNode || !aiChatNode) {
+      return false;
+    }
+
+    const selectedDatasets = this.findWorkflowInputValue(datasetNode, 'datasets');
+    const datasetMatches = Array.isArray(selectedDatasets)
+      ? selectedDatasets.some(
+          (item) =>
+            String(item?.datasetId || '').trim() === datasetId &&
+            String(item?.name || '').trim() === FASTGPT_DATASET_NAME,
+        )
+      : false;
+    if (!datasetMatches) {
+      return false;
+    }
+
+    const systemPrompt = String(
+      this.findWorkflowInputValue(aiChatNode, 'systemPrompt') || '',
+    ).trim();
+    if (systemPrompt !== FASTGPT_APP_SYSTEM_PROMPT) {
+      return false;
+    }
+
+    const edges = Array.isArray(detail?.edges) ? detail.edges : [];
+    return (
+      edges.some(
+        (item) =>
+          String(item?.source || '').trim() === 'workflowStartNodeId' &&
+          String(item?.target || '').trim() === 'iKBoX2vIzETU',
+      ) &&
+      edges.some(
+        (item) =>
+          String(item?.source || '').trim() === 'iKBoX2vIzETU' &&
+          String(item?.target || '').trim() === '7BdojPlukIQw',
+      )
+    );
+  }
+
+  private async isLegacyAutoManagedResourceSet(aiQaConfig: AiQaConfig, rootToken: string) {
+    try {
+      const [datasetDetail, appDetail] = await Promise.all([
+        this.getFastgptDatasetDetail(rootToken, aiQaConfig.datasetId),
+        this.getFastgptAppDetail(rootToken, aiQaConfig.appId),
+      ]);
+      return (
+        this.isLegacyFastgptDatasetDetail(datasetDetail) &&
+        this.isLegacyFastgptAppDetail(appDetail, aiQaConfig.datasetId)
+      );
+    } catch (error) {
+      this.logger.warn(
+        `检测旧版 AI 问答自动资源失败，已保留当前状态: ${this.getFastgptErrorMessage(error)}`,
+      );
+      return false;
+    }
+  }
+
+  private async refreshLegacyMigrationPending(aiQaConfig: AiQaConfig) {
+    if (
+      !this.shouldInspectLegacyAutoResources(aiQaConfig) ||
+      !this.hasFastgptRootPasswordConfigured()
+    ) {
+      return aiQaConfig;
+    }
+
+    try {
+      const rootToken = await this.loginFastgptRootUser();
+      const legacyAutoMigrationPending = await this.isLegacyAutoManagedResourceSet(
+        aiQaConfig,
+        rootToken,
+      );
+      if (legacyAutoMigrationPending === aiQaConfig.legacyAutoMigrationPending) {
+        return aiQaConfig;
+      }
+
+      const nextConfig = this.normalizeConfig({
+        ...aiQaConfig,
+        legacyAutoMigrationPending,
+      });
+      await this.persistConfig(nextConfig);
+      return nextConfig;
+    } catch (error) {
+      this.logger.warn(
+        `刷新旧版 AI 问答资源迁移状态失败，已保留当前配置: ${this.getFastgptErrorMessage(error)}`,
+      );
+      return aiQaConfig;
+    }
   }
 
   private buildSourceKey(sourceType: AiQaSourceType, sourceId: string) {
@@ -1327,6 +1647,9 @@ export class AiQaProvider {
           editorUrl: source.editorUrl,
           publicUrl: source.publicUrl || '',
           title: source.title,
+          blogInstanceId: aiQaConfig.blogInstanceId,
+          resourceNamingVersion: AI_QA_RESOURCE_NAMING_VERSION,
+          managedBy: 'vanblog',
         },
       },
       this.getDatasetAuthorization(aiQaConfig),
@@ -1388,7 +1711,13 @@ export class AiQaProvider {
     );
     const contentHash = this.buildSourceHash(source);
 
-    if (this.isKnowledgeMappingCurrent(existing as AiKnowledgeSyncRecord | null, source, aiQaConfig.datasetId)) {
+    if (
+      this.isKnowledgeMappingCurrent(
+        existing as AiKnowledgeSyncRecord | null,
+        source,
+        aiQaConfig.datasetId,
+      )
+    ) {
       await this.structuredDataService.upsertAiKnowledgeSync({
         ...(existing as AiKnowledgeSyncRecord),
         contentHash,
@@ -1633,7 +1962,8 @@ export class AiQaProvider {
 
     const normalizedChatId = String(legacyChatId || '').trim();
     if (normalizedChatId) {
-      const existing = await this.structuredDataService.getAiQaConversationByChatId(normalizedChatId);
+      const existing =
+        await this.structuredDataService.getAiQaConversationByChatId(normalizedChatId);
       return {
         conversation: (existing as AiQaConversationRecord | null) || null,
         chatId: normalizedChatId,
@@ -1729,17 +2059,16 @@ export class AiQaProvider {
         await this.structuredDataService.createAiQaConversation(conversation);
       }
       await this.structuredDataService.createAiQaMessages([userMessage, assistantMessage]);
-      conversation =
-        ((await this.structuredDataService.updateAiQaConversation(conversation.id, {
-          messageCount: Number(conversation.messageCount || 0) + 2,
-          lastMessagePreview: this.buildConversationPreview(answer),
-          updatedAt: assistantCreatedAt,
-        })) as AiQaConversationRecord | null) || {
-          ...conversation,
-          messageCount: Number(conversation.messageCount || 0) + 2,
-          lastMessagePreview: this.buildConversationPreview(answer),
-          updatedAt: assistantCreatedAt,
-        };
+      conversation = ((await this.structuredDataService.updateAiQaConversation(conversation.id, {
+        messageCount: Number(conversation.messageCount || 0) + 2,
+        lastMessagePreview: this.buildConversationPreview(answer),
+        updatedAt: assistantCreatedAt,
+      })) as AiQaConversationRecord | null) || {
+        ...conversation,
+        messageCount: Number(conversation.messageCount || 0) + 2,
+        lastMessagePreview: this.buildConversationPreview(answer),
+        updatedAt: assistantCreatedAt,
+      };
     } catch (error) {
       if (createdConversation) {
         await this.structuredDataService.updateAiQaConversation(conversation.id, {
@@ -1758,7 +2087,7 @@ export class AiQaProvider {
   }
 
   async getConfig() {
-    const aiQaConfig = await this.readConfig();
+    const aiQaConfig = await this.ensureBlogInstanceId(await this.readConfig());
     return this.buildConfigView(aiQaConfig);
   }
 
@@ -1789,20 +2118,57 @@ export class AiQaProvider {
       },
     };
 
+    const datasetIdProvided = Object.prototype.hasOwnProperty.call(patch || {}, 'datasetId');
+    const appIdProvided = Object.prototype.hasOwnProperty.call(patch || {}, 'appId');
+    const apiKeyProvided = Object.prototype.hasOwnProperty.call(patch || {}, 'apiKey');
+
     const nextConfig = this.normalizeConfig({
       ...currentConfig,
-      ...patch,
+      enabled: patch?.enabled ?? currentConfig.enabled,
+      datasetId: patch?.datasetId ?? currentConfig.datasetId,
+      appId: patch?.appId ?? currentConfig.appId,
       apiKey: nextApiKey,
+      searchMode: patch?.searchMode ?? currentConfig.searchMode,
+      limit: patch?.limit ?? currentConfig.limit,
+      similarity: patch?.similarity ?? currentConfig.similarity,
+      usingReRank: patch?.usingReRank ?? currentConfig.usingReRank,
+      datasetSearchUsingExtensionQuery:
+        patch?.datasetSearchUsingExtensionQuery ?? currentConfig.datasetSearchUsingExtensionQuery,
+      datasetSearchExtensionModel:
+        patch?.datasetSearchExtensionModel ?? currentConfig.datasetSearchExtensionModel,
+      datasetSearchExtensionBg:
+        patch?.datasetSearchExtensionBg ?? currentConfig.datasetSearchExtensionBg,
       bundledModels: nextBundledModels,
       runtime: currentConfig.runtime,
+      blogInstanceId: currentConfig.blogInstanceId,
+      resourceManagementMode: currentConfig.resourceManagementMode,
+      resourceNamingVersion: currentConfig.resourceNamingVersion,
+      managedResourceNames: currentConfig.managedResourceNames,
+      legacyAutoMigrationPending: currentConfig.legacyAutoMigrationPending,
     });
+
+    const resourceIdsChangedManually =
+      (datasetIdProvided && nextConfig.datasetId !== currentConfig.datasetId) ||
+      (appIdProvided && nextConfig.appId !== currentConfig.appId) ||
+      (apiKeyProvided && nextApiKey !== currentConfig.apiKey);
+    if (resourceIdsChangedManually) {
+      nextConfig.resourceManagementMode = 'manual';
+      nextConfig.managedResourceNames = undefined;
+      nextConfig.legacyAutoMigrationPending = false;
+    }
 
     await this.persistConfig(nextConfig);
     return this.buildConfigView(nextConfig);
   }
 
   async getStatus(): Promise<AiQaStatus> {
-    const aiQaConfig = await this.readConfig();
+    const aiQaConfig = await this.refreshLegacyMigrationPending(
+      await this.ensureBlogInstanceId(await this.readConfig()),
+    );
+    return await this.buildStatusFromConfig(aiQaConfig);
+  }
+
+  private async buildStatusFromConfig(aiQaConfig: AiQaConfig): Promise<AiQaStatus> {
     const missingConfigFields = this.getMissingConfigFields(aiQaConfig);
     const [sources, mappings] = await Promise.all([
       this.collectKnowledgeSources(),
@@ -1847,6 +2213,11 @@ export class AiQaProvider {
       bundledModelMissingFields: this.getBundledModelMissingFields(aiQaConfig),
       datasetId: aiQaConfig.datasetId,
       appId: aiQaConfig.appId,
+      blogInstanceId: aiQaConfig.blogInstanceId,
+      resourceManagementMode: this.resolveResourceManagementMode(aiQaConfig),
+      resourceNamingVersion: AI_QA_RESOURCE_NAMING_VERSION,
+      managedResourceNames: aiQaConfig.managedResourceNames,
+      legacyAutoMigrationPending: aiQaConfig.legacyAutoMigrationPending,
       totalSources: sources.length,
       syncedSources,
       pendingSources: Math.max(sources.length - syncedSources, 0),
@@ -1867,7 +2238,9 @@ export class AiQaProvider {
       page: safePage,
       pageSize: safePageSize,
       total: result.total,
-      items: result.conversations.map((item) => this.toConversationSummary(item as AiQaConversationRecord)).filter(Boolean) as AiQaConversationSummary[],
+      items: result.conversations
+        .map((item) => this.toConversationSummary(item as AiQaConversationRecord))
+        .filter(Boolean) as AiQaConversationSummary[],
     };
   }
 
@@ -1881,17 +2254,19 @@ export class AiQaProvider {
     return detail;
   }
 
-  async renameConversation(conversationId: string, title: string): Promise<AiQaConversationSummary> {
+  async renameConversation(
+    conversationId: string,
+    title: string,
+  ): Promise<AiQaConversationSummary> {
     const conversation = await this.getConversationOrThrow(conversationId);
     const nextTitle = this.normalizeConversationTitle(title, conversation.title || '未命名会话');
-    const updated =
-      ((await this.structuredDataService.updateAiQaConversation(conversation.id, {
-        title: nextTitle,
-        updatedAt: new Date().toISOString(),
-      })) as AiQaConversationRecord | null) || {
-        ...conversation,
-        title: nextTitle,
-      };
+    const updated = ((await this.structuredDataService.updateAiQaConversation(conversation.id, {
+      title: nextTitle,
+      updatedAt: new Date().toISOString(),
+    })) as AiQaConversationRecord | null) || {
+      ...conversation,
+      title: nextTitle,
+    };
     return this.toConversationSummary(updated) as AiQaConversationSummary;
   }
 
@@ -1980,19 +2355,37 @@ export class AiQaProvider {
   async provisionFastgptResources(): Promise<AiQaProvisionResult> {
     await this.syncBundledModels();
 
-    const currentConfig = await this.readConfig();
+    const currentConfig = await this.ensureBlogInstanceId(await this.readConfig());
     this.assertBundledModelSyncReady(currentConfig);
 
     const rootToken = await this.loginFastgptRootUser();
-    const dataset = await this.ensureFastgptDataset(rootToken, currentConfig);
-    const app = await this.ensureFastgptApp(rootToken, currentConfig, dataset);
-    const apiKeyResult = await this.ensureFastgptAppApiKey(rootToken, currentConfig, app);
+    const managedResourceNames = await this.resolveManagedResourceNames(currentConfig);
+    const dataset = await this.ensureManagedV2FastgptDataset(
+      rootToken,
+      currentConfig,
+      managedResourceNames,
+    );
+    const app = await this.ensureManagedV2FastgptApp(
+      rootToken,
+      currentConfig,
+      dataset,
+      managedResourceNames,
+    );
+    const apiKeyResult = await this.ensureManagedV2FastgptAppApiKey(
+      rootToken,
+      currentConfig,
+      app,
+      managedResourceNames,
+    );
 
     const nextConfig = this.normalizeConfig({
       ...currentConfig,
       datasetId: dataset.id,
       appId: app.id,
       apiKey: apiKeyResult.apiKey,
+      resourceManagementMode: 'managedV2',
+      managedResourceNames,
+      legacyAutoMigrationPending: false,
     });
     await this.persistConfig(nextConfig);
 
@@ -2045,69 +2438,196 @@ export class AiQaProvider {
     };
   }
 
+  async migrateLegacyFastgptResources(): Promise<AiQaLegacyMigrationResult> {
+    let currentConfig = await this.ensureBlogInstanceId(await this.readConfig());
+    if (!currentConfig.legacyAutoMigrationPending) {
+      currentConfig = await this.refreshLegacyMigrationPending(currentConfig);
+    }
+
+    const buildSkippedResult = async (reason: string): Promise<AiQaLegacyMigrationResult> => ({
+      migrated: false,
+      skipped: true,
+      reason,
+      config: this.buildConfigView(currentConfig),
+      status: await this.buildStatusFromConfig(currentConfig),
+    });
+
+    if (
+      !currentConfig.legacyAutoMigrationPending ||
+      !this.shouldInspectLegacyAutoResources(currentConfig)
+    ) {
+      return await buildSkippedResult('当前配置不是可迁移的旧版 VanBlog 自动资源');
+    }
+
+    if (!this.hasFastgptRootPasswordConfigured()) {
+      return await buildSkippedResult('未配置 FastGPT root 密码，暂不执行旧资源迁移');
+    }
+
+    if (this.getBundledModelMissingFields(currentConfig).length) {
+      return await buildSkippedResult('bundled FastGPT 模型配置缺失，暂不执行旧资源迁移');
+    }
+
+    return await this.enqueueSync(async () => {
+      await this.syncBundledModels();
+
+      const rootToken = await this.loginFastgptRootUser();
+      const stillLegacy = await this.isLegacyAutoManagedResourceSet(currentConfig, rootToken);
+      if (!stillLegacy) {
+        currentConfig = this.normalizeConfig({
+          ...currentConfig,
+          legacyAutoMigrationPending: false,
+        });
+        await this.persistConfig(currentConfig);
+        return await buildSkippedResult('旧资源特征已不匹配，已跳过自动迁移');
+      }
+
+      const legacyDatasetId = currentConfig.datasetId;
+      const legacyAppId = currentConfig.appId;
+      const managedResourceNames = await this.resolveManagedResourceNames(currentConfig);
+      const dataset = await this.ensureManagedV2FastgptDataset(
+        rootToken,
+        currentConfig,
+        managedResourceNames,
+      );
+      const app = await this.ensureManagedV2FastgptApp(
+        rootToken,
+        currentConfig,
+        dataset,
+        managedResourceNames,
+      );
+      const apiKeyResult = await this.ensureManagedV2FastgptAppApiKey(
+        rootToken,
+        currentConfig,
+        app,
+        managedResourceNames,
+      );
+
+      const nextConfig = this.normalizeConfig({
+        ...currentConfig,
+        datasetId: dataset.id,
+        appId: app.id,
+        apiKey: apiKeyResult.apiKey,
+        resourceManagementMode: 'managedV2',
+        managedResourceNames,
+        legacyAutoMigrationPending: false,
+        runtime: currentConfig.runtime,
+      });
+
+      const summary = await this.performFullSyncWithConfig(nextConfig, 'legacy-migration');
+
+      nextConfig.runtime = {
+        ...(nextConfig.runtime || {}),
+        lastSyncAt: summary.finishedAt,
+        lastFullSyncAt: summary.finishedAt,
+        lastSyncError: summary.failed ? `legacy-migration 同步包含 ${summary.failed} 个失败项` : '',
+        lastSyncSummary: summary,
+      };
+      await this.persistConfig(nextConfig);
+
+      let warning = '';
+      try {
+        await this.deleteFastgptApp(rootToken, legacyAppId);
+      } catch (error) {
+        warning = `删除旧版 FastGPT App 失败: ${this.getFastgptErrorMessage(error)}`;
+        this.logger.warn(warning);
+      }
+      try {
+        await this.deleteFastgptDataset(rootToken, legacyDatasetId);
+      } catch (error) {
+        const datasetWarning = `删除旧版 FastGPT Dataset 失败: ${this.getFastgptErrorMessage(
+          error,
+        )}`;
+        warning = warning ? `${warning}; ${datasetWarning}` : datasetWarning;
+        this.logger.warn(datasetWarning);
+      }
+
+      return {
+        migrated: true,
+        warning: warning || undefined,
+        config: this.buildConfigView(nextConfig),
+        status: await this.getStatus(),
+        dataset,
+        app,
+        apiKey: {
+          action: apiKeyResult.action,
+          configured: Boolean(nextConfig.apiKey),
+        },
+        syncSummary: summary,
+      };
+    });
+  }
+
+  private async performFullSyncWithConfig(
+    aiQaConfig: AiQaConfig,
+    trigger: string,
+  ): Promise<AiQaSyncSummary> {
+    const summary: AiQaSyncSummary = {
+      total: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      deleted: 0,
+      failed: 0,
+      trigger,
+      finishedAt: '',
+    };
+
+    const [sources, existingMappings] = await Promise.all([
+      this.collectKnowledgeSources(),
+      this.structuredDataService.listAiKnowledgeSyncs({ includeDeleted: false }),
+    ]);
+    summary.total = sources.length;
+
+    const currentKeys = new Set(
+      sources.map((source) => this.buildSourceKey(source.sourceType, source.sourceId)),
+    );
+
+    for (const source of sources) {
+      try {
+        const result = await this.syncOneSource(aiQaConfig, source);
+        summary[result] += 1;
+      } catch (error) {
+        summary.failed += 1;
+        this.logger.error(
+          `AI 问答同步失败: ${source.sourceType}:${source.sourceId}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
+
+    for (const mapping of existingMappings) {
+      const key = this.buildSourceKey(mapping.sourceType, mapping.sourceId);
+      if (!currentKeys.has(key) || mapping.datasetId !== aiQaConfig.datasetId) {
+        try {
+          const removed = await this.removeSourceByKey(
+            aiQaConfig,
+            mapping.sourceType,
+            mapping.sourceId,
+          );
+          if (removed) {
+            summary.deleted += 1;
+          }
+        } catch (error) {
+          summary.failed += 1;
+          this.logger.error(
+            `AI 问答清理失效映射失败: ${mapping.sourceType}:${mapping.sourceId}`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        }
+      }
+    }
+
+    summary.finishedAt = new Date().toISOString();
+    return summary;
+  }
+
   async runFullSync(trigger = 'manual'): Promise<AiQaSyncSummary> {
-    const aiQaConfig = await this.readConfig();
+    const aiQaConfig = await this.ensureBlogInstanceId(await this.readConfig());
     this.assertConfigReady(aiQaConfig);
 
     return await this.enqueueSync(async () => {
-      const summary: AiQaSyncSummary = {
-        total: 0,
-        created: 0,
-        updated: 0,
-        skipped: 0,
-        deleted: 0,
-        failed: 0,
-        trigger,
-        finishedAt: '',
-      };
-
       try {
-        const [sources, existingMappings] = await Promise.all([
-          this.collectKnowledgeSources(),
-          this.structuredDataService.listAiKnowledgeSyncs({ includeDeleted: false }),
-        ]);
-        summary.total = sources.length;
-
-        const currentKeys = new Set(
-          sources.map((source) => this.buildSourceKey(source.sourceType, source.sourceId)),
-        );
-
-        for (const source of sources) {
-          try {
-            const result = await this.syncOneSource(aiQaConfig, source);
-            summary[result] += 1;
-          } catch (error) {
-            summary.failed += 1;
-            this.logger.error(
-              `AI 问答同步失败: ${source.sourceType}:${source.sourceId}`,
-              error instanceof Error ? error.stack : String(error),
-            );
-          }
-        }
-
-        for (const mapping of existingMappings) {
-          const key = this.buildSourceKey(mapping.sourceType, mapping.sourceId);
-          if (!currentKeys.has(key) || mapping.datasetId !== aiQaConfig.datasetId) {
-            try {
-              const removed = await this.removeSourceByKey(
-                aiQaConfig,
-                mapping.sourceType,
-                mapping.sourceId,
-              );
-              if (removed) {
-                summary.deleted += 1;
-              }
-            } catch (error) {
-              summary.failed += 1;
-              this.logger.error(
-                `AI 问答清理失效映射失败: ${mapping.sourceType}:${mapping.sourceId}`,
-                error instanceof Error ? error.stack : String(error),
-              );
-            }
-          }
-        }
-
-        summary.finishedAt = new Date().toISOString();
+        const summary = await this.performFullSyncWithConfig(aiQaConfig, trigger);
         await this.writeRuntimePatch({
           lastSyncAt: summary.finishedAt,
           lastFullSyncAt: summary.finishedAt,
@@ -2124,7 +2644,7 @@ export class AiQaProvider {
   }
 
   async runNightlyFullSync() {
-    const aiQaConfig = await this.readConfig();
+    const aiQaConfig = await this.ensureBlogInstanceId(await this.readConfig());
     if (!aiQaConfig.enabled || this.getMissingConfigFields(aiQaConfig).length) {
       return null;
     }
@@ -2144,7 +2664,7 @@ export class AiQaProvider {
   }
 
   async syncSourceById(sourceType: AiQaSourceType, sourceId: string, trigger = 'incremental-sync') {
-    const aiQaConfig = await this.readConfig();
+    const aiQaConfig = await this.ensureBlogInstanceId(await this.readConfig());
     if (!aiQaConfig.enabled || this.getMissingConfigFields(aiQaConfig).length) {
       return { skipped: true };
     }
@@ -2174,7 +2694,7 @@ export class AiQaProvider {
   }
 
   async deleteSource(sourceType: AiQaSourceType, sourceId: string, trigger = 'source-delete') {
-    const aiQaConfig = await this.readConfig();
+    const aiQaConfig = await this.ensureBlogInstanceId(await this.readConfig());
     if (!aiQaConfig.enabled || this.getMissingConfigFields(aiQaConfig).length) {
       return { skipped: true };
     }
@@ -2195,7 +2715,7 @@ export class AiQaProvider {
   }
 
   async deleteDocumentTreeByRootId(documentId: number, trigger = 'document-delete') {
-    const aiQaConfig = await this.readConfig();
+    const aiQaConfig = await this.ensureBlogInstanceId(await this.readConfig());
     if (!aiQaConfig.enabled || this.getMissingConfigFields(aiQaConfig).length) {
       return { skipped: true };
     }
@@ -2266,7 +2786,8 @@ export class AiQaProvider {
     const citations = await this.enrichCitations(this.extractQuoteList(payload));
     const grounded = citations.length > 0;
     const answer =
-      this.extractChatAnswer(payload) || '我暂时没能整理出一个明确回答，你可以换个更具体的问题再试试。';
+      this.extractChatAnswer(payload) ||
+      '我暂时没能整理出一个明确回答，你可以换个更具体的问题再试试。';
     const savedTurn = await this.persistChatTurn({
       conversation: resolvedConversation.conversation,
       chatId: resolvedConversation.chatId,

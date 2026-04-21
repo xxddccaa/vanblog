@@ -25,7 +25,7 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import { fieldTips, formatTime } from './shared';
+import { fieldTips, formatTime, getResourceManagementModeLabel } from './shared';
 import styles from './index.less';
 
 const { Text } = Typography;
@@ -126,6 +126,7 @@ export default function ConfigTab(props) {
   const syncedSummary = `文章 ${status?.syncedCounts?.article ?? 0} / 草稿 ${
     status?.syncedCounts?.draft ?? 0
   } / 文档 ${status?.syncedCounts?.document ?? 0}`;
+  const managedResourceNames = status?.managedResourceNames || {};
 
   return (
     <Row gutter={[16, 16]}>
@@ -151,7 +152,12 @@ export default function ConfigTab(props) {
                 >
                   测试连接
                 </Button>
-                <Button type="primary" icon={<SyncOutlined />} onClick={onFullSync} loading={syncing}>
+                <Button
+                  type="primary"
+                  icon={<SyncOutlined />}
+                  onClick={onFullSync}
+                  loading={syncing}
+                >
                   全量同步
                 </Button>
               </Space>
@@ -174,11 +180,7 @@ export default function ConfigTab(props) {
                 value={status?.totalSources ?? 0}
                 text={sourceSummary}
               />
-              <OpsMetric
-                label="已同步"
-                value={status?.syncedSources ?? 0}
-                text={syncedSummary}
-              />
+              <OpsMetric label="已同步" value={status?.syncedSources ?? 0} text={syncedSummary} />
               <OpsMetric
                 label="待同步"
                 value={status?.pendingSources ?? 0}
@@ -227,12 +229,79 @@ export default function ConfigTab(props) {
               <div className={styles.syncSnapshot}>
                 <div className={styles.syncSnapshotTitle}>最近一次 {syncSummary.trigger} 同步</div>
                 <div className={styles.syncSnapshotText}>
-                  新增 {syncSummary.created}，更新 {syncSummary.updated}，跳过 {syncSummary.skipped}，删除{' '}
-                  {syncSummary.deleted}，失败 {syncSummary.failed}。完成于{' '}
+                  新增 {syncSummary.created}，更新 {syncSummary.updated}，跳过 {syncSummary.skipped}
+                  ，删除 {syncSummary.deleted}，失败 {syncSummary.failed}。完成于{' '}
                   {formatTime(syncSummary.finishedAt)}。
                 </div>
               </div>
             ) : null}
+
+            <div className={styles.extensionBox}>
+              <div className={styles.extensionBoxHeader}>
+                <div>
+                  <div className={styles.extensionBoxTitle}>博客 AI 身份与命名隔离</div>
+                  <div className={styles.extensionBoxText}>
+                    `blogInstanceId` 只保存在当前博客自己的 PG 配置里，用于共享 FastGPT
+                    时隔离自动资源。
+                  </div>
+                </div>
+                <Space size={8} wrap>
+                  <Tag color={status?.resourceManagementMode === 'managedV2' ? 'green' : 'default'}>
+                    {status?.resourceManagementMode || 'manual'}
+                  </Tag>
+                  <Tag color="blue">命名规则 v{status?.resourceNamingVersion ?? 2}</Tag>
+                  {status?.legacyAutoMigrationPending ? (
+                    <Tag color="orange">旧资源待迁移</Tag>
+                  ) : null}
+                </Space>
+              </div>
+              <div className={styles.statusFactList}>
+                <StatusFactRow
+                  label="博客唯一标识"
+                  value={
+                    status?.blogInstanceId ? (
+                      <Text copyable>{status.blogInstanceId}</Text>
+                    ) : (
+                      '生成中'
+                    )
+                  }
+                />
+                <StatusFactRow
+                  label="资源管理模式"
+                  value={getResourceManagementModeLabel(status?.resourceManagementMode)}
+                />
+                <StatusFactRow
+                  label="自动管理 Dataset 名"
+                  value={
+                    managedResourceNames.dataset ? (
+                      <Text code>{managedResourceNames.dataset}</Text>
+                    ) : (
+                      '未绑定'
+                    )
+                  }
+                />
+                <StatusFactRow
+                  label="自动管理 App 名"
+                  value={
+                    managedResourceNames.app ? (
+                      <Text code>{managedResourceNames.app}</Text>
+                    ) : (
+                      '未绑定'
+                    )
+                  }
+                />
+                <StatusFactRow
+                  label="自动管理 API Key 名"
+                  value={
+                    managedResourceNames.apiKey ? (
+                      <Text code>{managedResourceNames.apiKey}</Text>
+                    ) : (
+                      '未绑定'
+                    )
+                  }
+                />
+              </div>
+            </div>
           </Card>
 
           <SignalPanel
@@ -288,7 +357,12 @@ export default function ConfigTab(props) {
                   按照“启用入口 → 检索策略 → 模型接入”的顺序配置，能更快定位问题并减少反复保存。
                 </div>
               </div>
-              <Button type="primary" icon={<CheckCircleOutlined />} onClick={onSaveConfig} loading={savingConfig}>
+              <Button
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={onSaveConfig}
+                loading={savingConfig}
+              >
                 保存配置
               </Button>
             </div>
@@ -320,7 +394,10 @@ export default function ConfigTab(props) {
 
               <Row gutter={12}>
                 <Col xs={24} md={12}>
-                  <Form.Item label={<TipTitle title="Dataset ID" tip={fieldTips.datasetId} />} name="datasetId">
+                  <Form.Item
+                    label={<TipTitle title="Dataset ID" tip={fieldTips.datasetId} />}
+                    name="datasetId"
+                  >
                     <Input placeholder="例如 65abc9bd9d1448617cba5e6c" />
                   </Form.Item>
                 </Col>
@@ -392,7 +469,9 @@ export default function ConfigTab(props) {
                   <div className={styles.settingToggleCard}>
                     <div className={styles.settingToggleCopy}>
                       <div className={styles.settingToggleTitle}>启用 Rerank</div>
-                      <div className={styles.settingToggleText}>对召回结果二次排序，适合知识片段较多时提升相关性。</div>
+                      <div className={styles.settingToggleText}>
+                        对召回结果二次排序，适合知识片段较多时提升相关性。
+                      </div>
                     </div>
                     <div className={styles.settingToggleControl}>
                       <Form.Item name="usingReRank" valuePropName="checked" noStyle>
@@ -413,7 +492,11 @@ export default function ConfigTab(props) {
                       适合缩写多、术语多的知识库；会增加一次问题扩写请求与额外时延。
                     </div>
                   </div>
-                  <Form.Item name="datasetSearchUsingExtensionQuery" valuePropName="checked" noStyle>
+                  <Form.Item
+                    name="datasetSearchUsingExtensionQuery"
+                    valuePropName="checked"
+                    noStyle
+                  >
                     <Switch />
                   </Form.Item>
                 </div>
@@ -444,7 +527,8 @@ export default function ConfigTab(props) {
                   <div className={styles.sectionEyebrow}>Bundled FastGPT 模型接入</div>
                   <div className={styles.formSectionTitle}>上游模型地址、调用 key 与鉴权 Token</div>
                   <div className={styles.formSectionText}>
-                    对话模型负责聊天，向量模型负责 embedding。地址都需要填写完整的 OpenAI-compatible 接口路径。
+                    对话模型负责聊天，向量模型负责 embedding。地址都需要填写完整的 OpenAI-compatible
+                    接口路径。
                   </div>
                 </div>
                 <Space wrap className={styles.modelActionRow}>
@@ -479,7 +563,9 @@ export default function ConfigTab(props) {
                     <div>
                       <div className={styles.modelPaneEyebrow}>Chat</div>
                       <div className={styles.modelPaneTitle}>对话模型</div>
-                      <div className={styles.modelPaneText}>完整地址需要以 `/chat/completions` 结尾。</div>
+                      <div className={styles.modelPaneText}>
+                        完整地址需要以 `/chat/completions` 结尾。
+                      </div>
                     </div>
                     <Tag color="blue">/chat/completions</Tag>
                   </div>
@@ -530,7 +616,9 @@ export default function ConfigTab(props) {
                     <div>
                       <div className={styles.modelPaneEyebrow}>Embedding</div>
                       <div className={styles.modelPaneTitle}>向量模型</div>
-                      <div className={styles.modelPaneText}>完整地址需要以 `/embeddings` 结尾。</div>
+                      <div className={styles.modelPaneText}>
+                        完整地址需要以 `/embeddings` 结尾。
+                      </div>
                     </div>
                     <Tag color="cyan">/embeddings</Tag>
                   </div>
@@ -580,7 +668,8 @@ export default function ConfigTab(props) {
               <div className={styles.footNoteStrip}>
                 <KeyOutlined />
                 <span>
-                  页面不会回显真实 Token / API Key。看到空输入框是正常的：留空表示沿用，输入新值才会覆盖。
+                  页面不会回显真实 Token / API
+                  Key。看到空输入框是正常的：留空表示沿用，输入新值才会覆盖。
                 </span>
               </div>
             </div>

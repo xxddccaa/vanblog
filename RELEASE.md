@@ -8,7 +8,7 @@
 - 明确多镜像发布规范，避免再回到单镜像 `kevinchina/deeplearning:vanblog-latest` 的不可追踪模式
 - 把 `v1.4.0` 引入的 AI 工作台、可选 FastGPT 部署、文档与测试规则固化下来
 
-当前代码基线已经推进到 `v1.4.0`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
+当前代码基线已经推进到 `v1.4.1`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
 
 ## 1. 发布边界
 
@@ -52,7 +52,7 @@
 
 1. 在 `master` 上整理代码并提交。
 2. 运行完整测试，优先通过 `pnpm test:full`。
-3. 确认根目录 `package.json` 的版本号正确，例如 `1.4.0`，并统一成发布标签 `vX.Y.Z`。
+3. 确认根目录 `package.json` 的版本号正确，例如 `1.4.1`，并统一成发布标签 `vX.Y.Z`。
 4. 先补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案，写清楚本版特性、与上一公开稳定版的差异，以及可直接部署的 `docker compose` 配置单。
 5. 给当前代码打版本 tag，并推送到 GitHub。
 6. 使用 `scripts/release-images.sh` 构建并推送 5 个镜像。
@@ -85,11 +85,11 @@ kevinchina/deeplearning:vanblog-<service>-latest
 示例：
 
 ```bash
-kevinchina/deeplearning:vanblog-caddy-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-server-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-website-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-admin-v1.4.0-<image-id>
-kevinchina/deeplearning:vanblog-waline-v1.4.0-<image-id>
+kevinchina/deeplearning:vanblog-caddy-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.4.1-<image-id>
 ```
 
 建议引用优先级：
@@ -181,7 +181,7 @@ bash scripts/release-images.sh
 
 默认行为：
 
-- 自动读取 `package.json` 版本，例如 `1.4.0`，并规范成 `v1.4.0`
+- 自动读取 `package.json` 版本，例如 `1.4.1`，并规范成 `v1.4.1`
 - 自动读取当前 Git 短 SHA 作为 `image-id`
 - 自动执行 `pnpm test:blog-flow`
 - 为 5 个服务构建镜像
@@ -203,7 +203,7 @@ bash scripts/release-images.sh --push
 
 ```bash
 bash scripts/release-images.sh \
-  --version v1.4.0 \
+  --version v1.4.1 \
   --image-id <image-id> \
   --repo kevinchina/deeplearning \
   --push
@@ -212,7 +212,7 @@ bash scripts/release-images.sh \
 正式推送时的约定：
 
 - 要把不可变 tag、版本别名 tag、`latest` 三套 tag 都推送上去
-- 但版本文档、Wiki、GitHub Release 中给用户展示的 compose 示例，默认写版本别名 tag，例如 `kevinchina/deeplearning:vanblog-caddy-v1.4.0`
+- 但版本文档、Wiki、GitHub Release 中给用户展示的 compose 示例，默认写版本别名 tag，例如 `kevinchina/deeplearning:vanblog-caddy-v1.4.1`
 
 ### 7.3 常用参数
 
@@ -236,7 +236,7 @@ bash scripts/release-images.sh --help
 
 最低要求：
 
-- 文档标题必须与版本绑定，例如 `v1.4.0`
+- 文档标题必须与版本绑定，例如 `v1.4.1`
 - 明确说明本版的核心特性、修复项、兼容性变化
 - 说明它和“上一公开稳定版”的差异，而不是只写零散改动
 - 给出可直接部署的 `docker compose` 配置单或等价的 `.env` + compose 说明
@@ -327,18 +327,18 @@ docker-compose.image.yml
 
 ```bash
 export VANBLOG_DOCKER_REPO=kevinchina/deeplearning
-export VANBLOG_RELEASE_SUFFIX=v1.4.0-<image-id>
+export VANBLOG_RELEASE_SUFFIX=v1.4.1-<image-id>
 
 docker compose -f docker-compose.image.yml up -d
 ```
 
 此时各服务会自动解析为：
 
-- `vanblog-caddy-v1.4.0-<image-id>`
-- `vanblog-server-v1.4.0-<image-id>`
-- `vanblog-website-v1.4.0-<image-id>`
-- `vanblog-admin-v1.4.0-<image-id>`
-- `vanblog-waline-v1.4.0-<image-id>`
+- `vanblog-caddy-v1.4.1-<image-id>`
+- `vanblog-server-v1.4.1-<image-id>`
+- `vanblog-website-v1.4.1-<image-id>`
+- `vanblog-admin-v1.4.1-<image-id>`
+- `vanblog-waline-v1.4.1-<image-id>`
 
 如果这次发布包含 Cloudflare 缓存契约或定向 purge 相关改动，部署前还应确认服务器 `.env` 中是否已经保留：
 
@@ -361,7 +361,7 @@ docker compose -f docker-compose.image.yml up -d
 如果你想改成别名模式，可以直接调整 `VANBLOG_RELEASE_SUFFIX`：
 
 ```bash
-export VANBLOG_RELEASE_SUFFIX=v1.4.0
+export VANBLOG_RELEASE_SUFFIX=v1.4.1
 ```
 
 如果你坚持使用 latest：
@@ -458,6 +458,6 @@ pnpm release:images:push
 
 # 用发布镜像部署
 VANBLOG_DOCKER_REPO=kevinchina/deeplearning \
-VANBLOG_RELEASE_SUFFIX=v1.4.0-<image-id> \
+VANBLOG_RELEASE_SUFFIX=v1.4.1-<image-id> \
 docker compose -f docker-compose.image.yml up -d
 ```

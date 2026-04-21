@@ -14,7 +14,9 @@ describe('AiQaController', () => {
       getConfig: jest.fn().mockResolvedValue({ enabled: true }),
       updateConfig: jest.fn().mockResolvedValue({ enabled: true, datasetId: 'dataset-1' }),
       getStatus: jest.fn().mockResolvedValue({ configured: true }),
-      listConversations: jest.fn().mockResolvedValue({ page: 1, pageSize: 20, total: 0, items: [] }),
+      listConversations: jest
+        .fn()
+        .mockResolvedValue({ page: 1, pageSize: 20, total: 0, items: [] }),
       getConversationDetail: jest.fn().mockResolvedValue({ id: 'conv-1', messages: [] }),
       renameConversation: jest.fn().mockResolvedValue({ id: 'conv-1', title: 'new title' }),
       deleteConversation: jest.fn().mockResolvedValue({ id: 'conv-1', deleted: true }),
@@ -24,6 +26,10 @@ describe('AiQaController', () => {
         dataset: { id: 'dataset-1', action: 'created' },
         app: { id: 'app-1', action: 'created' },
         apiKey: { action: 'created', configured: true },
+      }),
+      migrateLegacyFastgptResources: jest.fn().mockResolvedValue({
+        migrated: true,
+        dataset: { id: 'dataset-2', action: 'created' },
       }),
       testBundledModels: jest.fn().mockResolvedValue({ embedding: { vectorLength: 1024 } }),
       runFullSync: jest.fn().mockResolvedValue({ total: 1, created: 1 }),
@@ -90,6 +96,13 @@ describe('AiQaController', () => {
         apiKey: { action: 'created', configured: true },
       },
     });
+    await expect(controller.migrateLegacy()).resolves.toEqual({
+      statusCode: 200,
+      data: {
+        migrated: true,
+        dataset: { id: 'dataset-2', action: 'created' },
+      },
+    });
     await expect(controller.testBundledModels()).resolves.toEqual({
       statusCode: 200,
       data: { embedding: { vectorLength: 1024 } },
@@ -120,6 +133,7 @@ describe('AiQaController', () => {
     expect(aiQaProvider.testConnection).toHaveBeenCalledWith('health check');
     expect(aiQaProvider.syncBundledModels).toHaveBeenCalled();
     expect(aiQaProvider.provisionFastgptResources).toHaveBeenCalled();
+    expect(aiQaProvider.migrateLegacyFastgptResources).toHaveBeenCalled();
     expect(aiQaProvider.testBundledModels).toHaveBeenCalled();
     expect(aiQaProvider.chat).toHaveBeenCalledWith('hello', {
       conversationId: 'conv-1',
@@ -152,11 +166,16 @@ describe('AiQaController', () => {
       statusCode: 401,
       message: '演示站禁止修改此项！',
     });
+    await expect(controller.migrateLegacy()).resolves.toEqual({
+      statusCode: 401,
+      message: '演示站禁止修改此项！',
+    });
 
     expect(aiQaProvider.updateConfig).not.toHaveBeenCalled();
     expect(aiQaProvider.runFullSync).not.toHaveBeenCalled();
     expect(aiQaProvider.syncBundledModels).not.toHaveBeenCalled();
     expect(aiQaProvider.provisionFastgptResources).not.toHaveBeenCalled();
+    expect(aiQaProvider.migrateLegacyFastgptResources).not.toHaveBeenCalled();
   });
 
   it('persists config and starts full sync outside demo mode', async () => {

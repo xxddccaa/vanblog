@@ -5,6 +5,11 @@ export const defaultConfig = {
   datasetId: '',
   appId: '',
   apiKey: '',
+  blogInstanceId: '',
+  resourceManagementMode: 'manual',
+  resourceNamingVersion: 2,
+  managedResourceNames: undefined,
+  legacyAutoMigrationPending: false,
   searchMode: 'mixedRecall',
   limit: 5000,
   similarity: 0,
@@ -35,12 +40,9 @@ export const sourceTypeLabelMap = {
 };
 
 export const fieldTips = {
-  datasetId:
-    'FastGPT 知识库 ID。VanBlog 会把文章、草稿和私密文档同步到这个 Dataset 中。',
-  appId:
-    'FastGPT 应用 ID。后台问答会调用这个 App，聊天鉴权会自动组合成 apiKey-appId。',
-  apiKey:
-    'FastGPT OpenAPI Key。页面不会回显真实值；输入新值会覆盖，留空则默认沿用当前已保存密钥。',
+  datasetId: 'FastGPT 知识库 ID。VanBlog 会把文章、草稿和私密文档同步到这个 Dataset 中。',
+  appId: 'FastGPT 应用 ID。后台问答会调用这个 App，聊天鉴权会自动组合成 apiKey-appId。',
+  apiKey: 'FastGPT OpenAPI Key。页面不会回显真实值；输入新值会覆盖，留空则默认沿用当前已保存密钥。',
   queryExtension:
     '先让扩写模型改写用户问题，再用改写后的问题做检索。适合缩写多、术语多的知识库，但会增加时延与 token 消耗。',
   bundledToken:
@@ -107,6 +109,22 @@ export const sanitizeConfigForForm = (configView = {}) => ({
     },
   },
 });
+
+export const normalizeResourceManagementMode = (mode) =>
+  mode === 'managedV2' ? 'managedV2' : 'manual';
+
+export const getResourceManagementModeLabel = (mode) =>
+  normalizeResourceManagementMode(mode) === 'managedV2'
+    ? 'managedV2 · 自动管理'
+    : 'manual · 手工 / 旧配置';
+
+export const shouldTriggerSilentLegacyMigration = (status, attemptedKeys = new Set()) => {
+  if (!status?.legacyAutoMigrationPending) {
+    return false;
+  }
+  const attemptKey = status?.blogInstanceId || status?.datasetId || 'default';
+  return !attemptedKeys.has(attemptKey);
+};
 
 const keepOrReplaceSecret = (nextValue, configured) => {
   if (nextValue) {
