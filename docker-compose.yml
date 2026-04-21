@@ -28,6 +28,7 @@ services:
       context: .
       dockerfile: docker/server.Dockerfile
       args:
+        ALPINE_MIRROR_HOST: ${ALPINE_MIRROR_HOST:-}
         INSTALL_ALIYUNPAN: ${INSTALL_ALIYUNPAN:-false}
     restart: always
     init: true
@@ -71,6 +72,7 @@ services:
       context: .
       dockerfile: docker/website.Dockerfile
       args:
+        ALPINE_MIRROR_HOST: ${ALPINE_MIRROR_HOST:-}
         VAN_BLOG_BUILD_SERVER: ${VAN_BLOG_BUILD_SERVER:-http://127.0.0.1:3000}
         VAN_BLOG_VERSIONS: ${VAN_BLOG_VERSION:-v1.0.0}
     restart: always
@@ -115,6 +117,8 @@ services:
     build:
       context: .
       dockerfile: docker/waline.Dockerfile
+      args:
+        ALPINE_MIRROR_HOST: ${ALPINE_MIRROR_HOST:-}
     restart: always
     init: true
     depends_on:
