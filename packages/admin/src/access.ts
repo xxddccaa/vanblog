@@ -3,7 +3,8 @@ import { getStoredUser } from '@/utils/getStoredUser';
 // src/access.ts
 export default function (initialState) {
   const user = initialState?.user || getStoredUser();
-  let isAdmin = user?.id == 0;
+  const isSuperAdmin = user?.id == 0;
+  let isAdmin = isSuperAdmin;
   if (user?.id != 0 && user?.permissions && user?.permissions?.includes('all')) {
     isAdmin = true;
   }
@@ -11,5 +12,6 @@ export default function (initialState) {
   return {
     isCollaborator: user?.type && user?.type == 'collaborator',
     isAdmin,
+    isSuperAdmin,
   };
 }

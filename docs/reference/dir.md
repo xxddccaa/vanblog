@@ -18,8 +18,21 @@ VanBlog 当前采用多容器部署。为了在升级、重建容器后保留数
 | `./caddy/data` | `/root/.local/share/caddy` | Caddy 证书与运行数据 |
 | `./aliyunpan/config` | `/root/.config/aliyunpan` | 可选的阿里云盘配置目录 |
 
+## bundled FastGPT 追加映射
+
+只有在你显式启用了 `docker-compose.fastgpt.yml` 或 `docker-compose.latest.ai.yml` 时，才需要额外关注下面这些目录：
+
+| 宿主机默认目录 | 容器内目录 | 说明 |
+| -------------- | ---------- | ---- |
+| `./data/fastgpt/vector` | `/var/lib/postgresql/data` | FastGPT pgvector 数据 |
+| `./data/fastgpt/mongo` | `/data/db` | FastGPT Mongo 数据 |
+| `./data/fastgpt/redis` | `/data` | FastGPT Redis 数据 |
+| `./data/fastgpt/minio` | `/data` | FastGPT 文件对象存储 |
+| `./data/fastgpt/aiproxy-pg` | `/var/lib/postgresql/data` | AIProxy 的 PostgreSQL 数据 |
+
 ## 建议
 
 - 升级前优先确认这些目录都在宿主机上可见
 - 生产环境建议把这些目录纳入常规备份
 - 如果你改过 compose 里的路径，请以你自己的映射为准
+- 不需要 AI 的用户，可以完全忽略 `./data/fastgpt/*` 这组目录

@@ -1,6 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
+
 This repository is a `pnpm` monorepo for a customized VanBlog deployment with split Docker services and Dockerized stateful dependencies.
 
 - `packages/server`: NestJS backend; core code is in `src/`, with unit tests in `src/**/*.spec.ts` and e2e tests in `test/`.
@@ -9,16 +10,21 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `packages/waline`: Waline-related wrapper/runtime code used by the comment integration and release artifacts.
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
-- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires `caddy`, `server`, `website`, `admin`, `postgres`, and `redis`.
+- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires `caddy`, `server`, `website`, `admin`, `waline`, `postgres`, and `redis`.
 - `docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology.
+- `docker-compose.ai-qa.yml`: optional override that only injects the server-to-FastGPT connection for the AI workspace.
+- `docker-compose.fastgpt.yml`: optional bundled FastGPT stack; keep it out of the default runtime unless AI is explicitly required.
+- `docker-compose.latest.ai.yml`: one-file latest quick-start that bundles the main stack plus the optional AI workspace / FastGPT stack for operators who want a single compose file.
 - `RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
 - `DEPLOY.md`: production deployment guide for pulling published images with `.env.release.example`.
+- `docs/ai-qa-fastgpt.md`: source-of-truth doc for the optional `/admin/ai` workspace, FastGPT wiring, and pinned bundled FastGPT baseline.
 - `.env.release.example`: server-side environment template for image deployments.
 - `tests/`: deployment and blog-flow integration tests for the compose stack.
 - `docs/`: Markdown documentation.
 - `mind-map/`: auxiliary mind-map tooling; treat it as a separate subproject unless your change targets it directly.
 
 ## Build, Test, and Development Commands
+
 Use `pnpm` at the repo root.
 
 - `pnpm install`: install all workspace dependencies.
@@ -36,9 +42,10 @@ Use `pnpm` at the repo root.
 - `pnpm release:images:push`: build and push all split release images.
 - `docker compose up -d --build`: start the split runtime locally.
 - `docker compose -f docker-compose.image.yml up -d`: start from already-published images.
-- `docker compose logs -f caddy server website admin postgres redis`: inspect logs for the current top-level compose stack.
+- `docker compose logs -f caddy server website admin waline postgres redis`: inspect logs for the current top-level compose stack.
 
 ## Coding Style & Naming Conventions
+
 Follow existing 2-space indentation and run Prettier before committing; root formatting comes from `@umijs/fabric`.
 
 - Keep NestJS files descriptive: `*.controller.ts`, `*.provider.ts`, `*.schema.ts`.
@@ -47,6 +54,7 @@ Follow existing 2-space indentation and run Prettier before committing; root for
 - Do not edit generated outputs like `packages/admin/src/.umi`, `packages/admin/dist`, or `packages/website/.next` unless the task explicitly requires regenerated artifacts.
 
 ## Working With Existing Changes
+
 Pre-existing modified files are normal in this repository and are not, by themselves, a reason to stop working.
 
 - Ignore unrelated modified files and continue the requested task.
@@ -55,6 +63,7 @@ Pre-existing modified files are normal in this repository and are not, by themse
 - If overlapping edits are unavoidable, read the existing changes carefully, preserve the user's intent, and ask before taking any action that could discard their work.
 
 ## Testing Guidelines
+
 Add or update tests for each behavior change; there is no visible repo-wide coverage gate.
 
 - Backend tests use Jest; keep e2e coverage in `packages/server/test`.
@@ -63,11 +72,16 @@ Add or update tests for each behavior change; there is no visible repo-wide cove
 - For split deployment changes, cover `/admin` routing, static assets, public reading flows, and container exposure/security assumptions.
 
 ## Release & Deployment Notes
+
 Treat release and deployment work as documented workflows, not guesswork.
 
 - For image publishing or versioned rollout tasks, read `RELEASE.md` first; it is the canonical guide for image naming, release commands, and rollback expectations.
 - For production deployment tasks, read `DEPLOY.md` and use `docker-compose.image.yml` plus `.env.release.example`; do not switch back to the legacy single-image flow.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
+- Treat `kevinchina/deeplearning` as the long-term retained image repo / backup repo in docs and release examples unless the user explicitly changes it.
+- `pnpm release:images` only publishes the 5 core VanBlog images; optional FastGPT containers remain governed by `docker-compose.fastgpt.yml` and are documented separately.
+- When documenting deployment choices, keep `docker-compose.latest.yml` and `docker-compose.image.yml` as side-by-side supported paths; AI is always an explicit opt-in overlay via `docker-compose.ai-qa.yml`, `docker-compose.fastgpt.yml`, or `docker-compose.latest.ai.yml`.
+- The AI workspace route is `/admin/ai`, available to admins (`access: isAdmin`); any legacy menu path is redirect-only compatibility.
 - Do not use GitHub Actions to publish Docker Hub images; release workflows are intentionally handled on this machine via local/manual commands.
 - If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.
 - For release or deployment changes, prefer validating with `pnpm test:full`; if you only need a narrower config/routing check, at minimum run `pnpm test:blog-flow`, and also run `pnpm test:deploy` for config- or routing-focused changes.
@@ -75,6 +89,7 @@ Treat release and deployment work as documented workflows, not guesswork.
 - Any CSS served from `/markdown-themes/` must be referenced through the versioned helper in `packages/website/utils/markdownTheme.ts` or `packages/admin/src/utils/markdownTheme.ts`; do not ship bare fixed URLs for these assets, or Cloudflare may keep serving stale theme files after a release.
 
 ## Host Debug Workflow
+
 This machine now has two sanctioned `18080` debug workflows documented in `docs/host-debug.md`.
 
 - There is also a separate machine-local Docker test environment documented in `docs/reference/test-env.md`; when the task refers to the dedicated `test-env-vanblog` stack, read that doc first for its absolute path, startup commands, and `/api/admin/auth/debug-token` setup.
@@ -89,6 +104,7 @@ This machine now has two sanctioned `18080` debug workflows documented in `docs/
   - after code changes, prefer a full compose restart instead of restarting a single service: `VANBLOG_HTTP_PORT=18080 docker compose down && VANBLOG_HTTP_PORT=18080 docker compose up -d --build`
   - this reduces stale container/image/runtime state during AI validation, but browser-side cache may still require a hard refresh or an incognito window
 - Fast host-debug on `18080`:
+
   - `pnpm host:dev:up`
   - `pnpm host:dev:down`
   - `pnpm host:dev:status`
@@ -105,6 +121,7 @@ This machine now has two sanctioned `18080` debug workflows documented in `docs/
 - When the issue involves `/admin` subpath routing, static assets, Caddy, WebSocket/HMR proxying, health checks, or other container-only behavior, validate again with the Docker `18080` workflow before concluding.
 
 ## Admin Debug Token / MCP Workflow
+
 For local or test-only `/admin` debugging, a temporary debug super token flow is allowed for browser validation, but keep it ephemeral and out of tracked artifacts.
 
 - Never hardcode a real token into tracked files, scripts, fixtures, tests, or final user-facing responses.
@@ -116,6 +133,7 @@ For local or test-only `/admin` debugging, a temporary debug super token flow is
 - After code changes, Docker validation should still use a full restart: `VANBLOG_HTTP_PORT=18080 docker compose down && VANBLOG_HTTP_PORT=18080 docker compose up -d --build`
 
 ## Commit & Pull Request Guidelines
+
 Recent history uses short, change-focused Chinese subjects, for example: `分类与标签页增加分页并优化公开文章查询。` Match that concise style or use an equally clear English summary.
 
 - Keep one logical change per commit.
@@ -128,6 +146,7 @@ Recent history uses short, change-focused Chinese subjects, for example: `分类
 This project has a graphify knowledge graph at graphify-out/.
 
 Rules:
+
 - Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
 - If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
 - After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)

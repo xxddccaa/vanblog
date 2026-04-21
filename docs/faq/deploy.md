@@ -4,6 +4,28 @@ icon: rocket
 order: 1
 ---
 
+## 应该用哪个 docker compose 文件
+
+可以按下面理解：
+
+- `docker-compose.yml`：源码构建，适合开发和联调
+- `docker-compose.latest.yml`：latest 主栈 quick-start
+- `docker-compose.latest.ai.yml`：一份文件直接带 AI 工作台和 bundled FastGPT
+- `docker-compose.image.yml`：锁定正式版本部署
+- `docker-compose.ai-qa.yml` / `docker-compose.fastgpt.yml`：只在你需要 AI 时才叠加
+
+## 是否必须部署 AI 工作台
+
+不是。AI 工作台是 `v1.4.0` 开始引入的可选能力。
+
+如果你不需要 AI：
+
+- 继续使用 `docker-compose.yml`
+- 或继续使用 `docker-compose.latest.yml`
+- 或继续使用 `docker-compose.image.yml`
+
+都可以，不需要额外加 FastGPT 容器。
+
 ## 如何部署到 CDN
 
 当前仓库的前台静态资源主要来自 Next.js 的 `/_next/static`。如果你要接入 CDN，建议只优先缓存这一类静态资源。
@@ -55,12 +77,24 @@ ports:
 docker compose up -d
 ```
 
+## 部署 AI 时，FastGPT 要不要暴露公网
+
+默认不要。
+
+当前推荐方式是：
+
+- VanBlog 继续只暴露 `caddy` 的 `80/443`
+- `VAN_BLOG_FASTGPT_INTERNAL_URL` 指向内网地址、容器网络地址或 localhost
+- bundled FastGPT 默认只绑定到 `127.0.0.1`
+
+不要把 FastGPT 挂到 VanBlog 的 Caddy 对外公开。
+
 ## 部署后无法访问后台
 
 可以按下面顺序排查：
 
 1. 后台入口是否访问了 `http://<域名>/admin`，而不是直连 `:3002`
-2. `caddy`、`server`、`website`、`admin` 是否都已健康启动
+2. `caddy`、`server`、`website`、`admin`、`waline` 是否都已健康启动
 3. 宿主机的 `80/443` 端口是否真的放行
 4. 是否错误地把外层反代直接指向了 `server` 或 `admin`
 5. 用 `docker compose logs -f caddy server website admin waline postgres redis` 查看报错
@@ -110,7 +144,8 @@ postgresql://postgres:postgres@postgres:5432/vanblog
 
 请整理以下信息后提交 Issue：
 
-- 使用的是 `docker-compose.yml`、`docker-compose.latest.yml` 还是 `docker-compose.image.yml`
+- 使用的是 `docker-compose.yml`、`docker-compose.latest.yml`、`docker-compose.latest.ai.yml` 还是 `docker-compose.image.yml`
+- 是否叠加了 `docker-compose.ai-qa.yml` / `docker-compose.fastgpt.yml`
 - `docker compose ps` 的结果
 - `docker compose logs -f caddy server website admin waline postgres redis` 中的关键错误
 - 你是否额外套了 Nginx / Caddy / CDN

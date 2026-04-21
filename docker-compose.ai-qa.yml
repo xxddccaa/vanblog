@@ -1,0 +1,17 @@
+# Optional AI-QA integration.
+# Use this file only when you want VanBlog's admin AI QA to talk to a private FastGPT endpoint.
+#
+# Examples:
+# External/private FastGPT:
+# docker compose -f docker-compose.yml -f docker-compose.ai-qa.yml up -d
+# docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml up -d
+#
+# Bundled FastGPT on the same Docker network:
+# docker compose -f docker-compose.yml -f docker-compose.ai-qa.yml -f docker-compose.fastgpt.yml up -d
+# docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml -f docker-compose.fastgpt.yml up -d
+
+services:
+  server:
+    environment:
+      VAN_BLOG_FASTGPT_INTERNAL_URL: ${VAN_BLOG_FASTGPT_INTERNAL_URL:-http://fastgpt-app:3000}
+      VAN_BLOG_FASTGPT_ROOT_PASSWORD: ${FASTGPT_ROOT_PASSWORD:-}

@@ -18,6 +18,7 @@ import { DocumentProvider } from 'src/provider/document/document.provider';
 import { config } from 'src/config';
 import { ApiToken } from 'src/provider/swagger/token';
 import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
+import { AiQaProvider } from 'src/provider/ai-qa/ai-qa.provider';
 
 @ApiTags('document')
 @UseGuards(...AdminGuard)
@@ -27,7 +28,14 @@ export class DocumentController {
   constructor(
     private readonly documentProvider: DocumentProvider,
     private readonly searchIndexProvider: SearchIndexProvider,
+    private readonly aiQaProvider: AiQaProvider,
   ) {}
+
+  private syncAiQaAsync(task: Promise<any>, reason: string) {
+    void task.catch((error) => {
+      console.error(`[AI问答] ${reason} 失败:`, error?.message || error);
+    });
+  }
 
   private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
     const parsed = parseInt(String(value ?? ''), 10);
@@ -160,6 +168,7 @@ export class DocumentController {
     }
     const data = await this.documentProvider.updateById(documentId, updateDto);
     this.searchIndexProvider.generateSearchIndex('更新私密文档触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.syncDocumentById(documentId, 'document-update'), '私密文档更新同步 AI 问答知识');
     return {
       statusCode: 200,
       data,
@@ -174,6 +183,7 @@ export class DocumentController {
     }
     const data = await this.documentProvider.create(createDto);
     this.searchIndexProvider.generateSearchIndex('创建私密文档触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.syncDocumentById(data.id, 'document-create'), '私密文档创建同步 AI 问答知识');
     return {
       statusCode: 200,
       data,
@@ -215,6 +225,7 @@ export class DocumentController {
     }
     const data = await this.documentProvider.deleteById(documentId);
     this.searchIndexProvider.generateSearchIndex('删除私密文档触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.deleteDocumentTreeByRootId(documentId, 'document-delete'), '私密文档删除同步 AI 问答知识');
     return {
       statusCode: 200,
       data,
@@ -240,6 +251,8 @@ export class DocumentController {
 
     const data = await this.documentProvider.convertToDraft(documentId, body.category);
     this.searchIndexProvider.generateSearchIndex('文档转草稿触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.deleteSource('document', String(documentId), 'document-convert-to-draft-delete'), '文档转草稿后移除文档知识');
+    this.syncAiQaAsync(this.aiQaProvider.syncDraftById(data.id, 'document-convert-to-draft-create'), '文档转草稿后同步草稿知识');
     return {
       statusCode: 200,
       data,

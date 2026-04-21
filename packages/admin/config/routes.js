@@ -64,6 +64,13 @@ export default [
     component: './Static/img',
   },
   {
+    name: 'AI 工作台',
+    icon: 'robot',
+    path: '/ai',
+    component: './AIQA',
+    access: 'isAdmin',
+  },
+  {
     name: '站点管理',
     icon: 'tool',
     path: '/site',
@@ -72,6 +79,12 @@ export default [
     routes: [
       { name: '数据管理', path: '/site/data', component: './DataManage' },
       { name: '系统设置', path: '/site/setting', component: './SystemConfig' },
+      {
+        path: '/site/ai-qa',
+        redirect: '/ai',
+        hideInMenu: true,
+        access: 'isAdmin',
+      },
       {
         name: '自定义页面',
         path: '/site/customPage',

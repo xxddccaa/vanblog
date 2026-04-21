@@ -71,6 +71,75 @@ docker compose ps
 docker compose logs -f caddy server admin website waline
 ```
 
+## 可选：启用 AI 问答 / FastGPT
+
+默认测试环境 **不包含** AI 问答扩展，这样不会影响原来的 `/admin`、`/api`、主题和登录联调。
+
+如果需要在这台机器的 test-env 里联调 AI 问答，使用单独的 override：
+
+- override 文件：`/root/vanblog/test-env-vanblog/docker-compose.ai-qa.yaml`
+- FastGPT UI：`http://127.0.0.1:18100`
+- MinIO API：`http://127.0.0.1:18110`
+- MinIO Console：`http://127.0.0.1:18111`
+- 如果要让 VanBlog admin 自动同步 bundled FastGPT 模型，需要在 test-env 的 `.env` 里同时提供 `FASTGPT_ROOT_PASSWORD`
+- AI-QA override 里现在还会启动一个一次性的 `fastgpt-bootstrap`，自动补齐旧数据卷里缺失的免费套餐记录，避免 FastGPT 在创建 Dataset / App 时因为 `currentSubLevel` 缺失而报错
+
+启动 AI 问答扩展：
+
+```bash
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.yaml -f docker-compose.ai-qa.yaml up -d --build
+```
+
+查看扩展状态：
+
+```bash
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.yaml -f docker-compose.ai-qa.yaml ps
+docker compose -f docker-compose.yaml -f docker-compose.ai-qa.yaml logs -f server fastgpt-app
+```
+
+如果只想重建 AI 问答相关容器：
+
+```bash
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.yaml -f docker-compose.ai-qa.yaml up -d --force-recreate server fastgpt-app
+```
+
+停止 AI 问答扩展（同时保留原测试环境默认栈）：
+
+```bash
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.yaml -f docker-compose.ai-qa.yaml stop server fastgpt-app fastgpt-vector fastgpt-mongo fastgpt-redis fastgpt-minio fastgpt-code-sandbox fastgpt-plugin fastgpt-aiproxy fastgpt-aiproxy-pg
+docker compose -f docker-compose.yaml -f docker-compose.ai-qa.yaml rm -f server fastgpt-app fastgpt-vector fastgpt-mongo fastgpt-redis fastgpt-minio fastgpt-code-sandbox fastgpt-plugin fastgpt-aiproxy fastgpt-aiproxy-pg
+docker compose up -d server
+```
+
+说明：
+
+- AI 问答只是 test-env 的可选覆盖层，不会改变 `docker-compose.yaml` 默认行为
+- `server` 会通过容器内地址 `http://fastgpt-app:3000` 访问 FastGPT
+- AI 工作台入口是 `/admin/ai`，对所有管理员开放；旧入口只是兼容跳转
+- `/admin/ai` 页面里的“测试模型”会直接请求你填写的上游 `chat/completions` / `embeddings` 地址
+- 如果还要让页面里的“同步模型到 FastGPT”可用，需要保证 `.env` 里的 `FASTGPT_ROOT_PASSWORD` 与 FastGPT root 实际密码一致
+- 如果 `FASTGPT_ROOT_PASSWORD` 已正确注入，现在可以直接在 `/admin/ai` 点击“自动创建 Dataset / App / API Key”；完成后再执行“全量同步”即可开始问答
+- 管理员问答历史会落库并共享，因此联调时要注意区分新会话与已有历史
+- 如果 FastGPT 使用的是旧数据卷，`fastgpt-bootstrap` 会在启动后自动检查 `team_subscriptions`，缺失时补一条 free plan 记录
+
+## 配合仓库自动化测试怎么用
+
+这套 test-env 适合人工验收，不替代仓库里的自动化测试：
+
+- 改部署文档、compose、路由约束后：优先跑 `pnpm test:deploy`
+- 改拆分服务运行链路后：再补 `pnpm test:blog-flow`
+- 准备发版前：执行 `pnpm test:full`
+
+test-env 更适合做这些事情：
+
+- 在 `18080` 上手工验证 `/admin`、`/admin/ai`、登录态、跳转和暗色模式
+- 用 debug token 快速拿到后台会话
+- 在不动主开发栈的前提下验证 bundled FastGPT 的真实表现
+
 ## `/api/admin/auth/debug-token` 如何开启
 
 这个接口默认**不会匿名开放**。它只有在 `server` 容器里配置了调试超级密钥后才可用。
@@ -123,9 +192,7 @@ VAN_BLOG_DEBUG_SUPER_TOKEN=vanblog-debug-test
 测试命令：
 
 ```bash
-curl -i \
-  -H 'x-debug-super-token: vanblog-debug-test' \
-  http://127.0.0.1:18080/api/admin/auth/debug-token
+curl -i   -H 'x-debug-super-token: vanblog-debug-test'   http://127.0.0.1:18080/api/admin/auth/debug-token
 ```
 
 如果配置成功，会返回 `200`，JSON 里带后台登录 token。
@@ -133,9 +200,7 @@ curl -i \
 只取 JSON：
 
 ```bash
-curl -s \
-  -H 'x-debug-super-token: vanblog-debug-test' \
-  http://127.0.0.1:18080/api/admin/auth/debug-token
+curl -s   -H 'x-debug-super-token: vanblog-debug-test'   http://127.0.0.1:18080/api/admin/auth/debug-token
 ```
 
 如果返回：

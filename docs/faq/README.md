@@ -12,6 +12,7 @@ dir:
 - [升级指南](../guide/update.md)
 - [部署常见问题](./deploy.md)
 - [使用常见问题](./usage.md)
+- [AI 工作台 / FastGPT 操作清单](../ai-qa-fastgpt.md)
 
 :::
 

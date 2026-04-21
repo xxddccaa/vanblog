@@ -42,6 +42,17 @@ cd vanblog
 
 :::
 
+::: info AI 说明
+
+`docker-compose.yml` 默认**不会**启动 FastGPT，也不会自动给 `server` 注入 AI 工作台连接。
+
+如果你需要 `/admin/ai`：
+
+- 连接已有私有 FastGPT：叠加 `docker-compose.ai-qa.yml`
+- 同机启动 bundled FastGPT：再叠加 `docker-compose.fastgpt.yml`
+
+:::
+
 ### 3. 启动项目
 
 在仓库根目录执行：

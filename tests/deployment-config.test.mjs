@@ -5,14 +5,40 @@ import { createRequire } from 'node:module';
 
 const compose = fs.readFileSync('docker-compose.yml', 'utf8');
 const composeImage = fs.readFileSync('docker-compose.image.yml', 'utf8');
+const composeLatestAi = fs.readFileSync('docker-compose.latest.ai.yml', 'utf8');
+const composeAiQa = fs.readFileSync('docker-compose.ai-qa.yml', 'utf8');
+const composeFastgpt = fs.readFileSync('docker-compose.fastgpt.yml', 'utf8');
 const manualCompose = fs.readFileSync('tests/manual-v1.3.0/docker-compose.yaml', 'utf8');
 const caddyfile = fs.readFileSync('docker/caddy/Caddyfile', 'utf8');
 const caddyfileHttps = fs.readFileSync('docker/caddy/Caddyfile.https', 'utf8');
+const readmeDoc = fs.readFileSync('README.md', 'utf8');
 const deployDoc = fs.readFileSync('DEPLOY.md', 'utf8');
 const releaseDoc = fs.readFileSync('RELEASE.md', 'utf8');
+const agentsDoc = fs.readFileSync('AGENTS.md', 'utf8');
+const aiQaDoc = fs.readFileSync('docs/ai-qa-fastgpt.md', 'utf8');
+const docsHomeDoc = fs.readFileSync('docs/README.md', 'utf8');
+const introDoc = fs.readFileSync('docs/intro.md', 'utf8');
+const guideGetStartedDoc = fs.readFileSync('docs/guide/get-started.md', 'utf8');
+const guideUpdateDoc = fs.readFileSync('docs/guide/update.md', 'utf8');
+const faqReadmeDoc = fs.readFileSync('docs/faq/README.md', 'utf8');
+const faqDeployDoc = fs.readFileSync('docs/faq/deploy.md', 'utf8');
+const faqUpdateDoc = fs.readFileSync('docs/faq/update.md', 'utf8');
+const referenceEnvDoc = fs.readFileSync('docs/reference/env.md', 'utf8');
+const referenceDirDoc = fs.readFileSync('docs/reference/dir.md', 'utf8');
+const referenceLogDoc = fs.readFileSync('docs/reference/log.md', 'utf8');
+const releasesIndexDoc = fs.readFileSync('docs/releases/README.md', 'utf8');
+const release140Doc = fs.readFileSync('docs/releases/v1.4.0.md', 'utf8');
+const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const releaseEnv = fs.readFileSync('.env.release.example', 'utf8');
+const fastgptConfigExample = fs.readFileSync('docker/fastgpt/config.json.example', 'utf8');
+const fastgptBootstrapScript = fs.readFileSync(
+  'docker/fastgpt/bootstrap-team-free-plan.js',
+  'utf8',
+);
 const cloudflareDoc = fs.readFileSync('docs/cloudflare-cache.md', 'utf8');
-const cloudflareRules = JSON.parse(fs.readFileSync('docs/cloudflare-cache-rules.example.json', 'utf8'));
+const cloudflareRules = JSON.parse(
+  fs.readFileSync('docs/cloudflare-cache-rules.example.json', 'utf8'),
+);
 const cloudflareWorker = fs.readFileSync('docs/cloudflare-worker-cache-normalize.js', 'utf8');
 const publicCacheMiddleware = fs.readFileSync(
   'packages/server/src/provider/public-cache/public-cache.middleware.ts',
@@ -37,7 +63,10 @@ const getWorkerRouteGroupSet = (workerSource) => {
   if (workerSource.includes('url.pathname.startsWith("/post/")')) {
     routeGroups.add('post');
   }
-  if (workerSource.includes('url.pathname === "/archive"') || workerSource.includes('url.pathname.startsWith("/archive/")')) {
+  if (
+    workerSource.includes('url.pathname === "/archive"') ||
+    workerSource.includes('url.pathname.startsWith("/archive/")')
+  ) {
     routeGroups.add('archive');
   }
   if (workerSource.includes('url.pathname.startsWith("/category")')) {
@@ -58,10 +87,16 @@ const getWorkerRouteGroupSet = (workerSource) => {
   if (workerSource.includes('url.pathname.startsWith("/c/")')) {
     routeGroups.add('custom-page');
   }
-  if (workerSource.includes('url.pathname === "/moment"') || workerSource.includes('url.pathname.startsWith("/moment/")')) {
+  if (
+    workerSource.includes('url.pathname === "/moment"') ||
+    workerSource.includes('url.pathname.startsWith("/moment/")')
+  ) {
     routeGroups.add('moment');
   }
-  if (workerSource.includes('url.pathname === "/nav"') || workerSource.includes('url.pathname.startsWith("/nav/")')) {
+  if (
+    workerSource.includes('url.pathname === "/nav"') ||
+    workerSource.includes('url.pathname.startsWith("/nav/")')
+  ) {
     routeGroups.add('nav');
   }
 
@@ -108,8 +143,7 @@ const getRouteGroupSet = (paths) => {
   return routeGroups;
 };
 
-const getHeaderValue = (rule, key) =>
-  rule?.headers?.find((header) => header.key === key)?.value;
+const getHeaderValue = (rule, key) => rule?.headers?.find((header) => header.key === key)?.value;
 
 test('docker compose defines the split runtime services', () => {
   for (const service of [
@@ -140,7 +174,10 @@ test('docker compose wires cross-container control endpoints', () => {
     compose,
     /VAN_BLOG_WALINE_DATABASE_URL:\s+\$\{VAN_BLOG_WALINE_DATABASE_URL:-postgresql:\/\//,
   );
-  assert.match(compose, /VANBLOG_WEBSITE_ISR_BASE:\s+http:\/\/website:3001\/api\/revalidate\?path=/);
+  assert.match(
+    compose,
+    /VANBLOG_WEBSITE_ISR_BASE:\s+http:\/\/website:3001\/api\/revalidate\?path=/,
+  );
   assert.match(compose, /VAN_BLOG_CLOUDFLARE_API_TOKEN:\s+\$\{VAN_BLOG_CLOUDFLARE_API_TOKEN:-\}/);
   assert.match(compose, /VAN_BLOG_CLOUDFLARE_ZONE_ID:\s+\$\{VAN_BLOG_CLOUDFLARE_ZONE_ID:-\}/);
   assert.match(composeImage, /VANBLOG_CADDY_API_URL:\s+http:\/\/caddy:2019/);
@@ -150,7 +187,10 @@ test('docker compose wires cross-container control endpoints', () => {
     composeImage,
     /VAN_BLOG_WALINE_DATABASE_URL:\s+\$\{VAN_BLOG_WALINE_DATABASE_URL:-postgresql:\/\//,
   );
-  assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_API_TOKEN:\s+\$\{VAN_BLOG_CLOUDFLARE_API_TOKEN:-\}/);
+  assert.match(
+    composeImage,
+    /VAN_BLOG_CLOUDFLARE_API_TOKEN:\s+\$\{VAN_BLOG_CLOUDFLARE_API_TOKEN:-\}/,
+  );
   assert.match(composeImage, /VAN_BLOG_CLOUDFLARE_ZONE_ID:\s+\$\{VAN_BLOG_CLOUDFLARE_ZONE_ID:-\}/);
   assert.match(compose, /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-\}/);
   assert.match(compose, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:-\}/);
@@ -160,14 +200,169 @@ test('docker compose wires cross-container control endpoints', () => {
     manualCompose,
     /WALINE_JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
   );
-  assert.match(
-    manualCompose,
-    /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/,
-  );
+  assert.match(manualCompose, /JWT_TOKEN:\s+\$\{WALINE_JWT_TOKEN:\?WALINE_JWT_TOKEN is required\}/);
   assert.match(compose, /website:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
   assert.match(compose, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
   assert.match(composeImage, /website:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
   assert.match(composeImage, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
+});
+
+test('docs reflect the v1.4.0 AI workspace baseline and optional deployment model', () => {
+  assert.equal(packageJson.version, '1.4.0');
+
+  assert.match(readmeDoc, /v1\.4\.0/);
+  assert.match(readmeDoc, /kevinchina\/deeplearning/);
+  assert.match(readmeDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(readmeDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(readmeDoc, /docker-compose\.yaml/);
+  assert.match(readmeDoc, /\/admin\/ai/);
+  assert.match(readmeDoc, /docs\/ai-qa-fastgpt\.md/);
+
+  assert.match(agentsDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(agentsDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(agentsDoc, /docs\/ai-qa-fastgpt\.md/);
+  assert.match(agentsDoc, /\/admin\/ai/);
+  assert.match(agentsDoc, /kevinchina\/deeplearning/);
+
+  assert.match(aiQaDoc, /\/admin\/ai/);
+  assert.doesNotMatch(aiQaDoc, /\/admin\/site\/ai-qa/);
+  assert.match(aiQaDoc, /所有管理员/);
+  assert.match(aiQaDoc, /共享/);
+  assert.match(aiQaDoc, /Dataset ID/);
+  assert.match(aiQaDoc, /App ID/);
+  assert.match(aiQaDoc, /Query Extension/);
+  assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
+  assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-plugin-v0\.5\.6/);
+  assert.match(aiQaDoc, /kevinchina\/deeplearning:aiproxy-v0\.3\.5/);
+  assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-code-sandbox-v4\.14\.10/);
+  assert.match(aiQaDoc, /mongo:5\.0\.32/);
+
+  assert.match(releasesIndexDoc, /v1\.4\.0/);
+  assert.match(release140Doc, /v1\.4\.0/);
+  assert.match(release140Doc, /\/admin\/ai/);
+  assert.match(release140Doc, /docker-compose\.ai-qa\.yml/);
+  assert.match(release140Doc, /docker-compose\.fastgpt\.yml/);
+  assert.match(release140Doc, /kevinchina\/deeplearning/);
+  assert.match(releaseDoc, /docker-compose\.yaml/);
+  assert.match(releaseDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(releaseDoc, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
+  assert.match(releaseDoc, /kevinchina\/deeplearning:fastgpt-plugin-v0\.5\.6/);
+  assert.match(releaseDoc, /kevinchina\/deeplearning:aiproxy-v0\.3\.5/);
+  assert.match(releaseDoc, /kevinchina\/deeplearning:fastgpt-code-sandbox-v4\.14\.10/);
+});
+
+test('guide, faq, intro, and reference docs keep the optional AI deployment story aligned', () => {
+  assert.match(docsHomeDoc, /\/ai-qa-fastgpt\.html/);
+  assert.match(docsHomeDoc, /waline、postgres、redis 七个服务/);
+  assert.match(docsHomeDoc, /\/admin\/ai/);
+
+  assert.match(introDoc, /\/admin\/ai/);
+  assert.match(introDoc, /只有显式叠加 AI 相关 compose 文件才会接入 FastGPT/);
+
+  assert.match(guideGetStartedDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(guideGetStartedDoc, /docker-compose\.image\.yml/);
+  assert.match(guideGetStartedDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(guideGetStartedDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(guideGetStartedDoc, /\/admin\/ai/);
+
+  assert.match(guideUpdateDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(guideUpdateDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(guideUpdateDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(guideUpdateDoc, /不主动修改 `docker-compose\.fastgpt\.yml` 的固定版本矩阵/);
+
+  assert.match(faqReadmeDoc, /ai-qa-fastgpt\.md/);
+  assert.match(faqDeployDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(faqDeployDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(faqDeployDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(faqDeployDoc, /默认不要/);
+  assert.match(faqUpdateDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(faqUpdateDoc, /移除 `docker-compose\.ai-qa\.yml` \/ `docker-compose\.fastgpt\.yml`/);
+
+  assert.match(referenceEnvDoc, /VAN_BLOG_FASTGPT_INTERNAL_URL/);
+  assert.match(referenceEnvDoc, /FASTGPT_ROOT_PASSWORD/);
+  assert.match(referenceEnvDoc, /FASTGPT_FREE_PLAN_POINTS/);
+  assert.match(referenceEnvDoc, /FASTGPT_FREE_PLAN_DURATION_DAYS/);
+  assert.match(referenceEnvDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(referenceDirDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(referenceDirDoc, /\.\/data\/fastgpt\/mongo/);
+  assert.match(referenceLogDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(referenceLogDoc, /fastgpt-app/);
+  assert.match(referenceLogDoc, /fastgpt-bootstrap/);
+});
+
+test('fastgpt extension stays optional and private to the compose network', () => {
+  assert.match(
+    composeAiQa,
+    /server:[\s\S]*VAN_BLOG_FASTGPT_INTERNAL_URL:\s+\$\{VAN_BLOG_FASTGPT_INTERNAL_URL:-http:\/\/fastgpt-app:3000\}/,
+  );
+  assert.match(
+    composeAiQa,
+    /server:[\s\S]*VAN_BLOG_FASTGPT_ROOT_PASSWORD:\s+\$\{FASTGPT_ROOT_PASSWORD:-\}/,
+  );
+  for (const service of [
+    'fastgpt-app:',
+    'fastgpt-bootstrap:',
+    'fastgpt-mongo:',
+    'fastgpt-vector:',
+    'fastgpt-redis:',
+    'fastgpt-minio:',
+    'fastgpt-plugin:',
+    'fastgpt-aiproxy:',
+  ]) {
+    assert.match(composeFastgpt, new RegExp(`^\\s{2}${service}`, 'm'));
+  }
+
+  assert.match(composeFastgpt, /127\.0\.0\.1:\$\{FASTGPT_HTTP_PORT:-3100\}:3000/);
+  assert.match(composeFastgpt, /127\.0\.0\.1:\$\{FASTGPT_MINIO_API_PORT:-9100\}:9000/);
+  assert.match(composeFastgpt, /127\.0\.0\.1:\$\{FASTGPT_MINIO_CONSOLE_PORT:-9101\}:9001/);
+  assert.match(composeFastgpt, /http:\/\/fastgpt-app:3000/);
+  assert.match(composeFastgpt, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
+  assert.match(composeFastgpt, /kevinchina\/deeplearning:fastgpt-plugin-v0\.5\.6/);
+  assert.match(composeFastgpt, /kevinchina\/deeplearning:aiproxy-v0\.3\.5/);
+  assert.match(composeFastgpt, /kevinchina\/deeplearning:fastgpt-code-sandbox-v4\.14\.10/);
+  assert.match(composeFastgpt, /bootstrap-team-free-plan\.js/);
+  assert.match(fastgptBootstrapScript, /team_subscriptions/);
+  assert.doesNotMatch(compose, /VAN_BLOG_FASTGPT_INTERNAL_URL/);
+  assert.doesNotMatch(composeImage, /VAN_BLOG_FASTGPT_INTERNAL_URL/);
+  assert.doesNotMatch(caddyfile, /fastgpt/i);
+  assert.doesNotMatch(caddyfileHttps, /fastgpt/i);
+});
+
+test('single-file latest ai compose bundles the latest stack with private fastgpt services', () => {
+  for (const service of [
+    'caddy:',
+    'server:',
+    'website:',
+    'admin:',
+    'waline:',
+    'postgres:',
+    'redis:',
+    'fastgpt-app:',
+    'fastgpt-bootstrap:',
+    'fastgpt-mongo:',
+    'fastgpt-vector:',
+    'fastgpt-redis:',
+    'fastgpt-minio:',
+  ]) {
+    assert.match(composeLatestAi, new RegExp(`^\\s{2}${service}`, 'm'));
+  }
+
+  assert.match(composeLatestAi, /kevinchina\/deeplearning:vanblog-caddy-latest/);
+  assert.match(composeLatestAi, /kevinchina\/deeplearning:vanblog-server-latest/);
+  assert.match(
+    composeLatestAi,
+    /VAN_BLOG_FASTGPT_INTERNAL_URL:\s+\$\{VAN_BLOG_FASTGPT_INTERNAL_URL:-http:\/\/fastgpt-app:3000\}/,
+  );
+  assert.match(
+    composeLatestAi,
+    /VAN_BLOG_FASTGPT_ROOT_PASSWORD:\s+\$\{FASTGPT_ROOT_PASSWORD:-change-me-now\}/,
+  );
+  assert.match(composeLatestAi, /127\.0\.0\.1:\$\{FASTGPT_HTTP_PORT:-3100\}:3000/);
+  assert.match(composeLatestAi, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
+  assert.match(composeLatestAi, /kevinchina\/deeplearning:fastgpt-plugin-v0\.5\.6/);
+  assert.match(composeLatestAi, /kevinchina\/deeplearning:aiproxy-v0\.3\.5/);
+  assert.match(composeLatestAi, /kevinchina\/deeplearning:fastgpt-code-sandbox-v4\.14\.10/);
+  assert.match(composeLatestAi, /docker\/fastgpt\/config\.json/);
 });
 
 test('waline service is configured to use standalone postgres credentials', () => {
@@ -196,12 +391,55 @@ test('release env example and deploy guide document optional Cloudflare purge cr
   assert.match(releaseDoc, /Cloudflare tag\/url purge 不会启用/);
   assert.match(releaseDoc, /siteInfo\.baseUrl/);
   assert.match(releaseDoc, /Cloudflare URL purge 会被跳过/);
-  assert.match(releaseEnv, /VAN_BLOG_WALINE_DATABASE_URL=postgresql:\/\/postgres:postgres@postgres:5432\/waline/);
+  assert.match(
+    releaseEnv,
+    /VAN_BLOG_WALINE_DATABASE_URL=postgresql:\/\/postgres:postgres@postgres:5432\/waline/,
+  );
   assert.match(releaseEnv, /WALINE_JWT_TOKEN=$/m);
   assert.match(deployDoc, /VAN_BLOG_WALINE_DATABASE_URL/);
   assert.match(deployDoc, /VANBLOG_WALINE_CONTROL_URL/);
   assert.match(deployDoc, /首次启动时自动生成一份共享密钥/);
   assert.match(releaseDoc, /waline\.jwt/);
+  assert.match(releaseEnv, /VAN_BLOG_FASTGPT_INTERNAL_URL=http:\/\/fastgpt-app:3000/);
+  assert.match(releaseEnv, /VANBLOG_DOCKER_REPO=kevinchina\/deeplearning/);
+  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.4\.0-replace-with-gitsha8/);
+  assert.match(releaseEnv, /FASTGPT_ROOT_PASSWORD=replace-with-fastgpt-root-password/);
+  assert.match(releaseEnv, /FASTGPT_FREE_PLAN_POINTS=100/);
+  assert.match(releaseEnv, /FASTGPT_FREE_PLAN_DURATION_DAYS=30/);
+  assert.match(deployDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(deployDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(deployDoc, /docker-compose\.yaml/);
+  assert.match(deployDoc, /docs\/ai-qa-fastgpt\.md/);
+  assert.match(deployDoc, /fastgpt-bootstrap/);
+  assert.match(deployDoc, /不要把 FastGPT 通过 VanBlog 的 Caddy 公开暴露出去/);
+  assert.match(deployDoc, /VAN_BLOG_FASTGPT_INTERNAL_URL/);
+  assert.match(deployDoc, /FASTGPT_ROOT_PASSWORD/);
+  assert.match(deployDoc, /FASTGPT_FREE_PLAN_POINTS/);
+  assert.match(deployDoc, /FASTGPT_FREE_PLAN_DURATION_DAYS/);
+  assert.match(deployDoc, /\/chat\/completions/);
+  assert.match(deployDoc, /\/embeddings/);
+  assert.match(deployDoc, /自动创建 Dataset \/ App \/ API Key/);
+  assert.match(deployDoc, /team_subscriptions/);
+  assert.match(deployDoc, /currentSubLevel/);
+  assert.match(deployDoc, /\/admin\/ai/);
+  assert.match(deployDoc, /所有管理员/);
+  assert.match(deployDoc, /共享历史/);
+  assert.match(deployDoc, /优先参考已同步到 FastGPT 的博客内容/);
+  assert.doesNotMatch(deployDoc, /\/admin\/site\/ai-qa/);
+  assert.doesNotMatch(deployDoc, /只允许超管/);
+  assert.match(releaseDoc, /docker-compose\.ai-qa\.yml/);
+  assert.match(releaseDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(releaseDoc, /pnpm release:images.*不会构建或推送 FastGPT 镜像/s);
+  assert.match(releaseDoc, /FASTGPT_ROOT_PASSWORD/);
+  assert.match(releaseDoc, /fastgpt-bootstrap/);
+  assert.match(releaseDoc, /FASTGPT_FREE_PLAN_POINTS/);
+  assert.match(releaseDoc, /FASTGPT_FREE_PLAN_DURATION_DAYS/);
+  assert.match(releaseDoc, /currentSubLevel/);
+  assert.match(releaseDoc, /自动创建 Dataset \/ App \/ API Key/);
+  assert.match(releaseDoc, /\/admin\/ai/);
+  assert.match(releaseDoc, /所有管理员/);
+  assert.match(releaseDoc, /kevinchina\/deeplearning/);
+  assert.match(fastgptConfigExample, /Copy it to docker\/fastgpt\/config\.json/);
 });
 
 test('caddy routes requests to the split services', () => {
@@ -224,21 +462,37 @@ test('swagger stays hidden at the caddy layer', () => {
 
 test('caddy exposes root-level feed and sitemap aliases in both http and https configs', () => {
   for (const file of [caddyfile, caddyfileHttps]) {
-    assert.match(file, /handle \/feed\.json \{[\s\S]*uri replace \/feed\.json \/rss\/feed\.json[\s\S]*reverse_proxy server:3000/);
-    assert.match(file, /handle \/feed\.xml \{[\s\S]*uri replace \/feed\.xml \/rss\/feed\.xml[\s\S]*reverse_proxy server:3000/);
-    assert.match(file, /handle \/atom\.xml \{[\s\S]*uri replace \/atom\.xml \/rss\/atom\.xml[\s\S]*reverse_proxy server:3000/);
-    assert.match(file, /handle \/sitemap\.xml \{[\s\S]*uri replace \/sitemap\.xml \/sitemap\/sitemap\.xml[\s\S]*reverse_proxy server:3000/);
+    assert.match(
+      file,
+      /handle \/feed\.json \{[\s\S]*uri replace \/feed\.json \/rss\/feed\.json[\s\S]*reverse_proxy server:3000/,
+    );
+    assert.match(
+      file,
+      /handle \/feed\.xml \{[\s\S]*uri replace \/feed\.xml \/rss\/feed\.xml[\s\S]*reverse_proxy server:3000/,
+    );
+    assert.match(
+      file,
+      /handle \/atom\.xml \{[\s\S]*uri replace \/atom\.xml \/rss\/atom\.xml[\s\S]*reverse_proxy server:3000/,
+    );
+    assert.match(
+      file,
+      /handle \/sitemap\.xml \{[\s\S]*uri replace \/sitemap\.xml \/sitemap\/sitemap\.xml[\s\S]*reverse_proxy server:3000/,
+    );
   }
 });
 
 test('cloudflare cache samples cover public cache rules and waline bypasses', () => {
   assert.equal(cloudflareRules.version, 1);
   assert.ok(Array.isArray(cloudflareRules.cache_rules));
-  const bypassRule = cloudflareRules.cache_rules.find((rule) => rule.name === 'bypass-admin-and-write');
+  const bypassRule = cloudflareRules.cache_rules.find(
+    (rule) => rule.name === 'bypass-admin-and-write',
+  );
   const searchBypassRule = cloudflareRules.cache_rules.find(
     (rule) => rule.name === 'bypass-public-search-and-admin-nav',
   );
-  const publicHtmlRule = cloudflareRules.cache_rules.find((rule) => rule.name === 'cache-public-html');
+  const publicHtmlRule = cloudflareRules.cache_rules.find(
+    (rule) => rule.name === 'cache-public-html',
+  );
   const publicJsonRule = cloudflareRules.cache_rules.find(
     (rule) => rule.name === 'cache-public-json-fragments',
   );
@@ -274,7 +528,10 @@ test('cloudflare cache samples cover public cache rules and waline bypasses', ()
 
   assert.match(JSON.stringify(cloudflareRules.cache_key_hygiene.ignore_query_params), /utm_\*/);
   assert.equal(cloudflareRules.cache_key_hygiene.ignore_anonymous_cookies, true);
-  assert.equal(cloudflareRules.cache_key_hygiene.public_html_theme_variant.header, 'x-vanblog-theme');
+  assert.equal(
+    cloudflareRules.cache_key_hygiene.public_html_theme_variant.header,
+    'x-vanblog-theme',
+  );
   assert.equal(cloudflareRules.cache_key_hygiene.public_html_theme_variant.cookie, 'theme');
   assert.match(
     JSON.stringify(cloudflareRules.cache_key_hygiene.public_html_theme_variant.allowed_values),
@@ -303,24 +560,38 @@ test('cloudflare cache guide documents the intended rule order and bypass constr
   const notImplementedIndex = cloudflareDoc.indexOf('### Not implemented yet in repo');
   const bypassIndex = cloudflareDoc.indexOf('### 1. Bypass admin and write traffic');
   const publicHtmlIndex = cloudflareDoc.indexOf('### 2. Cache public HTML');
-  const searchBypassIndex = cloudflareDoc.indexOf('### 3. Bypass public search and admin nav payloads');
+  const searchBypassIndex = cloudflareDoc.indexOf(
+    '### 3. Bypass public search and admin nav payloads',
+  );
   const publicJsonIndex = cloudflareDoc.indexOf('### 4. Cache public JSON fragments');
   const dynamicIndex = cloudflareDoc.indexOf('### 5. Dynamic public pages');
 
   assert.ok(implementedIndex >= 0, 'expected repo-implemented status section');
-  assert.ok(rolloutIndex > implementedIndex, 'expected dashboard rollout section after repo-implemented section');
+  assert.ok(
+    rolloutIndex > implementedIndex,
+    'expected dashboard rollout section after repo-implemented section',
+  );
   assert.ok(
     notImplementedIndex > rolloutIndex,
     'expected not-yet-implemented section after dashboard rollout section',
   );
   assert.ok(bypassIndex >= 0, 'expected admin/write bypass rule docs');
   assert.ok(publicHtmlIndex > bypassIndex, 'public HTML docs should follow bypass docs');
-  assert.ok(searchBypassIndex > publicHtmlIndex, 'search/admin-nav bypass docs should follow public HTML docs');
-  assert.ok(publicJsonIndex > searchBypassIndex, 'public JSON docs should follow search bypass docs');
+  assert.ok(
+    searchBypassIndex > publicHtmlIndex,
+    'search/admin-nav bypass docs should follow public HTML docs',
+  );
+  assert.ok(
+    publicJsonIndex > searchBypassIndex,
+    'public JSON docs should follow search bypass docs',
+  );
   assert.ok(dynamicIndex > publicJsonIndex, 'dynamic page docs should follow public JSON docs');
 
   assert.match(cloudflareDoc, /packages\/website\/next\.config\.js/);
-  assert.match(cloudflareDoc, /packages\/server\/src\/provider\/public-cache\/public-cache\.middleware\.ts/);
+  assert.match(
+    cloudflareDoc,
+    /packages\/server\/src\/provider\/public-cache\/public-cache\.middleware\.ts/,
+  );
   assert.match(cloudflareDoc, /packages\/server\/src\/main\.ts/);
   assert.match(cloudflareDoc, /packages\/website\/proxy\.ts/);
   assert.match(cloudflareDoc, /Vary: x-vanblog-theme/);
@@ -331,8 +602,14 @@ test('cloudflare cache guide documents the intended rule order and bypass constr
   assert.match(cloudflareDoc, /Browser-side pageview writes are split away from route rendering/i);
   assert.match(cloudflareDoc, /navigator\.sendBeacon\(\)/);
   assert.match(cloudflareDoc, /fetch\(..., \{ keepalive: true \}\)/);
-  assert.match(cloudflareDoc, /public cacheable API responses free of `Vary: Cookie` and `Vary: User-Agent`/);
-  assert.match(cloudflareDoc, /falls back to `no-store` if a public response tries to emit `Set-Cookie`/);
+  assert.match(
+    cloudflareDoc,
+    /public cacheable API responses free of `Vary: Cookie` and `Vary: User-Agent`/,
+  );
+  assert.match(
+    cloudflareDoc,
+    /falls back to `no-store` if a public response tries to emit `Set-Cookie`/,
+  );
   assert.match(cloudflareDoc, /\/admin\*/);
   assert.match(cloudflareDoc, /\/api\/admin\/\*/);
   assert.match(cloudflareDoc, /\/api\/comment\*/);
@@ -341,12 +618,21 @@ test('cloudflare cache guide documents the intended rule order and bypass constr
   assert.match(cloudflareDoc, /\/api\/public\/search\*/);
   assert.match(cloudflareDoc, /\/api\/public\/nav\/admin-data/);
   assert.match(cloudflareDoc, /keep any authenticated request bypassed/i);
-  assert.match(cloudflareDoc, /Ignore anonymous cookies on public pages, but keep a normalized theme variant/i);
-  assert.match(cloudflareDoc, /Public HTML should vary by `x-vanblog-theme`, not by the full `Cookie` header/i);
+  assert.match(
+    cloudflareDoc,
+    /Ignore anonymous cookies on public pages, but keep a normalized theme variant/i,
+  );
+  assert.match(
+    cloudflareDoc,
+    /Public HTML should vary by `x-vanblog-theme`, not by the full `Cookie` header/i,
+  );
   assert.match(cloudflareDoc, /normalize legacy `auto` to `dark`/i);
   assert.match(cloudflareDoc, /bypass cache normalization entirely when auth-like cookies/i);
   assert.match(cloudflareDoc, /sessionid/);
-  assert.match(cloudflareDoc, /skips normalization entirely when auth-like headers or authenticated cookies are present/i);
+  assert.match(
+    cloudflareDoc,
+    /skips normalization entirely when auth-like headers or authenticated cookies are present/i,
+  );
   assert.match(cloudflareDoc, /Waline-related traffic/);
   assert.match(cloudflareDoc, /Enable `Tiered Cache`/);
   assert.match(cloudflareDoc, /Enable `Respect Strong ETags`/);
@@ -354,20 +640,41 @@ test('cloudflare cache guide documents the intended rule order and bypass constr
   assert.match(cloudflareDoc, /Create the Cache Rules below in Cloudflare/i);
   assert.match(cloudflareDoc, /year\/month archives/i);
   assert.match(cloudflareDoc, /legacy `\/page\/\*` routes are redirected away from content pages/i);
-  assert.match(cloudflareDoc, /Viewer\/like writes are not backed by Redis aggregation or queue-based flushing yet/i);
-  assert.match(cloudflareDoc, /does not mean the Cloudflare dashboard has already been configured in production/i);
+  assert.match(
+    cloudflareDoc,
+    /Viewer\/like writes are not backed by Redis aggregation or queue-based flushing yet/i,
+  );
+  assert.match(
+    cloudflareDoc,
+    /does not mean the Cloudflare dashboard has already been configured in production/i,
+  );
   assert.match(cloudflareDoc, /must be completed outside this repository/i);
   assert.match(cloudflareDoc, /## Cache-Tag Taxonomy/);
-  assert.match(cloudflareDoc, /`html-public`, `html-post`, `html-listing`, `html-dynamic`, and `home`/);
-  assert.match(cloudflareDoc, /`post:\{id\}`, `post:\{pathname\}`, `tag:\{name\}`, `category:\{name\}`, `timeline:\{year\}`, and `site-stats`/);
-  assert.match(cloudflareDoc, /`category-summary`, `timeline-summary`, `tag-hot`, `tag-list`, `category-list`, and `timeline-list`/);
+  assert.match(
+    cloudflareDoc,
+    /`html-public`, `html-post`, `html-listing`, `html-dynamic`, and `home`/,
+  );
+  assert.match(
+    cloudflareDoc,
+    /`post:\{id\}`, `post:\{pathname\}`, `tag:\{name\}`, `category:\{name\}`, `timeline:\{year\}`, and `site-stats`/,
+  );
+  assert.match(
+    cloudflareDoc,
+    /`category-summary`, `timeline-summary`, `tag-hot`, `tag-list`, `category-list`, and `timeline-list`/,
+  );
   assert.match(cloudflareDoc, /`artifact:feed`, `artifact:sitemap`, and `artifact:search-index`/);
   assert.match(cloudflareDoc, /packages\/server\/src\/provider\/isr\/isr\.provider\.ts/);
-  assert.match(cloudflareDoc, /packages\/server\/src\/provider\/cloudflare-cache\/cloudflare-cache\.provider\.ts/);
+  assert.match(
+    cloudflareDoc,
+    /packages\/server\/src\/provider\/cloudflare-cache\/cloudflare-cache\.provider\.ts/,
+  );
   assert.match(cloudflareDoc, /siteInfo\.baseUrl/);
   assert.match(cloudflareDoc, /only sends URL purge after it can resolve absolute URLs/i);
   assert.match(cloudflareDoc, /Cloudflare file purge for page and feed URLs will be skipped/i);
-  assert.match(cloudflareDoc, /skips file purge, logs the reason, and leaves tag purge plus TTL expiry as the fallback/i);
+  assert.match(
+    cloudflareDoc,
+    /skips file purge, logs the reason, and leaves tag purge plus TTL expiry as the fallback/i,
+  );
   assert.match(
     cloudflareDoc,
     /docker-compose\.yml` and `docker-compose\.image\.yml` now pass `VAN_BLOG_CLOUDFLARE_API_TOKEN` and `VAN_BLOG_CLOUDFLARE_ZONE_ID` through to the `server` container/i,
@@ -380,10 +687,14 @@ test('cloudflare cache rule samples stay aligned with next public html cache gro
   const aboutLinkRule = nextHeaders.find((rule) => rule.source === '/(about|link)');
   const customPageRule = nextHeaders.find((rule) => rule.source === '/c/:path*');
   const listingRules = nextHeaders.filter((rule) =>
-    ['/', '/archive', '/archive/:path*', '/category/:path*', '/tag/:path*', '/timeline'].includes(rule.source),
+    ['/', '/archive', '/archive/:path*', '/category/:path*', '/tag/:path*', '/timeline'].includes(
+      rule.source,
+    ),
   );
   const dynamicRule = nextHeaders.find((rule) => rule.source === '/(moment|nav)');
-  const publicHtmlRule = cloudflareRules.cache_rules.find((rule) => rule.name === 'cache-public-html');
+  const publicHtmlRule = cloudflareRules.cache_rules.find(
+    (rule) => rule.name === 'cache-public-html',
+  );
   const dynamicHtmlRule = cloudflareRules.cache_rules.find(
     (rule) => rule.name === 'cache-dynamic-public-pages',
   );
@@ -496,10 +807,7 @@ test('cloudflare cache guide keeps implemented TTL families aligned with next an
     websiteProviders,
     /import \{ usePathname \} from 'next\/navigation';[\s\S]*void reloadViewer\(\);/s,
   );
-  assert.match(
-    websitePageviewApi,
-    /fetch\(\s*`?\/api\/public\/viewer`?,\s*\{method: "GET"\}\s*\)/,
-  );
+  assert.match(websitePageviewApi, /fetch\(\s*`?\/api\/public\/viewer`?,\s*\{method: "GET"\}\s*\)/);
   assert.match(
     websitePageviewApi,
     /navigator\.sendBeacon\(url, new Blob\(\[\], \{ type: "text\/plain;charset=UTF-8" \}\)\)/,
@@ -572,7 +880,9 @@ test('cloudflare worker fallback stays aligned with next public html cache group
   const aboutLinkRule = nextHeaders.find((rule) => rule.source === '/(about|link)');
   const customPageRule = nextHeaders.find((rule) => rule.source === '/c/:path*');
   const listingRules = nextHeaders.filter((rule) =>
-    ['/', '/archive', '/archive/:path*', '/category/:path*', '/tag/:path*', '/timeline'].includes(rule.source),
+    ['/', '/archive', '/archive/:path*', '/category/:path*', '/tag/:path*', '/timeline'].includes(
+      rule.source,
+    ),
   );
   const dynamicRule = nextHeaders.find((rule) => rule.source === '/(moment|nav)');
 
@@ -660,31 +970,11 @@ test('cloudflare worker also normalizes other cacheable public html groups befor
   };
 
   try {
-    await worker.fetch(
-      new Request('https://example.com/about?utm_source=x'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/link?gclid=y'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/c/cloudflare-cache?fbclid=z'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/moment?utm_medium=email'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/nav?msclkid=abc'),
-      {},
-      {},
-    );
+    await worker.fetch(new Request('https://example.com/about?utm_source=x'), {}, {});
+    await worker.fetch(new Request('https://example.com/link?gclid=y'), {}, {});
+    await worker.fetch(new Request('https://example.com/c/cloudflare-cache?fbclid=z'), {}, {});
+    await worker.fetch(new Request('https://example.com/moment?utm_medium=email'), {}, {});
+    await worker.fetch(new Request('https://example.com/nav?msclkid=abc'), {}, {});
 
     assert.equal(calls.length, 5);
     assert.equal(calls[0].request.url, 'https://example.com/about');
@@ -803,31 +1093,11 @@ test('cloudflare worker leaves feed, sitemap, and robots aliases outside public-
   };
 
   try {
-    await worker.fetch(
-      new Request('https://example.com/feed.xml?utm_source=x'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/feed.json?fbclid=y'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/atom.xml?gclid=z'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/sitemap.xml?utm_campaign=cache'),
-      {},
-      {},
-    );
-    await worker.fetch(
-      new Request('https://example.com/robots.txt?utm_medium=email'),
-      {},
-      {},
-    );
+    await worker.fetch(new Request('https://example.com/feed.xml?utm_source=x'), {}, {});
+    await worker.fetch(new Request('https://example.com/feed.json?fbclid=y'), {}, {});
+    await worker.fetch(new Request('https://example.com/atom.xml?gclid=z'), {}, {});
+    await worker.fetch(new Request('https://example.com/sitemap.xml?utm_campaign=cache'), {}, {});
+    await worker.fetch(new Request('https://example.com/robots.txt?utm_medium=email'), {}, {});
 
     assert.equal(calls.length, 5);
     assert.equal(calls[0].request.url, 'https://example.com/feed.xml?utm_source=x');
@@ -846,8 +1116,9 @@ test('cloudflare worker leaves feed, sitemap, and robots aliases outside public-
 test('stateful data services stay private to the compose network', () => {
   for (const service of ['postgres', 'redis']) {
     const section =
-      compose.match(new RegExp(`\\n  ${service}:\\n([\\s\\S]*?)(?:\\n  [a-z][a-z0-9_-]*:|\\n$)`, 'i'))?.[1] ??
-      '';
+      compose.match(
+        new RegExp(`\\n  ${service}:\\n([\\s\\S]*?)(?:\\n  [a-z][a-z0-9_-]*:|\\n$)`, 'i'),
+      )?.[1] ?? '';
     assert.ok(section.length > 0, `expected to find the ${service} service block`);
     assert.doesNotMatch(section, /\n\s+ports:\s*\n/);
     assert.match(section, /healthcheck:/);
@@ -855,7 +1126,8 @@ test('stateful data services stay private to the compose network', () => {
 });
 
 test('caddy admin API stays private to the compose network', () => {
-  const caddySection = compose.match(/\n  caddy:\n([\s\S]*?)(?:\n  [a-z][a-z0-9_-]*:|\n$)/i)?.[1] ?? '';
+  const caddySection =
+    compose.match(/\n  caddy:\n([\s\S]*?)(?:\n  [a-z][a-z0-9_-]*:|\n$)/i)?.[1] ?? '';
   assert.ok(caddySection.length > 0, 'expected to find the caddy service block');
   assert.match(caddyfile, /admin 0\.0\.0\.0:2019/);
   assert.doesNotMatch(caddySection, /2019:2019/);

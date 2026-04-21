@@ -14,11 +14,19 @@ describe('DocumentController', () => {
       generateSearchIndex: jest.fn(),
       ...overrides.searchIndexProvider,
     };
+    const aiQaProvider = {
+      syncDocumentById: jest.fn().mockResolvedValue({ action: 'updated' }),
+      deleteDocumentTreeByRootId: jest.fn().mockResolvedValue({ deleted: 1 }),
+      deleteSource: jest.fn().mockResolvedValue({ deleted: true }),
+      syncDraftById: jest.fn().mockResolvedValue({ action: 'updated' }),
+      ...overrides.aiQaProvider,
+    };
 
     return {
-      controller: new DocumentController(documentProvider as any, searchIndexProvider as any),
+      controller: new DocumentController(documentProvider as any, searchIndexProvider as any, aiQaProvider as any),
       documentProvider,
       searchIndexProvider,
+      aiQaProvider,
     };
   };
 
@@ -36,7 +44,7 @@ describe('DocumentController', () => {
   });
 
   it('updates a document when the route param is a string id', async () => {
-    const { controller, documentProvider, searchIndexProvider } = createController();
+    const { controller, documentProvider, searchIndexProvider, aiQaProvider } = createController();
 
     const result = await controller.update(
       '12' as any,
@@ -57,5 +65,6 @@ describe('DocumentController', () => {
       '更新私密文档触发搜索索引同步',
       500,
     );
+    expect(aiQaProvider.syncDocumentById).toHaveBeenCalledWith(12, 'document-update');
   });
 });

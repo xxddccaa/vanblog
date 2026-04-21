@@ -1,3 +1,4 @@
+import type { AiQaConfig } from './ai-qa.dto';
 import { MenuItem } from './menu.dto';
 
 export const defaultStaticSetting: StaticSetting = {
@@ -21,7 +22,9 @@ export type SettingType =
   | 'adminLayout'
   | 'adminTheme'
   | 'autoBackup'
-  | 'music';
+  | 'music'
+  | 'aiTagging'
+  | 'aiQa';
 
 export type SettingValue =
   | StaticSetting
@@ -33,7 +36,9 @@ export type SettingValue =
   | AdminLayoutSetting
   | AdminThemeSetting
   | AutoBackupSetting
-  | MusicSetting;
+  | MusicSetting
+  | AiQaConfig
+  | Record<string, any>;
 
 export interface ISRSetting {
   mode: 'delay' | 'onDemand';
@@ -249,12 +254,21 @@ export const defaultAdminLayoutSetting: AdminLayoutSetting = {
       visible: true,
     },
     {
+      key: 'ai',
+      name: 'AI 工作台',
+      originalName: 'AI 工作台',
+      icon: 'robot',
+      path: '/ai',
+      order: 8,
+      visible: true,
+    },
+    {
       key: 'site',
       name: '站点管理',
       originalName: '站点管理',
       icon: 'tool',
       path: '/site',
-      order: 8,
+      order: 9,
       visible: true,
     },
   ],

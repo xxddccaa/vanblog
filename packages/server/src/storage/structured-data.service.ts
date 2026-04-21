@@ -1,6 +1,15 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PostgresStoreService } from './postgres-store.service';
 import { SearchArticleOption } from 'src/types/article.dto';
+import {
+  AiKnowledgeSyncRecord,
+  AiQaConversationDetail,
+  AiQaConversationMessage,
+  AiQaConversationRecord,
+  AiQaConversationSummary,
+  AiQaMessageRecord,
+  AiQaSourceType,
+} from 'src/types/ai-qa.dto';
 
 @Injectable()
 export class StructuredDataService implements OnModuleInit {
@@ -332,6 +341,54 @@ export class StructuredDataService implements OnModuleInit {
       )
     `);
 
+    await this.store.query(`
+      CREATE TABLE IF NOT EXISTS vanblog_ai_knowledge_sync (
+        source_type TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        dataset_id TEXT NOT NULL,
+        collection_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        public_url TEXT,
+        editor_url TEXT,
+        updated_at TIMESTAMPTZ NOT NULL,
+        last_synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ,
+        PRIMARY KEY (source_type, source_id)
+      )
+    `);
+
+    await this.store.query(`
+      CREATE TABLE IF NOT EXISTS vanblog_ai_qa_conversations (
+        id TEXT PRIMARY KEY,
+        fastgpt_chat_id TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        created_by_user_id BIGINT,
+        created_by_name TEXT,
+        created_by_nickname TEXT,
+        message_count INTEGER NOT NULL DEFAULT 0,
+        last_message_preview TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ
+      )
+    `);
+
+    await this.store.query(`
+      CREATE TABLE IF NOT EXISTS vanblog_ai_qa_messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL REFERENCES vanblog_ai_qa_conversations(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL DEFAULT '',
+        grounded BOOLEAN NOT NULL DEFAULT FALSE,
+        citations JSONB NOT NULL DEFAULT '[]'::jsonb,
+        created_by_user_id BIGINT,
+        created_by_name TEXT,
+        created_by_nickname TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_created_at ON vanblog_articles (created_at DESC)',
     );
@@ -484,6 +541,18 @@ export class StructuredDataService implements OnModuleInit {
     );
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_mindmaps_active_updated ON vanblog_mindmaps (deleted, updated_at DESC)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_ai_knowledge_sync_collection ON vanblog_ai_knowledge_sync (collection_id)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_ai_knowledge_sync_dataset_active ON vanblog_ai_knowledge_sync (dataset_id, deleted_at)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_ai_qa_conversations_active_updated ON vanblog_ai_qa_conversations (deleted_at, updated_at DESC)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_ai_qa_messages_conversation_created ON vanblog_ai_qa_messages (conversation_id, created_at ASC)',
     );
     // Full-text queries already work without dedicated expression indexes.
     // We defer these until the search vectors are materialized into columns,
@@ -864,6 +933,68 @@ export class StructuredDataService implements OnModuleInit {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  private mapAiKnowledgeSyncRow(row: any) {
+    if (!row) {
+      return null;
+    }
+    return {
+      sourceType: row.source_type,
+      sourceId: row.source_id,
+      contentHash: row.content_hash,
+      datasetId: row.dataset_id,
+      collectionId: row.collection_id,
+      title: row.title,
+      publicUrl: row.public_url || undefined,
+      editorUrl: row.editor_url || undefined,
+      updatedAt: row.updated_at,
+      lastSyncedAt: row.last_synced_at,
+      deletedAt: row.deleted_at || null,
+    } as AiKnowledgeSyncRecord;
+  }
+
+  private mapAiQaConversationRow(row: any) {
+    if (!row) {
+      return null;
+    }
+    return {
+      id: row.id,
+      chatId: row.fastgpt_chat_id,
+      title: row.title,
+      createdByUserId:
+        row.created_by_user_id === null || row.created_by_user_id === undefined
+          ? undefined
+          : Number(row.created_by_user_id),
+      createdByName: row.created_by_name || undefined,
+      createdByNickname: row.created_by_nickname || undefined,
+      messageCount: Number(row.message_count || 0),
+      lastMessagePreview: row.last_message_preview || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      deletedAt: row.deleted_at || null,
+    } as AiQaConversationRecord;
+  }
+
+  private mapAiQaMessageRow(row: any) {
+    if (!row) {
+      return null;
+    }
+    return {
+      id: row.id,
+      conversationId: row.conversation_id,
+      role: row.role,
+      content: row.content || '',
+      grounded: Boolean(row.grounded),
+      citations: Array.isArray(row.citations) ? row.citations : [],
+      createdAt: row.created_at,
+      createdByUserId:
+        row.created_by_user_id === null || row.created_by_user_id === undefined
+          ? undefined
+          : Number(row.created_by_user_id),
+      createdByName: row.created_by_name || undefined,
+      createdByNickname: row.created_by_nickname || undefined,
+    } as AiQaMessageRecord;
   }
 
   private getArticleSelectSql() {
@@ -2115,6 +2246,7 @@ export class StructuredDataService implements OnModuleInit {
       'TRUNCATE TABLE vanblog_moments CASCADE',
       'TRUNCATE TABLE vanblog_mindmaps CASCADE',
       'TRUNCATE TABLE vanblog_settings CASCADE',
+      'TRUNCATE TABLE vanblog_ai_knowledge_sync CASCADE',
     ];
 
     for (const sql of cleanupSql) {
@@ -5052,6 +5184,330 @@ export class StructuredDataService implements OnModuleInit {
       ORDER BY setting_type ASC
     `);
     return result.rows.map((row) => this.mapSettingRow(row)).filter(Boolean);
+  }
+
+  async upsertAiKnowledgeSync(record: AiKnowledgeSyncRecord) {
+    if (!record?.sourceType || !record?.sourceId || !record?.collectionId || !record?.datasetId) {
+      return;
+    }
+    await this.store.query(
+      `
+        INSERT INTO vanblog_ai_knowledge_sync (
+          source_type, source_id, content_hash, dataset_id, collection_id, title,
+          public_url, editor_url, updated_at, last_synced_at, deleted_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        ON CONFLICT (source_type, source_id) DO UPDATE SET
+          content_hash = EXCLUDED.content_hash,
+          dataset_id = EXCLUDED.dataset_id,
+          collection_id = EXCLUDED.collection_id,
+          title = EXCLUDED.title,
+          public_url = EXCLUDED.public_url,
+          editor_url = EXCLUDED.editor_url,
+          updated_at = EXCLUDED.updated_at,
+          last_synced_at = EXCLUDED.last_synced_at,
+          deleted_at = EXCLUDED.deleted_at
+      `,
+      [
+        record.sourceType,
+        record.sourceId,
+        record.contentHash || '',
+        record.datasetId,
+        record.collectionId,
+        record.title || '',
+        record.publicUrl || null,
+        record.editorUrl || null,
+        this.asDate(record.updatedAt),
+        this.asDate(record.lastSyncedAt),
+        record.deletedAt ? this.asDate(record.deletedAt) : null,
+      ],
+    );
+  }
+
+  async getAiKnowledgeSync(
+    sourceType: AiQaSourceType,
+    sourceId: string,
+    includeDeleted = false,
+  ) {
+    const clauses = ['source_type = $1', 'source_id = $2'];
+    if (!includeDeleted) {
+      clauses.push('deleted_at IS NULL');
+    }
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_ai_knowledge_sync
+        WHERE ${clauses.join(' AND ')}
+        LIMIT 1
+      `,
+      [sourceType, sourceId],
+    );
+    return this.mapAiKnowledgeSyncRow(result.rows[0]);
+  }
+
+  async listAiKnowledgeSyncs(options: { includeDeleted?: boolean; datasetId?: string } = {}) {
+    const params: any[] = [];
+    const clauses: string[] = [];
+    if (!options.includeDeleted) {
+      clauses.push('deleted_at IS NULL');
+    }
+    if (options.datasetId) {
+      params.push(options.datasetId);
+      clauses.push(`dataset_id = $${params.length}`);
+    }
+    const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_ai_knowledge_sync
+        ${whereSql}
+        ORDER BY last_synced_at DESC, source_type ASC, source_id ASC
+      `,
+      params,
+    );
+    return result.rows.map((row) => this.mapAiKnowledgeSyncRow(row)).filter(Boolean);
+  }
+
+  async listAiKnowledgeSyncsByCollectionIds(collectionIds: string[]) {
+    const normalizedIds = [...new Set((collectionIds || []).map((item) => String(item || '').trim()).filter(Boolean))];
+    if (!normalizedIds.length) {
+      return [];
+    }
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_ai_knowledge_sync
+        WHERE collection_id = ANY($1::text[])
+          AND deleted_at IS NULL
+      `,
+      [normalizedIds],
+    );
+    return result.rows.map((row) => this.mapAiKnowledgeSyncRow(row)).filter(Boolean);
+  }
+
+  async markAiKnowledgeSyncDeleted(
+    sourceType: AiQaSourceType,
+    sourceId: string,
+    deletedAt = new Date(),
+  ) {
+    await this.store.query(
+      `
+        UPDATE vanblog_ai_knowledge_sync
+        SET deleted_at = $3, last_synced_at = $3
+        WHERE source_type = $1 AND source_id = $2
+      `,
+      [sourceType, sourceId, this.asDate(deletedAt)],
+    );
+  }
+
+  async createAiQaConversation(record: AiQaConversationRecord) {
+    if (!record?.id || !record?.chatId || !record?.title) {
+      return null;
+    }
+    await this.store.query(
+      `
+        INSERT INTO vanblog_ai_qa_conversations (
+          id, fastgpt_chat_id, title, created_by_user_id, created_by_name, created_by_nickname,
+          message_count, last_message_preview, created_at, updated_at, deleted_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      `,
+      [
+        record.id,
+        record.chatId,
+        record.title,
+        record.createdByUserId ?? null,
+        record.createdByName || null,
+        record.createdByNickname || null,
+        Number(record.messageCount || 0),
+        record.lastMessagePreview || '',
+        this.asDate(record.createdAt),
+        this.asDate(record.updatedAt),
+        record.deletedAt ? this.asDate(record.deletedAt) : null,
+      ],
+    );
+    return record;
+  }
+
+  async updateAiQaConversation(
+    conversationId: string,
+    patch: Partial<
+      Pick<
+        AiQaConversationRecord,
+        'title' | 'messageCount' | 'lastMessagePreview' | 'updatedAt' | 'deletedAt'
+      >
+    >,
+  ) {
+    const assignments: string[] = [];
+    const params: any[] = [conversationId];
+    const setDateValue = (value: string | null | undefined) =>
+      value ? this.asDate(value) : value === null ? null : undefined;
+
+    if (patch.title !== undefined) {
+      params.push(String(patch.title || '').trim());
+      assignments.push(`title = $${params.length}`);
+    }
+    if (patch.messageCount !== undefined) {
+      params.push(Math.max(0, Number(patch.messageCount || 0)));
+      assignments.push(`message_count = $${params.length}`);
+    }
+    if (patch.lastMessagePreview !== undefined) {
+      params.push(String(patch.lastMessagePreview || ''));
+      assignments.push(`last_message_preview = $${params.length}`);
+    }
+    if (patch.updatedAt !== undefined) {
+      params.push(setDateValue(patch.updatedAt));
+      assignments.push(`updated_at = $${params.length}`);
+    }
+    if (patch.deletedAt !== undefined) {
+      params.push(setDateValue(patch.deletedAt));
+      assignments.push(`deleted_at = $${params.length}`);
+    }
+    if (!assignments.length) {
+      return await this.getAiQaConversation(conversationId, true);
+    }
+    const result = await this.store.query(
+      `
+        UPDATE vanblog_ai_qa_conversations
+        SET ${assignments.join(', ')}
+        WHERE id = $1
+        RETURNING *
+      `,
+      params,
+    );
+    return this.mapAiQaConversationRow(result.rows[0]);
+  }
+
+  async getAiQaConversation(conversationId: string, includeDeleted = false) {
+    if (!conversationId) {
+      return null;
+    }
+    const clauses = ['id = $1'];
+    if (!includeDeleted) {
+      clauses.push('deleted_at IS NULL');
+    }
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_ai_qa_conversations
+        WHERE ${clauses.join(' AND ')}
+        LIMIT 1
+      `,
+      [conversationId],
+    );
+    return this.mapAiQaConversationRow(result.rows[0]);
+  }
+
+  async getAiQaConversationByChatId(chatId: string, includeDeleted = false) {
+    const normalizedChatId = String(chatId || '').trim();
+    if (!normalizedChatId) {
+      return null;
+    }
+    const clauses = ['fastgpt_chat_id = $1'];
+    if (!includeDeleted) {
+      clauses.push('deleted_at IS NULL');
+    }
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_ai_qa_conversations
+        WHERE ${clauses.join(' AND ')}
+        LIMIT 1
+      `,
+      [normalizedChatId],
+    );
+    return this.mapAiQaConversationRow(result.rows[0]);
+  }
+
+  async listAiQaConversations(page = 1, pageSize = 20): Promise<{
+    total: number;
+    conversations: AiQaConversationSummary[];
+  }> {
+    const safePage = Math.max(1, Math.trunc(Number(page) || 1));
+    const safePageSize = Math.min(100, Math.max(1, Math.trunc(Number(pageSize) || 20)));
+    const countResult = await this.store.query<{ total: string }>(
+      `
+        SELECT COUNT(*)::text AS total
+        FROM vanblog_ai_qa_conversations
+        WHERE deleted_at IS NULL
+      `,
+    );
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_ai_qa_conversations
+        WHERE deleted_at IS NULL
+        ORDER BY updated_at DESC, created_at DESC, id DESC
+        LIMIT $1 OFFSET $2
+      `,
+      [safePageSize, (safePage - 1) * safePageSize],
+    );
+    return {
+      total: Number(countResult.rows[0]?.total || 0),
+      conversations: result.rows.map((row) => this.mapAiQaConversationRow(row)).filter(Boolean),
+    };
+  }
+
+  async createAiQaMessages(messages: AiQaMessageRecord[]) {
+    const normalizedMessages = (messages || []).filter(
+      (item) => item?.id && item?.conversationId && item?.role,
+    );
+    if (!normalizedMessages.length) {
+      return [];
+    }
+    const valuesSql = normalizedMessages
+      .map((_, index) => {
+        const offset = index * 10;
+        return `($${offset + 1},$${offset + 2},$${offset + 3},$${offset + 4},$${offset + 5},$${offset + 6}::jsonb,$${offset + 7},$${offset + 8},$${offset + 9},$${offset + 10})`;
+      })
+      .join(', ');
+    const params = normalizedMessages.flatMap((item) => [
+      item.id,
+      item.conversationId,
+      item.role,
+      item.content || '',
+      Boolean(item.grounded),
+      JSON.stringify(item.citations || []),
+      item.createdByUserId ?? null,
+      item.createdByName || null,
+      item.createdByNickname || null,
+      this.asDate(item.createdAt),
+    ]);
+    await this.store.query(
+      `
+        INSERT INTO vanblog_ai_qa_messages (
+          id, conversation_id, role, content, grounded, citations,
+          created_by_user_id, created_by_name, created_by_nickname, created_at
+        ) VALUES ${valuesSql}
+      `,
+      params,
+    );
+    return normalizedMessages;
+  }
+
+  async listAiQaMessages(conversationId: string): Promise<AiQaConversationMessage[]> {
+    if (!conversationId) {
+      return [];
+    }
+    const result = await this.store.query(
+      `
+        SELECT *
+        FROM vanblog_ai_qa_messages
+        WHERE conversation_id = $1
+        ORDER BY created_at ASC, id ASC
+      `,
+      [conversationId],
+    );
+    return result.rows.map((row) => this.mapAiQaMessageRow(row)).filter(Boolean);
+  }
+
+  async getAiQaConversationDetail(conversationId: string): Promise<AiQaConversationDetail | null> {
+    const conversation = await this.getAiQaConversation(conversationId);
+    if (!conversation) {
+      return null;
+    }
+    return {
+      ...conversation,
+      messages: await this.listAiQaMessages(conversationId),
+    };
   }
 
   isInitialized() {

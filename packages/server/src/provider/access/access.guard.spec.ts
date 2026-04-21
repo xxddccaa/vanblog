@@ -140,6 +140,12 @@ describe('AccessGuard', () => {
     await expect(
       guard.validateRequest(createRequest('get-/api/admin/mindmap', ['all'])),
     ).resolves.toBe(true);
+    await expect(
+      guard.validateRequest(createRequest('post-/api/admin/ai-qa/chat', ['all'])),
+    ).resolves.toBe(true);
+    await expect(
+      guard.validateRequest(createRequest('put-/api/admin/ai-qa/config', ['all'])),
+    ).resolves.toBe(true);
   });
 
   it('keeps explicitly public collaborator routes available without extra permissions', async () => {

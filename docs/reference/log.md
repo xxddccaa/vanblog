@@ -20,6 +20,21 @@ docker compose logs -f caddy server website admin waline postgres redis
 docker compose -f docker-compose.image.yml logs -f caddy server website admin waline postgres redis
 ```
 
+## 如果启用了 AI 工作台
+
+AI 工作台本身的接口日志主要在 `server`，如果你还同时启用了 bundled FastGPT，建议额外关注：
+
+```bash
+docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml -f docker-compose.fastgpt.yml \
+  logs -f server fastgpt-app fastgpt-bootstrap
+```
+
+重点看：
+
+- `server`：AI 工作台接口报错、会话读写、知识同步报错
+- `fastgpt-app`：Dataset / App / API Key 创建异常、模型调用异常
+- `fastgpt-bootstrap`：旧数据卷 free plan 修复情况
+
 ## 宿主机日志目录
 
 默认情况下，`caddy` 和 `server` 共用宿主机的 `./log` 目录，对应容器内的 `/var/log`。

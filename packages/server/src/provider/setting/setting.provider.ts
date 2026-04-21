@@ -188,7 +188,7 @@ export class SettingProvider {
   async getAdminLayoutSetting(): Promise<AdminLayoutSetting> {
     const res = await this.findSettingRecord('adminLayout');
     if (res) {
-      return res?.value as any;
+      return this.normalizeAdminLayoutSetting(res?.value as AdminLayoutSetting);
     } else {
       await this.createSettingValue('adminLayout', defaultAdminLayoutSetting);
       return defaultAdminLayoutSetting;
@@ -225,6 +225,46 @@ export class SettingProvider {
         value?.darkBackgroundColor,
         defaultAdminThemeSetting.darkBackgroundColor,
       ),
+    };
+  }
+
+  private normalizeAdminLayoutSetting(value?: Partial<AdminLayoutSetting> | null): AdminLayoutSetting {
+    const persistedItems = Array.isArray(value?.menuItems) ? value.menuItems : [];
+    const persistedByKey = new Map(persistedItems.map((item) => [item?.key, item]));
+    const defaultOrderByKey = new Map(
+      defaultAdminLayoutSetting.menuItems.map((item, index) => [item.key, index]),
+    );
+
+    const normalizedItems = defaultAdminLayoutSetting.menuItems
+      .map((defaultItem) => {
+        const persistedItem = persistedByKey.get(defaultItem.key);
+        return {
+          ...defaultItem,
+          ...(persistedItem || {}),
+          key: defaultItem.key,
+          path: defaultItem.path,
+          originalName: defaultItem.originalName,
+          order:
+            typeof persistedItem?.order === 'number' ? persistedItem.order : defaultItem.order,
+          visible:
+            typeof persistedItem?.visible === 'boolean'
+              ? persistedItem.visible
+              : defaultItem.visible,
+        };
+      })
+      .sort((a, b) => {
+        if (a.order === b.order) {
+          return (defaultOrderByKey.get(a.key) || 0) - (defaultOrderByKey.get(b.key) || 0);
+        }
+        return a.order - b.order;
+      })
+      .map((item, index) => ({
+        ...item,
+        order: index,
+      }));
+
+    return {
+      menuItems: normalizedItems,
     };
   }
 
@@ -1673,7 +1713,7 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
   }
   async updateAdminLayoutSetting(dto: AdminLayoutSetting) {
     const oldValue = await this.getAdminLayoutSetting();
-    const newValue = { ...oldValue, ...dto };
+    const newValue = this.normalizeAdminLayoutSetting({ ...oldValue, ...dto });
     return await this.upsertSettingValue('adminLayout', newValue);
   }
   async updateAdminThemeSetting(dto: AdminThemeSetting) {

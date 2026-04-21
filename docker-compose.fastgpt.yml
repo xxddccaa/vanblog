@@ -1,0 +1,295 @@
+# Optional FastGPT extension.
+# Start it together with the main stack:
+# docker compose -f docker-compose.yml -f docker-compose.ai-qa.yml -f docker-compose.fastgpt.yml up -d
+# docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml -f docker-compose.fastgpt.yml up -d
+#
+# The FastGPT UI is bound to localhost only by default so it is not exposed by VanBlog's public Caddy entry.
+# Server-to-FastGPT traffic stays on the internal compose network via http://fastgpt-app:3000.
+# The validated FastGPT images below are mirrored to `kevinchina/deeplearning` as long-term backup tags.
+
+services:
+  fastgpt-vector:
+    image: pgvector/pgvector:0.8.0-pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${FASTGPT_VECTOR_USER:-username}
+      POSTGRES_PASSWORD: ${FASTGPT_VECTOR_PASSWORD:-password}
+      POSTGRES_DB: ${FASTGPT_VECTOR_DB:-postgres}
+    volumes:
+      - ${FASTGPT_VECTOR_DIR:-./data/fastgpt/vector}:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', '${FASTGPT_VECTOR_USER:-username}', '-d', '${FASTGPT_VECTOR_DB:-postgres}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  fastgpt-mongo:
+    image: mongo:5.0.32
+    restart: unless-stopped
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${FASTGPT_MONGO_USERNAME:-myusername}
+      MONGO_INITDB_ROOT_PASSWORD: ${FASTGPT_MONGO_PASSWORD:-mypassword}
+    volumes:
+      - ${FASTGPT_MONGO_DIR:-./data/fastgpt/mongo}:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongo',
+          '-u',
+          '${FASTGPT_MONGO_USERNAME:-myusername}',
+          '-p',
+          '${FASTGPT_MONGO_PASSWORD:-mypassword}',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        cat <<'JS' > /data/initReplicaSet.js
+        const status = rs.status();
+        if (!status.ok) {
+          rs.initiate({
+            _id: 'rs0',
+            members: [{ _id: 0, host: 'fastgpt-mongo:27017' }]
+          });
+        }
+        JS
+        exec docker-entrypoint.sh "$@" &
+        until mongo -u ${FASTGPT_MONGO_USERNAME:-myusername} -p ${FASTGPT_MONGO_PASSWORD:-mypassword} --authenticationDatabase admin --eval "db.adminCommand('ping')" >/dev/null 2>&1; do
+          echo 'Waiting for FastGPT MongoDB to start...'
+          sleep 2
+        done
+        mongo -u ${FASTGPT_MONGO_USERNAME:-myusername} -p ${FASTGPT_MONGO_PASSWORD:-mypassword} --authenticationDatabase admin /data/initReplicaSet.js || true
+        wait $!
+
+  fastgpt-redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command: >-
+      redis-server
+      --requirepass ${FASTGPT_REDIS_PASSWORD:-mypassword}
+      --loglevel warning
+      --appendonly yes
+      --save 60 10
+      --maxmemory 2gb
+      --maxmemory-policy noeviction
+    volumes:
+      - ${FASTGPT_REDIS_DIR:-./data/fastgpt/redis}:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${FASTGPT_REDIS_PASSWORD:-mypassword}', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+  fastgpt-minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${FASTGPT_MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${FASTGPT_MINIO_SECRET_KEY:-minioadmin}
+    command: server /data --console-address ':9001'
+    ports:
+      - 127.0.0.1:${FASTGPT_MINIO_API_PORT:-9100}:9000
+      - 127.0.0.1:${FASTGPT_MINIO_CONSOLE_PORT:-9101}:9001
+    volumes:
+      - ${FASTGPT_MINIO_DIR:-./data/fastgpt/minio}:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  fastgpt-code-sandbox:
+    image: kevinchina/deeplearning:fastgpt-code-sandbox-v4.14.10
+    restart: unless-stopped
+    environment:
+      SANDBOX_TOKEN: ${FASTGPT_CODE_SANDBOX_TOKEN:-codesandbox}
+      CHECK_INTERNAL_IP: 'false'
+      SANDBOX_MAX_TIMEOUT: 60000
+      SANDBOX_MAX_MEMORY_MB: 256
+      SANDBOX_POOL_SIZE: 20
+      SANDBOX_REQUEST_MAX_COUNT: 30
+      SANDBOX_REQUEST_TIMEOUT: 60000
+      SANDBOX_REQUEST_MAX_RESPONSE_MB: 10
+      SANDBOX_REQUEST_MAX_BODY_MB: 5
+      SANDBOX_JS_ALLOWED_MODULES: lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring
+      SANDBOX_PYTHON_ALLOWED_MODULES: math,random,statistics,collections,array,itertools,functools,operator,string,re,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,enum,contextlib,pprint,numpy,pandas,matplotlib
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })",
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  fastgpt-plugin:
+    image: kevinchina/deeplearning:fastgpt-plugin-v0.5.6
+    restart: unless-stopped
+    depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+    environment:
+      AUTH_TOKEN: ${FASTGPT_PLUGIN_TOKEN:-token}
+      MONGODB_URI: mongodb://${FASTGPT_MONGO_USERNAME:-myusername}:${FASTGPT_MONGO_PASSWORD:-mypassword}@fastgpt-mongo:27017/fastgpt?authSource=admin
+      REDIS_URL: redis://default:${FASTGPT_REDIS_PASSWORD:-mypassword}@fastgpt-redis:6379
+      STORAGE_VENDOR: minio
+      STORAGE_REGION: us-east-1
+      STORAGE_ACCESS_KEY_ID: ${FASTGPT_MINIO_ACCESS_KEY:-minioadmin}
+      STORAGE_SECRET_ACCESS_KEY: ${FASTGPT_MINIO_SECRET_KEY:-minioadmin}
+      STORAGE_PUBLIC_BUCKET: ${FASTGPT_PUBLIC_BUCKET:-fastgpt-public}
+      STORAGE_PRIVATE_BUCKET: ${FASTGPT_PRIVATE_BUCKET:-fastgpt-private}
+      STORAGE_EXTERNAL_ENDPOINT: ${FASTGPT_STORAGE_EXTERNAL_ENDPOINT:-http://127.0.0.1:9100}
+      STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000
+      STORAGE_S3_FORCE_PATH_STYLE: 'true'
+      STORAGE_S3_MAX_RETRIES: 3
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      MAX_API_SIZE: 10
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  fastgpt-aiproxy-pg:
+    image: pgvector/pgvector:0.8.0-pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${FASTGPT_AIPROXY_PG_USER:-postgres}
+      POSTGRES_DB: ${FASTGPT_AIPROXY_PG_DB:-aiproxy}
+      POSTGRES_PASSWORD: ${FASTGPT_AIPROXY_PG_PASSWORD:-aiproxy}
+    volumes:
+      - ${FASTGPT_AIPROXY_PG_DIR:-./data/fastgpt/aiproxy-pg}:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', '${FASTGPT_AIPROXY_PG_USER:-postgres}', '-d', '${FASTGPT_AIPROXY_PG_DB:-aiproxy}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  fastgpt-aiproxy:
+    image: kevinchina/deeplearning:aiproxy-v0.3.5
+    restart: unless-stopped
+    depends_on:
+      fastgpt-aiproxy-pg:
+        condition: service_healthy
+    environment:
+      ADMIN_KEY: ${FASTGPT_AIPROXY_TOKEN:-token}
+      LOG_DETAIL_STORAGE_HOURS: 1
+      SQL_DSN: postgres://${FASTGPT_AIPROXY_PG_USER:-postgres}:${FASTGPT_AIPROXY_PG_PASSWORD:-aiproxy}@fastgpt-aiproxy-pg:5432/${FASTGPT_AIPROXY_PG_DB:-aiproxy}
+      RETRY_TIMES: 3
+      BILLING_ENABLED: 'false'
+      DISABLE_MODEL_CONFIG: 'true'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  fastgpt-app:
+    image: kevinchina/deeplearning:fastgpt-v4.14.10.2
+    restart: unless-stopped
+    depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-vector:
+        condition: service_healthy
+      fastgpt-redis:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+      fastgpt-code-sandbox:
+        condition: service_healthy
+      fastgpt-plugin:
+        condition: service_healthy
+      fastgpt-aiproxy:
+        condition: service_healthy
+    environment:
+      HOSTNAME: 0.0.0.0
+      FE_DOMAIN: ${FASTGPT_FE_DOMAIN:-http://127.0.0.1:3100}
+      ROOT_KEY: ${FASTGPT_ROOT_KEY:-fastgpt-change-me}
+      DEFAULT_ROOT_PSW: ${FASTGPT_ROOT_PASSWORD:-change-me-now}
+      MONGODB_URI: mongodb://${FASTGPT_MONGO_USERNAME:-myusername}:${FASTGPT_MONGO_PASSWORD:-mypassword}@fastgpt-mongo:27017/fastgpt?authSource=admin
+      DB_MAX_LINK: 5
+      REDIS_URL: redis://default:${FASTGPT_REDIS_PASSWORD:-mypassword}@fastgpt-redis:6379
+      PG_URL: postgresql://${FASTGPT_VECTOR_USER:-username}:${FASTGPT_VECTOR_PASSWORD:-password}@fastgpt-vector:5432/${FASTGPT_VECTOR_DB:-postgres}
+      STORAGE_VENDOR: minio
+      STORAGE_REGION: us-east-1
+      STORAGE_ACCESS_KEY_ID: ${FASTGPT_MINIO_ACCESS_KEY:-minioadmin}
+      STORAGE_SECRET_ACCESS_KEY: ${FASTGPT_MINIO_SECRET_KEY:-minioadmin}
+      STORAGE_PUBLIC_BUCKET: ${FASTGPT_PUBLIC_BUCKET:-fastgpt-public}
+      STORAGE_PRIVATE_BUCKET: ${FASTGPT_PRIVATE_BUCKET:-fastgpt-private}
+      STORAGE_EXTERNAL_ENDPOINT: ${FASTGPT_STORAGE_EXTERNAL_ENDPOINT:-http://127.0.0.1:9100}
+      STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000
+      STORAGE_S3_FORCE_PATH_STYLE: 'true'
+      STORAGE_S3_MAX_RETRIES: 3
+      SYNC_INDEX: 1
+      TOKEN_KEY: ${FASTGPT_TOKEN_KEY:-fastgpt}
+      FILE_TOKEN_KEY: ${FASTGPT_FILE_TOKEN_KEY:-filetokenkey}
+      AES256_SECRET_KEY: ${FASTGPT_AES256_SECRET_KEY:-fastgptsecret}
+      MULTIPLE_DATA_TO_BASE64: 'true'
+      PLUGIN_BASE_URL: http://fastgpt-plugin:3000
+      PLUGIN_TOKEN: ${FASTGPT_PLUGIN_TOKEN:-token}
+      CODE_SANDBOX_URL: http://fastgpt-code-sandbox:3000
+      CODE_SANDBOX_TOKEN: ${FASTGPT_CODE_SANDBOX_TOKEN:-codesandbox}
+      AIPROXY_API_ENDPOINT: http://fastgpt-aiproxy:3000
+      AIPROXY_API_TOKEN: ${FASTGPT_AIPROXY_TOKEN:-token}
+      USE_IP_LIMIT: 'false'
+      WORKFLOW_MAX_RUN_TIMES: 1000
+      WORKFLOW_MAX_LOOP_TIMES: 100
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      CHECK_INTERNAL_IP: 'false'
+      UPLOAD_FILE_MAX_SIZE: 1000
+      UPLOAD_FILE_MAX_AMOUNT: 1000
+      LLM_REQUEST_TRACKING_RETENTION_HOURS: 6
+      ALLOWED_ORIGINS: ${FASTGPT_ALLOWED_ORIGINS:-}
+      MAX_HTML_TRANSFORM_CHARS: 1000000
+    volumes:
+      - ./docker/fastgpt/config.json:/app/data/config.json:ro
+    ports:
+      - 127.0.0.1:${FASTGPT_HTTP_PORT:-3100}:3000
+    expose:
+      - '3000'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  fastgpt-bootstrap:
+    image: mongo:5.0.32
+    restart: 'no'
+    depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-app:
+        condition: service_healthy
+    environment:
+      FASTGPT_MONGO_USERNAME: ${FASTGPT_MONGO_USERNAME:-myusername}
+      FASTGPT_MONGO_PASSWORD: ${FASTGPT_MONGO_PASSWORD:-mypassword}
+      FASTGPT_FREE_PLAN_POINTS: ${FASTGPT_FREE_PLAN_POINTS:-100}
+      FASTGPT_FREE_PLAN_DURATION_DAYS: ${FASTGPT_FREE_PLAN_DURATION_DAYS:-30}
+    volumes:
+      - ./docker/fastgpt/bootstrap-team-free-plan.js:/bootstrap-team-free-plan.js:ro
+    entrypoint:
+      - bash
+      - -lc
+      - |
+        mongosh "mongodb://${FASTGPT_MONGO_USERNAME:-myusername}:${FASTGPT_MONGO_PASSWORD:-mypassword}@fastgpt-mongo:27017/admin?authSource=admin" /bootstrap-team-free-plan.js

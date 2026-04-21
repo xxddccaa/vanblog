@@ -46,6 +46,13 @@ describe('DraftController', () => {
       generateSearchIndex: jest.fn(),
       ...overrides.searchIndexProvider,
     };
+    const aiQaProvider = {
+      syncDraftById: jest.fn().mockResolvedValue({ action: 'updated' }),
+      syncArticleById: jest.fn().mockResolvedValue({ action: 'updated' }),
+      syncDocumentById: jest.fn().mockResolvedValue({ action: 'updated' }),
+      deleteSource: jest.fn().mockResolvedValue({ deleted: true }),
+      ...overrides.aiQaProvider,
+    };
 
     return {
       controller: new DraftController(
@@ -55,12 +62,14 @@ describe('DraftController', () => {
         pipelineProvider as any,
         {} as any,
         searchIndexProvider as any,
+        aiQaProvider as any,
       ),
       draftProvider,
       articleProvider,
       isrProvider,
       pipelineProvider,
       searchIndexProvider,
+      aiQaProvider,
     };
   };
 
@@ -78,7 +87,7 @@ describe('DraftController', () => {
   });
 
   it('updates a draft when the route param is a string id', async () => {
-    const { controller, draftProvider, pipelineProvider, searchIndexProvider } = createController();
+    const { controller, draftProvider, pipelineProvider, searchIndexProvider, aiQaProvider } = createController();
 
     const result = await controller.update(
       '80' as any,
@@ -104,10 +113,11 @@ describe('DraftController', () => {
       '更新草稿触发搜索索引同步',
       500,
     );
+    expect(aiQaProvider.syncDraftById).toHaveBeenCalledWith(80, 'draft-update');
   });
 
   it('publishes drafts without rebuilding tags again and only refreshes tag pages', async () => {
-    const { controller, draftProvider, articleProvider, isrProvider, pipelineProvider } =
+    const { controller, draftProvider, articleProvider, isrProvider, pipelineProvider, aiQaProvider } =
       createController();
 
     const result = await controller.publish(
@@ -132,5 +142,7 @@ describe('DraftController', () => {
       'afterUpdateArticle',
       expect.objectContaining({ id: 81 }),
     );
+    expect(aiQaProvider.deleteSource).toHaveBeenCalledWith('draft', '80', 'draft-publish-delete');
+    expect(aiQaProvider.syncArticleById).toHaveBeenCalledWith(81, 'draft-publish-article');
   });
 });

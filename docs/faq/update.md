@@ -12,6 +12,17 @@ order: 3
 
 如果你需要精确回滚，请切换到 `docker-compose.image.yml`，再把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成目标版本。
 
+### latest 一文件 + AI
+
+`docker-compose.latest.ai.yml` 同样不会记录历史版本。
+
+如果你需要精确回滚，请切换到 `docker-compose.image.yml`，并按需叠加：
+
+- `docker-compose.ai-qa.yml`
+- `docker-compose.fastgpt.yml`
+
+然后把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成目标版本。
+
 ### 锁版镜像部署
 
 把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后执行：
@@ -29,6 +40,14 @@ docker compose -f docker-compose.image.yml up -d
 git checkout <tag-or-commit>
 docker compose up -d --build
 ```
+
+## 升级后 AI 工作台异常怎么办
+
+先分清问题是在主栈，还是只在 AI overlay：
+
+- 如果 `/admin`、前台、评论都正常，只是 `/admin/ai` 异常，优先排查 FastGPT 连接和 override
+- 如果只是想先恢复博客主栈，可先移除 `docker-compose.ai-qa.yml` / `docker-compose.fastgpt.yml`
+- 如果 bundled FastGPT 是旧数据卷，记得检查 `fastgpt-bootstrap` 是否已经修复 `team_subscriptions`
 
 ## docker 镜像拉取慢
 

@@ -5,9 +5,10 @@ ENV CI=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 ENV npm_config_playwright_skip_browser_download=true
 ENV npm_config_devdir=/tmp/node-gyp
+ARG ALPINE_MIRROR_HOST=""
 WORKDIR /app
 
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
+RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi \
     && apk add --no-cache --update python3 make g++ tzdata wget unzip curl nss-tools libwebp-tools \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \

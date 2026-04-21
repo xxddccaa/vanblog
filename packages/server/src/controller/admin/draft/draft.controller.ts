@@ -22,6 +22,7 @@ import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 import { DocumentProvider } from 'src/provider/document/document.provider';
 import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
+import { AiQaProvider } from 'src/provider/ai-qa/ai-qa.provider';
 
 @ApiTags('draft')
 @UseGuards(...AdminGuard)
@@ -35,7 +36,14 @@ export class DraftController {
     private readonly pipelineProvider: PipelineProvider,
     private readonly documentProvider: DocumentProvider,
     private readonly searchIndexProvider: SearchIndexProvider,
+    private readonly aiQaProvider: AiQaProvider,
   ) {}
+
+  private syncAiQaAsync(task: Promise<any>, reason: string) {
+    void task.catch((error) => {
+      console.error(`[AI问答] ${reason} 失败:`, error?.message || error);
+    });
+  }
 
   private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
     const parsed = parseInt(String(value ?? ''), 10);
@@ -131,6 +139,7 @@ export class DraftController {
     const updated = await this.draftProvider.findById(draftId);
     this.pipelineProvider.dispatchEvent('afterUpdateDraft', updated);
     this.searchIndexProvider.generateSearchIndex('更新草稿触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.syncDraftById(draftId, 'draft-update'), '草稿更新同步 AI 问答知识');
     return {
       statusCode: 200,
       data,
@@ -154,6 +163,7 @@ export class DraftController {
     const data = await this.draftProvider.create(createDto);
     this.pipelineProvider.dispatchEvent('afterUpdateDraft', data);
     this.searchIndexProvider.generateSearchIndex('创建草稿触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.syncDraftById(data.id, 'draft-create'), '草稿创建同步 AI 问答知识');
     return {
       statusCode: 200,
       data,
@@ -212,6 +222,8 @@ export class DraftController {
     this.pipelineProvider.dispatchEvent('afterUpdateArticle', data);
 
     this.refreshTagPagesAsync('草稿发布');
+    this.syncAiQaAsync(this.aiQaProvider.deleteSource('draft', String(draftId), 'draft-publish-delete'), '草稿发布后移除草稿知识');
+    this.syncAiQaAsync(this.aiQaProvider.syncArticleById(data.id, 'draft-publish-article'), '草稿发布后同步文章知识');
 
     return {
       statusCode: 200,
@@ -231,6 +243,7 @@ export class DraftController {
     const data = await this.draftProvider.deleteById(draftId);
     this.pipelineProvider.dispatchEvent('deleteDraft', toDeleteDraft);
     this.searchIndexProvider.generateSearchIndex('删除草稿触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.deleteSource('draft', String(draftId), 'draft-delete'), '草稿删除同步 AI 问答知识');
     return {
       statusCode: 200,
       data,
@@ -297,6 +310,8 @@ export class DraftController {
     // 删除原草稿
     await this.draftProvider.deleteById(id);
     this.searchIndexProvider.generateSearchIndex('草稿转文档触发搜索索引同步', 500);
+    this.syncAiQaAsync(this.aiQaProvider.deleteSource('draft', String(draftId), 'draft-convert-to-document-delete'), '草稿转文档后移除草稿知识');
+    this.syncAiQaAsync(this.aiQaProvider.syncDocumentById(document.id, 'draft-convert-to-document-create'), '草稿转文档后同步文档知识');
 
     return {
       statusCode: 200,

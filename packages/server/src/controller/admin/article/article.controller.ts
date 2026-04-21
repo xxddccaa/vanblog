@@ -18,6 +18,7 @@ import { ArticleProvider } from 'src/provider/article/article.provider';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
+import { AiQaProvider } from 'src/provider/ai-qa/ai-qa.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 @ApiTags('article')
 @ApiToken
@@ -28,6 +29,7 @@ export class ArticleController {
     private readonly articleProvider: ArticleProvider,
     private readonly isrProvider: ISRProvider,
     private readonly pipelineProvider: PipelineProvider,
+    private readonly aiQaProvider: AiQaProvider,
   ) {}
 
   private normalizePositiveInt(value: string | number | undefined, fallback: number, max: number) {
@@ -36,6 +38,12 @@ export class ArticleController {
       return fallback;
     }
     return Math.min(parsed, max);
+  }
+
+  private syncAiQaAsync(task: Promise<any>, reason: string) {
+    void task.catch((error) => {
+      console.error(`[AI问答] ${reason} 失败:`, error?.message || error);
+    });
   }
 
   private sanitizeArticlePayloadForRequester(request: any, payload: any) {
@@ -164,6 +172,7 @@ export class ArticleController {
     this.isrProvider.activeArticleById(articleId, 'update', beforeObj);
 
     this.refreshTagPagesAsync('文章更新');
+    this.syncAiQaAsync(this.aiQaProvider.syncArticleById(articleId, 'article-update'), '文章更新同步 AI 问答知识');
 
     return {
       statusCode: 200,
@@ -208,6 +217,7 @@ export class ArticleController {
     this.isrProvider.activeArticleById(data.id, 'create');
 
     this.refreshTagPagesAsync('文章创建');
+    this.syncAiQaAsync(this.aiQaProvider.syncArticleById(data.id, 'article-create'), '文章创建同步 AI 问答知识');
 
     return {
       statusCode: 200,
@@ -249,6 +259,7 @@ export class ArticleController {
     this.isrProvider.activeArticleById(articleId, 'delete', beforeObj);
 
     this.refreshTagPagesAsync('文章删除');
+    this.syncAiQaAsync(this.aiQaProvider.deleteSource('article', String(articleId), 'article-delete'), '文章删除同步 AI 问答知识');
 
     return {
       statusCode: 200,

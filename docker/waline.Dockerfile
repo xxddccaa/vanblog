@@ -2,6 +2,7 @@
 FROM node:24.14.1-alpine AS runner
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app/waline
+ARG ALPINE_MIRROR_HOST=""
 ARG VANBLOG_IMAGE_NAME="vanblog-waline"
 ARG VANBLOG_IMAGE_VERSION="dev"
 ARG VANBLOG_IMAGE_ID="local"
@@ -12,7 +13,7 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.version="${VANBLOG_IMAGE_VERSION}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories \
+RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi \
     && apk add --no-cache --update tzdata curl postgresql-client python3 py3-setuptools make g++ \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
