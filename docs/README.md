@@ -11,6 +11,10 @@ actions:
     type: primary
 
   - text: 🤖 AI 工作台
+    link: /guide/ai-workspace.html
+    type: secondary
+
+  - text: 📚 AI / FastGPT 清单
     link: /ai-qa-fastgpt.html
     type: secondary
 

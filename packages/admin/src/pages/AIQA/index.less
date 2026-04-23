@@ -26,7 +26,11 @@
 
 .aiqaPage {
   --aiqa-page-bg: linear-gradient(135deg, #f7fbff 0%, #eef6ff 48%, #f9fcf6 100%);
-  --aiqa-hero-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(240, 247, 255, 0.98) 100%);
+  --aiqa-hero-bg: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(240, 247, 255, 0.98) 100%
+  );
   --aiqa-panel-bg: rgba(255, 255, 255, 0.92);
   --aiqa-panel-bg-strong: rgba(255, 255, 255, 0.98);
   --aiqa-border: rgba(15, 23, 42, 0.08);
@@ -258,6 +262,12 @@
 
 .chatWorkbench,
 .opsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.terminalWorkbench {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -516,6 +526,105 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.terminalIntroGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.terminalFactCard {
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid var(--aiqa-border);
+  background: var(--aiqa-panel-bg-strong);
+  box-shadow: var(--aiqa-shadow-soft);
+}
+
+.terminalFactLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--aiqa-text-secondary);
+  font-size: 12px;
+}
+
+.terminalFactValue {
+  margin-top: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.terminalToolStrip {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--aiqa-border);
+}
+
+.terminalToolStripHead,
+.terminalFrameHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.terminalToolTags {
+  margin-top: 14px;
+}
+
+.terminalToolTag {
+  background: var(--aiqa-soft-fill) !important;
+  border-color: var(--aiqa-border) !important;
+  color: var(--aiqa-text-main);
+}
+
+.terminalEmptyState,
+.terminalDisabledState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.terminalStateIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--aiqa-hero-accent);
+  background: var(--aiqa-hero-accent-soft);
+}
+
+.terminalHintAlert {
+  width: 100%;
+  border-radius: 16px;
+}
+
+.terminalFrameHead {
+  margin-bottom: 16px;
+}
+
+.terminalFrameWrap {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid var(--aiqa-border);
+  background: #070b12;
+  box-shadow: var(--aiqa-shadow-soft);
+}
+
+.terminalFrame {
+  display: block;
+  width: 100%;
+  min-height: 720px;
+  border: none;
+  background: #070b12;
 }
 
 .chatSessionHeader,
@@ -932,6 +1041,52 @@
   margin-top: 8px;
 }
 
+.workflowStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.workflowStep {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--aiqa-border);
+  background: var(--aiqa-panel-bg-strong);
+  box-shadow: var(--aiqa-shadow-soft);
+}
+
+.workflowStepIndex,
+.stepIndex {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--aiqa-hero-accent-soft);
+  color: var(--aiqa-hero-accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.workflowStepTitle {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.workflowHint {
+  margin-top: 12px;
+  color: var(--aiqa-text-secondary);
+  line-height: 1.75;
+}
+
 .opsActionRow {
   justify-content: flex-end;
 }
@@ -1074,6 +1229,92 @@
   min-width: 0;
 }
 
+.stepPanel {
+  margin-top: 22px;
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid var(--aiqa-border);
+  background: var(--aiqa-panel-bg-strong);
+  box-shadow: var(--aiqa-shadow-soft);
+}
+
+.stepHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.stepHeaderMain,
+.stepCopy {
+  display: flex;
+  gap: 14px;
+}
+
+.stepHeaderMain {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.stepCopy {
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stepTitle {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.stepHint {
+  color: var(--aiqa-text-secondary);
+  line-height: 1.75;
+}
+
+.stepActions {
+  justify-content: flex-end;
+}
+
+.stepStatusRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.stepSectionDivider {
+  margin: 18px 0 14px;
+  padding-top: 18px;
+  border-top: 1px solid var(--aiqa-border);
+  color: var(--aiqa-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.statusSubsection {
+  margin-top: 18px;
+}
+
+.statusSubsectionHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.statusSubsectionTitle {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .formSection {
   margin-top: 24px;
   padding-top: 24px;
@@ -1201,7 +1442,11 @@
   .chatSessionHeader,
   .chatComposerHead,
   .modelPaneHeader,
-  .extensionBoxHeader {
+  .extensionBoxHeader,
+  .stepHeader,
+  .statusSubsectionHead,
+  .terminalToolStripHead,
+  .terminalFrameHead {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1219,7 +1464,9 @@
 
   .kpiGrid,
   .opsMetricGrid,
-  .modelDeck {
+  .modelDeck,
+  .workflowStrip,
+  .terminalIntroGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1262,12 +1509,15 @@
   .signalPanel,
   .extensionBox,
   .modelPane,
-  .settingToggleCard {
+  .settingToggleCard,
+  .stepPanel {
     padding: 18px;
   }
 
   .kpiGrid,
-  .opsMetricGrid {
+  .opsMetricGrid,
+  .workflowStrip,
+  .terminalIntroGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1287,7 +1537,9 @@
   .chatPromptBar,
   .settingToggleCard,
   .extensionBox,
-  .modelPane {
+  .modelPane,
+  .stepPanel,
+  .workflowStep {
     border-radius: 18px;
   }
 
@@ -1358,6 +1610,29 @@
     gap: 6px;
   }
 
+  .terminalIntroGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .workflowStrip {
+    grid-template-columns: 1fr;
+  }
+
+  .stepHeaderMain,
+  .stepCopy {
+    width: 100%;
+  }
+
+  .stepActions,
+  .stepActions :global(.ant-space-item),
+  .stepActions :global(.ant-btn) {
+    width: 100%;
+  }
+
+  .workflowStep {
+    padding: 12px 14px;
+  }
+
   .signalPanel {
     grid-template-columns: 1fr;
   }
@@ -1379,6 +1654,10 @@
     white-space: normal;
     text-align: left;
     line-height: 1.65;
+  }
+
+  .terminalFrame {
+    min-height: 560px;
   }
 
   .chatComposerHead {

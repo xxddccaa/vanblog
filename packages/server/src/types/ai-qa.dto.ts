@@ -203,6 +203,19 @@ export interface AiQaStatus {
   lastSyncSummary?: AiQaSyncSummary | null;
 }
 
+export interface AiQaTerminalStatus {
+  enabled: boolean;
+  entryPath: string;
+  workspacePath: string;
+  homePath: string;
+  tools: string[];
+}
+
+export interface AiQaTerminalAuthResult {
+  ok: true;
+  userId: number;
+}
+
 export type AiQaProvisionAction = 'created' | 'updated' | 'reused';
 
 export interface AiQaProvisionResource {

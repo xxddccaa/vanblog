@@ -15,3 +15,9 @@ services:
     environment:
       VAN_BLOG_FASTGPT_INTERNAL_URL: ${VAN_BLOG_FASTGPT_INTERNAL_URL:-http://fastgpt-app:3000}
       VAN_BLOG_FASTGPT_ROOT_PASSWORD: ${FASTGPT_ROOT_PASSWORD:-}
+      VANBLOG_AI_TERMINAL_ENABLED: 'true'
+    expose:
+      - '7681'
+    volumes:
+      - .:/workspace/vanblog
+      - ./data/ai-terminal/home:/app/ai-terminal-home

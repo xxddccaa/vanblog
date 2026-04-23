@@ -8,7 +8,7 @@
 - 明确多镜像发布规范，避免再回到单镜像 `kevinchina/deeplearning:vanblog-latest` 的不可追踪模式
 - 把 `v1.4.0` 引入的 AI 工作台、可选 FastGPT 部署、文档与测试规则固化下来
 
-当前代码基线已经推进到 `v1.4.1`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
+当前代码基线已经推进到 `v1.4.2`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
 
 ## 1. 发布边界
 
@@ -55,7 +55,7 @@
 3. 确认根目录 `package.json` 的版本号正确，例如 `1.4.1`，并统一成发布标签 `vX.Y.Z`。
 4. 先补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案，写清楚本版特性、与上一公开稳定版的差异，以及可直接部署的 `docker compose` 配置单。
 5. 给当前代码打版本 tag，并推送到 GitHub。
-6. 使用 `scripts/release-images.sh` 构建并推送 5 个镜像。
+6. 使用正式发版总脚本完成 5 个镜像构建、版本 tag 推送、`latest` 同步与远端校验。
 7. 发布或更新 GitHub Release 页面，并确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
 8. 记录本次版本号、Git tag、镜像 id（默认用 Git 短 SHA）、Wiki 地址、GitHub Release 地址。
 9. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。
@@ -133,6 +133,8 @@ pnpm test:full
 - 后台 `/admin/ai` 的“配置中心”会让所有管理员填写完整 `.../chat/completions` 与 `.../embeddings` 地址、Token、模型名、调用 Key
 - 如果同时提供了 `FASTGPT_ROOT_PASSWORD`，后台还可以直接“自动创建 Dataset / App / API Key”，不需要先去 FastGPT 手工录入资源 id
 - AI 工作台当前入口是 `/admin/ai`，对所有管理员开放；旧入口只作为兼容跳转
+- 如果启用了 `docker-compose.ai-qa.yml` 或 `docker-compose.latest.ai.yml`，`/admin/ai` 还会提供一个 `OpenCode 终端` tab；它复用现有 `server` 容器，不新增第六个核心 release 镜像
+- 浏览器终端的工作目录固定挂到 `/workspace/vanblog`，终端 HOME 固定挂到 `./data/ai-terminal/home`
 - 当前回答策略是“博客知识优先 + 通用知识补充”，不再要求“无引用拒答”
 - bundled FastGPT 的固定版本基线默认保持不变；只有在你主动决定升级 FastGPT 技术栈时，才重新联调并改 compose
 
@@ -189,6 +191,43 @@ bash scripts/release-images.sh
 
 ### 7.2 正式推送发布
 
+正式发版统一改成使用总脚本：
+
+```bash
+pnpm release:publish
+```
+
+等价于：
+
+```bash
+bash scripts/release-publish.sh
+```
+
+这个脚本会固定执行下面这套顺序：
+
+- 调用 `scripts/release-images.sh --push` 推送不可变 tag 与版本别名 tag
+- 再显式把 5 个服务的 `vX.Y.Z` tag 同步到 `latest`
+- 最后重新拉取远端 tag，校验 `immutable / version / latest` 三类 tag 的 `version` 与 `image-id` 标签完全一致
+
+如果要显式指定版本号和镜像 id：
+
+```bash
+bash scripts/release-publish.sh \
+  --version v1.4.1 \
+  --image-id <image-id> \
+  --repo kevinchina/deeplearning
+```
+
+正式推送时的硬规则：
+
+- 要把不可变 tag、版本别名 tag、`latest` 三套 tag 都推送并校验通过
+- 任一服务的 `latest` 未同步成功，整个发版视为失败
+- 不再允许“版本 tag 已推，但 `latest` 另行手工补推且无人校验”的流程
+
+### 7.3 底层镜像脚本
+
+`scripts/release-images.sh` 继续保留，但它只作为底层镜像构建/推送原语使用：
+
 ```bash
 pnpm release:images:push
 ```
@@ -199,25 +238,20 @@ pnpm release:images:push
 bash scripts/release-images.sh --push
 ```
 
-如果要显式指定版本号和镜像 id：
+它仍适合：
+
+- 单独构建镜像
+- 单独推版本 tag
+- 调试底层镜像构建参数
+
+但以后正式对外发版默认不要直接停在这一步，而是要通过 `scripts/release-publish.sh` 收口。
+
+版本文档、Wiki、GitHub Release 中给用户展示的 compose 示例，默认仍写版本别名 tag，例如 `kevinchina/deeplearning:vanblog-caddy-v1.4.1`。
+
+### 7.4 常用参数
 
 ```bash
-bash scripts/release-images.sh \
-  --version v1.4.1 \
-  --image-id <image-id> \
-  --repo kevinchina/deeplearning \
-  --push
-```
-
-正式推送时的约定：
-
-- 要把不可变 tag、版本别名 tag、`latest` 三套 tag 都推送上去
-- 但版本文档、Wiki、GitHub Release 中给用户展示的 compose 示例，默认写版本别名 tag，例如 `kevinchina/deeplearning:vanblog-caddy-v1.4.1`
-
-### 7.3 常用参数
-
-```bash
-bash scripts/release-images.sh --help
+bash scripts/release-publish.sh --help
 ```
 
 常见参数：
@@ -225,10 +259,125 @@ bash scripts/release-images.sh --help
 - `--version <vX.Y.Z>`：手动指定发布版本
 - `--image-id <id>`：手动指定镜像 id
 - `--repo <repo>`：修改镜像仓库名
-- `--platforms <list>`：用于 `buildx` 推送多架构镜像
-- `--push`：构建后直接推送
+- `--platforms <list>`：用于底层 `buildx` 推送多架构镜像
 - `--skip-tests`：跳过发布脚本内置的 `pnpm test:blog-flow`
 - `--skip-builds`：跳过补充构建步骤，通常只在你明确已有最新产物时使用
+- `sync-latest` / `pnpm release:latest`：版本 tag 已存在时，只重做 `latest` 同步与远端校验
+- `--dry-run`：打印将执行的发版命令，不实际执行
+
+如果你只想看底层镜像参数帮助：
+
+```bash
+bash scripts/release-images.sh --help
+```
+
+### 7.5 本机代理与镜像加速备注
+
+这台发版机已经验证过一套可复用的命令组合；如果你在本机发版，优先按下面方式执行：
+
+```bash
+export HTTP_PROXY=http://127.0.0.1:10829
+export HTTPS_PROXY=http://127.0.0.1:10829
+export ALL_PROXY=http://127.0.0.1:10829
+export ALPINE_MIRROR_HOST=mirrors.aliyun.com
+```
+
+说明：
+
+- `10829` 是这台机器当前可用的本地代理端口
+- `ALPINE_MIRROR_HOST=mirrors.aliyun.com` 会把 `server` / `website` / `waline` 镜像里的 Alpine 软件源替换成阿里云镜像，明显降低 `apk add` 阶段卡死或超时的概率
+- 如果只是想确认 5 个正式 release 镜像能否构建成功，或只是准备本机推送，优先用 `--skip-tests` 先绕过脚本内置的 `pnpm test:blog-flow`
+- 如果要做完整发版门槛，仍然建议单独跑 `pnpm test:full` 或至少补跑 `pnpm test:blog-flow`
+
+本机在 `v1.4.2` 的一次成功验证命令如下：
+
+```bash
+export HTTP_PROXY=http://127.0.0.1:10829
+export HTTPS_PROXY=http://127.0.0.1:10829
+export ALL_PROXY=http://127.0.0.1:10829
+export ALPINE_MIRROR_HOST=mirrors.aliyun.com
+
+bash scripts/release-publish.sh --version v1.4.2 --skip-tests
+```
+
+这次验证成功构建出了 5 个核心镜像，并给出了可部署的 release suffix：
+
+```bash
+VANBLOG_DOCKER_REPO=kevinchina/deeplearning
+VANBLOG_RELEASE_SUFFIX=v1.4.2-0bd72d01
+```
+
+如果你先尝试“完整流程”而不是 `--skip-tests`，本机已知一个常见现象是：`pnpm test:blog-flow` 里的 `docker compose up -d --build` 可能因为 Alpine 包安装过慢触发 `ETIMEDOUT`。这不一定代表发布镜像本身构建失败；先按上面的代理 + 阿里云镜像源重试，必要时再单独执行 `--skip-tests` 验证 release build。
+
+另外，这个总脚本就是为了解决 `v1.4.2` 那次“版本 tag 已推，但 `latest` 未同步成功，导致 `docker-compose.latest.ai.yml` 继续拉到旧版镜像”的问题。以后如果版本 tag 已经存在，但 `latest` 漏推，直接执行：
+
+```bash
+pnpm release:latest --version v1.4.2 --image-id <image-id>
+```
+
+或：
+
+```bash
+bash scripts/release-publish.sh sync-latest --version v1.4.2 --image-id <image-id>
+```
+
+不要再手工逐条 `docker tag` / `docker push`。
+
+### 7.6 正式发版闭环清单
+
+以后无论是人工还是 AI 代理，只要是“正式发布一个版本”，都按下面顺序做，不要只停在镜像推送：
+
+1. 确认工作区干净：`git status --short` 应为空，至少不能有会进入本次版本的未提交改动。
+2. 把根目录 `package.json` 版本改成目标版本，例如 `1.4.2`。
+3. 补齐版本说明：`docs/releases/vX.Y.Z.md`。
+4. 提交本次版本对应代码，确保 `git rev-parse --short=8 HEAD` 就是你要发布的源码快照。
+5. 打注释 tag 并推送：
+
+```bash
+git tag -a v1.4.2 -m "v1.4.2"
+git push origin v1.4.2
+```
+
+6. 执行正式镜像发布：
+
+```bash
+pnpm release:publish
+```
+
+如果本机网络条件不好，可先导出本机代理和镜像源，再执行：
+
+```bash
+export HTTP_PROXY=http://127.0.0.1:10829
+export HTTPS_PROXY=http://127.0.0.1:10829
+export ALL_PROXY=http://127.0.0.1:10829
+export ALPINE_MIRROR_HOST=mirrors.aliyun.com
+pnpm release:publish
+```
+
+7. 更新 GitHub Wiki，对应页面名固定为 `Release-vX.Y.Z`。
+8. 用 `gh release create` 或 `gh release edit` 发布 GitHub Release，并把 `docs/releases/vX.Y.Z.md` 里的主要内容整理进去。
+9. 在最终记录里写明：
+   - Git tag：`vX.Y.Z`
+   - image id：`git rev-parse --short=8 HEAD`
+   - 部署仓库：`VANBLOG_DOCKER_REPO`
+   - 部署后缀：`VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>`
+
+推荐的 GitHub Release 命令模板：
+
+```bash
+gh release create v1.4.2 \
+  --title "v1.4.2" \
+  --notes-file docs/releases/v1.4.2.md
+```
+
+### 7.7 异常场景处理
+
+下面这些场景要明确区分，不要混着做：
+
+- 如果 `package.json` 还是旧版本，但你用了 `--version vX.Y.Z`，那只是“强制指定镜像标签”，不代表版本元数据已经完整。
+- 如果工作区是脏的，可以临时验证镜像构建，甚至在紧急情况下先把镜像推上去；但在补齐 commit / tag / release 之前，这个版本仍然不算完整正式版。
+- 如果你已经从脏工作区推过一次镜像，而后续又补了文档、版本号或其他源码改动，就必须从最终 commit 重新执行一次 `pnpm release:publish`，拿到和 Git tag 一致的新 `image-id`。
+- 如果版本 tag 已存在、镜像版本 tag 也存在，只是 `latest` 漏同步，才使用 `pnpm release:latest`；不要把它当成完整发版命令。
 
 ## 8. 文档与版本说明要求
 
@@ -394,7 +543,7 @@ docker compose -f docker-compose.image.yml up -d
 5. 发版命令默认使用：
 
 ```bash
-bash scripts/release-images.sh --push
+bash scripts/release-publish.sh
 ```
 
 6. 部署到服务器时默认使用：
@@ -415,6 +564,7 @@ pnpm test:full
 11. 除了镜像发布外，还要同步维护当前版本的 Wiki / release note，并确保其中的 compose 配置单与当前版本一致。
 12. 如果使用 GitHub Wiki，默认通过 `gh repo clone <owner>/<repo>.wiki` 拉取并提交，不要在浏览器里手工改完后忘记同步本地文档。
 13. 如果创建 GitHub Release，优先使用 `gh release create` 或 `gh release edit`，并确保 Release 文案中的镜像 tag、Wiki 链接、版本说明链接都已更新。
+14. 如果发现版本 tag 已推但 `latest` 漏同步，默认使用 `pnpm release:latest`，不要手工逐条 `docker tag` / `docker push`。
 
 ## 13. GitHub Actions 说明
 
@@ -429,7 +579,7 @@ pnpm test:full
 
 因此：
 
-- 正式发布统一使用本地命令：`pnpm release:images:push`
+- 正式发布统一使用本地命令：`pnpm release:publish`
 - 当前仅保留 PR 级别的普通代码校验；向 GitHub 推送版本 tag 不应再触发远端镜像发布流程
 
 ## 14. 常用命令速查
@@ -453,11 +603,14 @@ pnpm test:full
 # 本地构建镜像
 pnpm release:images
 
-# 构建并推送镜像
-pnpm release:images:push
+# 正式发版
+pnpm release:publish
+
+# 只补 latest 别名
+pnpm release:latest
 
 # 用发布镜像部署
 VANBLOG_DOCKER_REPO=kevinchina/deeplearning \
-VANBLOG_RELEASE_SUFFIX=v1.4.1-<image-id> \
+VANBLOG_RELEASE_SUFFIX=v1.4.2-<image-id> \
 docker compose -f docker-compose.image.yml up -d
 ```

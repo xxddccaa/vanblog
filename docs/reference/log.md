@@ -31,7 +31,7 @@ docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml -f docker
 
 重点看：
 
-- `server`：AI 工作台接口报错、会话读写、知识同步报错
+- `server`：AI 工作台接口报错、会话读写、知识同步报错，以及浏览器终端 / Wetty 启动日志
 - `fastgpt-app`：Dataset / App / API Key 创建异常、模型调用异常
 - `fastgpt-bootstrap`：旧数据卷 free plan 修复情况
 

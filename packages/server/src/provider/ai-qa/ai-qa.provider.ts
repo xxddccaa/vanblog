@@ -470,7 +470,7 @@ export class AiQaProvider {
         this.getFastgptEndpoint('/api/support/user/account/loginByPassword'),
         {
           username: 'root',
-          password: rootPassword,
+          password: createHash('sha256').update(rootPassword).digest('hex'),
           code,
           language: 'zh-CN',
         },

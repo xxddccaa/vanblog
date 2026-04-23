@@ -131,7 +131,9 @@ docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml -f docker
 - `博客问答`：管理员共享历史会话、继续追问、删除 / 重命名
 - `配置中心`：填写 `Dataset ID`、`App ID`、`API Key`、`/chat/completions`、`/embeddings` 等配置
 
-完整说明见：[AI 工作台 / FastGPT 操作清单](../ai-qa-fastgpt.md)
+推荐先看：[AI 工作台使用指南](./ai-workspace.md)
+
+运维、compose 组合、排障与 bundled FastGPT 结构说明见：[AI 工作台 / FastGPT 操作清单](../ai-qa-fastgpt.md)
 
 ## 初始化完成后你可以访问
 

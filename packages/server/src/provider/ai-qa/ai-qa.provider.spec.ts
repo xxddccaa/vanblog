@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { createHash } from 'crypto';
 import { config } from 'src/config';
 import { AiQaProvider } from './ai-qa.provider';
 
@@ -985,7 +986,7 @@ describe('AiQaProvider', () => {
       'http://fastgpt-app:3000/api/support/user/account/loginByPassword',
       {
         username: 'root',
-        password: 'change-me-now',
+        password: createHash('sha256').update('change-me-now').digest('hex'),
         code: 'login-code',
         language: 'zh-CN',
       },

@@ -17,10 +17,10 @@ import styles from './index.less';
 const { Paragraph, Text } = Typography;
 
 const suggestions = [
-  '请概括一下我博客里关于无人机巡检的内容',
-  '总结我博客里和相机模型相关的研究记录',
-  '我博客里写过哪些关于网络爬虫和信息提取的内容',
-  '整理一下我博客里涉及 MPC 与机器学习结合的文章线索',
+  '帮我总结一下这个博客最近主要写了哪些内容',
+  '我有哪些草稿适合整理成正式文章',
+  '这个博客里提到过哪些和某个关键词相关的内容',
+  '根据我现有的文章内容，接下来还可以补哪些主题',
 ];
 
 const formatSourceScope = (counts = {}) =>
@@ -278,7 +278,7 @@ export default function ChatTab(props) {
                   <div className={styles.chatEmptyText}>
                     {activeConversation
                       ? '继续补充追问后，新的往返会直接追加到这条共享历史里。'
-                      : '可以围绕某篇文章、某个研究主题、某段草稿或某类技术关键词发问，让 AI 从博客知识中整理答案。'}
+                      : '可以围绕某篇文章、某个主题、某条草稿、某个标签或某个关键词发问，让 AI 先从博客已有内容里整理答案。'}
                   </div>
                   {!activeConversation ? (
                     <Space wrap className={styles.chatSuggestionRow}>
@@ -425,7 +425,7 @@ export default function ChatTab(props) {
           <div className={styles.chatPromptBar}>
             <div className={styles.chatPromptBarTitle}>提问建议</div>
             <div className={styles.chatPromptBarText}>
-              直接问某篇文章、某个研究方向、某类关键词或某份草稿内容即可；如果问题超出博客已有记录，AI 也会明确区分博客事实与通用补充。
+              直接问某篇文章、某个主题、某类关键词、某份草稿或“最近写了什么”这类整理型问题即可；如果问题超出博客已有记录，AI 会尽量区分博客事实和通用补充。
             </div>
           </div>
 
@@ -441,7 +441,7 @@ export default function ChatTab(props) {
                 value={question}
                 disabled={conversationDetailLoading}
                 onChange={(event) => onQuestionChange(event.target.value)}
-                placeholder="例如：总结一下我博客里关于无人机巡检和相机模型的内容"
+                placeholder="例如：帮我总结一下这个博客最近写了哪些内容"
                 autoSize={{ minRows: 3, maxRows: 6 }}
                 onKeyDown={(event) => {
                   const nativeEvent = event.nativeEvent || {};

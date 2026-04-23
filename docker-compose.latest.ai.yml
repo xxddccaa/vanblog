@@ -61,12 +61,16 @@ services:
       WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
       VAN_BLOG_FASTGPT_INTERNAL_URL: ${VAN_BLOG_FASTGPT_INTERNAL_URL:-http://fastgpt-app:3000}
       VAN_BLOG_FASTGPT_ROOT_PASSWORD: ${FASTGPT_ROOT_PASSWORD:-change-me-now}
+      VANBLOG_AI_TERMINAL_ENABLED: 'true'
     volumes:
       - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
       - ${VANBLOG_ALIYUNPAN_CONFIG_DIR:-./aliyunpan/config}:/root/.config/aliyunpan
+      - .:/workspace/vanblog
+      - ./data/ai-terminal/home:/app/ai-terminal-home
     expose:
       - '3000'
+      - '7681'
     healthcheck:
       test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1']
       interval: 15s
@@ -251,6 +255,7 @@ services:
     restart: unless-stopped
     command: >-
       redis-server --requirepass ${FASTGPT_REDIS_PASSWORD:-mypassword} --loglevel warning --appendonly yes --save 60 10 --maxmemory 2gb --maxmemory-policy noeviction
+
 
     volumes:
       - ${FASTGPT_REDIS_DIR:-./data/fastgpt/redis}:/data

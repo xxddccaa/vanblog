@@ -11,6 +11,9 @@ const composeFastgpt = fs.readFileSync('docker-compose.fastgpt.yml', 'utf8');
 const manualCompose = fs.readFileSync('tests/manual-v1.3.0/docker-compose.yaml', 'utf8');
 const caddyfile = fs.readFileSync('docker/caddy/Caddyfile', 'utf8');
 const caddyfileHttps = fs.readFileSync('docker/caddy/Caddyfile.https', 'utf8');
+const serverDockerfile = fs.readFileSync('docker/server.Dockerfile', 'utf8');
+const serverEntrypoint = fs.readFileSync('docker/server/entrypoint.sh', 'utf8');
+const serverTerminalShell = fs.readFileSync('docker/server/terminal-shell.sh', 'utf8');
 const readmeDoc = fs.readFileSync('README.md', 'utf8');
 const deployDoc = fs.readFileSync('DEPLOY.md', 'utf8');
 const releaseDoc = fs.readFileSync('RELEASE.md', 'utf8');
@@ -27,6 +30,7 @@ const referenceEnvDoc = fs.readFileSync('docs/reference/env.md', 'utf8');
 const referenceDirDoc = fs.readFileSync('docs/reference/dir.md', 'utf8');
 const referenceLogDoc = fs.readFileSync('docs/reference/log.md', 'utf8');
 const releasesIndexDoc = fs.readFileSync('docs/releases/README.md', 'utf8');
+const release142Doc = fs.readFileSync('docs/releases/v1.4.2.md', 'utf8');
 const release141Doc = fs.readFileSync('docs/releases/v1.4.1.md', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const releaseEnv = fs.readFileSync('.env.release.example', 'utf8');
@@ -207,15 +211,16 @@ test('docker compose wires cross-container control endpoints', () => {
   assert.match(composeImage, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
 });
 
-test('docs reflect the v1.4.1 AI workspace baseline and optional deployment model', () => {
-  assert.equal(packageJson.version, '1.4.1');
+test('docs reflect the v1.4.2 AI workspace baseline and optional deployment model', () => {
+  assert.equal(packageJson.version, '1.4.2');
 
-  assert.match(readmeDoc, /v1\.4\.1/);
+  assert.match(readmeDoc, /v1\.4\.2/);
   assert.match(readmeDoc, /kevinchina\/deeplearning/);
   assert.match(readmeDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(readmeDoc, /docker-compose\.fastgpt\.yml/);
   assert.match(readmeDoc, /docker-compose\.yaml/);
   assert.match(readmeDoc, /\/admin\/ai/);
+  assert.match(readmeDoc, /OpenCode 终端/);
   assert.match(readmeDoc, /docs\/ai-qa-fastgpt\.md/);
 
   assert.match(agentsDoc, /docker-compose\.ai-qa\.yml/);
@@ -228,16 +233,24 @@ test('docs reflect the v1.4.1 AI workspace baseline and optional deployment mode
   assert.doesNotMatch(aiQaDoc, /\/admin\/site\/ai-qa/);
   assert.match(aiQaDoc, /所有管理员/);
   assert.match(aiQaDoc, /共享/);
+  assert.match(aiQaDoc, /OpenCode 终端/);
   assert.match(aiQaDoc, /Dataset ID/);
   assert.match(aiQaDoc, /App ID/);
   assert.match(aiQaDoc, /Query Extension/);
+  assert.match(aiQaDoc, /data\/ai-terminal\/home/);
+  assert.match(aiQaDoc, /opencode/);
   assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
   assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-plugin-v0\.5\.6/);
   assert.match(aiQaDoc, /kevinchina\/deeplearning:aiproxy-v0\.3\.5/);
   assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-code-sandbox-v4\.14\.10/);
   assert.match(aiQaDoc, /mongo:5\.0\.32/);
 
-  assert.match(releasesIndexDoc, /v1\.4\.1/);
+  assert.match(releasesIndexDoc, /v1\.4\.2/);
+  assert.match(release142Doc, /v1\.4\.2/);
+  assert.match(release142Doc, /OpenCode 终端/);
+  assert.match(release142Doc, /docker-compose\.ai-qa\.yml/);
+  assert.match(release142Doc, /data\/ai-terminal\/home/);
+  assert.match(release142Doc, /pnpm release:publish/);
   assert.match(release141Doc, /v1\.4\.1/);
   assert.match(release141Doc, /\/admin\/ai/);
   assert.match(release141Doc, /docker-compose\.ai-qa\.yml/);
@@ -282,14 +295,17 @@ test('guide, faq, intro, and reference docs keep the optional AI deployment stor
 
   assert.match(referenceEnvDoc, /VAN_BLOG_FASTGPT_INTERNAL_URL/);
   assert.match(referenceEnvDoc, /FASTGPT_ROOT_PASSWORD/);
+  assert.match(referenceEnvDoc, /VANBLOG_AI_TERMINAL_ENABLED/);
   assert.match(referenceEnvDoc, /FASTGPT_FREE_PLAN_POINTS/);
   assert.match(referenceEnvDoc, /FASTGPT_FREE_PLAN_DURATION_DAYS/);
   assert.match(referenceEnvDoc, /docker-compose\.latest\.ai\.yml/);
   assert.match(referenceDirDoc, /docker-compose\.fastgpt\.yml/);
   assert.match(referenceDirDoc, /\.\/data\/fastgpt\/mongo/);
+  assert.match(referenceDirDoc, /\.\/data\/ai-terminal\/home/);
   assert.match(referenceLogDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(referenceLogDoc, /fastgpt-app/);
   assert.match(referenceLogDoc, /fastgpt-bootstrap/);
+  assert.match(referenceLogDoc, /Wetty/);
 });
 
 test('fastgpt extension stays optional and private to the compose network', () => {
@@ -301,6 +317,10 @@ test('fastgpt extension stays optional and private to the compose network', () =
     composeAiQa,
     /server:[\s\S]*VAN_BLOG_FASTGPT_ROOT_PASSWORD:\s+\$\{FASTGPT_ROOT_PASSWORD:-\}/,
   );
+  assert.match(composeAiQa, /server:[\s\S]*VANBLOG_AI_TERMINAL_ENABLED:\s+'true'/);
+  assert.match(composeAiQa, /server:[\s\S]*expose:[\s\S]*'7681'/);
+  assert.match(composeAiQa, /server:[\s\S]*\.:\/workspace\/vanblog/);
+  assert.match(composeAiQa, /server:[\s\S]*\.\/data\/ai-terminal\/home:\/app\/ai-terminal-home/);
   for (const service of [
     'fastgpt-app:',
     'fastgpt-bootstrap:',
@@ -359,6 +379,10 @@ test('single-file latest ai compose bundles the latest stack with private fastgp
     composeLatestAi,
     /VAN_BLOG_FASTGPT_ROOT_PASSWORD:\s+\$\{FASTGPT_ROOT_PASSWORD:-change-me-now\}/,
   );
+  assert.match(composeLatestAi, /VANBLOG_AI_TERMINAL_ENABLED:\s+'true'/);
+  assert.match(composeLatestAi, /\.:\/workspace\/vanblog/);
+  assert.match(composeLatestAi, /\.\/data\/ai-terminal\/home:\/app\/ai-terminal-home/);
+  assert.match(composeLatestAi, /expose:[\s\S]*'7681'/);
   assert.match(composeLatestAi, /127\.0\.0\.1:\$\{FASTGPT_HTTP_PORT:-3100\}:3000/);
   assert.match(composeLatestAi, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
   assert.match(composeLatestAi, /kevinchina\/deeplearning:fastgpt-plugin-v0\.5\.6/);
@@ -447,13 +471,53 @@ test('release env example and deploy guide document optional Cloudflare purge cr
 test('caddy routes requests to the split services', () => {
   assert.match(caddyfile, /http:\/\/ \{/);
   assert.match(caddyfile, /reverse_proxy server:3000/);
+  assert.match(caddyfile, /forward_auth server:3000/);
+  assert.match(caddyfile, /reverse_proxy server:7681/);
   assert.match(caddyfile, /reverse_proxy website:3001/);
   assert.match(caddyfile, /reverse_proxy admin:3002/);
   assert.match(caddyfile, /reverse_proxy waline:8360/);
   assert.match(caddyfile, /handle \/api\/comment\*/);
   assert.match(caddyfile, /redir @adminNoSlash \/admin\/ 308/);
+  assert.match(caddyfile, /redir @adminAiTerminalSlash \/admin\/ai-terminal 308/);
   assert.match(caddyfile, /rewrite \* \/admin\//);
   assert.match(caddyfile, /handle \/admin\*/);
+});
+
+test('caddy protects the ai terminal route before the generic admin handler in both configs', () => {
+  for (const file of [caddyfile, caddyfileHttps]) {
+    const terminalIndex = file.indexOf('handle /admin/ai-terminal*');
+    const adminIndex = file.indexOf('handle /admin*');
+    assert.ok(terminalIndex > -1, 'missing ai terminal route');
+    assert.ok(adminIndex > -1, 'missing generic admin route');
+    assert.ok(terminalIndex < adminIndex, 'ai terminal route must precede generic admin route');
+    assert.match(file, /forward_auth server:3000 \{[\s\S]*\/api\/admin\/ai-qa\/terminal\/auth/);
+  }
+});
+
+test('server image bakes in the ai terminal toolchain and supervised startup', () => {
+  assert.match(
+    serverDockerfile,
+    /apk add[\s\S]*bash[\s\S]*git[\s\S]*py3-pip[\s\S]*ripgrep[\s\S]*tmux/,
+  );
+  assert.match(serverDockerfile, /npm install -g opencode-ai wetty/);
+  assert.match(
+    serverDockerfile,
+    /COPY docker\/server\/terminal-shell\.sh \/app\/server\/terminal-shell\.sh/,
+  );
+  assert.match(serverDockerfile, /EXPOSE 7681/);
+  assert.match(serverEntrypoint, /wetty[\s\S]*--port 7681/);
+  assert.match(serverEntrypoint, /--base "\$\{ai_terminal_base\}"/);
+  assert.match(serverEntrypoint, /--allow-iframe/);
+  assert.match(serverEntrypoint, /wait -n "\$\{server_pid\}" "\$\{wetty_pid\}"/);
+  assert.match(
+    serverTerminalShell,
+    /workspace_dir="\$\{VANBLOG_AI_TERMINAL_WORKSPACE:-\/workspace\/vanblog\}"/,
+  );
+  assert.match(
+    serverTerminalShell,
+    /HOME="\$\{VANBLOG_AI_TERMINAL_HOME:-\/app\/ai-terminal-home\}"/,
+  );
+  assert.match(serverTerminalShell, /exec bash/);
 });
 
 test('swagger stays hidden at the caddy layer', () => {

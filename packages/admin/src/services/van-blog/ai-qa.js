@@ -1,5 +1,14 @@
 import request from '@/services/request';
 
+/**
+ * @typedef {Object} AiTerminalStatus
+ * @property {boolean} enabled
+ * @property {string} entryPath
+ * @property {string} workspacePath
+ * @property {string} homePath
+ * @property {string[]} tools
+ */
+
 export async function getAIQAConfig() {
   return request('/api/admin/ai-qa/config', {
     method: 'GET',
@@ -91,5 +100,23 @@ export async function chatWithAIQA(data) {
   return request('/api/admin/ai-qa/chat', {
     method: 'POST',
     data,
+  });
+}
+
+export async function getAIQATerminalStatus() {
+  return request('/api/admin/ai-qa/terminal/status', {
+    method: 'GET',
+  });
+}
+
+export async function openAIQATerminalSession() {
+  return request('/api/admin/ai-qa/terminal/session', {
+    method: 'POST',
+  });
+}
+
+export async function closeAIQATerminalSession() {
+  return request('/api/admin/ai-qa/terminal/session', {
+    method: 'DELETE',
   });
 }

@@ -9,7 +9,7 @@ ARG ALPINE_MIRROR_HOST=""
 WORKDIR /app
 
 RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi \
-    && apk add --no-cache --update python3 make g++ tzdata wget unzip curl nss-tools libwebp-tools \
+    && apk add --no-cache --update bash git python3 py3-pip make g++ tzdata wget unzip curl nss-tools libwebp-tools ripgrep tmux \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
@@ -18,7 +18,8 @@ RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALP
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \
-    && pnpm config set fetch-timeout 600000 -g
+    && pnpm config set fetch-timeout 600000 -g \
+    && npm install -g opencode-ai wetty@2.6.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/server/package.json ./packages/server/
@@ -61,7 +62,8 @@ COPY --from=builder /prod/server/ ./
 COPY --from=builder /app/packages/server/dist ./dist
 COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
 COPY docker/server/entrypoint.sh /app/server/entrypoint.sh
-RUN chmod +x /app/server/entrypoint.sh
+COPY docker/server/terminal-shell.sh /app/server/terminal-shell.sh
+RUN chmod +x /app/server/entrypoint.sh /app/server/terminal-shell.sh
 
 ENV NODE_ENV=production
 ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
@@ -76,4 +78,5 @@ VOLUME /var/log
 VOLUME /root/.config/aliyunpan
 
 EXPOSE 3000
-CMD ["sh", "entrypoint.sh"]
+EXPOSE 7681
+CMD ["bash", "entrypoint.sh"]

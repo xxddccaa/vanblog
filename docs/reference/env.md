@@ -24,6 +24,7 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 | `VAN_BLOG_CLOUDFLARE_ZONE_ID` | `server` | Cloudflare Zone ID；配合 `VAN_BLOG_CLOUDFLARE_API_TOKEN` 启用精准 purge | 空 |
 | `VAN_BLOG_FASTGPT_INTERNAL_URL` | `server` + AI override | FastGPT 私有地址；只能指向私网、容器网络或 localhost | `http://fastgpt-app:3000` |
 | `FASTGPT_ROOT_PASSWORD` | `server` + AI override | 让 VanBlog admin 自动登录 FastGPT root 并同步 bundled 模型 / 自动建资源 | 空 |
+| `VANBLOG_AI_TERMINAL_ENABLED` | `server` + AI override | 是否为 `/admin/ai` 启用浏览器终端；默认只应由 AI overlay 打开 | `false` |
 | `FASTGPT_FREE_PLAN_POINTS` | `fastgpt-bootstrap` | bundled FastGPT 修复旧数据卷 free plan 时的 points | `100` |
 | `FASTGPT_FREE_PLAN_DURATION_DAYS` | `fastgpt-bootstrap` | bundled FastGPT 修复旧数据卷 free plan 时的时长 | `30` |
 | `VANBLOG_STATIC_DIR` | `server` | 本地图床宿主机目录 | `./data/static` |
@@ -43,6 +44,7 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 
 - 不配置 `VAN_BLOG_FASTGPT_INTERNAL_URL` 时，默认部署不会启用 AI 工作台对 FastGPT 的连接
 - 不配置 `FASTGPT_ROOT_PASSWORD` 时，`/admin/ai` 页面里的“测试模型”仍可用，但“同步模型到 FastGPT”“自动创建 Dataset / App / API Key”不可用
+- 不配置 `VANBLOG_AI_TERMINAL_ENABLED` 时，`/admin/ai` 的 `OpenCode 终端` 只会显示“当前部署未启用”提示，不会开放浏览器终端
 - `FASTGPT_FREE_PLAN_POINTS` 与 `FASTGPT_FREE_PLAN_DURATION_DAYS` 只在你使用 `docker-compose.fastgpt.yml` 时生效
 
 ## 注意事项

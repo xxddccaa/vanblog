@@ -4,6 +4,7 @@ import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { useTab } from '@/services/van-blog/useTab';
 import { useModel } from '@umijs/max';
 import {
+  CodeOutlined,
   EditOutlined,
   MessageOutlined,
   PlusOutlined,
@@ -16,6 +17,7 @@ import { PageContainer } from '@ant-design/pro-layout';
 import { Button, Form, Input, Modal, Space, Spin, Tag, Typography, message, theme } from 'antd';
 import ConfigTab from './ConfigTab';
 import ChatTab from './ChatTab';
+import TerminalTab from './TerminalTab';
 import styles from './index.less';
 import thinstyle from '../Welcome/index.less';
 import {
@@ -29,12 +31,15 @@ import {
 } from './shared';
 import {
   chatWithAIQA,
+  closeAIQATerminalSession,
   deleteAIQAConversation,
   getAIQAConfig,
   getAIQAConversationDetail,
   getAIQAConversations,
   getAIQAStatus,
+  getAIQATerminalStatus,
   migrateLegacyAIQAResources,
+  openAIQATerminalSession,
   provisionAIQAResources,
   renameAIQAConversation,
   syncAIQAFull,
@@ -58,6 +63,12 @@ const tabs = [
     label: '配置中心',
     shortLabel: '配置',
     icon: <SettingOutlined />,
+  },
+  {
+    key: 'terminal',
+    label: 'OpenCode 终端',
+    shortLabel: '终端',
+    icon: <CodeOutlined />,
   },
 ];
 
@@ -119,6 +130,11 @@ export default function AIQA() {
   const [silentMigratingLegacy, setSilentMigratingLegacy] = useState(false);
   const [testingBundledModels, setTestingBundledModels] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [terminalStatusLoading, setTerminalStatusLoading] = useState(false);
+  const [terminalStatus, setTerminalStatus] = useState(null);
+  const [terminalConnecting, setTerminalConnecting] = useState(false);
+  const [terminalFrameKey, setTerminalFrameKey] = useState(0);
+  const [terminalFrameSrc, setTerminalFrameSrc] = useState('');
 
   const [chatting, setChatting] = useState(false);
   const [question, setQuestion] = useState('');
@@ -223,6 +239,18 @@ export default function AIQA() {
     }
   }, []);
 
+  const fetchTerminalStatus = useCallback(async () => {
+    try {
+      setTerminalStatusLoading(true);
+      const data = assertSuccessResponse(await getAIQATerminalStatus(), '获取 AI 终端状态失败');
+      setTerminalStatus(data);
+    } catch (error) {
+      message.error(error.message || '获取 AI 终端状态失败');
+    } finally {
+      setTerminalStatusLoading(false);
+    }
+  }, []);
+
   const fetchConversationList = useCallback(async ({ page = 1, append = false } = {}) => {
     const safePage = Math.max(1, Number(page) || 1);
     const loadingSetter = append ? setConversationLoadingMore : setConversationListLoading;
@@ -274,8 +302,9 @@ export default function AIQA() {
   useEffect(() => {
     fetchConfig();
     fetchStatus();
+    fetchTerminalStatus();
     fetchConversationList({ page: 1, append: false });
-  }, [fetchConfig, fetchStatus, fetchConversationList]);
+  }, [fetchConfig, fetchStatus, fetchTerminalStatus, fetchConversationList]);
 
   useEffect(() => {
     if (!shouldTriggerSilentLegacyMigration(status, legacyMigrationAttemptedRef.current)) {
@@ -614,7 +643,65 @@ export default function AIQA() {
     [activeConversation],
   );
 
+  const bootstrapTerminalSession = useCallback(async ({ openWindowRef = null } = {}) => {
+    try {
+      setTerminalConnecting(true);
+      try {
+        await closeAIQATerminalSession();
+      } catch {
+        // Ignore stale cookies so we can rotate into a fresh terminal session.
+      }
+      const data = assertSuccessResponse(await openAIQATerminalSession(), '连接 OpenCode 终端失败');
+      setTerminalStatus(data);
+      if (!data?.enabled) {
+        setTerminalFrameSrc('');
+        message.info('当前部署未启用 AI 终端');
+        return null;
+      }
+
+      const nextSrc = `${data.entryPath || '/admin/ai-terminal'}?_=${Date.now()}`;
+      setTerminalFrameKey(Date.now());
+      setTerminalFrameSrc(nextSrc);
+
+      if (openWindowRef && !openWindowRef.closed) {
+        openWindowRef.location.replace(nextSrc);
+      }
+      return data;
+    } catch (error) {
+      message.error(error.message || '连接 OpenCode 终端失败');
+      return null;
+    } finally {
+      setTerminalConnecting(false);
+    }
+  }, []);
+
+  const handleConnectTerminal = useCallback(() => {
+    bootstrapTerminalSession();
+  }, [bootstrapTerminalSession]);
+
+  const handleReconnectTerminal = useCallback(() => {
+    bootstrapTerminalSession();
+  }, [bootstrapTerminalSession]);
+
+  const handleOpenTerminalWindow = useCallback(async () => {
+    const nextWindow = window.open('about:blank', '_blank');
+    const data = await bootstrapTerminalSession({ openWindowRef: nextWindow });
+    if (!data && nextWindow && !nextWindow.closed) {
+      nextWindow.close();
+    }
+  }, [bootstrapTerminalSession]);
+
   const statusTag = useMemo(() => {
+    if (tab === 'terminal') {
+      if (!terminalStatus) {
+        return null;
+      }
+      return terminalStatus.enabled ? (
+        <Tag color="green">终端已启用</Tag>
+      ) : (
+        <Tag color="default">终端未启用</Tag>
+      );
+    }
     if (!status) {
       return null;
     }
@@ -625,13 +712,44 @@ export default function AIQA() {
       return <Tag color="green">已启用</Tag>;
     }
     return <Tag color="default">已配置但未启用</Tag>;
-  }, [status]);
+  }, [status, tab, terminalStatus]);
 
   const syncSummary = status?.lastSyncSummary;
   const sourceSummary = formatSourceBreakdown(status?.sourceCounts);
   const syncedSummary = formatSourceBreakdown(status?.syncedCounts);
 
   const overviewItems = useMemo(() => {
+    if (tab === 'terminal') {
+      return [
+        {
+          key: 'terminal',
+          label: '终端能力',
+          value: terminalStatus?.enabled ? '已启用' : '未启用',
+          sub: terminalStatus?.enabled
+            ? '复用现有 server 容器，无独立 sidecar'
+            : '需显式叠加 AI overlay 才会开放入口',
+        },
+        {
+          key: 'workspace',
+          label: '工作目录',
+          value: terminalStatus?.workspacePath || '/workspace/vanblog',
+          sub: '当前部署 / 项目目录会挂载到这里',
+        },
+        {
+          key: 'home',
+          label: '终端 HOME',
+          value: terminalStatus?.homePath || '/app/ai-terminal-home',
+          sub: 'OpenCode 配置、缓存和 shell 历史会持久化',
+        },
+        {
+          key: 'tools',
+          label: '预装工具',
+          value: terminalStatus?.tools?.slice(0, 3).join(' / ') || 'opencode / git / rg',
+          sub: 'bash、tmux、python3、pip 已开箱可用',
+        },
+      ];
+    }
+
     if (tab === 'chat') {
       return [
         {
@@ -693,9 +811,32 @@ export default function AIQA() {
         sub: status?.fastgptRootPasswordConfigured ? '可直接同步到 FastGPT' : '当前仅可测上游接口',
       },
     ];
-  }, [activeConversation, conversationTotal, sourceSummary, status, syncedSummary, tab]);
+  }, [
+    activeConversation,
+    conversationTotal,
+    sourceSummary,
+    status,
+    syncedSummary,
+    tab,
+    terminalStatus,
+  ]);
 
   const heroContent = useMemo(() => {
+    if (tab === 'terminal') {
+      return {
+        title: 'OpenCode 浏览器终端',
+        description:
+          '通过 path-scoped 会话 cookie 把浏览器内终端挂到现有 server 容器上，便于直接在当前部署目录里运行 opencode、git、rg、python3 与脚本工具。',
+        tags: [
+          { key: 'optional', color: 'blue', text: 'AI overlay 可选能力' },
+          { key: 'reuse', color: 'cyan', text: '复用 server 容器' },
+          terminalStatus?.enabled
+            ? { key: 'enabled', color: 'green', text: '终端已启用' }
+            : { key: 'disabled', color: 'default', text: '终端未启用' },
+        ],
+      };
+    }
+
     if (tab === 'chat') {
       return {
         title: '博客知识 AI 工作台',
@@ -725,7 +866,13 @@ export default function AIQA() {
           : null,
       ].filter(Boolean),
     };
-  }, [status?.bundledModelConfigured, status?.fastgptRootPasswordConfigured, syncSummary, tab]);
+  }, [
+    status?.bundledModelConfigured,
+    status?.fastgptRootPasswordConfigured,
+    syncSummary,
+    tab,
+    terminalStatus?.enabled,
+  ]);
 
   return (
     <PageContainer
@@ -770,7 +917,7 @@ export default function AIQA() {
                         新会话
                       </Button>
                     </>
-                  ) : (
+                  ) : tab === 'config' ? (
                     <>
                       <Button
                         icon={<ReloadOutlined />}
@@ -786,6 +933,25 @@ export default function AIQA() {
                         loading={savingConfig}
                       >
                         保存配置
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        icon={<ReloadOutlined />}
+                        onClick={fetchTerminalStatus}
+                        loading={terminalStatusLoading}
+                      >
+                        刷新终端状态
+                      </Button>
+                      <Button
+                        type="primary"
+                        icon={<CodeOutlined />}
+                        onClick={terminalFrameSrc ? handleReconnectTerminal : handleConnectTerminal}
+                        loading={terminalConnecting}
+                        disabled={!terminalStatus?.enabled}
+                      >
+                        {terminalFrameSrc ? '重新连接' : '连接终端'}
                       </Button>
                     </>
                   )}
@@ -827,6 +993,18 @@ export default function AIQA() {
               onSyncBundledModels={handleSyncBundledModels}
               onProvisionResources={handleProvisionResources}
               onTestBundledModels={handleTestBundledModels}
+            />
+          ) : tab === 'terminal' ? (
+            <TerminalTab
+              status={terminalStatus}
+              statusLoading={terminalStatusLoading}
+              connecting={terminalConnecting}
+              connected={Boolean(terminalFrameSrc)}
+              frameKey={terminalFrameKey}
+              frameSrc={terminalFrameSrc}
+              onConnect={handleConnectTerminal}
+              onReconnect={handleReconnectTerminal}
+              onOpenWindow={handleOpenTerminalWindow}
             />
           ) : (
             <ChatTab

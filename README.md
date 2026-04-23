@@ -1,6 +1,6 @@
 # VanBlog
 
-这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线定为 `v1.4.1`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
+这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线定为 `v1.4.2`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
 
 这版开始，仓库除了原有博客主栈，还提供一套**可选启用**的 AI 工作台能力：后台管理员可以在 `/admin/ai` 使用基于博客知识检索增强的问答，但这部分不会并入默认部署，也不会影响不需要 AI 的用户。
 
@@ -16,7 +16,7 @@
 
 ## 当前基线
 
-- 当前代码版本：`v1.4.1`
+- 当前代码版本：`v1.4.2`
 - 默认维护分支：`master`
 - 后台入口：`/admin`
 - AI 工作台入口：`/admin/ai`
@@ -175,9 +175,10 @@ docker compose -f docker-compose.image.yml -f docker-compose.ai-qa.yml -f docker
 后台使用方式：
 
 - 管理员入口：`/admin/ai`
-- 页面分为 `博客问答` 与 `配置中心` 两个 tab
+- 页面分为 `博客问答`、`配置中心`、`OpenCode 终端` 三个 tab
 - `配置中心` 用于填写对话模型、向量模型、Dataset / App / API Key 等信息
 - `博客问答` 会把历史会话落库，支持回看、继续追问、重命名、删除
+- `OpenCode 终端` 只在 AI overlay 启用时开放；它复用现有 `server` 容器，把当前部署目录挂到 `/workspace/vanblog`，并把终端 HOME 持久化到 `./data/ai-terminal/home`
 - bundled FastGPT 的完整操作、提示词策略、`/chat/completions` 与 `/embeddings` 的职责边界、版本固化说明，统一见 [`docs/ai-qa-fastgpt.md`](docs/ai-qa-fastgpt.md)
 
 ## 自动化测试
@@ -237,11 +238,11 @@ kevinchina/deeplearning
 标签示例：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v1.4.1-<image-id>
-kevinchina/deeplearning:vanblog-server-v1.4.1-<image-id>
-kevinchina/deeplearning:vanblog-website-v1.4.1-<image-id>
-kevinchina/deeplearning:vanblog-admin-v1.4.1-<image-id>
-kevinchina/deeplearning:vanblog-waline-v1.4.1-<image-id>
+kevinchina/deeplearning:vanblog-caddy-v1.4.2-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.4.2-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.4.2-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.4.2-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.4.2-<image-id>
 ```
 
 说明：
@@ -257,8 +258,11 @@ kevinchina/deeplearning:vanblog-waline-v1.4.1-<image-id>
 # 本地构建镜像
 pnpm release:images
 
-# 构建并推送镜像
-pnpm release:images:push
+# 正式发版
+pnpm release:publish
+
+# 只补 latest 别名
+pnpm release:latest
 ```
 
 详细说明请看：
@@ -266,7 +270,7 @@ pnpm release:images:push
 - [`RELEASE.md`](RELEASE.md)
 - [`DEPLOY.md`](DEPLOY.md)
 - [`docs/releases/README.md`](docs/releases/README.md)
-- [`docs/releases/v1.4.1.md`](docs/releases/v1.4.1.md)
+- [`docs/releases/v1.4.2.md`](docs/releases/v1.4.2.md)
 
 ## 文档入口
 

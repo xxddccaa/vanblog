@@ -123,6 +123,14 @@
   }
   @adminNoSlash path /admin
   redir @adminNoSlash /admin/ 308
+  @adminAiTerminalSlash path /admin/ai-terminal/
+  redir @adminAiTerminalSlash /admin/ai-terminal 308
+  handle /admin/ai-terminal* {
+    forward_auth server:3000 {
+      uri /api/admin/ai-qa/terminal/auth
+    }
+    reverse_proxy server:7681
+  }
   @adminAssets path_regexp adminAssets ^/admin/.*\.[^/]+$
   handle @adminAssets {
     reverse_proxy admin:3002

@@ -2,6 +2,10 @@
 
 这份文档描述 `v1.4.0` 开始引入的 AI 工作台，以及它与 FastGPT 的部署、配置、运维关系。
 
+如果你只是想知道后台 `/admin/ai` 该先点什么、再填什么，建议先看：
+
+- [AI 工作台使用指南](./guide/ai-workspace.md)
+
 先记住四条核心原则：
 
 - AI 工作台是**可选能力**，不会并入默认部署
@@ -11,13 +15,17 @@
 
 ## 1. 当前产品行为
 
-当前 AI 工作台分成两个 tab：
+当前 AI 工作台分成三个 tab：
 
 - `博客问答`
   - 面向管理员提问、继续追问、查看历史、重命名和删除会话
   - 每条会话会落库，后续管理员可以继续打开同一条历史
 - `配置中心`
   - 面向 FastGPT 连接、Dataset / App / API Key、bundled 模型接入与同步运维
+- `OpenCode 终端`
+  - 只在显式启用 AI overlay 时提供浏览器终端
+  - 复用现有 `server` 容器，不新增独立 terminal service
+  - `opencode`、`git`、`rg`、`python3`、`pip`、`tmux`、`bash` 已预装；provider / login / 首次配置需要进入终端后自行完成
 
 当前回答策略不是“无引用就拒答”，而是：
 
@@ -46,6 +54,8 @@
 - `docker-compose.ai-qa.yml`
   - 只给 `server` 注入 AI 工作台所需的 FastGPT 私有地址
   - 同时把 `FASTGPT_ROOT_PASSWORD` 注入 `server`
+  - 同时启用浏览器终端，暴露 `7681`，并挂载当前部署目录到 `/workspace/vanblog`
+  - 终端 HOME 会持久化到 `./data/ai-terminal/home`
   - 不会额外启动 FastGPT 容器
 - `docker-compose.fastgpt.yml`
   - 启动 bundled FastGPT 及其依赖
@@ -134,6 +144,9 @@ VAN_BLOG_FASTGPT_INTERNAL_URL=http://fastgpt-app:3000
 # 让 VanBlog admin 可以登录 FastGPT root，并同步模型 / 自动创建资源
 FASTGPT_ROOT_PASSWORD=replace-with-fastgpt-root-password
 
+# 仅在你手工覆写 compose 时才需要；仓库自带 AI overlay 会直接把它设为 true
+VANBLOG_AI_TERMINAL_ENABLED=true
+
 # 仅 bundled FastGPT 使用；用于修复旧数据卷缺失 free plan 的情况
 FASTGPT_FREE_PLAN_POINTS=100
 FASTGPT_FREE_PLAN_DURATION_DAYS=30
@@ -143,6 +156,7 @@ FASTGPT_FREE_PLAN_DURATION_DAYS=30
 
 - `VAN_BLOG_FASTGPT_INTERNAL_URL` 必须走私网、容器网络或 localhost，不要通过 VanBlog 的 Caddy 暴露到公网
 - 不配置 `FASTGPT_ROOT_PASSWORD` 时，页面里的“测试模型”仍可用，但“同步模型到 FastGPT”“自动创建 Dataset / App / API Key”不可用
+- `VANBLOG_AI_TERMINAL_ENABLED` 默认不应出现在主栈里；只有 `docker-compose.ai-qa.yml` / `docker-compose.latest.ai.yml` 这类显式 AI overlay 才会把它打开
 - `FASTGPT_FREE_PLAN_POINTS` 与 `FASTGPT_FREE_PLAN_DURATION_DAYS` 只对 `docker-compose.fastgpt.yml` 里的 `fastgpt-bootstrap` 生效
 
 ## 5. Admin 页面操作顺序
@@ -249,6 +263,16 @@ FASTGPT_FREE_PLAN_DURATION_DAYS=30
 - 历史会话支持继续打开、重命名、删除
 - 由于回答不再受“无引用拒答”限制，所以这里更适合作为“博客知识优先”的工作台，而不是绝对封闭的知识库检索器
 
+### 5.8 可选：进入 `OpenCode 终端`
+
+如果当前部署已经叠加了 `docker-compose.ai-qa.yml`，或直接使用 `docker-compose.latest.ai.yml`，`/admin/ai` 还会多一个 `OpenCode 终端` tab：
+
+- 浏览器会先通过后台接口签发一个只作用于 `/admin/ai-terminal` 路径前缀的 HttpOnly cookie
+- Caddy 再用 `forward_auth` 校验这个 cookie，然后把流量转发到 `server:7681`
+- 终端默认工作目录是 `/workspace/vanblog`
+- 终端 HOME 是 `/app/ai-terminal-home`，默认会映射到宿主机的 `./data/ai-terminal/home`
+- `opencode` 已安装，但 provider / login / 首次配置需要你进入终端后自己完成
+
 ## 6. 只需要 chat 吗，需要 embeddings 吗
 
 这两个接口的职责不一样：
@@ -275,18 +299,18 @@ FASTGPT_FREE_PLAN_DURATION_DAYS=30
 
 当前仓库 `docker-compose.fastgpt.yml` / `docker-compose.latest.ai.yml` 已固定到下面这组验证过、并备份到 `kevinchina/deeplearning` 的版本：
 
-| 服务 | 镜像 |
-| --- | --- |
-| FastGPT App | `kevinchina/deeplearning:fastgpt-v4.14.10.2` |
+| 服务         | 镜像                                                    |
+| ------------ | ------------------------------------------------------- |
+| FastGPT App  | `kevinchina/deeplearning:fastgpt-v4.14.10.2`            |
 | Code Sandbox | `kevinchina/deeplearning:fastgpt-code-sandbox-v4.14.10` |
-| Plugin | `kevinchina/deeplearning:fastgpt-plugin-v0.5.6` |
-| AIProxy | `kevinchina/deeplearning:aiproxy-v0.3.5` |
-| Vector PG | `pgvector/pgvector:0.8.0-pg15` |
-| AIProxy PG | `pgvector/pgvector:0.8.0-pg15` |
-| Mongo | `mongo:5.0.32` |
-| Redis | `redis:7.2-alpine` |
-| MinIO | `minio/minio:RELEASE.2025-09-07T16-13-09Z` |
-| Bootstrap | `mongo:5.0.32` |
+| Plugin       | `kevinchina/deeplearning:fastgpt-plugin-v0.5.6`         |
+| AIProxy      | `kevinchina/deeplearning:aiproxy-v0.3.5`                |
+| Vector PG    | `pgvector/pgvector:0.8.0-pg15`                          |
+| AIProxy PG   | `pgvector/pgvector:0.8.0-pg15`                          |
+| Mongo        | `mongo:5.0.32`                                          |
+| Redis        | `redis:7.2-alpine`                                      |
+| MinIO        | `minio/minio:RELEASE.2025-09-07T16-13-09Z`              |
+| Bootstrap    | `mongo:5.0.32`                                          |
 
 这组版本的含义是：
 
