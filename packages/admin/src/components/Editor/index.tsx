@@ -4,11 +4,11 @@ import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
 // import mermaid from '@bytemd/plugin-mermaid';
 import { customMermaidPlugin, normalizeMermaidThemeMode } from './mermaidTheme';
-import { Editor } from '@bytemd/react';
+import { Editor, Viewer } from '@bytemd/react';
 import { Spin } from 'antd';
 import 'bytemd/dist/index.css';
 import 'katex/dist/katex.css';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import '../../style/github-markdown.css';
 import '../../style/code-light.css';
 import '../../style/code-dark.css';
@@ -29,6 +29,9 @@ import { customCodeBlock } from './plugins/codeBlock';
 import { LinkTarget } from './plugins/linkTarget';
 import { customMermaidExportPlugin } from './plugins/mermaidExport';
 import { smartCodeBlock } from './plugins/smartCodeBlock';
+import { normalizeMathDelimiters } from './plugins/normalizeMathDelimiters';
+import { createRoot } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -55,6 +58,8 @@ export default function EditorComponent(props: {
   codeMaxLines?: number;
 }) {
   const { loading, setLoading } = props;
+  const previewRootRef = useRef<Root | null>(null);
+  const previewElementRef = useRef<HTMLElement | null>(null);
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
@@ -110,6 +115,35 @@ export default function EditorComponent(props: {
     ];
   }, [editorCodeMaxLines, mermaidThemeMode, setLoading]);
 
+  const overridePreview = useMemo(
+    () =>
+      (previewElement: HTMLElement, previewProps: any) => {
+        if (!previewRootRef.current || previewElementRef.current !== previewElement) {
+          previewRootRef.current?.unmount();
+          previewRootRef.current = createRoot(previewElement);
+          previewElementRef.current = previewElement;
+        }
+
+        previewRootRef.current.render(
+          <Viewer
+            value={normalizeMathDelimiters(previewProps.value)}
+            plugins={plugins}
+            sanitize={sanitize}
+            remarkRehype={previewProps.remarkRehype}
+          />,
+        );
+      },
+    [plugins],
+  );
+
+  useEffect(() => {
+    return () => {
+      previewRootRef.current?.unmount();
+      previewRootRef.current = null;
+      previewElementRef.current = null;
+    };
+  }, []);
+
   return (
     <div style={{ height: '100%' }} className={themeClass}>
       <div
@@ -124,6 +158,7 @@ export default function EditorComponent(props: {
             onChange={props.onChange}
             locale={cn}
             sanitize={sanitize}
+            overridePreview={overridePreview}
             uploadImages={async (files: File[]) => {
               if (files.length === 1) {
                 setLoading(true);

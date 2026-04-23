@@ -21,6 +21,7 @@ import '../../style/code-dark.css';
 import '../../style/custom-container.css';
 import { getMarkdownThemeId, useAdminMarkdownTheme } from '@/utils/markdownTheme';
 import './index.less';
+import { normalizeMathDelimiters } from '../Editor/plugins/normalizeMathDelimiters';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -48,6 +49,7 @@ export default function DocumentViewer(props) {
   const resolvedThemeConfig = useAdminMarkdownTheme(themeConfig);
   const lightThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownLightThemeUrl);
   const darkThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownDarkThemeUrl);
+  const normalizedValue = useMemo(() => normalizeMathDelimiters(value || ''), [value]);
   
   const plugins = useMemo(() => {
     return [
@@ -131,7 +133,7 @@ export default function DocumentViewer(props) {
     >
       <Viewer
         key={`document-viewer-${mermaidThemeMode}`}
-        value={value || ''}
+        value={normalizedValue}
         plugins={plugins}
         sanitize={sanitize}
       />

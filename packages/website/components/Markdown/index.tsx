@@ -15,6 +15,7 @@ import { LinkTarget } from "./linkTarget";
 import { Heading } from "./heading";
 import { Img } from "./img";
 import { ThemeContext } from "../../utils/themeContext";
+import { normalizeMathDelimiters } from "./normalizeMathDelimiters";
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -35,6 +36,7 @@ const sanitize = (schema) => {
 export default function ({ content, codeMaxLines = 15 }: { content: string; codeMaxLines?: number }) {
   const { theme } = useContext(ThemeContext);
   const mermaidThemeMode = normalizeMermaidThemeMode(theme);
+  const normalizedContent = useMemo(() => normalizeMathDelimiters(content), [content]);
 
   const plugins = useMemo(
     () => [
@@ -64,7 +66,7 @@ export default function ({ content, codeMaxLines = 15 }: { content: string; code
     <div id="write" className="markdown-body" data-vb-mermaid-theme={mermaidThemeMode}>
       <Viewer
         key={`markdown-viewer-${mermaidThemeMode}`}
-        value={content}
+        value={normalizedContent}
         plugins={plugins}
         remarkRehype={{ allowDangerousHtml: true }}
         sanitize={sanitize}

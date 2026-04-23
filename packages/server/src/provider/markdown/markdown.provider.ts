@@ -3,6 +3,7 @@ import MarkdownIt from 'markdown-it';
 import hljs from 'highlight.js';
 import taskLists from 'markdown-it-task-lists';
 import mk from 'markdown-it-katex';
+import { normalizeMathDelimiters } from './normalizeMathDelimiters';
 @Injectable()
 export class MarkdownProvider {
   logger = new Logger(MarkdownProvider.name);
@@ -41,7 +42,7 @@ export class MarkdownProvider {
       });
   }
   renderMarkdown(content: string) {
-    return this.md.render(content);
+    return this.md.render(normalizeMathDelimiters(content));
   }
 
   getDescription(content: string) {
