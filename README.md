@@ -1,6 +1,6 @@
 # VanBlog
 
-这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线定为 `v1.4.2`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
+这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线定为 `v1.4.3`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
 
 这版开始，仓库除了原有博客主栈，还提供一套**可选启用**的 AI 工作台能力：后台管理员可以在 `/admin/ai` 使用基于博客知识检索增强的问答，但这部分不会并入默认部署，也不会影响不需要 AI 的用户。
 
@@ -16,7 +16,7 @@
 
 ## 当前基线
 
-- 当前代码版本：`v1.4.2`
+- 当前代码版本：`v1.4.3`
 - 默认维护分支：`master`
 - 后台入口：`/admin`
 - AI 工作台入口：`/admin/ai`
@@ -238,11 +238,11 @@ kevinchina/deeplearning
 标签示例：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v1.4.2-<image-id>
-kevinchina/deeplearning:vanblog-server-v1.4.2-<image-id>
-kevinchina/deeplearning:vanblog-website-v1.4.2-<image-id>
-kevinchina/deeplearning:vanblog-admin-v1.4.2-<image-id>
-kevinchina/deeplearning:vanblog-waline-v1.4.2-<image-id>
+kevinchina/deeplearning:vanblog-caddy-v1.4.3-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.4.3-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.4.3-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.4.3-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.4.3-<image-id>
 ```
 
 说明：
@@ -270,7 +270,7 @@ pnpm release:latest
 - [`RELEASE.md`](RELEASE.md)
 - [`DEPLOY.md`](DEPLOY.md)
 - [`docs/releases/README.md`](docs/releases/README.md)
-- [`docs/releases/v1.4.2.md`](docs/releases/v1.4.2.md)
+- [`docs/releases/v1.4.3.md`](docs/releases/v1.4.3.md)
 
 ## 文档入口
 

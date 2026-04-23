@@ -1,6 +1,12 @@
 import Footer from '@/components/Footer';
 import { logoutAndRedirect } from '@/components/LogoutButton';
 import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
+import {
+  ADMIN_LOGIN_PATH,
+  handleAdminAuthExpired,
+  hasStoredAdminToken,
+  isAuthExpiredResponse,
+} from '@/utils/adminSession';
 import { getStoredUser } from '@/utils/getStoredUser';
 import {
   HomeOutlined,
@@ -31,7 +37,7 @@ import {
   resolveAdminThemeMode,
   storeAdminThemeConfig,
 } from './utils/adminTheme';
-const loginPath = '/user/login';
+const loginPath = ADMIN_LOGIN_PATH;
 const ADMIN_SIDER_COLLAPSE_STORAGE_KEY = 'vanblog.admin.sider.collapsed';
 const ADMIN_SIDER_NARROW_BREAKPOINT = 768;
 const ADMIN_DEFAULT_VIEWPORT_WIDTH = 1280;
@@ -511,13 +517,22 @@ export async function getInitialState() {
   const fetchInitData = async (option) => {
     try {
       const msg = await fetchAllMeta(option);
+      if (isAuthExpiredResponse(msg)) {
+        if (!option?.skipAuthExpiredHandler && hasStoredAdminToken()) {
+          handleAdminAuthExpired();
+        }
+        return {};
+      }
       if (msg.statusCode == 233) {
         history.push('/init');
         return msg.data || {};
       } else if (history.location.pathname == '/init' && msg.statusCode == 200) {
         history.push('/');
       }
-      return msg.data;
+      if (msg?.statusCode !== 200) {
+        return {};
+      }
+      return msg.data || {};
     } catch (error) {
       // console.log('fet init data error', error);
       history.push(loginPath);
@@ -562,6 +577,7 @@ export async function getInitialState() {
     !localStorage.getItem('token')
   ) {
     option.skipErrorHandler = true;
+    option.skipAuthExpiredHandler = true;
   }
   const [initData, adminLayoutData, adminThemeConfig] = await Promise.all([
     fetchInitData(option),

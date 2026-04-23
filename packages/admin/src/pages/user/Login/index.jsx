@@ -4,17 +4,19 @@ import { login, getPublicSiteInfo, fetchAllMeta } from '@/services/van-blog/api'
 import { encryptPwd } from '@/services/van-blog/encryptPwd';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-form';
-import { message } from 'antd';
+import { Alert, message } from 'antd';
 import { history, useModel } from '@umijs/max';
 import { useState, useEffect } from 'react';
 import { getAdminAssetPath } from '@/utils/getAssetPath';
 import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
+import { consumeAdminAuthExpiredReason } from '@/utils/adminSession';
 import styles from './index.less';
 
 const Login = () => {
   const type = 'account';
-  const { initialState, setInitialState } = useModel('@@initialState');
+  const { setInitialState } = useModel('@@initialState');
   const [siteInfo, setSiteInfo] = useState(null);
+  const [authExpiredReason, setAuthExpiredReason] = useState('');
 
   const redirectToAdmin = (redirect) => {
     if (!redirect) {
@@ -43,6 +45,14 @@ const Login = () => {
       }
     };
     fetchSiteInfo();
+  }, []);
+
+  useEffect(() => {
+    const reason = consumeAdminAuthExpiredReason();
+    if (!reason) {
+      return;
+    }
+    setAuthExpiredReason(reason);
   }, []);
 
   const handleSubmit = async (values) => {
@@ -196,6 +206,14 @@ const Login = () => {
             });
           }}
         >
+          {authExpiredReason ? (
+            <Alert
+              showIcon
+              type="warning"
+              message={authExpiredReason}
+              style={{ marginBottom: 24 }}
+            />
+          ) : null}
           {type === 'account' && (
             <>
               <ProFormText

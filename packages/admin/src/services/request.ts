@@ -1,3 +1,9 @@
+import {
+  handleAdminAuthExpired,
+  hasStoredAdminToken,
+  isAuthExpiredResponse,
+} from '../utils/adminSession.js';
+
 type RequestOptions = {
   method?: string;
   params?: Record<string, any>;
@@ -5,6 +11,7 @@ type RequestOptions = {
   headers?: Record<string, string>;
   responseType?: 'blob';
   skipErrorHandler?: boolean;
+  skipAuthExpiredHandler?: boolean;
 };
 
 function buildUrl(url: string, params?: Record<string, any>) {
@@ -60,10 +67,38 @@ export async function request(url: string, options: RequestOptions = {}) {
 
   const response = await fetch(buildUrl(url, options.params), init);
 
+  const shouldHandleAuthExpired =
+    !options.skipAuthExpiredHandler && hasStoredAdminToken() && responseTypeIsJsonLike(response);
+
   if (options.responseType === 'blob') {
+    if (shouldHandleAuthExpired) {
+      const parsed = await parseResponsePayload(response.clone());
+      if (isAuthExpiredResponse(parsed)) {
+        handleAdminAuthExpired();
+      }
+    }
     return response.blob();
   }
 
+  const parsed = await parseResponsePayload(response);
+  if (shouldHandleAuthExpired && isAuthExpiredResponse(parsed)) {
+    handleAdminAuthExpired();
+  }
+  return parsed;
+}
+
+export default request;
+
+function responseTypeIsJsonLike(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+  return (
+    contentType.includes('application/json') ||
+    contentType.includes('text/plain') ||
+    contentType.includes('text/json')
+  );
+}
+
+async function parseResponsePayload(response: Response) {
   const text = await response.text();
   if (!text) {
     return {};
@@ -75,5 +110,3 @@ export async function request(url: string, options: RequestOptions = {}) {
     return text;
   }
 }
-
-export default request;
