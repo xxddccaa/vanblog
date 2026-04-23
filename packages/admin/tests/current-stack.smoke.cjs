@@ -319,11 +319,12 @@ async function findSyntaxHighlightArticleId(token) {
   );
 }
 
-async function assertDarkEditorSyntaxHighlight(page, token) {
+async function assertDarkEditorSurface(page, token) {
   const articleId = await findSyntaxHighlightArticleId(token);
 
   await page.evaluate(() => {
     window.localStorage.setItem('theme', 'dark');
+    window.localStorage.setItem('vanblog_editor_engine', 'milkdown');
   });
 
   const bodyText = await openAdminRoute(page, `/editor?type=article&id=${articleId}`);
@@ -331,21 +332,29 @@ async function assertDarkEditorSyntaxHighlight(page, token) {
 
   const syntaxState = await page.evaluate(() => {
     const htmlTheme = document.documentElement.dataset.theme || '';
-    const editor = document.querySelector('.CodeMirror');
+    const milkdownEditor = document.querySelector('.vb-milkdown-editor .milkdown .editor');
+    const byteMDEditor = document.querySelector('.CodeMirror');
+    const editor = milkdownEditor || byteMDEditor;
     const editorBaseColor = editor ? getComputedStyle(editor).color : '';
-    const editorTokenColors = Array.from(
-      document.querySelectorAll('.CodeMirror span[class*="cm-"]'),
-    )
-      .map((element) => ({
-        classes: element.className,
-        color: getComputedStyle(element).color,
-      }))
-      .filter((token) => token.color && token.color !== editorBaseColor);
+    const editorBackground = editor ? getComputedStyle(editor).backgroundColor : '';
+    const editorType = milkdownEditor ? 'milkdown' : byteMDEditor ? 'bytemd' : 'missing';
+    const editorTokenColors = editorType === 'bytemd'
+      ? Array.from(document.querySelectorAll('.CodeMirror span[class*="cm-"]'))
+          .map((element) => ({
+            classes: element.className,
+            color: getComputedStyle(element).color,
+          }))
+          .filter((token) => token.color && token.color !== editorBaseColor)
+      : [];
 
-    const previewBody = document.querySelector('.bytemd-preview .markdown-body');
+    const previewBody =
+      document.querySelector('.vb-milkdown-editor__pane--preview .markdown-body') ||
+      document.querySelector('.bytemd-preview .markdown-body');
     const previewBaseColor = previewBody ? getComputedStyle(previewBody).color : '';
     const previewTokenColors = Array.from(
-      document.querySelectorAll('.bytemd-preview [class*="hljs-"]'),
+      document.querySelectorAll(
+        '.vb-milkdown-editor__pane--preview [class*="hljs-"], .bytemd-preview [class*="hljs-"]',
+      ),
     )
       .map((element) => ({
         classes: element.className,
@@ -355,7 +364,9 @@ async function assertDarkEditorSyntaxHighlight(page, token) {
 
     return {
       htmlTheme,
+      editorType,
       editorBaseColor,
+      editorBackground,
       previewBaseColor,
       editorHighlightedTokenCount: editorTokenColors.length,
       previewHighlightedTokenCount: previewTokenColors.length,
@@ -365,12 +376,22 @@ async function assertDarkEditorSyntaxHighlight(page, token) {
   });
 
   assert.equal(syntaxState.htmlTheme, 'dark', 'editor page did not stay in dark theme');
-  assert.ok(
-    syntaxState.editorHighlightedTokenCount > 0,
-    `dark editor tokens collapsed to base color ${syntaxState.editorBaseColor}: ${JSON.stringify(
-      syntaxState.editorTokenSample,
-    )}`,
+  assert.notEqual(syntaxState.editorType, 'missing', 'editor page did not render any editor surface');
+  assert.ok(syntaxState.editorBaseColor, 'editor surface did not expose a readable text color');
+  assert.notEqual(
+    syntaxState.editorBaseColor,
+    'rgba(0, 0, 0, 0.88)',
+    `dark editor text still uses light-theme black: ${JSON.stringify(syntaxState)}`,
   );
+  assert.ok(syntaxState.editorBackground, 'editor surface did not expose a background color');
+  if (syntaxState.editorType === 'bytemd') {
+    assert.ok(
+      syntaxState.editorHighlightedTokenCount > 0,
+      `dark ByteMD tokens collapsed to base color ${syntaxState.editorBaseColor}: ${JSON.stringify(
+        syntaxState.editorTokenSample,
+      )}`,
+    );
+  }
   assert.ok(
     syntaxState.previewHighlightedTokenCount > 0,
     `dark preview tokens collapsed to base color ${syntaxState.previewBaseColor}: ${JSON.stringify(
@@ -461,7 +482,7 @@ async function main() {
     assert.ok(articleBody.includes('文章管理'), 'article page did not render');
     await assertAdminShell(page);
     await assertMobileAdminSurfaces(page);
-    await assertDarkEditorSyntaxHighlight(page, token);
+    await assertDarkEditorSurface(page, token);
     await page.waitForTimeout(2500);
     const walinePrewarmState = await page.evaluate(() =>
       window.sessionStorage.getItem('vanblog.admin.waline-prewarmed'),

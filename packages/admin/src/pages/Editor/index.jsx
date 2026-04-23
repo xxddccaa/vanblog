@@ -1,4 +1,4 @@
-import Editor from '@/components/Editor';
+import MarkdownEditor from '@/components/MarkdownEditor';
 import EditorProfileModal from '@/components/EditorProfileModal';
 import PublishDraftModal from '@/components/PublishDraftModal';
 import Tags from '@/components/Tags';
@@ -659,7 +659,7 @@ export default function () {
             </a>
           </Upload>
         </div>
-        <Editor
+        <MarkdownEditor
           loading={loading}
           setLoading={setLoading}
           themeConfig={siteInfo}
