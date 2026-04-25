@@ -24,55 +24,65 @@ const handleClick = (event: Event) => {
   }
 };
 
-export const emoji = (): BytemdPlugin => ({
-  editorEffect: (ctx) => {
-    const el = (
-      // @ts-ignore
-      <Picker
-        i18n={i18n}
-        data={data}
-        onEmojiSelect={(c) => {
-          if (c?.native) {
-            ctx.editor.replaceSelection(c?.native);
-          }
-        }}
-      />
-    );
-    const container = ctx.root.querySelector('.bytemd-toolbar-left');
-    const targetEl = document.createElement('div');
-    targetEl.className = 'emoji-container hidden';
-    // 获取一下 left 的位置
-    const actionEl = ctx.root.querySelector(`div[bytemd-tippy-path="18"]`) as any;
-    if (actionEl) {
-      targetEl.style.left = `${actionEl.offsetLeft}px`;
-    }
-    container.appendChild(targetEl);
-    if (container) {
-      render(el, targetEl);
-    }
-  },
-  actions: [
-    {
-      title: '表情',
-      icon: EMOJI_ICON,
-      handler: {
-        type: 'action',
-        click: ({ root }) => {
-          const el = root.querySelector('.emoji-container');
+export const emoji = (): BytemdPlugin => {
+  let lastSelection: any = null;
 
-          if (el.classList.contains('hidden')) {
-            // 显示的话点击外面就关闭
-            setTimeout(() => {
-              document.addEventListener('click', handleClick);
-            }, 100);
-          } else {
-            document.removeEventListener('click', handleClick);
-          }
-          if (el) {
-            el.classList.toggle('hidden');
+  return {
+    editorEffect: (ctx) => {
+      const el = (
+        // @ts-ignore
+        <Picker
+          i18n={i18n}
+          data={data}
+          onEmojiSelect={(c) => {
+            if (c?.native) {
+              if (lastSelection?.anchor && lastSelection?.head) {
+                ctx.editor.setSelection(lastSelection.anchor, lastSelection.head);
+              }
+              ctx.editor.focus();
+              ctx.editor.replaceSelection(c?.native);
+              lastSelection = ctx.editor.listSelections?.()?.[0] || null;
+            }
+          }}
+        />
+      );
+      const container = ctx.root.querySelector('.bytemd-toolbar-left');
+      const targetEl = document.createElement('div');
+      targetEl.className = 'emoji-container hidden';
+      // 获取一下 left 的位置
+      const actionEl = ctx.root.querySelector(`div[bytemd-tippy-path="18"]`) as any;
+      if (actionEl) {
+        targetEl.style.left = `${actionEl.offsetLeft}px`;
+      }
+      container.appendChild(targetEl);
+      if (container) {
+        render(el, targetEl);
+      }
+    },
+    actions: [
+      {
+        title: '表情',
+        icon: EMOJI_ICON,
+        handler: {
+          type: 'action',
+          click: ({ root, editor }) => {
+            lastSelection = editor.listSelections?.()?.[0] || null;
+            const el = root.querySelector('.emoji-container');
+
+            if (el.classList.contains('hidden')) {
+              // 显示的话点击外面就关闭
+              setTimeout(() => {
+                document.addEventListener('click', handleClick);
+              }, 100);
+            } else {
+              document.removeEventListener('click', handleClick);
+            }
+            if (el) {
+              el.classList.toggle('hidden');
+            }
           }
         },
       },
-    },
-  ],
-});
+    ],
+  };
+};

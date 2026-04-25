@@ -88,6 +88,39 @@ describe('ArticleController', () => {
     expect(aiQaProvider.syncArticleById).toHaveBeenCalledWith(7, 'article-update');
   });
 
+  it('does not let an async ISR failure break article updates', async () => {
+    const beforeObj = {
+      id: 7,
+      pathname: 'stable-post',
+      title: 'old title',
+    };
+    const { controller, articleProvider } = createController({
+      articleProvider: {
+        getById: jest.fn().mockResolvedValue(beforeObj),
+        updateById: jest.fn().mockResolvedValue({ id: 7, title: 'new title' }),
+      },
+      isrProvider: {
+        activeArticleById: jest.fn().mockRejectedValue(new Error('boom')),
+      },
+    });
+
+    const result = await controller.updateArticle(7, {
+      title: 'new title',
+      pathname: 'stable-post',
+    } as any);
+    await Promise.resolve();
+
+    expect(result).toEqual({
+      statusCode: 200,
+      data: { id: 7, title: 'new title' },
+    });
+    expect(articleProvider.updateById).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ title: 'new title' }),
+    );
+    expect(console.error).toHaveBeenCalledWith('[ISR] 文章更新 失败:', 'boom');
+  });
+
   it('allows updating an article when the pathname stays unchanged on a string route param', async () => {
     const beforeObj = {
       id: 7,

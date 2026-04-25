@@ -27,7 +27,12 @@ import moment from 'moment';
 import { history, Link } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import defaultSettings from '../config/defaultSettings';
-import { fetchAllMeta, getAdminLayoutConfig, getAdminThemeConfig } from './services/van-blog/api';
+import {
+  fetchAllMeta,
+  fetchInitStatus,
+  getAdminLayoutConfig,
+  getAdminThemeConfig,
+} from './services/van-blog/api';
 import { checkUrl } from './services/van-blog/checkUrl';
 import { applyThemeToDocument, beforeSwitchTheme, getInitTheme } from './services/van-blog/theme';
 import {
@@ -514,6 +519,36 @@ const AdminViewportSync = () => {
  * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
  * */
 export async function getInitialState() {
+  if (history.location.pathname == '/init') {
+    try {
+      const initStatus = await fetchInitStatus({
+        skipErrorHandler: true,
+        skipAuthExpiredHandler: true,
+      });
+      if (initStatus?.statusCode === 200 && initStatus?.data?.initialized) {
+        history.replace(localStorage.getItem('token') ? '/' : loginPath);
+      }
+    } catch (error) {
+      history.replace(loginPath);
+    }
+
+    const fallbackThemeConfig = readStoredAdminThemeConfig();
+    const theme = getInitTheme();
+    const sysTheme = applyThemeToDocument(theme, fallbackThemeConfig);
+
+    return {
+      fetchInitData: async () => ({}),
+      adminLayoutConfig: null,
+      adminThemeConfig: fallbackThemeConfig,
+      settings: {
+        ...defaultSettings,
+        navTheme: sysTheme,
+        primaryColor: getAdminPrimaryColor(theme, fallbackThemeConfig),
+      },
+      theme,
+    };
+  }
+
   const fetchInitData = async (option) => {
     try {
       const msg = await fetchAllMeta(option);

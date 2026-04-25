@@ -46,6 +46,12 @@ export class ArticleController {
     });
   }
 
+  private triggerIsrAsync(task: Promise<any>, reason: string) {
+    void Promise.resolve(task).catch((error) => {
+      console.error(`[ISR] ${reason} 失败:`, error?.message || error);
+    });
+  }
+
   private sanitizeArticlePayloadForRequester(request: any, payload: any) {
     if (request?.user?.id === 0 || !payload) {
       return payload;
@@ -169,7 +175,7 @@ export class ArticleController {
     const data = await this.articleProvider.updateById(articleId, updateArticleDto);
 
     // 使用精确的增量渲染，而不是全量渲染
-    this.isrProvider.activeArticleById(articleId, 'update', beforeObj);
+    this.triggerIsrAsync(this.isrProvider.activeArticleById(articleId, 'update', beforeObj), '文章更新');
 
     this.refreshTagPagesAsync('文章更新');
     this.syncAiQaAsync(this.aiQaProvider.syncArticleById(articleId, 'article-update'), '文章更新同步 AI 问答知识');
@@ -214,7 +220,7 @@ export class ArticleController {
     const data = await this.articleProvider.create(createArticleDto);
 
     // 使用精确的增量渲染，而不是全量渲染
-    this.isrProvider.activeArticleById(data.id, 'create');
+    this.triggerIsrAsync(this.isrProvider.activeArticleById(data.id, 'create'), '文章创建');
 
     this.refreshTagPagesAsync('文章创建');
     this.syncAiQaAsync(this.aiQaProvider.syncArticleById(data.id, 'article-create'), '文章创建同步 AI 问答知识');
@@ -256,7 +262,7 @@ export class ArticleController {
     const data = await this.articleProvider.deleteById(articleId);
 
     // 删除文章后按受影响页面做定向刷新，避免整站缓存联动失效
-    this.isrProvider.activeArticleById(articleId, 'delete', beforeObj);
+    this.triggerIsrAsync(this.isrProvider.activeArticleById(articleId, 'delete', beforeObj), '文章删除');
 
     this.refreshTagPagesAsync('文章删除');
     this.syncAiQaAsync(this.aiQaProvider.deleteSource('article', String(articleId), 'article-delete'), '文章删除同步 AI 问答知识');

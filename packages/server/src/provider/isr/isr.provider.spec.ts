@@ -100,7 +100,7 @@ describe('ISRProvider', () => {
     const article = createArticle({ title: 'New title', content: 'new content' });
     const beforeObj = createArticle({ title: 'Old title', content: 'old content' });
     const articleProvider = {
-      getByIdOrPathnameWithPreNext: jest.fn().mockResolvedValue({ article }),
+      getById: jest.fn().mockResolvedValue(article),
       getByOption: jest.fn().mockResolvedValue({
         articles: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, article],
         total: 6,
@@ -198,7 +198,7 @@ describe('ISRProvider', () => {
     const beforeObj = createArticle({ category: 'Backend', tags: ['NestJS'] });
     const article = createArticle({ category: 'System Design', tags: ['Cloudflare'] });
     const articleProvider = {
-      getByIdOrPathnameWithPreNext: jest.fn().mockResolvedValue({ article }),
+      getById: jest.fn().mockResolvedValue(article),
       getByOption: jest.fn().mockResolvedValue({
         articles: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, article],
         total: 6,
@@ -279,7 +279,7 @@ describe('ISRProvider', () => {
     const beforeObj = createArticle({ updatedAt: new Date('2026-04-10T00:00:00.000Z') });
     const article = createArticle({ updatedAt: new Date('2026-04-11T00:00:00.000Z') });
     const articleProvider = {
-      getByIdOrPathnameWithPreNext: jest.fn().mockResolvedValue({ article }),
+      getById: jest.fn().mockResolvedValue(article),
       getByOption: jest.fn(),
     };
     const cloudflareCacheProvider = createCloudflareCacheProvider();
@@ -327,7 +327,7 @@ describe('ISRProvider', () => {
       createdAt: new Date('2024-02-07T00:00:00.000Z'),
     });
     const articleProvider = {
-      getByIdOrPathnameWithPreNext: jest.fn().mockResolvedValue({ article }),
+      getById: jest.fn().mockResolvedValue(article),
       getByOption: jest.fn().mockResolvedValue({
         articles: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, article],
         total: 6,
@@ -406,6 +406,31 @@ describe('ISRProvider', () => {
       ]),
     );
     expect(purgeUrls).not.toContain('/page/2');
+  });
+
+  it('keeps hidden article invalidation from using the public article query path', async () => {
+    const beforeObj = createArticle({ hidden: true, private: true, pathname: null });
+    const article = createArticle({ hidden: true, private: true, pathname: null });
+    const articleProvider = {
+      getById: jest.fn().mockResolvedValue(article),
+      getByOption: jest.fn(),
+    };
+    const provider = new ISRProvider(
+      articleProvider as any,
+      { generateRssFeed: jest.fn() } as any,
+      { getHomePageSize: jest.fn(), generateSiteMap: jest.fn() } as any,
+      {} as any,
+      { generateSearchIndex: jest.fn() } as any,
+      { clearArticleRelatedData: jest.fn().mockResolvedValue(undefined) } as any,
+      createCloudflareCacheProvider() as any,
+    );
+    const activeUrl = jest.spyOn(provider, 'activeUrl').mockResolvedValue(undefined);
+
+    await expect(provider.activeArticleById(7, 'update', beforeObj as any)).resolves.toBeUndefined();
+
+    expect(articleProvider.getById).toHaveBeenCalledWith(7, 'list');
+    expect(activeUrl).toHaveBeenCalledWith('/post/7', true);
+    expect(activeUrl).not.toHaveBeenCalledWith('/post/stable-post', true);
   });
 
   it('revalidates archive/category/tag/post groups during a full-site ISR run', async () => {

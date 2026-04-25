@@ -49,6 +49,18 @@ describe('InitController', () => {
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
   });
 
+  it('reports whether the site has already been initialized', async () => {
+    const { controller, initProvider } = createController();
+    initProvider.checkHasInited.mockResolvedValue(true);
+
+    await expect(controller.checkInitStatus()).resolves.toEqual({
+      statusCode: 200,
+      data: {
+        initialized: true,
+      },
+    });
+  });
+
   it('allows private initialization requests and triggers the full ISR warmup', async () => {
     const { controller, initProvider, isrProvider } = createController();
     getNetIp.mockResolvedValue({ ip: '', address: 'private' });

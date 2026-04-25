@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   Post,
   Query,
@@ -36,6 +37,17 @@ export class InitController {
         message: '初始化入口仅允许在受信任网络中使用',
       });
     }
+  }
+
+  @Get('/init/check')
+  async checkInitStatus() {
+    const hasInit = await this.initProvider.checkHasInited();
+    return {
+      statusCode: 200,
+      data: {
+        initialized: hasInit,
+      },
+    };
   }
 
   @Post('/init')

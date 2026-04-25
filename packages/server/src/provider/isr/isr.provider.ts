@@ -469,9 +469,8 @@ export class ISRProvider {
       // 删除事件时使用删除前的文章信息，避免查询已删除的文章
       article = beforeObj;
     } else {
-      // 创建和更新事件正常查询
-      const result = await this.articleProvider.getByIdOrPathnameWithPreNext(id, 'list');
-      article = result.article;
+      // 创建和更新事件需要兼容隐藏/私密文章，不能走只允许公开访问的查询逻辑
+      article = await this.articleProvider.getById(id, 'list');
     }
 
     const htmlUrls = [`/post/${id}`];

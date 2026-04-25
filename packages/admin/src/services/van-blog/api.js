@@ -10,6 +10,12 @@ export async function fetchAllMeta(options) {
     ...(options || {}),
   });
 }
+export async function fetchInitStatus(options) {
+  return request('/api/admin/init/check', {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
 export async function activeISR() {
   return request('/api/admin/isr', {
     method: 'POST',
