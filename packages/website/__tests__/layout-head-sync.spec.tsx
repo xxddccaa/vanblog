@@ -171,9 +171,9 @@ describe("layout head sync", () => {
         ?.style.getPropertyValue("--vb-front-card-bg-dark"),
     ).toBe("#15314d");
     expect(document.documentElement.style.getPropertyValue("--vb-front-page-bg-dark")).toBe(
-      "#153350",
+      "#13273c",
     );
-    expect(document.documentElement.style.backgroundColor).toBe("rgb(21, 51, 80)");
+    expect(document.documentElement.style.backgroundColor).toBe("rgb(19, 39, 60)");
 
     await act(async () => {
       root.unmount();

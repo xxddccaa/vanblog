@@ -265,7 +265,7 @@ const defaultMeta: MetaProps = {
     backgroundImage: "",
     backgroundImageDark: "",
     frontCardBackgroundColor: "#ffffff",
-    frontCardBackgroundColorDark: "#102033",
+    frontCardBackgroundColorDark: "#111315",
     markdownLightThemeUrl: MARKDOWN_THEME_DEFAULTS.light,
     markdownDarkThemeUrl: MARKDOWN_THEME_DEFAULTS.dark,
   },

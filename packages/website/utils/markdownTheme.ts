@@ -6,7 +6,7 @@ export const MARKDOWN_THEME_ASSET_VERSION =
 
 export const MARKDOWN_THEME_DEFAULTS = {
   light: '/markdown-themes/phycat-sky-light-only.css',
-  dark: '/markdown-themes/phycat-sky-dark-only.css',
+  dark: '/markdown-themes/vanblog-graphite-dark-only.css',
 } as const;
 
 export type MarkdownThemeMode = 'light' | 'dark';

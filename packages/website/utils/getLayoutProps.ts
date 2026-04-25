@@ -219,7 +219,7 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     backgroundImage: siteInfo?.backgroundImage || "",
     backgroundImageDark: siteInfo?.backgroundImageDark || "",
     frontCardBackgroundColor: siteInfo?.frontCardBackgroundColor || "#ffffff",
-    frontCardBackgroundColorDark: siteInfo?.frontCardBackgroundColorDark || "#102033",
+    frontCardBackgroundColorDark: siteInfo?.frontCardBackgroundColorDark || "#111315",
     markdownLightThemeUrl: markdownThemeConfig.markdownLightThemeUrl,
     markdownDarkThemeUrl: markdownThemeConfig.markdownDarkThemeUrl,
     ...customSetting,

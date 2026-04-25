@@ -921,8 +921,7 @@ body {
 
 .admin-mobile-hero-card {
   border: 1px solid var(--admin-surface-border);
-  background:
-    linear-gradient(180deg, rgba(23, 114, 180, 0.08) 0%, rgba(23, 114, 180, 0.02) 100%),
+  background: linear-gradient(180deg, rgba(23, 114, 180, 0.08) 0%, rgba(23, 114, 180, 0.02) 100%),
     var(--admin-surface-bg);
   overflow: hidden;
 }
@@ -1369,8 +1368,7 @@ html[data-theme='dark'] {
   }
 
   .admin-mobile-hero-card {
-    background:
-      linear-gradient(180deg, rgba(59, 130, 246, 0.18) 0%, rgba(15, 23, 42, 0.12) 100%),
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.18) 0%, rgba(15, 23, 42, 0.12) 100%),
       var(--admin-surface-bg);
   }
 
@@ -1393,5 +1391,89 @@ html[data-theme='dark'] {
 
   .admin-mobile-record-copy {
     color: #e5e7eb;
+  }
+}
+
+html[data-theme='dark'] {
+  .ant-card,
+  .ant-card-head,
+  .ant-card-body,
+  .ant-card-bordered,
+  .ant-pro-card,
+  .ant-pro-card-head,
+  .ant-pro-card-body,
+  .ant-pro-card-bordered,
+  .ant-table-wrapper,
+  .ant-table,
+  .ant-table-container,
+  .ant-table-content,
+  .ant-table-header,
+  .ant-table-body,
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td,
+  .ant-descriptions-view,
+  .ant-descriptions-bordered .ant-descriptions-item-label,
+  .ant-descriptions-bordered .ant-descriptions-item-content,
+  .ant-pagination-item,
+  .ant-pagination-prev .ant-pagination-item-link,
+  .ant-pagination-next .ant-pagination-item-link,
+  .ant-alert,
+  .ant-result,
+  .ant-empty,
+  .ant-tabs-content-holder,
+  .ant-tabs-nav::before,
+  .admin-responsive-tab,
+  .admin-mobile-record-card,
+  .admin-mobile-selection-card,
+  .admin-mobile-empty-card,
+  .admin-mobile-card-list-empty,
+  .admin-mobile-toolbar-card,
+  .admin-mobile-hero-card,
+  .admin-mobile-toolbar-stat,
+  .admin-tone-panel,
+  .admin-tone-panel-success,
+  .admin-tone-panel-info,
+  .admin-tone-panel-neutral {
+    background: var(--admin-surface-bg) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .ant-card-head,
+  .ant-pro-card-head,
+  .ant-table-thead > tr > th,
+  .ant-descriptions-bordered .ant-descriptions-item-label,
+  .ant-descriptions-bordered .ant-descriptions-item-content {
+    border-bottom-color: transparent !important;
+  }
+
+  .ant-table-thead > tr > th::before {
+    display: none !important;
+  }
+
+  .ant-table-tbody > tr.ant-table-row:hover > td,
+  .ant-table-tbody > tr > td.ant-table-cell-row-hover,
+  .ant-dropdown-menu-item-active,
+  .ant-dropdown-menu-item-selected,
+  .admin-responsive-tab:hover,
+  .admin-responsive-tab-active {
+    background: var(--admin-surface-bg) !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .admin-responsive-tab-active {
+    color: var(--admin-primary-link) !important;
+  }
+
+  .ant-menu-item-selected,
+  .ant-menu-submenu-selected > .ant-menu-submenu-title,
+  .ant-menu-light .ant-menu-item-selected,
+  .ant-menu-light .ant-menu-submenu-selected > .ant-menu-submenu-title,
+  .ant-menu-item:hover,
+  .ant-menu-submenu-title:hover,
+  .ant-menu-light .ant-menu-item:hover,
+  .ant-menu-light .ant-menu-submenu-title:hover {
+    background: transparent !important;
   }
 }

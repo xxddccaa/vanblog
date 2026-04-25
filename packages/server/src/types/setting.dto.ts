@@ -276,9 +276,9 @@ export const defaultAdminLayoutSetting: AdminLayoutSetting = {
 
 export const defaultAdminThemeSetting: AdminThemeSetting = {
   lightPrimaryColor: '#1772b4',
-  darkPrimaryColor: '#60a5fa',
+  darkPrimaryColor: '#8d9bb0',
   lightBackgroundColor: '#f4f8fb',
-  darkBackgroundColor: '#111827',
+  darkBackgroundColor: '#111315',
 };
 
 export interface AutoBackupSetting {

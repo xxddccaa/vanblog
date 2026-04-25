@@ -219,21 +219,21 @@
   --vb-front-card-bg-light: #ffffff;
   --vb-front-card-bg-light-soft: #fbfcfe;
   --vb-front-card-bg-light-deep: #eef4fa;
-  --vb-front-card-bg-dark: #102033;
-  --vb-front-card-bg-dark-soft: #0d1a2b;
-  --vb-front-card-bg-dark-deep: #091321;
+  --vb-front-card-bg-dark: #111315;
+  --vb-front-card-bg-dark-soft: #181b1f;
+  --vb-front-card-bg-dark-deep: #0b0d10;
   --vb-front-page-bg-light: #eef4fa;
-  --vb-front-page-bg-dark: #12283e;
-  --vb-front-dark-hover: #1b3b57;
-  --vb-front-dark-hover-soft: #4d6b84;
-  --vb-front-dark-border: #47637b;
-  --vb-front-dark-border-strong: #708da6;
-  --vb-front-dark-text: #d7e8f7;
-  --vb-front-dark-text-muted: #a9bfd3;
-  --vb-front-dark-text-soft: #819ab0;
-  --vb-front-dark-text-strong: #edf8ff;
-  --vb-front-dark-text-on-accent: #13263a;
-  --vb-front-dark-fill: #7f9cb5;
+  --vb-front-page-bg-dark: #0d0f12;
+  --vb-front-dark-hover: #1d2127;
+  --vb-front-dark-hover-soft: #252a31;
+  --vb-front-dark-border: #3a424c;
+  --vb-front-dark-border-strong: #55606d;
+  --vb-front-dark-text: #d7dde4;
+  --vb-front-dark-text-muted: #abb3bc;
+  --vb-front-dark-text-soft: #9098a2;
+  --vb-front-dark-text-strong: #f0f3f6;
+  --vb-front-dark-text-on-accent: #111315;
+  --vb-front-dark-fill: #c7d0d8;
 }
 /* waline */
 body .wl-panel {

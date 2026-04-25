@@ -5,12 +5,11 @@ import {
 } from "../utils/frontCardSurface";
 
 describe("front card surface colors", () => {
-  it("keeps the dark page background in the same blue-cyan family as the card surface", () => {
+  it("keeps the dark page background in the same graphite family as the card surface", () => {
     const surfaces = resolveFrontCardSurfaceColors();
 
     expect(surfaces.dark).toBe(DEFAULT_FRONT_CARD_BACKGROUND_DARK);
-    expect(surfaces.darkPage).toBe("#12283e");
-    expect(surfaces.darkPage).not.toBe(surfaces.darkDeep);
+    expect(surfaces.darkPage).toBe("#101214");
   });
 
   it("derives a non-black page background from a custom dark card color", () => {
@@ -19,6 +18,6 @@ describe("front card surface colors", () => {
     });
 
     expect(surfaces.dark).toBe("#15314d");
-    expect(surfaces.darkPage).toBe("#153350");
+    expect(surfaces.darkPage).toBe("#13273c");
   });
 });

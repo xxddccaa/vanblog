@@ -1313,8 +1313,8 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
 
 .dark .markdown-body .code-wrap-btn.code-wrap-enabled {
   color: #f8fafc !important;
-  background-color: rgb(23 114 180 / 0.22) !important;
-  box-shadow: inset 0 0 0 1px rgb(125 211 252 / 0.24) !important;
+  background-color: rgba(141, 155, 176, 0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(141, 155, 176, 0.24) !important;
 }
 
 .markdown-body .code-copy-btn svg,

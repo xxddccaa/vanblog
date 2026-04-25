@@ -208,7 +208,7 @@ export class SettingProvider {
   }
 
   private normalizeAdminThemeSetting(value?: Partial<AdminThemeSetting> | null): AdminThemeSetting {
-    return {
+    const normalized = {
       lightPrimaryColor: this.normalizeAdminThemeColor(
         value?.lightPrimaryColor,
         defaultAdminThemeSetting.lightPrimaryColor,
@@ -226,9 +226,19 @@ export class SettingProvider {
         defaultAdminThemeSetting.darkBackgroundColor,
       ),
     };
+
+    const shouldUpgradeLegacyTheme =
+      normalized.lightPrimaryColor === '#1772b4' &&
+      normalized.darkPrimaryColor === '#60a5fa' &&
+      normalized.lightBackgroundColor === '#f4f8fb' &&
+      normalized.darkBackgroundColor === '#111827';
+
+    return shouldUpgradeLegacyTheme ? defaultAdminThemeSetting : normalized;
   }
 
-  private normalizeAdminLayoutSetting(value?: Partial<AdminLayoutSetting> | null): AdminLayoutSetting {
+  private normalizeAdminLayoutSetting(
+    value?: Partial<AdminLayoutSetting> | null,
+  ): AdminLayoutSetting {
     const persistedItems = Array.isArray(value?.menuItems) ? value.menuItems : [];
     const persistedByKey = new Map(persistedItems.map((item) => [item?.key, item]));
     const defaultOrderByKey = new Map(
@@ -244,8 +254,7 @@ export class SettingProvider {
           key: defaultItem.key,
           path: defaultItem.path,
           originalName: defaultItem.originalName,
-          order:
-            typeof persistedItem?.order === 'number' ? persistedItem.order : defaultItem.order,
+          order: typeof persistedItem?.order === 'number' ? persistedItem.order : defaultItem.order,
           visible:
             typeof persistedItem?.visible === 'boolean'
               ? persistedItem.visible

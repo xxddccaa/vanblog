@@ -57,8 +57,22 @@ describe('SettingProvider adminTheme', () => {
       lightPrimaryColor: '#1772b4',
       darkPrimaryColor: '#abcdef',
       lightBackgroundColor: '#f5f7fa',
-      darkBackgroundColor: '#111827',
+      darkBackgroundColor: '#111315',
     });
+  });
+
+  it('upgrades the old built-in blue dark preset to the new graphite preset', async () => {
+    const { provider, structuredDataService } = createProvider();
+    structuredDataService.getSetting.mockResolvedValue({
+      value: {
+        lightPrimaryColor: '#1772b4',
+        darkPrimaryColor: '#60a5fa',
+        lightBackgroundColor: '#f4f8fb',
+        darkBackgroundColor: '#111827',
+      },
+    });
+
+    await expect(provider.getAdminThemeSetting()).resolves.toEqual(defaultAdminThemeSetting);
   });
 
   it('validates and lowercases admin theme colors before persisting them', async () => {

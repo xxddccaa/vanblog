@@ -251,35 +251,31 @@
    */
   --vb-md-code-panel-bg: linear-gradient(
     180deg,
-    rgba(7, 16, 31, 0.94),
-    rgba(5, 12, 24, 0.97)
+    rgba(23, 26, 29, 0.96),
+    rgba(17, 19, 21, 0.98)
   );
-  --vb-md-code-panel-border: color-mix(in srgb, var(--vb-md-border) 72%, var(--vb-md-link) 28%);
-  --vb-md-code-panel-shadow: 0 18px 38px rgba(2, 6, 23, 0.28);
-  --vb-md-code-header-bg: color-mix(
-    in srgb,
-    rgba(15, 27, 45, 0.94) 82%,
-    var(--vb-md-link) 18%
-  );
+  --vb-md-code-panel-border: color-mix(in srgb, var(--vb-md-border) 84%, rgba(143, 152, 163, 0.28) 16%);
+  --vb-md-code-panel-shadow: 0 18px 38px rgba(0, 0, 0, 0.24);
+  --vb-md-code-header-bg: color-mix(in srgb, rgba(21, 24, 27, 0.94) 92%, var(--vb-md-surface-2) 8%);
   --vb-md-code-header-border: color-mix(in srgb, var(--vb-md-border) 78%, transparent);
   --vb-md-code-header-text: color-mix(in srgb, var(--vb-md-body-muted) 38%, var(--vb-md-body-strong) 62%);
-  --vb-md-code-language-bg: color-mix(in srgb, var(--vb-md-link) 16%, transparent);
-  --vb-md-code-language-text: color-mix(in srgb, var(--vb-md-link) 72%, white 28%);
+  --vb-md-code-language-bg: rgba(141, 155, 176, 0.12);
+  --vb-md-code-language-text: color-mix(in srgb, var(--vb-md-body-strong) 74%, var(--vb-md-body-muted) 26%);
   --vb-md-code-btn-bg: color-mix(in srgb, var(--vb-md-surface-1) 76%, transparent);
   --vb-md-code-btn-border: color-mix(in srgb, var(--vb-md-border) 76%, transparent);
   --vb-md-code-btn-text: var(--vb-md-body-muted);
-  --vb-md-code-btn-hover: color-mix(in srgb, var(--vb-md-surface-3) 88%, transparent);
-  --vb-md-code-btn-active: color-mix(in srgb, var(--vb-md-link) 18%, var(--vb-md-surface-2) 82%);
+  --vb-md-code-btn-hover: rgba(255, 255, 255, 0.06);
+  --vb-md-code-btn-active: rgba(141, 155, 176, 0.14);
   --vb-md-code-btn-active-text: var(--vb-md-body-strong);
   --vb-md-code-body-text: color-mix(in srgb, var(--vb-md-body-text) 96%, white 4%);
   --vb-md-code-muted-text: var(--vb-md-body-muted);
-  --vb-md-code-selection-bg: color-mix(in srgb, var(--vb-md-link) 22%, transparent);
+  --vb-md-code-selection-bg: rgba(141, 155, 176, 0.18);
   --vb-md-code-selection-text: #f8fbff;
   --vb-md-code-added-shadow: color-mix(in srgb, #4ade80 34%, transparent);
   --vb-md-code-added-text: #86efac;
   --vb-md-code-deleted-shadow: color-mix(in srgb, #fb7185 36%, transparent);
   --vb-md-code-deleted-text: #fda4af;
-  --vb-md-code-fade: color-mix(in srgb, var(--vb-md-code-panel-bg) 94%, black 6%);
+  --vb-md-code-fade: rgba(17, 19, 21, 0.98);
   color: var(--vb-md-body-text) !important;
 }
 

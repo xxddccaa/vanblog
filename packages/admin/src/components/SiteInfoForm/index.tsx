@@ -505,10 +505,10 @@ export default function (props: {
           <Form.Item
             name="frontCardBackgroundColorDark"
             label="前台卡片背景色（暗色模式）"
-            tooltip="默认使用蓝青色，与当前后台预览区的暗色背景风格一致。"
+            tooltip="高级自定义入口。默认暗色已切到炭黑石墨，普通情况更推荐在 Markdown 主题里选预设方案。"
             rules={[optionalHexRule]}
           >
-            <ColorValueInput placeholder="#102033，留空使用默认暗色蓝青" defaultValue="#102033" />
+            <ColorValueInput placeholder="#111315，留空使用默认炭黑石墨" defaultValue="#111315" />
           </Form.Item>
         </>
       )}

@@ -5,15 +5,58 @@ export interface AdminThemeConfig {
   darkBackgroundColor: string;
 }
 
+export type AdminDarkThemePresetKey = 'graphite' | 'warm-ink' | 'slate-metal';
+
+export interface AdminDarkThemePreset {
+  key: AdminDarkThemePresetKey;
+  label: string;
+  description: string;
+  darkPrimaryColor: string;
+  darkBackgroundColor: string;
+}
+
 export const ADMIN_THEME_STORAGE_KEY = 'vanblog.admin.theme.config';
-export const DEFAULT_ADMIN_THEME_CONFIG: AdminThemeConfig = {
+
+const LEGACY_ADMIN_THEME_CONFIG: AdminThemeConfig = {
   lightPrimaryColor: '#1772b4',
   darkPrimaryColor: '#60a5fa',
   lightBackgroundColor: '#f4f8fb',
   darkBackgroundColor: '#111827',
 };
 
+export const DEFAULT_ADMIN_THEME_CONFIG: AdminThemeConfig = {
+  lightPrimaryColor: '#1772b4',
+  darkPrimaryColor: '#8d9bb0',
+  lightBackgroundColor: '#f4f8fb',
+  darkBackgroundColor: '#111315',
+};
+
+export const ADMIN_DARK_THEME_PRESETS: AdminDarkThemePreset[] = [
+  {
+    key: 'graphite',
+    label: '炭黑石墨',
+    description: '近黑石墨底色，低饱和钢蓝强调，整体最稳。',
+    darkPrimaryColor: '#8d9bb0',
+    darkBackgroundColor: '#111315',
+  },
+  {
+    key: 'warm-ink',
+    label: '暖黑墨色',
+    description: '更柔和的墨色黑底，带一点暖灰质感。',
+    darkPrimaryColor: '#a28f7d',
+    darkBackgroundColor: '#151210',
+  },
+  {
+    key: 'slate-metal',
+    label: '冷黑金属',
+    description: '冷灰黑金属感，边缘更利落。',
+    darkPrimaryColor: '#8b97a6',
+    darkBackgroundColor: '#101418',
+  },
+];
+
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const CUSTOM_ADMIN_DARK_PRESET = '__custom__';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -71,26 +114,75 @@ const toRgba = (value: string, alpha: number) => {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 };
 
+const isSameAdminThemeConfig = (left: AdminThemeConfig, right: AdminThemeConfig) =>
+  left.lightPrimaryColor === right.lightPrimaryColor &&
+  left.darkPrimaryColor === right.darkPrimaryColor &&
+  left.lightBackgroundColor === right.lightBackgroundColor &&
+  left.darkBackgroundColor === right.darkBackgroundColor;
+
+const maybeUpgradeLegacyAdminThemeConfig = (config: AdminThemeConfig) =>
+  isSameAdminThemeConfig(config, LEGACY_ADMIN_THEME_CONFIG) ? DEFAULT_ADMIN_THEME_CONFIG : config;
+
 export const normalizeAdminThemeConfig = (
   value?: Partial<AdminThemeConfig> | null,
-): AdminThemeConfig => ({
-  lightPrimaryColor: normalizeHexColor(
-    value?.lightPrimaryColor,
-    DEFAULT_ADMIN_THEME_CONFIG.lightPrimaryColor,
-  ),
-  darkPrimaryColor: normalizeHexColor(
-    value?.darkPrimaryColor,
-    DEFAULT_ADMIN_THEME_CONFIG.darkPrimaryColor,
-  ),
-  lightBackgroundColor: normalizeHexColor(
-    value?.lightBackgroundColor,
-    DEFAULT_ADMIN_THEME_CONFIG.lightBackgroundColor,
-  ),
-  darkBackgroundColor: normalizeHexColor(
-    value?.darkBackgroundColor,
-    DEFAULT_ADMIN_THEME_CONFIG.darkBackgroundColor,
-  ),
-});
+): AdminThemeConfig => {
+  const normalized = {
+    lightPrimaryColor: normalizeHexColor(
+      value?.lightPrimaryColor,
+      DEFAULT_ADMIN_THEME_CONFIG.lightPrimaryColor,
+    ),
+    darkPrimaryColor: normalizeHexColor(
+      value?.darkPrimaryColor,
+      DEFAULT_ADMIN_THEME_CONFIG.darkPrimaryColor,
+    ),
+    lightBackgroundColor: normalizeHexColor(
+      value?.lightBackgroundColor,
+      DEFAULT_ADMIN_THEME_CONFIG.lightBackgroundColor,
+    ),
+    darkBackgroundColor: normalizeHexColor(
+      value?.darkBackgroundColor,
+      DEFAULT_ADMIN_THEME_CONFIG.darkBackgroundColor,
+    ),
+  };
+
+  return maybeUpgradeLegacyAdminThemeConfig(normalized);
+};
+
+export const getAdminDarkThemePresetValue = (value?: Partial<AdminThemeConfig> | null) => {
+  const config = normalizeAdminThemeConfig(value);
+  const matchedPreset = ADMIN_DARK_THEME_PRESETS.find(
+    (preset) =>
+      preset.darkBackgroundColor === config.darkBackgroundColor &&
+      preset.darkPrimaryColor === config.darkPrimaryColor,
+  );
+
+  return matchedPreset?.key || CUSTOM_ADMIN_DARK_PRESET;
+};
+
+export const getAdminDarkThemePresetOptions = () => [
+  ...ADMIN_DARK_THEME_PRESETS.map((preset) => ({
+    value: preset.key,
+    label: preset.label,
+    description: preset.description,
+  })),
+  {
+    value: CUSTOM_ADMIN_DARK_PRESET,
+    label: '高级自定义',
+    description: '使用下面的颜色输入框手动搭配。',
+  },
+];
+
+export const getAdminDarkThemePresetConfig = (presetKey?: string | null) => {
+  const matchedPreset = ADMIN_DARK_THEME_PRESETS.find((preset) => preset.key === presetKey);
+  if (!matchedPreset) {
+    return null;
+  }
+
+  return {
+    darkPrimaryColor: matchedPreset.darkPrimaryColor,
+    darkBackgroundColor: matchedPreset.darkBackgroundColor,
+  };
+};
 
 export const resolveAdminThemeMode = (theme?: string | null) =>
   theme === 'dark' || theme === 'realDark' ? 'dark' : 'light';
@@ -122,76 +214,68 @@ const createCssVariableMap = (theme: string, value?: Partial<AdminThemeConfig> |
   const backgroundColor = getAdminBackgroundColor(themeMode, config);
   const isDark = themeMode === 'dark';
 
-  const surfaceBg = isDark
-    ? mixHexColors(backgroundColor, primaryColor, 0.08)
-    : mixHexColors(backgroundColor, '#ffffff', 0.72);
+  const surfaceBg = isDark ? backgroundColor : mixHexColors(backgroundColor, '#ffffff', 0.72);
   const surfaceBgSubtle = isDark
-    ? mixHexColors(backgroundColor, '#ffffff', 0.05)
+    ? backgroundColor
     : mixHexColors(backgroundColor, primaryColor, 0.05);
-  const surfaceBgElevated = isDark ? mixHexColors(backgroundColor, '#ffffff', 0.08) : '#ffffff';
-  const siderBg = isDark
-    ? mixHexColors(backgroundColor, primaryColor, 0.12)
-    : mixHexColors(backgroundColor, '#ffffff', 0.82);
+  const surfaceBgElevated = isDark ? backgroundColor : '#ffffff';
+  const siderBg = isDark ? backgroundColor : mixHexColors(backgroundColor, '#ffffff', 0.82);
   const tableHeaderBg = isDark
-    ? mixHexColors(backgroundColor, '#ffffff', 0.08)
+    ? backgroundColor
     : mixHexColors(backgroundColor, primaryColor, 0.08);
   const appBackground = isDark ? backgroundColor : mixHexColors(backgroundColor, '#ffffff', 0.35);
   const documentBase = isDark
-    ? mixHexColors(backgroundColor, '#020617', 0.26)
+    ? mixHexColors(backgroundColor, '#ffffff', 0.025)
     : mixHexColors(backgroundColor, '#ffffff', 0.92);
   const documentTreeBg = isDark
-    ? mixHexColors(documentBase, '#ffffff', 0.06)
+    ? mixHexColors(backgroundColor, '#ffffff', 0.04)
     : mixHexColors(backgroundColor, '#ffffff', 0.9);
-  const documentEditorBg = isDark ? mixHexColors(documentBase, '#020617', 0.1) : '#ffffff';
-  const documentPreviewBgSoft = isDark ? mixHexColors(documentBase, primaryColor, 0.06) : '#eef6ff';
-  const documentPreviewBg = isDark ? mixHexColors(documentBase, '#ffffff', 0.04) : '#f8fafc';
+  const documentEditorBg = isDark ? mixHexColors(backgroundColor, '#ffffff', 0.03) : '#ffffff';
+  const documentPreviewBgSoft = isDark
+    ? mixHexColors(backgroundColor, '#ffffff', 0.055)
+    : '#eef6ff';
+  const documentPreviewBg = isDark ? mixHexColors(backgroundColor, '#ffffff', 0.035) : '#f8fafc';
   const documentToolbarBg = isDark
-    ? mixHexColors(documentBase, '#ffffff', 0.08)
+    ? mixHexColors(backgroundColor, '#ffffff', 0.045)
     : mixHexColors(backgroundColor, '#ffffff', 0.96);
-  const documentScrollTrack = isDark ? mixHexColors(documentBase, '#000000', 0.12) : '#f1f5f9';
-  const documentScrollThumb = isDark ? toRgba(primaryColor, 0.34) : '#c1c9d4';
-  const documentCodeBtnText = isDark ? '#c9dbef' : '#6f7177';
-  const documentCodeBtnHover = isDark ? toRgba(primaryColor, 0.14) : 'rgb(229 231 235)';
-  const documentCodeFade = isDark ? documentPreviewBg : '#f6f8fa';
-  const editorCanvasBg = isDark ? mixHexColors(backgroundColor, '#020617', 0.42) : '#ffffff';
-  const editorBg = isDark ? mixHexColors(editorCanvasBg, primaryColor, 0.05) : '#ffffff';
+  const documentScrollTrack = isDark ? toRgba('#ffffff', 0.04) : '#f1f5f9';
+  const documentScrollThumb = isDark ? toRgba('#ffffff', 0.14) : '#c1c9d4';
+  const documentCodeBtnText = isDark ? '#bcc4cd' : '#6f7177';
+  const documentCodeBtnHover = isDark ? toRgba('#ffffff', 0.06) : 'rgb(229 231 235)';
+  const documentCodeFade = isDark ? mixHexColors(backgroundColor, '#ffffff', 0.03) : '#f6f8fa';
+  const editorCanvasBg = isDark ? backgroundColor : '#ffffff';
+  const editorBg = isDark ? mixHexColors(backgroundColor, '#ffffff', 0.025) : '#ffffff';
   const editorPanelBg = isDark
-    ? mixHexColors(editorCanvasBg, '#ffffff', 0.06)
+    ? mixHexColors(backgroundColor, '#ffffff', 0.04)
     : mixHexColors(backgroundColor, '#ffffff', 0.98);
   const editorPanelBgAlt = isDark
-    ? mixHexColors(editorCanvasBg, primaryColor, 0.04)
+    ? mixHexColors(backgroundColor, '#ffffff', 0.055)
     : mixHexColors(backgroundColor, primaryColor, 0.05);
-  const editorPreviewBg = isDark ? mixHexColors(editorCanvasBg, '#ffffff', 0.04) : '#f8fafc';
-  const editorBorder = isDark ? toRgba(primaryColor, 0.18) : 'rgba(15, 23, 42, 0.08)';
-  const editorBorderStrong = isDark ? toRgba(primaryColor, 0.3) : toRgba(primaryColor, 0.18);
-  const editorText = isDark ? '#e9f3ff' : '#0f172a';
-  const editorMuted = isDark ? '#bdd1e8' : '#52637a';
-  const editorSubtle = isDark ? '#8da7c5' : '#7b8794';
-  const editorAccent = isDark ? mixHexColors(primaryColor, '#ffffff', 0.16) : primaryColor;
+  const editorPreviewBg = isDark ? mixHexColors(backgroundColor, '#ffffff', 0.035) : '#f8fafc';
+  const editorBorder = isDark ? toRgba('#ffffff', 0.07) : 'rgba(15, 23, 42, 0.08)';
+  const editorBorderStrong = isDark ? toRgba('#ffffff', 0.1) : toRgba(primaryColor, 0.18);
+  const editorText = isDark ? '#eceff4' : '#0f172a';
+  const editorMuted = isDark ? '#bcc4cd' : '#52637a';
+  const editorSubtle = isDark ? '#9098a2' : '#7b8794';
+  const editorAccent = primaryColor;
   const editorAccentStrong = isDark
-    ? mixHexColors(primaryColor, '#ffffff', 0.06)
+    ? mixHexColors(primaryColor, '#ffffff', 0.08)
     : mixHexColors(primaryColor, '#0f172a', 0.08);
-  const editorHover = toRgba(primaryColor, isDark ? 0.12 : 0.08);
-  const editorActive = toRgba(primaryColor, isDark ? 0.18 : 0.14);
-  const editorSelection = toRgba(primaryColor, isDark ? 0.18 : 0.14);
+  const editorHover = isDark ? toRgba('#ffffff', 0.05) : toRgba(primaryColor, 0.08);
+  const editorActive = isDark ? toRgba('#ffffff', 0.08) : toRgba(primaryColor, 0.14);
+  const editorSelection = toRgba(primaryColor, isDark ? 0.16 : 0.14);
   const editorShadow = isDark
-    ? `0 20px 54px ${toRgba(mixHexColors(editorCanvasBg, '#000000', 0.28), 0.42)}`
+    ? '0 14px 36px rgba(0, 0, 0, 0.18)'
     : `0 18px 42px ${toRgba(primaryColor, 0.12)}`;
-  const editorMermaidBg = '#eef7ff';
-  const editorMermaidBorder = isDark ? toRgba(primaryColor, 0.3) : '#d6e7f7';
-  const editorMermaidText = '#0f4f8a';
+  const editorMermaidBg = isDark ? mixHexColors(backgroundColor, '#ffffff', 0.035) : '#eef7ff';
+  const editorMermaidBorder = isDark ? toRgba('#ffffff', 0.08) : '#d6e7f7';
+  const editorMermaidText = isDark ? '#d6dde6' : '#0f4f8a';
   const authBackground = isDark
-    ? `radial-gradient(circle at top, ${toRgba(
-        primaryColor,
-        0.22,
-      )}, transparent 42%), radial-gradient(circle at bottom right, ${toRgba(
-        primaryColor,
-        0.14,
-      )}, transparent 34%), linear-gradient(180deg, ${mixHexColors(
+    ? `linear-gradient(180deg, ${mixHexColors(
         backgroundColor,
-        primaryColor,
-        0.12,
-      )} 0%, ${backgroundColor} 52%, ${mixHexColors(backgroundColor, '#000000', 0.18)} 100%)`
+        '#191c20',
+        0.08,
+      )} 0%, ${backgroundColor} 100%)`
     : `radial-gradient(circle at top, ${toRgba(
         primaryColor,
         0.14,
@@ -206,30 +290,30 @@ const createCssVariableMap = (theme: string, value?: Partial<AdminThemeConfig> |
 
   return {
     '--admin-primary': primaryColor,
-    '--admin-primary-soft-bg': toRgba(primaryColor, isDark ? 0.18 : 0.1),
-    '--admin-primary-soft-hover': toRgba(primaryColor, isDark ? 0.24 : 0.16),
-    '--admin-primary-soft-active': toRgba(primaryColor, isDark ? 0.32 : 0.22),
-    '--admin-primary-soft-border': toRgba(primaryColor, isDark ? 0.32 : 0.2),
-    '--admin-primary-strong-shadow': toRgba(primaryColor, isDark ? 0.34 : 0.22),
-    '--admin-primary-text': isDark ? '#f8fafc' : primaryColor,
-    '--admin-primary-link': isDark ? '#d8ebff' : primaryColor,
+    '--admin-primary-soft-bg': isDark ? 'transparent' : toRgba(primaryColor, 0.1),
+    '--admin-primary-soft-hover': isDark ? 'transparent' : toRgba(primaryColor, 0.16),
+    '--admin-primary-soft-active': isDark ? 'transparent' : toRgba(primaryColor, 0.22),
+    '--admin-primary-soft-border': isDark ? 'transparent' : toRgba(primaryColor, 0.2),
+    '--admin-primary-strong-shadow': isDark ? 'transparent' : toRgba(primaryColor, 0.22),
+    '--admin-primary-text': primaryColor,
+    '--admin-primary-link': primaryColor,
     '--admin-app-background': appBackground,
     '--admin-auth-background': authBackground,
-    '--admin-auth-panel-bg': isDark ? toRgba(surfaceBgElevated, 0.9) : 'rgba(255, 255, 255, 0.88)',
-    '--admin-auth-panel-border': toRgba(primaryColor, isDark ? 0.28 : 0.16),
+    '--admin-auth-panel-bg': isDark ? backgroundColor : 'rgba(255, 255, 255, 0.88)',
+    '--admin-auth-panel-border': isDark ? 'transparent' : toRgba(primaryColor, 0.16),
     '--admin-auth-panel-shadow': isDark
-      ? `0 24px 80px rgba(2, 8, 23, 0.54), 0 0 0 1px ${toRgba(primaryColor, 0.08)}`
+      ? 'none'
       : `0 24px 72px ${toRgba(primaryColor, 0.16)}, 0 0 0 1px rgba(255, 255, 255, 0.55)`,
-    '--admin-auth-text': isDark ? '#e8f3ff' : '#0f172a',
-    '--admin-auth-text-secondary': isDark ? '#a4bed8' : '#52637a',
-    '--admin-auth-input-bg': isDark ? toRgba(surfaceBg, 0.82) : 'rgba(255, 255, 255, 0.92)',
-    '--admin-auth-input-border': toRgba(primaryColor, isDark ? 0.24 : 0.16),
-    '--admin-auth-link': isDark ? '#d3ebff' : primaryColor,
+    '--admin-auth-text': isDark ? '#eceff4' : '#0f172a',
+    '--admin-auth-text-secondary': isDark ? '#a5adb7' : '#52637a',
+    '--admin-auth-input-bg': isDark ? backgroundColor : 'rgba(255, 255, 255, 0.92)',
+    '--admin-auth-input-border': isDark ? 'transparent' : toRgba(primaryColor, 0.16),
+    '--admin-auth-link': primaryColor,
     '--admin-loading-color': primaryColor,
     '--admin-surface-bg': surfaceBg,
     '--admin-surface-bg-subtle': surfaceBgSubtle,
     '--admin-surface-bg-elevated': surfaceBgElevated,
-    '--admin-surface-border': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(5, 5, 5, 0.06)',
+    '--admin-surface-border': isDark ? 'transparent' : 'rgba(5, 5, 5, 0.06)',
     '--admin-document-tree-bg': documentTreeBg,
     '--admin-document-editor-bg': documentEditorBg,
     '--admin-document-preview-bg-soft': documentPreviewBgSoft,
@@ -240,7 +324,7 @@ const createCssVariableMap = (theme: string, value?: Partial<AdminThemeConfig> |
     '--admin-document-code-btn-text': documentCodeBtnText,
     '--admin-document-code-btn-hover': documentCodeBtnHover,
     '--admin-document-code-fade': documentCodeFade,
-    '--admin-document-divider': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(5, 5, 5, 0.06)',
+    '--admin-document-divider': isDark ? toRgba('#ffffff', 0.06) : 'rgba(5, 5, 5, 0.06)',
     '--admin-editor-canvas-bg': editorCanvasBg,
     '--admin-editor-bg': editorBg,
     '--admin-editor-panel-bg': editorPanelBg,
@@ -262,20 +346,20 @@ const createCssVariableMap = (theme: string, value?: Partial<AdminThemeConfig> |
     '--admin-editor-mermaid-text': editorMermaidText,
     '--admin-modal-bg': surfaceBg,
     '--admin-modal-bg-subtle': surfaceBgSubtle,
-    '--admin-modal-border': isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(5, 5, 5, 0.08)',
-    '--admin-modal-text': isDark ? '#e5e7eb' : '#0f172a',
-    '--admin-modal-text-secondary': isDark ? '#cbd5e1' : '#52637a',
-    '--admin-modal-warning-bg': isDark ? 'rgba(217, 119, 6, 0.14)' : 'rgba(245, 158, 11, 0.14)',
-    '--admin-modal-warning-text': isDark ? '#fbbf24' : '#b45309',
-    '--admin-overlay-mask': isDark ? 'rgba(2, 6, 23, 0.72)' : 'rgba(15, 23, 42, 0.18)',
+    '--admin-modal-border': isDark ? 'transparent' : 'rgba(5, 5, 5, 0.08)',
+    '--admin-modal-text': isDark ? '#eceff4' : '#0f172a',
+    '--admin-modal-text-secondary': isDark ? '#a5adb7' : '#52637a',
+    '--admin-modal-warning-bg': isDark ? backgroundColor : 'rgba(245, 158, 11, 0.14)',
+    '--admin-modal-warning-text': isDark ? '#eceff4' : '#b45309',
+    '--admin-overlay-mask': isDark ? 'rgba(0, 0, 0, 0.72)' : 'rgba(15, 23, 42, 0.18)',
     '--admin-sider-bg': siderBg,
-    '--admin-sider-text': isDark ? '#cbd5e1' : 'rgba(0, 0, 0, 0.65)',
-    '--admin-sider-secondary-text': isDark ? '#cbd5e1' : 'rgba(0, 0, 0, 0.45)',
-    '--admin-sider-strong-text': isDark ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)',
-    '--admin-sider-hover-bg': toRgba(primaryColor, isDark ? 0.18 : 0.08),
-    '--admin-sider-selected-bg': toRgba(primaryColor, isDark ? 0.24 : 0.12),
-    '--admin-sider-selected-text': isDark ? '#f8fafc' : primaryColor,
-    '--admin-sider-border': isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(5, 5, 5, 0.06)',
+    '--admin-sider-text': isDark ? '#bcc4cd' : 'rgba(0, 0, 0, 0.65)',
+    '--admin-sider-secondary-text': isDark ? '#98a1ab' : 'rgba(0, 0, 0, 0.45)',
+    '--admin-sider-strong-text': isDark ? '#f2f4f7' : 'rgba(0, 0, 0, 0.88)',
+    '--admin-sider-hover-bg': isDark ? 'transparent' : toRgba(primaryColor, 0.08),
+    '--admin-sider-selected-bg': isDark ? 'transparent' : toRgba(primaryColor, 0.12),
+    '--admin-sider-selected-text': isDark ? primaryColor : primaryColor,
+    '--admin-sider-border': isDark ? 'transparent' : 'rgba(5, 5, 5, 0.06)',
     '--admin-table-header-bg': tableHeaderBg,
   };
 };
@@ -288,26 +372,24 @@ export const getAdminLayoutToken = (
   const primaryColor = getAdminPrimaryColor(themeMode, value);
   const backgroundColor = getAdminBackgroundColor(themeMode, value);
   const isDark = themeMode === 'dark';
-  const siderBg = isDark
-    ? mixHexColors(backgroundColor, primaryColor, 0.12)
-    : mixHexColors(backgroundColor, '#ffffff', 0.82);
+  const siderBg = isDark ? backgroundColor : mixHexColors(backgroundColor, '#ffffff', 0.82);
 
   return {
     layout: {
       sider: {
         colorMenuBackground: siderBg,
         colorBgCollapsedButton: siderBg,
-        colorTextCollapsedButton: isDark ? '#e5e7eb' : 'rgba(0, 0, 0, 0.65)',
-        colorTextCollapsedButtonHover: isDark ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)',
-        colorMenuItemDivider: isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(5, 5, 5, 0.06)',
-        colorTextMenu: isDark ? '#cbd5e1' : 'rgba(0, 0, 0, 0.65)',
-        colorTextMenuSecondary: isDark ? '#94a3b8' : 'rgba(0, 0, 0, 0.45)',
-        colorTextMenuTitle: isDark ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)',
-        colorTextMenuItemHover: isDark ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)',
-        colorTextMenuActive: isDark ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)',
-        colorTextMenuSelected: isDark ? '#f8fafc' : primaryColor,
-        colorBgMenuItemHover: toRgba(primaryColor, isDark ? 0.18 : 0.08),
-        colorBgMenuItemSelected: toRgba(primaryColor, isDark ? 0.24 : 0.12),
+        colorTextCollapsedButton: isDark ? '#bcc4cd' : 'rgba(0, 0, 0, 0.65)',
+        colorTextCollapsedButtonHover: isDark ? primaryColor : 'rgba(0, 0, 0, 0.88)',
+        colorMenuItemDivider: isDark ? 'transparent' : 'rgba(5, 5, 5, 0.06)',
+        colorTextMenu: isDark ? '#bcc4cd' : 'rgba(0, 0, 0, 0.65)',
+        colorTextMenuSecondary: isDark ? '#98a1ab' : 'rgba(0, 0, 0, 0.45)',
+        colorTextMenuTitle: isDark ? '#f2f4f7' : 'rgba(0, 0, 0, 0.88)',
+        colorTextMenuItemHover: isDark ? primaryColor : 'rgba(0, 0, 0, 0.88)',
+        colorTextMenuActive: isDark ? primaryColor : 'rgba(0, 0, 0, 0.88)',
+        colorTextMenuSelected: isDark ? primaryColor : primaryColor,
+        colorBgMenuItemHover: isDark ? 'transparent' : toRgba(primaryColor, 0.08),
+        colorBgMenuItemSelected: isDark ? 'transparent' : toRgba(primaryColor, 0.12),
       },
     },
   };

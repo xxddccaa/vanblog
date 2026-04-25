@@ -6,7 +6,19 @@ import {
   EyeOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Form, Input, Modal, Space, Table, Tooltip, Typography, message } from 'antd';
+import {
+  Button,
+  Card,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Tooltip,
+  Typography,
+  message,
+} from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { useModel } from '@umijs/max';
 import {
@@ -20,6 +32,9 @@ import {
 import ColorValueInput, { optionalHexRule } from '@/components/ColorValueInput';
 import { applyThemeToDocument, getInitTheme } from '@/services/van-blog/theme';
 import {
+  getAdminDarkThemePresetConfig,
+  getAdminDarkThemePresetOptions,
+  getAdminDarkThemePresetValue,
   getAdminPrimaryColor,
   normalizeAdminThemeConfig,
   storeAdminThemeConfig,
@@ -41,6 +56,15 @@ export default function AdminLayout() {
   const [editingItem, setEditingItem] = useState(null);
   const [form] = Form.useForm();
   const [themeForm] = Form.useForm();
+  const darkBackgroundColor = Form.useWatch('darkBackgroundColor', themeForm);
+  const darkPrimaryColor = Form.useWatch('darkPrimaryColor', themeForm);
+  const darkPresetOptions = getAdminDarkThemePresetOptions();
+  const darkPresetValue = getAdminDarkThemePresetValue({
+    darkBackgroundColor,
+    darkPrimaryColor,
+  });
+  const activeDarkPresetLabel =
+    darkPresetOptions.find((item) => item.value === darkPresetValue)?.label || '高级自定义';
 
   const fetchLayoutData = useCallback(async () => {
     const { data } = await getAdminLayoutConfig();
@@ -105,6 +129,15 @@ export default function AdminLayout() {
     } finally {
       setThemeSubmitting(false);
     }
+  };
+
+  const handleDarkPresetChange = (presetKey) => {
+    const presetConfig = getAdminDarkThemePresetConfig(presetKey);
+    if (!presetConfig) {
+      return;
+    }
+
+    themeForm.setFieldsValue(presetConfig);
   };
 
   const handleResetTheme = () => {
@@ -323,9 +356,20 @@ export default function AdminLayout() {
         style={{ marginBottom: 24 }}
       >
         <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-          配置后台亮色/暗色的整体背景色，以及按钮、链接、选中态等强调色。保存后后台壳层、登录页、初始化页和浏览器主题色会立即同步更新。
+          后台暗色默认改成更克制的炭黑系，并收掉多余的边框和深浅层次。推荐先选预设，只有需要时再微调下面的高级颜色。
         </Typography.Paragraph>
         <Form form={themeForm} layout="vertical" initialValues={initialState?.adminThemeConfig}>
+          <Form.Item label="暗色预设方案" style={{ maxWidth: 420, marginBottom: 16 }}>
+            <Select
+              value={darkPresetValue}
+              options={darkPresetOptions}
+              optionFilterProp="label"
+              onChange={handleDarkPresetChange}
+            />
+          </Form.Item>
+          <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+            当前暗色预设：{activeDarkPresetLabel}
+          </Typography.Paragraph>
           <Space size={16} wrap style={{ width: '100%' }}>
             <Form.Item
               label="亮色背景色"
@@ -341,7 +385,7 @@ export default function AdminLayout() {
               rules={themeFieldRules}
               style={{ minWidth: 240, marginBottom: 0 }}
             >
-              <ColorValueInput placeholder="#111827" defaultValue="#111827" />
+              <ColorValueInput placeholder="#111315" defaultValue="#111315" />
             </Form.Item>
             <Form.Item
               label="亮色按钮/强调色"
@@ -357,7 +401,7 @@ export default function AdminLayout() {
               rules={themeFieldRules}
               style={{ minWidth: 240, marginBottom: 0 }}
             >
-              <ColorValueInput placeholder="#60a5fa" defaultValue="#60a5fa" />
+              <ColorValueInput placeholder="#8d9bb0" defaultValue="#8d9bb0" />
             </Form.Item>
           </Space>
         </Form>

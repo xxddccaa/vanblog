@@ -59,7 +59,7 @@ body .bytemd-preview .markdown-body {
   }
 }
 
-/* 后台编辑器暗色模式：统一成蓝青系 admin shell，而不是割裂的炭黑面板 */
+/* 后台编辑器暗色模式：统一到同一块炭黑石墨面板，不再出现蓝青/深浅割裂。 */
 html[data-theme='dark'],
 html[data-theme='dark'] body,
 body[data-theme='dark'],
@@ -67,21 +67,21 @@ html.dark,
 html.dark body,
 body.dark,
 .dark {
-  --vb-editor-dark-canvas: var(--admin-editor-canvas-bg, #0b1422);
-  --vb-editor-dark-bg: var(--admin-editor-bg, #0f1b2d);
-  --vb-editor-dark-panel: var(--admin-editor-panel-bg, #132235);
-  --vb-editor-dark-panel-2: var(--admin-editor-panel-bg-alt, #172941);
-  --vb-editor-dark-preview: var(--admin-editor-preview-bg, #102033);
-  --vb-editor-dark-border: var(--admin-editor-border, rgba(111, 186, 255, 0.18));
-  --vb-editor-dark-border-strong: var(--admin-editor-border-strong, rgba(111, 214, 255, 0.3));
-  --vb-editor-dark-text: var(--admin-editor-text, #e9f3ff);
-  --vb-editor-dark-muted: var(--admin-editor-muted, #bdd1e8);
-  --vb-editor-dark-subtle: var(--admin-editor-subtle, #8da7c5);
-  --vb-editor-dark-accent: var(--admin-editor-accent, #67d7ff);
-  --vb-editor-dark-accent-strong: var(--admin-editor-accent-strong, #7cb7ff);
-  --vb-editor-dark-hover: var(--admin-editor-hover, rgba(103, 215, 255, 0.12));
-  --vb-editor-dark-active: var(--admin-editor-active, rgba(124, 183, 255, 0.18));
-  --vb-editor-dark-shadow: var(--admin-editor-shadow, 0 20px 54px rgba(4, 12, 28, 0.34));
+  --vb-editor-dark-canvas: var(--admin-editor-canvas-bg, #111315);
+  --vb-editor-dark-bg: var(--admin-editor-bg, #111315);
+  --vb-editor-dark-panel: var(--admin-editor-panel-bg, #111315);
+  --vb-editor-dark-panel-2: var(--admin-editor-panel-bg-alt, #111315);
+  --vb-editor-dark-preview: var(--admin-editor-preview-bg, #111315);
+  --vb-editor-dark-border: var(--admin-editor-border, transparent);
+  --vb-editor-dark-border-strong: var(--admin-editor-border-strong, transparent);
+  --vb-editor-dark-text: var(--admin-editor-text, #eceff4);
+  --vb-editor-dark-muted: var(--admin-editor-muted, #bcc4cd);
+  --vb-editor-dark-subtle: var(--admin-editor-subtle, #9098a2);
+  --vb-editor-dark-accent: var(--admin-editor-accent, #8d9bb0);
+  --vb-editor-dark-accent-strong: var(--admin-editor-accent-strong, #a4b1c4);
+  --vb-editor-dark-hover: var(--admin-editor-hover, transparent);
+  --vb-editor-dark-active: var(--admin-editor-active, transparent);
+  --vb-editor-dark-shadow: var(--admin-editor-shadow, none);
 }
 
 html.dark body .bytemd-preview.bytemd-preview,
@@ -473,7 +473,7 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
   }
 }
 
-/* 确保在暗色模式下滚动条样式与蓝青壳统一 */
+/* 确保暗色模式滚动条也保持同一块石墨底色。 */
 .dark .editor-wrapper {
   .bytemd {
     border: 1px solid var(--vb-editor-dark-border) !important;

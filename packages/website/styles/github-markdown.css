@@ -33,12 +33,12 @@
   --color-fg-default: var(--vb-front-dark-text, #c2ced6);
   --color-fg-muted: var(--vb-front-dark-text-muted, #889bad);
   --color-fg-subtle: var(--vb-front-dark-text-soft, #62798c);
-  --color-canvas-default: var(--vb-front-card-bg-dark, #102033);
-  --color-canvas-subtle: var(--vb-front-card-bg-dark-soft, #11253a);
-  --color-border-default: var(--vb-front-dark-border, #364d63);
+  --color-canvas-default: var(--vb-front-card-bg-dark, #111315);
+  --color-canvas-subtle: var(--vb-front-card-bg-dark-soft, #181b1f);
+  --color-border-default: var(--vb-front-dark-border, #3a424c);
   --color-border-muted: color-mix(
     in srgb,
-    var(--vb-front-dark-border-strong, #6f8295) 62%,
+    var(--vb-front-dark-border-strong, #55606d) 62%,
     transparent
   );
   --color-neutral-muted: color-mix(
@@ -1192,8 +1192,8 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
 
 .dark .markdown-body .code-wrap-btn.code-wrap-enabled {
   color: #f8fafc;
-  background-color: rgb(23 114 180 / 0.22);
-  box-shadow: inset 0 0 0 1px rgb(125 211 252 / 0.24);
+  background-color: rgba(141, 155, 176, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(141, 155, 176, 0.24);
 }
 
 .markdown-body .code-copy-btn svg,

@@ -1,24 +1,23 @@
-/* Vanblog Graphite（仅暗色生效）：基于 Phycat Dark Only 的排版，中性石墨灰 + 微蓝强调 */
+/* Vanblog Graphite（仅暗色生效）：基于 Phycat Dark Only 的排版，中性石墨灰 + 低饱和灰蓝强调 */
 @import url("./phycat-dark-only.css");
 
 html.dark .markdown-body {
-  --head-title-color: #cbd5e1;
-  --head-title-h2-color: #0b1220;
-  --head-title-h2-background: linear-gradient(to right, #dbeafe, #94a3b8, #dbeafe);
+  --head-title-color: #d6dbe1;
+  --head-title-h2-color: #101315;
+  --head-title-h2-background: linear-gradient(to right, #dfe4ea, #8f98a3, #dfe4ea);
 
-  --element-color: #94a3b8;
-  --element-color-deep: #e2e8f0;
-  --element-color-shallow: #dbeafe;
+  --element-color: #9aa4af;
+  --element-color-deep: #e6ebf0;
+  --element-color-shallow: #cfd6de;
 
-  --element-color-linecode: #dbeafe;
-  --element-color-linecode-background: #1a2230;
+  --element-color-linecode: #dde4eb;
+  --element-color-linecode-background: #181c20;
 
-  --vb-panel-bg: #111827;
-  --vb-panel-bg-2: #0f172a;
-  --vb-hover-bg: #1a2230;
-  --vb-border: #273244;
-  --vb-mark-bg: #1b2a3a;
-
+  --vb-panel-bg: #111315;
+  --vb-panel-bg-2: #15181b;
+  --vb-hover-bg: #191d21;
+  --vb-border: #2a3037;
+  --vb-mark-bg: #1d2127;
 }
 
 html.dark .markdown-body blockquote { background-color: var(--vb-panel-bg); }

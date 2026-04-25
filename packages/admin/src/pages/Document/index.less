@@ -221,6 +221,23 @@ html[data-theme='dark'] {
   padding: 0;
 }
 
+.document-empty-state {
+  text-align: center;
+  color: #8c8c8c;
+
+  &__title {
+    margin-bottom: 16px;
+    font-size: 16px;
+    color: inherit;
+  }
+
+  &__desc {
+    margin-bottom: 0;
+    font-size: 14px;
+    color: #b3b3b3;
+  }
+}
+
 html[data-theme='dark'] {
   .document-page {
     &-content,
@@ -243,6 +260,13 @@ html[data-theme='dark'] {
     &-library-info,
     &-editor-container {
       border-top: 1px solid var(--admin-document-divider);
+    }
+
+    // 纯预览页只保留“标题栏 / 内容区”两层，不再叠 card body + viewer + inner viewer 多层底色。
+    .document-content-card &-viewer {
+      padding: 0;
+      background: var(--admin-document-preview-bg) !important;
+      border-top: 0;
     }
 
     &-library-info {
@@ -319,9 +343,55 @@ html[data-theme='dark'] {
     &.document-content-card {
       .ant-card-head,
       .ant-card-body {
-        background-color: var(--admin-surface-bg-elevated) !important;
-        border-color: var(--admin-surface-border) !important;
+        border-color: var(--admin-document-divider) !important;
       }
+
+      .ant-card-head {
+        background-color: var(--admin-surface-bg-elevated) !important;
+      }
+
+      .ant-card-body {
+        background-color: var(--admin-document-preview-bg) !important;
+      }
+    }
+  }
+
+  .document-content-card.document-content-card-empty {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+
+    .ant-card-body {
+      background: transparent !important;
+    }
+  }
+
+  .document-content-card {
+    .document-viewer,
+    .document-viewer.dark,
+    .document-viewer .bytemd-viewer,
+    .document-viewer.dark .bytemd-viewer {
+      background: var(--admin-document-preview-bg) !important;
+      background-image: none !important;
+      box-shadow: none !important;
+    }
+
+    .document-viewer .bytemd-viewer {
+      background-color: transparent !important;
+    }
+
+    .document-viewer .markdown-body,
+    .document-viewer .bytemd-viewer > .markdown-body {
+      padding: 20px 24px;
+      background: transparent !important;
+    }
+  }
+
+  .document-empty-state {
+    color: #959da7;
+
+    &__desc {
+      color: #727b86;
     }
   }
 

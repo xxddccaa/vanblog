@@ -43,6 +43,7 @@ export default function () {
     },
   });
   const [themeValues, setThemeValues] = useState({
+    frontCardBackgroundColorDark: '',
     markdownLightThemeUrl: '',
     markdownDarkThemeUrl: '',
     markdownLightThemePreset: '',
@@ -66,6 +67,7 @@ export default function () {
 
       if (siteInfoRes.data) {
         setThemeValues({
+          frontCardBackgroundColorDark: siteInfoRes.data?.frontCardBackgroundColorDark || '',
           markdownLightThemeUrl: siteInfoRes.data?.markdownLightThemeUrl || '',
           markdownDarkThemeUrl: siteInfoRes.data?.markdownDarkThemeUrl || '',
           markdownLightThemePreset: siteInfoRes.data?.markdownLightThemePreset || '',

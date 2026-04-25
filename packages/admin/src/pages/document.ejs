@@ -19,11 +19,17 @@
     <script>
       (function () {
         var STORAGE_KEY = 'vanblog.admin.theme.config';
-        var DEFAULT_THEME = {
+        var LEGACY_THEME = {
           lightPrimaryColor: '#1772b4',
           darkPrimaryColor: '#60a5fa',
           lightBackgroundColor: '#f4f8fb',
           darkBackgroundColor: '#111827',
+        };
+        var DEFAULT_THEME = {
+          lightPrimaryColor: '#1772b4',
+          darkPrimaryColor: '#8d9bb0',
+          lightBackgroundColor: '#f4f8fb',
+          darkBackgroundColor: '#111315',
         };
         var COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
@@ -39,7 +45,7 @@
         }
 
         function normalizeTheme(value) {
-          return {
+          var normalized = {
             lightPrimaryColor: normalizeColor(
               value && value.lightPrimaryColor,
               DEFAULT_THEME.lightPrimaryColor,
@@ -57,6 +63,12 @@
               DEFAULT_THEME.darkBackgroundColor,
             ),
           };
+          var shouldUpgradeLegacyTheme =
+            normalized.lightPrimaryColor === LEGACY_THEME.lightPrimaryColor &&
+            normalized.darkPrimaryColor === LEGACY_THEME.darkPrimaryColor &&
+            normalized.lightBackgroundColor === LEGACY_THEME.lightBackgroundColor &&
+            normalized.darkBackgroundColor === LEGACY_THEME.darkBackgroundColor;
+          return shouldUpgradeLegacyTheme ? DEFAULT_THEME : normalized;
         }
 
         function readTheme() {
@@ -140,99 +152,92 @@
         var backgroundColor =
           themeMode === 'dark' ? themeConfig.darkBackgroundColor : themeConfig.lightBackgroundColor;
         var surfaceBg =
-          themeMode === 'dark'
-            ? mixHexColors(backgroundColor, primaryColor, 0.08)
-            : mixHexColors(backgroundColor, '#ffffff', 0.72);
+          themeMode === 'dark' ? backgroundColor : mixHexColors(backgroundColor, '#ffffff', 0.72);
         var surfaceBgSubtle =
           themeMode === 'dark'
-            ? mixHexColors(backgroundColor, '#ffffff', 0.05)
+            ? backgroundColor
             : mixHexColors(backgroundColor, primaryColor, 0.05);
-        var surfaceBgElevated =
-          themeMode === 'dark' ? mixHexColors(backgroundColor, '#ffffff', 0.08) : '#ffffff';
+        var surfaceBgElevated = themeMode === 'dark' ? backgroundColor : '#ffffff';
         var siderBg =
-          themeMode === 'dark'
-            ? mixHexColors(backgroundColor, primaryColor, 0.12)
-            : mixHexColors(backgroundColor, '#ffffff', 0.82);
+          themeMode === 'dark' ? backgroundColor : mixHexColors(backgroundColor, '#ffffff', 0.82);
         var tableHeaderBg =
           themeMode === 'dark'
-            ? mixHexColors(backgroundColor, '#ffffff', 0.08)
+            ? backgroundColor
             : mixHexColors(backgroundColor, primaryColor, 0.08);
         var appBackground =
           themeMode === 'dark' ? backgroundColor : mixHexColors(backgroundColor, '#ffffff', 0.35);
         var documentBase =
           themeMode === 'dark'
-            ? mixHexColors(backgroundColor, '#020617', 0.26)
+            ? mixHexColors(backgroundColor, '#ffffff', 0.025)
             : mixHexColors(backgroundColor, '#ffffff', 0.92);
         var documentTreeBg =
           themeMode === 'dark'
-            ? mixHexColors(documentBase, '#ffffff', 0.06)
+            ? mixHexColors(backgroundColor, '#ffffff', 0.04)
             : mixHexColors(backgroundColor, '#ffffff', 0.9);
         var documentEditorBg =
-          themeMode === 'dark' ? mixHexColors(documentBase, '#020617', 0.1) : '#ffffff';
+          themeMode === 'dark' ? mixHexColors(backgroundColor, '#ffffff', 0.03) : '#ffffff';
         var documentPreviewBgSoft =
-          themeMode === 'dark' ? mixHexColors(documentBase, primaryColor, 0.06) : '#eef6ff';
+          themeMode === 'dark'
+            ? mixHexColors(backgroundColor, '#ffffff', 0.055)
+            : '#eef6ff';
         var documentPreviewBg =
-          themeMode === 'dark' ? mixHexColors(documentBase, '#ffffff', 0.04) : '#f8fafc';
+          themeMode === 'dark' ? mixHexColors(backgroundColor, '#ffffff', 0.035) : '#f8fafc';
         var documentToolbarBg =
           themeMode === 'dark'
-            ? mixHexColors(documentBase, '#ffffff', 0.08)
+            ? mixHexColors(backgroundColor, '#ffffff', 0.045)
             : mixHexColors(backgroundColor, '#ffffff', 0.96);
-        var documentScrollTrack =
-          themeMode === 'dark' ? mixHexColors(documentBase, '#000000', 0.12) : '#f1f5f9';
-        var documentScrollThumb = themeMode === 'dark' ? toRgba(primaryColor, 0.34) : '#c1c9d4';
-        var documentCodeBtnText = themeMode === 'dark' ? '#c9dbef' : '#6f7177';
+        var documentScrollTrack = themeMode === 'dark' ? toRgba('#ffffff', 0.04) : '#f1f5f9';
+        var documentScrollThumb = themeMode === 'dark' ? toRgba('#ffffff', 0.14) : '#c1c9d4';
+        var documentCodeBtnText = themeMode === 'dark' ? '#bcc4cd' : '#6f7177';
         var documentCodeBtnHover =
-          themeMode === 'dark' ? toRgba(primaryColor, 0.14) : 'rgb(229 231 235)';
-        var documentCodeFade = themeMode === 'dark' ? documentPreviewBg : '#f6f8fa';
-        var editorCanvasBg =
-          themeMode === 'dark' ? mixHexColors(backgroundColor, '#020617', 0.42) : '#ffffff';
+          themeMode === 'dark' ? toRgba('#ffffff', 0.06) : 'rgb(229 231 235)';
+        var documentCodeFade =
+          themeMode === 'dark' ? mixHexColors(backgroundColor, '#ffffff', 0.03) : '#f6f8fa';
+        var editorCanvasBg = themeMode === 'dark' ? backgroundColor : '#ffffff';
         var editorBg =
-          themeMode === 'dark' ? mixHexColors(editorCanvasBg, primaryColor, 0.05) : '#ffffff';
+          themeMode === 'dark' ? mixHexColors(backgroundColor, '#ffffff', 0.025) : '#ffffff';
         var editorPanelBg =
           themeMode === 'dark'
-            ? mixHexColors(editorCanvasBg, '#ffffff', 0.06)
+            ? mixHexColors(backgroundColor, '#ffffff', 0.04)
             : mixHexColors(backgroundColor, '#ffffff', 0.98);
         var editorPanelBgAlt =
           themeMode === 'dark'
-            ? mixHexColors(editorCanvasBg, primaryColor, 0.04)
+            ? mixHexColors(backgroundColor, '#ffffff', 0.055)
             : mixHexColors(backgroundColor, primaryColor, 0.05);
         var editorPreviewBg =
-          themeMode === 'dark' ? mixHexColors(editorCanvasBg, '#ffffff', 0.04) : '#f8fafc';
+          themeMode === 'dark' ? mixHexColors(backgroundColor, '#ffffff', 0.035) : '#f8fafc';
         var editorBorder =
-          themeMode === 'dark' ? toRgba(primaryColor, 0.18) : 'rgba(15, 23, 42, 0.08)';
+          themeMode === 'dark' ? toRgba('#ffffff', 0.07) : 'rgba(15, 23, 42, 0.08)';
         var editorBorderStrong =
-          themeMode === 'dark' ? toRgba(primaryColor, 0.3) : toRgba(primaryColor, 0.18);
-        var editorText = themeMode === 'dark' ? '#e9f3ff' : '#0f172a';
-        var editorMuted = themeMode === 'dark' ? '#bdd1e8' : '#52637a';
-        var editorSubtle = themeMode === 'dark' ? '#8da7c5' : '#7b8794';
-        var editorAccent =
-          themeMode === 'dark' ? mixHexColors(primaryColor, '#ffffff', 0.16) : primaryColor;
+          themeMode === 'dark' ? toRgba('#ffffff', 0.1) : toRgba(primaryColor, 0.18);
+        var editorText = themeMode === 'dark' ? '#eceff4' : '#0f172a';
+        var editorMuted = themeMode === 'dark' ? '#bcc4cd' : '#52637a';
+        var editorSubtle = themeMode === 'dark' ? '#9098a2' : '#7b8794';
+        var editorAccent = primaryColor;
         var editorAccentStrong =
           themeMode === 'dark'
-            ? mixHexColors(primaryColor, '#ffffff', 0.06)
+            ? mixHexColors(primaryColor, '#ffffff', 0.08)
             : mixHexColors(primaryColor, '#0f172a', 0.08);
-        var editorHover = toRgba(primaryColor, themeMode === 'dark' ? 0.12 : 0.08);
-        var editorActive = toRgba(primaryColor, themeMode === 'dark' ? 0.18 : 0.14);
-        var editorSelection = toRgba(primaryColor, themeMode === 'dark' ? 0.18 : 0.14);
+        var editorHover =
+          themeMode === 'dark' ? toRgba('#ffffff', 0.05) : toRgba(primaryColor, 0.08);
+        var editorActive =
+          themeMode === 'dark' ? toRgba('#ffffff', 0.08) : toRgba(primaryColor, 0.14);
+        var editorSelection = toRgba(primaryColor, themeMode === 'dark' ? 0.16 : 0.14);
         var editorShadow =
           themeMode === 'dark'
-            ? '0 20px 54px ' + toRgba(mixHexColors(editorCanvasBg, '#000000', 0.28), 0.42)
+            ? '0 14px 36px rgba(0, 0, 0, 0.18)'
             : '0 18px 42px ' + toRgba(primaryColor, 0.12);
-        var editorMermaidBg = '#eef7ff';
-        var editorMermaidBorder = themeMode === 'dark' ? toRgba(primaryColor, 0.3) : '#d6e7f7';
-        var editorMermaidText = '#0f4f8a';
+        var editorMermaidBg =
+          themeMode === 'dark' ? mixHexColors(backgroundColor, '#ffffff', 0.035) : '#eef7ff';
+        var editorMermaidBorder =
+          themeMode === 'dark' ? toRgba('#ffffff', 0.08) : '#d6e7f7';
+        var editorMermaidText = themeMode === 'dark' ? '#d6dde6' : '#0f4f8a';
         var authBackground =
           themeMode === 'dark'
-            ? 'radial-gradient(circle at top, ' +
-              toRgba(primaryColor, 0.22) +
-              ', transparent 42%), radial-gradient(circle at bottom right, ' +
-              toRgba(primaryColor, 0.14) +
-              ', transparent 34%), linear-gradient(180deg, ' +
-              mixHexColors(backgroundColor, primaryColor, 0.12) +
+            ? 'linear-gradient(180deg, ' +
+              mixHexColors(backgroundColor, '#191c20', 0.08) +
               ' 0%, ' +
               backgroundColor +
-              ' 52%, ' +
-              mixHexColors(backgroundColor, '#000000', 0.18) +
               ' 100%)'
             : 'radial-gradient(circle at top, ' +
               toRgba(primaryColor, 0.14) +
@@ -252,13 +257,46 @@
         document.documentElement.style.setProperty('--admin-primary', primaryColor);
         document.documentElement.style.setProperty(
           '--admin-primary-soft-bg',
-          toRgba(primaryColor, themeMode === 'dark' ? 0.18 : 0.1),
+          themeMode === 'dark' ? 'transparent' : toRgba(primaryColor, 0.1),
         );
         document.documentElement.style.setProperty(
           '--admin-primary-soft-border',
-          toRgba(primaryColor, themeMode === 'dark' ? 0.32 : 0.2),
+          themeMode === 'dark' ? 'transparent' : toRgba(primaryColor, 0.2),
         );
+        document.documentElement.style.setProperty('--admin-primary-text', primaryColor);
+        document.documentElement.style.setProperty('--admin-primary-link', primaryColor);
         document.documentElement.style.setProperty('--admin-auth-background', authBackground);
+        document.documentElement.style.setProperty(
+          '--admin-auth-panel-bg',
+          themeMode === 'dark' ? backgroundColor : 'rgba(255, 255, 255, 0.88)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-auth-panel-border',
+          themeMode === 'dark' ? 'transparent' : toRgba(primaryColor, 0.16),
+        );
+        document.documentElement.style.setProperty(
+          '--admin-auth-panel-shadow',
+          themeMode === 'dark'
+            ? 'none'
+            : '0 24px 72px ' + toRgba(primaryColor, 0.16) + ', 0 0 0 1px rgba(255, 255, 255, 0.55)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-auth-text',
+          themeMode === 'dark' ? '#eceff4' : '#0f172a',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-auth-text-secondary',
+          themeMode === 'dark' ? '#a5adb7' : '#52637a',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-auth-input-bg',
+          themeMode === 'dark' ? backgroundColor : 'rgba(255, 255, 255, 0.92)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-auth-input-border',
+          themeMode === 'dark' ? 'transparent' : toRgba(primaryColor, 0.16),
+        );
+        document.documentElement.style.setProperty('--admin-auth-link', primaryColor);
         document.documentElement.style.setProperty('--admin-loading-color', primaryColor);
         document.documentElement.style.setProperty('--admin-app-background', appBackground);
         document.documentElement.style.setProperty('--admin-surface-bg', surfaceBg);
@@ -269,7 +307,7 @@
         );
         document.documentElement.style.setProperty(
           '--admin-surface-border',
-          themeMode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(5, 5, 5, 0.06)',
+          themeMode === 'dark' ? 'transparent' : 'rgba(5, 5, 5, 0.06)',
         );
         document.documentElement.style.setProperty('--admin-document-tree-bg', documentTreeBg);
         document.documentElement.style.setProperty('--admin-document-editor-bg', documentEditorBg);
@@ -304,7 +342,7 @@
         document.documentElement.style.setProperty('--admin-document-code-fade', documentCodeFade);
         document.documentElement.style.setProperty(
           '--admin-document-divider',
-          themeMode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(5, 5, 5, 0.06)',
+          themeMode === 'dark' ? toRgba('#ffffff', 0.06) : 'rgba(5, 5, 5, 0.06)',
         );
         document.documentElement.style.setProperty('--admin-editor-canvas-bg', editorCanvasBg);
         document.documentElement.style.setProperty('--admin-editor-bg', editorBg);
@@ -341,9 +379,54 @@
         document.documentElement.style.setProperty('--admin-modal-bg-subtle', surfaceBgSubtle);
         document.documentElement.style.setProperty(
           '--admin-modal-border',
-          themeMode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(5, 5, 5, 0.08)',
+          themeMode === 'dark' ? 'transparent' : 'rgba(5, 5, 5, 0.08)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-modal-text',
+          themeMode === 'dark' ? '#eceff4' : '#0f172a',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-modal-text-secondary',
+          themeMode === 'dark' ? '#a5adb7' : '#52637a',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-modal-warning-bg',
+          themeMode === 'dark' ? backgroundColor : 'rgba(245, 158, 11, 0.14)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-modal-warning-text',
+          themeMode === 'dark' ? '#eceff4' : '#b45309',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-overlay-mask',
+          themeMode === 'dark' ? 'rgba(0, 0, 0, 0.72)' : 'rgba(15, 23, 42, 0.18)',
         );
         document.documentElement.style.setProperty('--admin-sider-bg', siderBg);
+        document.documentElement.style.setProperty(
+          '--admin-sider-text',
+          themeMode === 'dark' ? '#bcc4cd' : 'rgba(0, 0, 0, 0.65)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-sider-secondary-text',
+          themeMode === 'dark' ? '#98a1ab' : 'rgba(0, 0, 0, 0.45)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-sider-strong-text',
+          themeMode === 'dark' ? '#f2f4f7' : 'rgba(0, 0, 0, 0.88)',
+        );
+        document.documentElement.style.setProperty(
+          '--admin-sider-hover-bg',
+          themeMode === 'dark' ? 'transparent' : toRgba(primaryColor, 0.08),
+        );
+        document.documentElement.style.setProperty(
+          '--admin-sider-selected-bg',
+          themeMode === 'dark' ? 'transparent' : toRgba(primaryColor, 0.12),
+        );
+        document.documentElement.style.setProperty('--admin-sider-selected-text', primaryColor);
+        document.documentElement.style.setProperty(
+          '--admin-sider-border',
+          themeMode === 'dark' ? 'transparent' : 'rgba(5, 5, 5, 0.06)',
+        );
         document.documentElement.style.setProperty('--admin-table-header-bg', tableHeaderBg);
 
         var themeColorMeta = document.querySelector('meta[name="theme-color"]');

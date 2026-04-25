@@ -247,7 +247,7 @@ export default function Document() {
     if (!currentDocument) {
       return (
         <Card
-          className="document-content-card"
+          className="document-content-card document-content-card-empty"
           style={{
             minHeight: '600px',
             display: 'flex',
@@ -255,9 +255,9 @@ export default function Document() {
             justifyContent: 'center',
           }}
         >
-          <div style={{ textAlign: 'center', color: '#999' }}>
-            <p style={{ fontSize: '16px', marginBottom: '16px' }}>请选择一个文档进行查看或编辑</p>
-            <p style={{ fontSize: '14px', color: '#ccc' }}>在左侧文档树中创建文档库和文档</p>
+          <div className="document-empty-state">
+            <p className="document-empty-state__title">请选择一个文档进行查看或编辑</p>
+            <p className="document-empty-state__desc">在左侧文档树中创建文档库和文档</p>
           </div>
         </Card>
       );

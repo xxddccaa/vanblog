@@ -146,7 +146,7 @@ describe("getLayoutProps", () => {
     } as any);
 
     expect(defaultLayoutProps.frontCardBackgroundColor).toBe("#ffffff");
-    expect(defaultLayoutProps.frontCardBackgroundColorDark).toBe("#102033");
+    expect(defaultLayoutProps.frontCardBackgroundColorDark).toBe("#111315");
     expect(customLayoutProps.frontCardBackgroundColor).toBe("#f5fbff");
     expect(customLayoutProps.frontCardBackgroundColorDark).toBe("#15314d");
   });

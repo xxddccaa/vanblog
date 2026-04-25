@@ -2,29 +2,29 @@
 html.dark .markdown-body,
 html[data-theme='dark'] .markdown-body,
 body[data-theme='dark'] .markdown-body {
-  --vb-code-panel-bg: rgba(15, 23, 42, 0.76);
-  --vb-code-panel-border: rgba(148, 163, 184, 0.18);
-  --vb-code-panel-shadow: 0 18px 36px rgba(2, 6, 23, 0.3);
-  --vb-code-header-bg: rgba(15, 23, 42, 0.82);
-  --vb-code-header-border: rgba(148, 163, 184, 0.16);
+  --vb-code-panel-bg: linear-gradient(180deg, rgba(23, 26, 29, 0.96), rgba(17, 19, 21, 0.98));
+  --vb-code-panel-border: rgba(143, 152, 163, 0.18);
+  --vb-code-panel-shadow: 0 18px 36px rgba(0, 0, 0, 0.24);
+  --vb-code-header-bg: rgba(21, 24, 27, 0.92);
+  --vb-code-header-border: rgba(143, 152, 163, 0.14);
   --vb-code-header-text: #cbd5e1;
-  --vb-code-language-bg: rgba(96, 165, 250, 0.16);
-  --vb-code-language-text: #b6e2ff;
-  --vb-code-btn-bg: rgba(15, 23, 42, 0.68);
-  --vb-code-btn-border: rgba(148, 163, 184, 0.18);
+  --vb-code-language-bg: rgba(141, 155, 176, 0.12);
+  --vb-code-language-text: #c4ccd6;
+  --vb-code-btn-bg: rgba(21, 24, 27, 0.78);
+  --vb-code-btn-border: rgba(143, 152, 163, 0.16);
   --vb-code-btn-text: #cbd5e1;
-  --vb-code-btn-hover: rgba(30, 41, 59, 0.96);
-  --vb-code-btn-active: rgba(96, 165, 250, 0.18);
+  --vb-code-btn-hover: rgba(255, 255, 255, 0.06);
+  --vb-code-btn-active: rgba(141, 155, 176, 0.14);
   --vb-code-btn-active-text: #eff6ff;
   --vb-code-body-text: #e5edf7;
   --vb-code-muted-text: #94a3b8;
-  --vb-code-selection-bg: rgba(125, 211, 252, 0.2);
+  --vb-code-selection-bg: rgba(141, 155, 176, 0.18);
   --vb-code-selection-text: #f8fbff;
   --vb-code-added-shadow: rgba(74, 222, 128, 0.32);
   --vb-code-added-text: #86efac;
   --vb-code-deleted-shadow: rgba(251, 113, 133, 0.34);
   --vb-code-deleted-text: #fda4af;
-  --vb-code-fade: rgba(10, 18, 32, 0.98);
+  --vb-code-fade: rgba(17, 19, 21, 0.98);
 }
 
 .dark .markdown-body pre,

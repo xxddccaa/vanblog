@@ -1,5 +1,5 @@
 export const DEFAULT_FRONT_CARD_BACKGROUND_LIGHT = "#ffffff";
-export const DEFAULT_FRONT_CARD_BACKGROUND_DARK = "#102033";
+export const DEFAULT_FRONT_CARD_BACKGROUND_DARK = "#111315";
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
@@ -59,22 +59,18 @@ export const resolveFrontCardSurfaceColors = (config?: {
     lightSoft: mixHex(light, "#eef5fb", 0.16),
     lightDeep: mixHex(light, "#dbe6f3", 0.3),
     dark,
-    // Keep the dark palette in the same cyan-blue family as the configured card color
-    // so any leftover utility classes no longer fall back to near-black surfaces.
-    darkSoft: mixHex(dark, "#193d5d", 0.16),
-    darkDeep: mixHex(dark, "#0f2338", 0.22),
-    // Page background should stay in the same blue-cyan family as the article card,
-    // instead of falling back to a near-black shell behind the content.
-    darkPage: mixHex(dark, "#163856", 0.32),
-    darkHover: mixHex(dark, "#2d5f86", 0.28),
-    darkHoverSoft: mixHex(dark, "#43759b", 0.42),
-    darkBorder: mixHex(dark, "#7fa5c0", 0.34),
-    darkBorderStrong: mixHex(dark, "#c7dcef", 0.52),
-    darkText: mixHex(dark, "#eff9ff", 0.8),
-    darkTextMuted: mixHex(dark, "#d2e7f7", 0.62),
-    darkTextSoft: mixHex(dark, "#a8c4d8", 0.54),
+    darkSoft: mixHex(dark, "#181b1f", 0.16),
+    darkDeep: mixHex(dark, "#0b0d10", 0.22),
+    darkPage: mixHex(dark, "#0d0f12", 0.28),
+    darkHover: mixHex(dark, "#1d2127", 0.24),
+    darkHoverSoft: mixHex(dark, "#252a31", 0.38),
+    darkBorder: mixHex(dark, "#3a424c", 0.28),
+    darkBorderStrong: mixHex(dark, "#55606d", 0.42),
+    darkText: mixHex(dark, "#eef2f6", 0.82),
+    darkTextMuted: mixHex(dark, "#c2cad3", 0.62),
+    darkTextSoft: mixHex(dark, "#97a0ab", 0.5),
     darkTextStrong: mixHex(dark, "#ffffff", 0.9),
-    darkTextOnAccent: mixHex(dark, "#0d1f31", 0.88),
-    darkFill: mixHex(dark, "#e1f2ff", 0.52),
+    darkTextOnAccent: mixHex(dark, "#111315", 0.9),
+    darkFill: mixHex(dark, "#d7dee6", 0.46),
   };
 };
