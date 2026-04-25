@@ -271,14 +271,36 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror-lines,
 .dark .editor-wrapper .CodeMirror-scroll,
 .dark .editor-wrapper .CodeMirror-gutters,
 .dark .editor-wrapper .CodeMirror-lines {
-  background: linear-gradient(
-    180deg,
-    var(--vb-editor-dark-bg),
-    var(--vb-editor-dark-canvas)
-  ) !important;
-  background-color: var(--vb-editor-dark-bg) !important;
   color: var(--vb-editor-dark-text) !important;
   border-color: var(--vb-editor-dark-border) !important;
+}
+
+html.dark .editor-wrapper .bytemd-editor,
+html.dark .editor-wrapper .CodeMirror,
+html.dark .editor-wrapper .CodeMirror-scroll,
+html.dark .editor-wrapper .CodeMirror-gutters,
+html.dark .editor-wrapper .CodeMirror-sizer,
+html.dark .editor-wrapper .CodeMirror-lines,
+html[data-theme='dark'] .editor-wrapper .bytemd-editor,
+html[data-theme='dark'] .editor-wrapper .CodeMirror,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-scroll,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-gutters,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-sizer,
+html[data-theme='dark'] .editor-wrapper .CodeMirror-lines,
+body[data-theme='dark'] .editor-wrapper .bytemd-editor,
+body[data-theme='dark'] .editor-wrapper .CodeMirror,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-scroll,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-gutters,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-sizer,
+body[data-theme='dark'] .editor-wrapper .CodeMirror-lines,
+.dark .editor-wrapper .bytemd-editor,
+.dark .editor-wrapper .CodeMirror,
+.dark .editor-wrapper .CodeMirror-scroll,
+.dark .editor-wrapper .CodeMirror-gutters,
+.dark .editor-wrapper .CodeMirror-sizer,
+.dark .editor-wrapper .CodeMirror-lines {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 html.dark .editor-wrapper .CodeMirror-cursor,
