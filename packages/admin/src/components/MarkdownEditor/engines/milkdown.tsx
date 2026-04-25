@@ -34,10 +34,10 @@ import type { MutableRefObject } from 'react';
 
 import DocumentViewer from '@/components/DocumentViewer';
 import { uploadImg } from '../../Editor/imgUpload';
-import '../../style/code-dark.css';
-import '../../style/code-light.css';
-import '../../style/custom-container.css';
-import '../../style/github-markdown.css';
+import '../../../style/code-dark.css';
+import '../../../style/code-light.css';
+import '../../../style/custom-container.css';
+import '../../../style/github-markdown.css';
 import 'katex/dist/katex.css';
 import { customContainerRemark, customContainerSchema } from '../plugins/customContainer';
 import { consumeMarkdownUpdate, shouldSyncExternalMarkdown } from '../sync';
@@ -129,8 +129,10 @@ function MilkdownSurface(props: MilkdownSurfaceProps) {
           ctx.update(uploadConfig.key, (prev) => ({
             ...prev,
             enableHtmlFileUploader: true,
-            uploader: async (files) => {
-              const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+            uploader: async (files: FileList) => {
+              const imageFiles = Array.from(files).filter((file): file is File =>
+                file.type.startsWith('image/'),
+              );
               if (imageFiles.length === 0) {
                 return [];
               }

@@ -5,7 +5,10 @@ import { CUSTOM_CONTAINER_TITLES } from '../utils';
 
 const SUPPORTED_CUSTOM_CONTAINERS = new Set(Object.keys(CUSTOM_CONTAINER_TITLES));
 
-export const customContainerRemark = $remark('vbCustomContainerRemark', () => remarkDirective);
+export const customContainerRemark = $remark(
+  'vbCustomContainerRemark',
+  () => remarkDirective as never,
+);
 
 export const customContainerSchema = $nodeSchema('vb_custom_container', () => ({
   content: 'block+',
@@ -67,8 +70,9 @@ export const customContainerSchema = $nodeSchema('vb_custom_container', () => ({
       SUPPORTED_CUSTOM_CONTAINERS.has(node.name),
     runner: (state, node, type) => {
       const name = String(node.name || 'info');
+      const attributes = (node.attributes ?? {}) as { title?: string };
       const title =
-        String(node.attributes?.title || '') ||
+        String(attributes.title || '') ||
         CUSTOM_CONTAINER_TITLES[name as keyof typeof CUSTOM_CONTAINER_TITLES];
 
       state.openNode(type, { name, title });

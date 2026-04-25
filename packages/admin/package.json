@@ -56,6 +56,7 @@
     "@bytemd/plugin-medium-zoom": "^1.22.0",
     "@bytemd/plugin-mermaid": "^1.22.0",
     "@bytemd/react": "^1.22.0",
+    "@codemirror/theme-one-dark": "^6.1.3",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@milkdown/crepe": "^7.20.0",

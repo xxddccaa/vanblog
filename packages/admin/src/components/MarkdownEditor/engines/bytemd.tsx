@@ -25,10 +25,10 @@ import { normalizeMathDelimiters } from '../../Editor/plugins/normalizeMathDelim
 import { smartCodeBlock } from '../../Editor/plugins/smartCodeBlock';
 import rawHTML from '../../Editor/rawHTML';
 import '../../Editor/index.less';
-import '../../style/code-dark.css';
-import '../../style/code-light.css';
-import '../../style/custom-container.css';
-import '../../style/github-markdown.css';
+import '../../../style/code-dark.css';
+import '../../../style/code-light.css';
+import '../../../style/custom-container.css';
+import '../../../style/github-markdown.css';
 import 'bytemd/dist/index.css';
 import 'katex/dist/katex.css';
 
