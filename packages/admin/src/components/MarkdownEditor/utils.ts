@@ -1,7 +1,7 @@
 import type { CustomContainerType, EditorEngine, TextRange } from './types';
 
 export const EDITOR_ENGINE_STORAGE_KEY = 'vanblog_editor_engine';
-export const DEFAULT_EDITOR_ENGINE: EditorEngine = 'milkdown';
+export const DEFAULT_EDITOR_ENGINE: EditorEngine = 'bytemd';
 export const LAST_CODE_LANGUAGE_KEY = 'vanblog_last_code_language';
 export const DEFAULT_CODE_LANGUAGE = 'js';
 

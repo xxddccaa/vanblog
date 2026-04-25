@@ -11,9 +11,9 @@ import {
 } from './utils';
 
 describe('MarkdownEditor utils', () => {
-  it('resolves editor engine with milkdown as default', () => {
-    expect(resolveEditorEngine(null)).toBe('milkdown');
-    expect(resolveEditorEngine('invalid')).toBe('milkdown');
+  it('resolves editor engine with bytemd as default', () => {
+    expect(resolveEditorEngine(null)).toBe('bytemd');
+    expect(resolveEditorEngine('invalid')).toBe('bytemd');
     expect(resolveEditorEngine('bytemd')).toBe('bytemd');
   });
 
