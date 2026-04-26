@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
-import { Row, Col, Card, Button, Drawer, Space, Tag, message, Tooltip } from 'antd';
+import { Button, Drawer, Space, Spin, message } from 'antd';
 import {
   EditOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  DragOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { history } from '@umijs/max';
@@ -14,12 +13,7 @@ import DocumentTree from '@/components/DocumentTree';
 import NewDocumentModal from '@/components/NewDocumentModal';
 import ContentSearchModal from '@/components/ContentSearchModal';
 import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
-import {
-  getDocumentById,
-  getLibraries,
-  createDocument,
-  getSiteInfo,
-} from '@/services/van-blog/api';
+import { getDocumentById, getLibraries, getSiteInfo } from '@/services/van-blog/api';
 import './index.less';
 
 export default function Document() {
@@ -33,53 +27,35 @@ export default function Document() {
     const saved = localStorage.getItem('document-tree-collapsed');
     return saved ? JSON.parse(saved) : false;
   });
-  const [treeWidth, setTreeWidth] = useState(() => {
-    const saved = localStorage.getItem('document-tree-width');
-    return saved ? parseInt(saved) : 6; // 默认宽度为6个栅格
-  });
-  const [isResizing, setIsResizing] = useState(false);
   const [showContentSearch, setShowContentSearch] = useState(false);
   const [siteInfo, setSiteInfo] = useState(null);
   const [treeDrawerOpen, setTreeDrawerOpen] = useState(false);
+  const [treeRefreshNonce, setTreeRefreshNonce] = useState(0);
 
-  // 处理搜索结果选择
-  const handleSearchSelect = async (document) => {
-    if (document.type === 'library') {
-      // 如果是文档库，只显示信息
-      setCurrentDocument(document);
-      setDocumentContent('');
-      setSelectedDocumentId(document.id);
-    } else {
-      // 如果是文档，加载内容
-      await loadDocument(document.id);
-    }
-    if (mobile) {
-      setTreeDrawerOpen(false);
-    }
-    setShowContentSearch(false);
-  };
+  const selectLibraryContext = useCallback((library) => {
+    setCurrentDocument(library);
+    setDocumentContent('');
+    setSelectedDocumentId(library.id);
+  }, []);
 
-  // 获取站点配置
-  const fetchSiteInfo = async () => {
+  const fetchSiteInfo = useCallback(async () => {
     try {
       const { data } = await getSiteInfo();
       setSiteInfo(data);
     } catch (error) {
       console.error('获取站点配置失败:', error);
     }
-  };
+  }, []);
 
-  // 获取文档库列表
-  const fetchLibraries = async () => {
+  const fetchLibraries = useCallback(async () => {
     try {
       const { data } = await getLibraries();
       setLibraries(data || []);
     } catch (error) {
-      message.error('获取文档库列表失败');
+      console.error('获取文档库列表失败:', error);
     }
-  };
+  }, []);
 
-  // 加载文档内容
   const loadDocument = useCallback(async (documentId) => {
     if (!documentId) return;
 
@@ -96,113 +72,83 @@ export default function Document() {
     }
   }, []);
 
-  // 处理文档树节点选择
-  const handleDocumentSelect = async (document, action) => {
-    if (document.type === 'library') {
-      // 如果是文档库，只显示信息，不加载内容
-      setCurrentDocument(document);
-      setDocumentContent('');
-      setSelectedDocumentId(document.id);
+  const handleSearchSelect = useCallback(
+    async (item) => {
+      if (item.type === 'library') {
+        selectLibraryContext(item);
+      } else {
+        await loadDocument(item.id);
+      }
+
       if (mobile) {
         setTreeDrawerOpen(false);
       }
-      return;
-    }
+      setShowContentSearch(false);
+    },
+    [loadDocument, mobile, selectLibraryContext],
+  );
 
-    // 处理文档
-    if (action === 'edit') {
-      // 跳转到编辑页面
-      history.push(`/editor?type=document&id=${document.id}`);
-    } else {
-      // 默认为查看模式
-      await loadDocument(document.id);
+  const handleDocumentSelect = useCallback(
+    async (item, action) => {
+      if (item.type === 'library') {
+        selectLibraryContext(item);
+        if (mobile) {
+          setTreeDrawerOpen(false);
+        }
+        return;
+      }
+
+      if (action === 'edit') {
+        history.push(`/editor?type=document&id=${item.id}`);
+        return;
+      }
+
+      await loadDocument(item.id);
       if (mobile) {
         setTreeDrawerOpen(false);
       }
-    }
-  };
+    },
+    [loadDocument, mobile, selectLibraryContext],
+  );
 
-  // 刷新页面
-  const handleRefresh = async () => {
+  const refreshTree = useCallback(() => {
+    setTreeRefreshNonce((value) => value + 1);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
     await fetchLibraries();
-    if (currentDocument?.id) {
+    refreshTree();
+    if (currentDocument?.type === 'document' && currentDocument?.id) {
       await loadDocument(currentDocument.id);
     }
-  };
+  }, [currentDocument, fetchLibraries, loadDocument, refreshTree]);
 
-  // 处理新建文档完成后的回调
   const handleNewDocumentFinish = useCallback(
     async (data) => {
-      // 先刷新本地数据
       await fetchLibraries();
+      refreshTree();
 
-      // 如果创建的是文档，自动跳转到编辑页面
-      if (data && data.type === 'document') {
+      if (data?.type === 'library') {
+        selectLibraryContext(data);
+      } else if (data?.type === 'document') {
         history.push(`/editor?type=document&id=${data.id}`);
       }
 
-      // 通知DocumentTree组件刷新
-      handleRefresh();
+      if (mobile) {
+        setTreeDrawerOpen(false);
+      }
     },
-    [handleRefresh],
+    [fetchLibraries, mobile, refreshTree, selectLibraryContext],
   );
 
-  // 切换文档树收起/展开状态
-  const toggleTreeCollapse = () => {
-    const newCollapsed = !isTreeCollapsed;
-    setIsTreeCollapsed(newCollapsed);
-    localStorage.setItem('document-tree-collapsed', JSON.stringify(newCollapsed));
-  };
+  const toggleTreeCollapse = useCallback(() => {
+    setIsTreeCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('document-tree-collapsed', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
-  // 处理拖拽调整宽度
-  const handleMouseDown = (e) => {
-    if (isTreeCollapsed) return;
-    setIsResizing(true);
-    e.preventDefault();
-  };
-
-  // 双击重置宽度
-  const handleDoubleClick = () => {
-    if (isTreeCollapsed) return;
-    setTreeWidth(6);
-    localStorage.setItem('document-tree-width', '6');
-  };
-
-  const handleMouseMove = useCallback(
-    (e) => {
-      if (!isResizing || isTreeCollapsed) return;
-
-      const containerRect = document.querySelector('.ant-row').getBoundingClientRect();
-      const mouseX = e.clientX - containerRect.left;
-      const containerWidth = containerRect.width;
-      const newWidthPercent = (mouseX / containerWidth) * 24; // 转换为栅格系统的24分制
-
-      // 限制宽度在3-12之间
-      const clampedWidth = Math.min(Math.max(newWidthPercent, 3), 12);
-      setTreeWidth(Math.round(clampedWidth));
-    },
-    [isResizing, isTreeCollapsed],
-  );
-
-  const handleMouseUp = useCallback(() => {
-    if (isResizing) {
-      localStorage.setItem('document-tree-width', treeWidth.toString());
-    }
-    setIsResizing(false);
-  }, [isResizing, treeWidth]);
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
-
-  // 检测屏幕尺寸，在移动端自动收起文档树
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth <= 768) {
@@ -211,394 +157,286 @@ export default function Document() {
       }
     };
 
-    // 初始检测
     handleResize();
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 键盘快捷键支持
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl/Cmd + B 切换文档树显示状态
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'b') {
+        event.preventDefault();
         toggleTreeCollapse();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isTreeCollapsed]);
+  }, [toggleTreeCollapse]);
 
   useEffect(() => {
     fetchSiteInfo();
     fetchLibraries();
-  }, []);
+  }, [fetchLibraries, fetchSiteInfo]);
 
-  const mobileHeroStats = [
-    { label: '文档库', value: libraries.length },
-    { label: '当前', value: currentDocument ? (currentDocument.type === 'library' ? '文档库' : '文档') : '未选' },
-    { label: '入口', value: '文档树' },
-  ];
+  const currentTypeLabel = useMemo(() => {
+    if (!currentDocument) return '未选择';
+    return currentDocument.type === 'library' ? '文档库' : '文档';
+  }, [currentDocument]);
 
-  const renderDesktopContent = () => {
+  const railMetaLabel = useMemo(
+    () => `${libraries.length} 个文档库 · Ctrl/Cmd + B 收起`,
+    [libraries.length],
+  );
+
+  const mobileMetaLabel = useMemo(() => {
+    if (!currentDocument) {
+      return `${libraries.length} 个文档库 · 从文档树进入`;
+    }
+
+    return `${currentTypeLabel} · ${currentDocument.title}`;
+  }, [currentDocument, currentTypeLabel, libraries.length]);
+
+  const renderSelectionActions = (compact = false) => {
     if (!currentDocument) {
       return (
-        <Card
-          className="document-content-card document-content-card-empty"
-          style={{
-            minHeight: '600px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+        <Space size={compact ? 8 : 10} wrap>
+          <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
+            内容搜索
+          </Button>
+          <NewDocumentModal
+            type="library"
+            onFinish={handleNewDocumentFinish}
+            buttonText="新建文档库"
+            buttonProps={{ type: 'primary' }}
+          />
+        </Space>
+      );
+    }
+
+    if (currentDocument.type === 'library') {
+      return (
+        <Space size={compact ? 8 : 10} wrap>
+          <NewDocumentModal
+            type="document"
+            libraries={libraries}
+            libraryId={currentDocument.id}
+            onFinish={handleNewDocumentFinish}
+            buttonText="新建文档"
+            buttonProps={{ type: 'primary' }}
+          />
+          <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
+            内容搜索
+          </Button>
+        </Space>
+      );
+    }
+
+    return (
+      <Space size={compact ? 8 : 10} wrap>
+        <Button
+          type="primary"
+          icon={<EditOutlined />}
+          onClick={() => history.push(`/editor?type=document&id=${currentDocument.id}`)}
         >
-          <div className="document-empty-state">
-            <p className="document-empty-state__title">请选择一个文档进行查看或编辑</p>
-            <p className="document-empty-state__desc">在左侧文档树中创建文档库和文档</p>
-          </div>
-        </Card>
-      );
-    }
-
-    return (
-      <Card
-        className="document-content-card"
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{currentDocument.title}</span>
-            <Space>
-              {currentDocument.type === 'document' && (
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={() => history.push(`/editor?type=document&id=${currentDocument.id}`)}
-                >
-                  编辑
-                </Button>
-              )}
-
-              {currentDocument.type === 'document' && (
-                <NewDocumentModal
-                  type="document"
-                  libraries={libraries}
-                  parentId={currentDocument.id}
-                  libraryId={currentDocument.library_id}
-                  onFinish={handleNewDocumentFinish}
-                />
-              )}
-            </Space>
-          </div>
-        }
-        style={{ minHeight: '600px', overflow: 'hidden' }}
-        bodyStyle={{ minHeight: '543px', padding: '0', overflow: 'auto' }}
-      >
-        <div className="document-page-viewer">
-          {currentDocument.type === 'library' ? (
-            <div className="document-page-library-info">
-              <h3>文档库: {currentDocument.title}</h3>
-              <p style={{ color: '#666', marginBottom: '20px' }}>
-                {currentDocument.description || currentDocument.content || '暂无描述'}
-              </p>
-              <p style={{ color: '#999' }}>请从左侧文档树选择要查看的文档</p>
-            </div>
-          ) : (
-            <DocumentViewer
-              value={documentContent}
-              codeMaxLines={siteInfo?.codeMaxLines || 15}
-              themeConfig={siteInfo}
-            />
-          )}
-        </div>
-      </Card>
+          编辑
+        </Button>
+        <NewDocumentModal
+          type="document"
+          libraries={libraries}
+          parentId={currentDocument.id}
+          libraryId={currentDocument.library_id}
+          onFinish={handleNewDocumentFinish}
+          buttonText="新建子文档"
+          buttonProps={{ type: 'default' }}
+        />
+      </Space>
     );
   };
 
-  const renderMobileContent = () => {
+  const renderEmptyState = (mobileMode = false) => (
+    <div className={['document-empty-state', mobileMode ? 'document-empty-state-mobile' : ''].filter(Boolean).join(' ')}>
+      <div className="document-empty-state__eyebrow">预览区</div>
+      <div className="document-empty-state__title">先选择一篇文档</div>
+      <div className="document-empty-state__desc">
+        从左侧文档树或内容搜索进入，先看内容，再决定是否进入编辑器。这里始终只保留当前上下文，阅读会更安静。
+      </div>
+      <div className="document-empty-state__note">支持树状浏览、内容搜索和直接新建文档库。</div>
+      <div className="document-empty-state__actions">{renderSelectionActions(mobileMode)}</div>
+    </div>
+  );
+
+  const renderLibraryOverview = (mobileMode = false) => (
+    <div className={['document-library-panel', mobileMode ? 'document-library-panel-mobile' : ''].filter(Boolean).join(' ')}>
+      <div className="document-library-panel__eyebrow">文档库概览</div>
+      <div className="document-library-panel__title">{currentDocument.title}</div>
+      <div className="document-library-panel__desc">
+        {currentDocument.description || currentDocument.content || '这个文档库还没有补充描述，可以先创建文档，再逐步补全说明。'}
+      </div>
+      <div className="document-library-panel__note">从文档树继续浏览，或直接在这个文档库下新建文档。</div>
+    </div>
+  );
+
+  const renderStageBody = (mobileMode = false) => {
     if (!currentDocument) {
-      return (
-        <Card className="admin-mobile-empty-card document-mobile-empty-card">
-          <div className="admin-mobile-empty-title">先从文档树选择内容</div>
-          <div className="admin-mobile-empty-note">
-            手机上优先完成选树、搜索与预览，再进入编辑器做深度修改。
-          </div>
-          <div className="admin-mobile-action-grid">
-            <Button type="primary" icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
-              打开文档树
-            </Button>
-            <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
-              内容搜索
-            </Button>
-          </div>
-        </Card>
-      );
+      return renderEmptyState(mobileMode);
     }
 
-    const isLibrary = currentDocument.type === 'library';
-    const metaItems = [
-      isLibrary ? '文档库' : '文档',
-      currentDocument.id ? `ID ${currentDocument.id}` : null,
-      !isLibrary && currentDocument.library_id ? `文档库 ${currentDocument.library_id}` : null,
-    ].filter(Boolean);
-
-    const summary = isLibrary
-      ? currentDocument.description || currentDocument.content || '这个文档库还没有补充描述。'
-      : '正文预览已加载，向下滑动即可浏览内容；需要修改时可直接进入编辑器。';
+    if (currentDocument.type === 'library') {
+      return renderLibraryOverview(mobileMode);
+    }
 
     return (
-      <>
-        <Card className="admin-mobile-selection-card document-mobile-context-card">
-          <div className="admin-mobile-selection-title-row">
-            <div className="admin-mobile-selection-title">{currentDocument.title}</div>
-            <Tag color={isLibrary ? 'blue' : 'green'}>{isLibrary ? '文档库' : '文档'}</Tag>
-          </div>
-          {metaItems.length ? (
-            <div className="admin-mobile-record-meta">
-              {metaItems.map((item) => (
-                <span key={item}>{item}</span>
-              ))}
-            </div>
-          ) : null}
-          <div className="admin-mobile-selection-summary">{summary}</div>
-          <div className="admin-mobile-action-grid" style={{ marginTop: 14 }}>
-            {isLibrary ? (
-              <>
-                <NewDocumentModal
-                  type="document"
-                  libraries={libraries}
-                  libraryId={currentDocument.id}
-                  onFinish={handleNewDocumentFinish}
-                />
-                <Button icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
-                  查看结构
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={() => history.push(`/editor?type=document&id=${currentDocument.id}`)}
-                >
-                  进入编辑
-                </Button>
-                <Button icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
-                  切换文档
-                </Button>
-              </>
-            )}
-          </div>
-        </Card>
-
-        <Card className="document-content-card document-content-card-mobile" bodyStyle={{ padding: 0 }}>
-          <div className="document-page-viewer document-page-viewer-mobile">
-            {isLibrary ? (
-              <div className="document-page-library-info">
-                <h3>文档库：{currentDocument.title}</h3>
-                <p>{currentDocument.description || currentDocument.content || '暂无描述'}</p>
-                <p>打开文档树后可继续浏览或创建该文档库下的文档。</p>
-              </div>
-            ) : (
-              <DocumentViewer
-                value={documentContent}
-                codeMaxLines={siteInfo?.codeMaxLines || 15}
-                themeConfig={siteInfo}
-              />
-            )}
-          </div>
-        </Card>
-      </>
+      <div className={['document-stage-viewer', mobileMode ? 'document-stage-viewer-mobile' : ''].filter(Boolean).join(' ')}>
+        <DocumentViewer
+          value={documentContent}
+          codeMaxLines={siteInfo?.codeMaxLines || 15}
+          themeConfig={siteInfo}
+        />
+      </div>
     );
   };
 
-  return (
-    <PageContainer
-      title={mobile ? false : '私密文档'}
-      className="document-page-container"
-      extra={
-        mobile ? null : (
-          <Space>
-            <Tooltip title="搜索文档内容">
+  const renderStageHeader = (mobileMode = false) => {
+    const showTreeButton = !mobileMode && isTreeCollapsed;
+
+    return (
+      <div className={['document-stage-header', mobileMode ? 'document-stage-header-mobile' : ''].filter(Boolean).join(' ')}>
+        <div className="document-stage-heading">
+          {showTreeButton ? (
+            <Button
+              type="text"
+              icon={<MenuUnfoldOutlined />}
+              className="document-stage-tree-toggle"
+              onClick={() => (mobileMode ? setTreeDrawerOpen(true) : toggleTreeCollapse())}
+            />
+          ) : null}
+          <div className="document-stage-title-group">
+            <div className="document-stage-title-row">
+              <div className="document-stage-title">{currentDocument?.title || '未选择文档'}</div>
+              <span className="document-stage-type-pill">{currentTypeLabel}</span>
+            </div>
+            <div className="document-stage-subtitle">
+              {currentDocument
+                ? currentDocument.type === 'library'
+                  ? '浏览这个文档库的概览与结构。'
+                  : '当前为预览模式，可随时进入编辑器继续修改。'
+                : '从文档树或搜索进入后，这里只展示当前上下文。'}
+            </div>
+          </div>
+        </div>
+        <div className="document-stage-actions">{currentDocument ? renderSelectionActions(mobileMode) : null}</div>
+      </div>
+    );
+  };
+
+  const renderDesktopWorkspace = () => (
+    <div className={['document-workspace', isTreeCollapsed ? 'document-workspace-collapsed' : ''].filter(Boolean).join(' ')}>
+      {!isTreeCollapsed ? (
+        <aside className="document-rail">
+          <div className="document-rail-header">
+            <div className="document-rail-title-row">
+              <div>
+                <div className="document-rail-title">文档树</div>
+                <div className="document-rail-meta">{railMetaLabel}</div>
+              </div>
+              <Button
+                type="text"
+                icon={<MenuFoldOutlined />}
+                className="document-rail-toggle"
+                onClick={toggleTreeCollapse}
+                title="收起文档树 (Ctrl/Cmd + B)"
+              />
+            </div>
+            <div className="document-rail-actions">
+              <NewDocumentModal
+                type="library"
+                onFinish={handleNewDocumentFinish}
+                buttonText="新建文档库"
+                buttonProps={{ type: 'primary' }}
+              />
               <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
                 内容搜索
               </Button>
-            </Tooltip>
-            <div style={{ color: '#666', fontSize: '12px' }}>快捷键：Ctrl/Cmd + B 切换文档树</div>
-          </Space>
-        )
-      }
-    >
-      {mobile ? (
-        <>
-          <Drawer
-            title="文档树"
-            placement="left"
-            width="100vw"
-            className="document-mobile-drawer"
-            open={treeDrawerOpen}
-            onClose={() => setTreeDrawerOpen(false)}
-          >
+            </div>
+          </div>
+          <div className="document-rail-tree-shell">
             <DocumentTree
+              refreshNonce={treeRefreshNonce}
               onNodeSelect={handleDocumentSelect}
               selectedDocumentId={selectedDocumentId}
               onRefresh={handleRefresh}
             />
-          </Drawer>
-          <div className="admin-mobile-section-shell document-mobile-layout">
-            <Card className="admin-mobile-toolbar-card admin-mobile-hero-card">
-              <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div className="admin-mobile-toolbar-head">
-                  <div>
-                    <div className="admin-mobile-toolbar-title">私密文档</div>
-                    <div className="admin-mobile-toolbar-subtitle">
-                      手机上优先把文档树、搜索与预览串成顺手的浏览链路。
-                    </div>
-                  </div>
-                  <div className="admin-mobile-toolbar-badge">{libraries.length} 个文档库</div>
-                </div>
-                <div className="admin-mobile-toolbar-stats">
-                  {mobileHeroStats.map((item) => (
-                    <div key={item.label} className="admin-mobile-toolbar-stat">
-                      <div className="admin-mobile-toolbar-stat-label">{item.label}</div>
-                      <div className="admin-mobile-toolbar-stat-value">{item.value}</div>
-                    </div>
-                  ))}
-                </div>
-                <div className="admin-mobile-action-grid">
-                  <Button icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
-                    文档树
-                  </Button>
-                  <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
-                    内容搜索
-                  </Button>
-                </div>
-              </Space>
-            </Card>
-            {renderMobileContent()}
           </div>
-        </>
-      ) : (
-        <Row gutter={[16, 16]} style={{ minHeight: '600px' }}>
-          {!isTreeCollapsed && (
-            <Col
-              xs={{ span: 24, order: 1 }}
-              sm={{ span: 24, order: 1 }}
-              md={{ span: Math.min(treeWidth + 2, 12), order: 1 }}
-              lg={{ span: treeWidth, order: 1 }}
-              xl={{ span: treeWidth, order: 1 }}
-              style={{ position: 'relative' }}
-            >
-              <Card
-                className="document-tree-card"
-                title={
-                  <div
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                  >
-                    <span>文档树</span>
-                    <Button
-                      type="text"
-                      icon={<MenuFoldOutlined />}
-                      size="small"
-                      onClick={toggleTreeCollapse}
-                      title="收起文档树 (Ctrl/Cmd + B)"
-                    />
-                  </div>
-                }
-                style={{
-                  minHeight: '600px',
-                  marginBottom: '16px',
-                }}
-                bodyStyle={{
-                  minHeight: '543px',
-                  padding: '16px',
-                  overflow: 'auto',
-                }}
-              >
-                <DocumentTree
-                  onNodeSelect={handleDocumentSelect}
-                  selectedDocumentId={selectedDocumentId}
-                  onRefresh={handleRefresh}
-                />
-              </Card>
-              <div
-                className="resize-handle"
-                onMouseDown={handleMouseDown}
-                onDoubleClick={handleDoubleClick}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: -8,
-                  width: 16,
-                  height: '100%',
-                  cursor: 'col-resize',
-                  zIndex: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#bfbfbf',
-                  fontSize: '12px',
-                  backgroundColor: isResizing ? '#f0f0f0' : 'transparent',
-                  borderRadius: '4px',
-                  transition: 'background-color 0.2s ease',
-                }}
-                title="拖拽调整宽度，双击重置"
-              >
-                <DragOutlined />
-                {isResizing && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '20px',
-                      transform: 'translateY(-50%)',
-                      background: '#1890ff',
-                      color: 'white',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      whiteSpace: 'nowrap',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                      animation: 'fadeIn 0.2s ease',
-                    }}
-                  >
-                    宽度: {treeWidth}/24
-                  </div>
-                )}
-              </div>
-            </Col>
-          )}
-          <Col
-            xs={{ span: 24, order: 2 }}
-            sm={{ span: 24, order: 2 }}
-            md={{ span: isTreeCollapsed ? 24 : Math.max(24 - treeWidth - 2, 12), order: 2 }}
-            lg={{ span: isTreeCollapsed ? 24 : 24 - treeWidth, order: 2 }}
-            xl={{ span: isTreeCollapsed ? 24 : 24 - treeWidth, order: 2 }}
-            style={{ position: 'relative' }}
-          >
-            {isTreeCollapsed && (
-              <Button
-                type="primary"
-                icon={<MenuUnfoldOutlined />}
-                size="small"
-                onClick={toggleTreeCollapse}
-                title="展开文档树 (Ctrl/Cmd + B)"
-                style={{
-                  position: 'absolute',
-                  top: 16,
-                  left: 16,
-                  zIndex: 100,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                }}
-              />
-            )}
-            {renderDesktopContent()}
-          </Col>
-        </Row>
-      )}
+        </aside>
+      ) : null}
 
-      {/* 内容搜索模态框 */}
+      <section className="document-stage-shell">
+        {renderStageHeader()}
+        <div className="document-stage-body">
+          <Spin spinning={loading}>{renderStageBody()}</Spin>
+        </div>
+      </section>
+    </div>
+  );
+
+  const renderMobileWorkspace = () => (
+    <>
+      <Drawer
+        title="文档树"
+        placement="left"
+        width="100vw"
+        className="document-mobile-drawer"
+        open={treeDrawerOpen}
+        onClose={() => setTreeDrawerOpen(false)}
+      >
+        <div className="document-mobile-drawer-toolbar">
+          <NewDocumentModal
+            type="library"
+            onFinish={handleNewDocumentFinish}
+            buttonText="新建文档库"
+            buttonProps={{ type: 'primary', block: true }}
+          />
+          <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)}>
+            内容搜索
+          </Button>
+        </div>
+        <div className="document-mobile-tree-shell">
+          <DocumentTree
+            mobile
+            refreshNonce={treeRefreshNonce}
+            onNodeSelect={handleDocumentSelect}
+            selectedDocumentId={selectedDocumentId}
+            onRefresh={handleRefresh}
+          />
+        </div>
+      </Drawer>
+
+      <div className="document-mobile-bar">
+        <div>
+          <div className="document-mobile-bar__title">私密文档</div>
+          <div className="document-mobile-bar__meta">{mobileMetaLabel}</div>
+        </div>
+        <div className="document-mobile-bar__actions">
+          <Button icon={<MenuUnfoldOutlined />} onClick={() => setTreeDrawerOpen(true)}>
+            文档树
+          </Button>
+          <Button icon={<SearchOutlined />} onClick={() => setShowContentSearch(true)} />
+        </div>
+      </div>
+
+      <section className="document-mobile-stage-shell">
+        {renderStageHeader(true)}
+        <div className="document-mobile-stage-body">
+          <Spin spinning={loading}>{renderStageBody(true)}</Spin>
+        </div>
+      </section>
+    </>
+  );
+
+  return (
+    <PageContainer title={mobile ? false : '私密文档'} className="document-page-container">
+      {mobile ? renderMobileWorkspace() : renderDesktopWorkspace()}
       <ContentSearchModal
         visible={showContentSearch}
         onCancel={() => setShowContentSearch(false)}

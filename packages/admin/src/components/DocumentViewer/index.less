@@ -1,6 +1,5 @@
 .document-viewer {
   --vb-doc-surface: var(--admin-document-preview-bg, #f8fafc);
-  --vb-doc-surface-soft: var(--admin-document-preview-bg-soft, #eef6ff);
   --vb-doc-scroll-track: var(--admin-document-scroll-track, #f1f5f9);
   --vb-doc-scroll-thumb: var(--admin-document-scroll-thumb, #c1c9d4);
   --vb-doc-code-btn-border: var(--admin-surface-border, #d0d7de);
@@ -11,12 +10,11 @@
   height: 100%;
   width: 100%;
   overflow: auto;
-  background: linear-gradient(180deg, var(--vb-doc-surface-soft), var(--vb-doc-surface)) !important;
+  background: transparent !important;
   color: var(--admin-editor-text, inherit);
 
   &.dark {
     --vb-doc-surface: var(--admin-document-preview-bg, #111315);
-    --vb-doc-surface-soft: var(--admin-document-preview-bg-soft, #111315);
     --vb-doc-scroll-track: var(--admin-document-scroll-track, rgba(255, 255, 255, 0.04));
     --vb-doc-scroll-thumb: var(--admin-document-scroll-thumb, rgba(255, 255, 255, 0.14));
     --vb-doc-code-btn-border: var(--admin-editor-border, transparent);
@@ -51,7 +49,7 @@
     height: 100%;
     min-height: 400px;
     overflow: auto;
-    background-color: var(--vb-doc-surface);
+    background: transparent !important;
 
     .markdown-body {
       padding: 16px;
@@ -219,12 +217,8 @@
 
   &.dark,
   &.dark .bytemd-viewer {
-    background: linear-gradient(
-      180deg,
-      var(--vb-doc-surface-soft),
-      var(--vb-doc-surface)
-    ) !important;
-    background-color: var(--vb-doc-surface) !important;
+    background: transparent !important;
+    background-color: transparent !important;
   }
 
   &.dark > .markdown-body,

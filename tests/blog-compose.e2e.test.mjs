@@ -234,7 +234,7 @@ async function encryptForFrontend(username, password) {
   return sha256(lower + sha256(sha256(sha256(sha256(password))) + sha256(lower)));
 }
 
-async function waitForHealthyStack(composeEnv) {
+async function waitForHealthyStack(composeEnv, { requireCaddy = true } = {}) {
   await waitFor(async () => {
     const result = runCommand(['-f', 'docker-compose.yml', 'ps', '--format', 'json'], {
       env: composeEnv,
@@ -250,6 +250,11 @@ async function waitForHealthyStack(composeEnv) {
     if (!requiredHealthy.every((name) => byService[name]?.Health === 'healthy')) {
       return false;
     }
+
+    if (!requireCaddy) {
+      return true;
+    }
+
     return byService.caddy?.State === 'running';
   }, {
     timeoutMs: 8 * 60 * 1000,
@@ -304,8 +309,14 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     runCommand(['-f', 'docker-compose.yml', 'up', '-d', '--build'], {
       env: composeEnv,
       timeoutMs: 12 * 60 * 1000,
+      allowFailure: true,
     });
 
+    await waitForHealthyStack(composeEnv, { requireCaddy: false });
+    runCommand(['-f', 'docker-compose.yml', 'up', '-d', 'caddy'], {
+      env: composeEnv,
+      timeoutMs: 2 * 60 * 1000,
+    });
     await waitForHealthyStack(composeEnv);
 
     const swagger = await waitFor(async () => {

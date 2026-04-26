@@ -215,10 +215,10 @@ test('docker compose wires cross-container control endpoints', () => {
   assert.match(composeImage, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
 });
 
-test('docs reflect the v1.5.2 release baseline and optional deployment model', () => {
-  assert.equal(packageJson.version, '1.5.2');
+test('docs reflect the v1.5.3 release baseline and optional deployment model', () => {
+  assert.equal(packageJson.version, '1.5.3');
 
-  assert.match(readmeDoc, /v1\.5\.2/);
+  assert.match(readmeDoc, /v1\.5\.3/);
   assert.match(readmeDoc, /kevinchina\/deeplearning/);
   assert.match(readmeDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(readmeDoc, /docker-compose\.fastgpt\.yml/);

@@ -1,17 +1,23 @@
 import { Tree, Button, Dropdown, Modal, message } from 'antd';
-import { 
-  FileTextOutlined, 
-  FolderOutlined, 
-  EditOutlined, 
-  DeleteOutlined, 
+import {
+  FileTextOutlined,
+  FolderOutlined,
+  EditOutlined,
+  DeleteOutlined,
   MoreOutlined,
   FileAddOutlined,
   ExportOutlined,
   InfoCircleOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
-import { useState, useEffect } from 'react';
-import { getDocumentTree, getLibraries, deleteDocument, exportLibraryDocuments, deleteLibrary } from '@/services/van-blog/api';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  getDocumentTree,
+  getLibraries,
+  deleteDocument,
+  exportLibraryDocuments,
+  deleteLibrary,
+} from '@/services/van-blog/api';
 import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import NewDocumentModal from '../NewDocumentModal';
 import EditLibraryModal from '../EditLibraryModal';
@@ -20,7 +26,7 @@ import ConvertToDraftModal from './ConvertToDraftModal';
 import './index.less';
 
 export default function DocumentTree(props) {
-  const { onNodeSelect, selectedDocumentId, onRefresh } = props;
+  const { onNodeSelect, selectedDocumentId, onRefresh, refreshNonce = 0 } = props;
   const { mobile } = useAdminResponsive();
   const [treeData, setTreeData] = useState([]);
   const [libraries, setLibraries] = useState([]);
@@ -33,286 +39,83 @@ export default function DocumentTree(props) {
   const [editingLibrary, setEditingLibrary] = useState(null);
   const [showEditDocumentModal, setShowEditDocumentModal] = useState(false);
   const [editingDocument, setEditingDocument] = useState(null);
-  const [exportLoading, setExportLoading] = useState(false);
   const [showConvertToDraftModal, setShowConvertToDraftModal] = useState(false);
   const [convertingDocument, setConvertingDocument] = useState(null);
 
-  // 获取文档库列表
-  const fetchLibraries = async () => {
+  const fetchLibraries = useCallback(async () => {
     try {
       const { data } = await getLibraries();
       setLibraries(data || []);
     } catch (error) {
-      message.error('获取文档库列表失败');
+      console.error('获取文档库列表失败:', error);
     }
-  };
+  }, []);
 
-  // 获取文档树数据
-  const fetchTreeData = async () => {
+  const fetchTreeData = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await getDocumentTree();
-      const formattedData = formatTreeData(data || []);
-      setTreeData(formattedData);
-      
-      // 默认展开所有文档库
-      const libraryKeys = (data || [])
-        .filter(item => item.type === 'library')
-        .map(item => item.id.toString());
-      setExpandedKeys(libraryKeys);
+      const source = data || [];
+      setTreeData(
+        source.map((item) => ({
+          ...item,
+          key: item.id.toString(),
+          title: item.title,
+          children: item.children?.length
+            ? item.children.map(function mapChildren(child) {
+                return {
+                  ...child,
+                  key: child.id.toString(),
+                  title: child.title,
+                  children: child.children?.length ? child.children.map(mapChildren) : undefined,
+                  isLeaf: !child.children?.length,
+                };
+              })
+            : undefined,
+          isLeaf: !item.children?.length,
+        })),
+      );
+
+      setExpandedKeys((prev) => {
+        if (prev.length) return prev;
+        return source.filter((item) => item.type === 'library').map((item) => item.id.toString());
+      });
     } catch (error) {
       message.error('获取文档树失败');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // 格式化树数据
-  const formatTreeData = (documents) => {
-    return documents.map(doc => {
-      const hasChildren = doc.children && doc.children.length > 0;
-      const node = {
-        key: doc.id.toString(),
-        title: renderTreeNode(doc),
-        // 移除icon属性，因为我们在renderTreeNode中已经包含了图标
-        isLeaf: !hasChildren, // 只有当真正有子节点时才显示展开符号
-        ...doc,
-      };
-      
-      // 如果有子文档，递归处理
-      if (hasChildren) {
-        node.children = formatTreeData(doc.children);
-      }
-      
-      return node;
-    });
-  };
-
-    // 渲染树节点
-  const renderTreeNode = (doc) => {
-    return (
-      <div 
-        className="document-tree-node"
-        style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          width: '100%',
-          paddingRight: '4px',
-          minWidth: 0, // 允许收缩
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          showContextMenu(e, doc);
-        }}
-      >
-        <div 
-          className="document-tree-node-title"
-          style={{ 
-            cursor: 'pointer',
-            flex: 1,
-            minWidth: 0, // 允许收缩
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-          onClick={() => handleNodeClick(doc)}
-          title={doc.title} // 添加title属性，鼠标悬停时显示完整标题
-        >
-          {/* 根据文档类型显示不同的图标 */}
-          {doc.type === 'library' ? (
-            <FolderOutlined style={{ color: '#1890ff', fontSize: '14px' }} />
-          ) : (
-            <FileTextOutlined style={{ color: '#52c41a', fontSize: '14px' }} />
-          )}
-          <span 
-            style={{ 
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              marginRight: '8px',
-            }}
-          >
-            {doc.title}
-          </span>
-        </div>
-        <div 
-          className="document-tree-node-actions"
-          style={{ 
-            display: 'flex', 
-            gap: '2px',
-            flexShrink: 0, // 不允许收缩
-            alignItems: 'center',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* 根据文档类型显示不同的按钮 */}
-          {doc.type === 'library' || mobile ? (
-            // 文档库只显示更多操作按钮
-            <Dropdown
-              menu={getNodeMenu(doc)}
-              trigger={['click']}
-              placement="bottomRight"
-            >
-              <Button 
-                type="text" 
-                size="small" 
-                icon={<MoreOutlined />}
-                title="更多操作"
-                style={{ padding: '0 4px' }}
-              />
-            </Dropdown>
-          ) : (
-            // 文档显示编辑和更多操作按钮
-            <>
-              <Button 
-                type="text" 
-                size="small" 
-                icon={<EditOutlined />}
-                onClick={() => handleEditDocument(doc)}
-                title="编辑"
-                style={{ padding: '0 4px' }}
-              />
-              <Dropdown
-                menu={getNodeMenu(doc)}
-                trigger={['click']}
-                placement="bottomRight"
-              >
-                <Button 
-                  type="text" 
-                  size="small" 
-                  icon={<MoreOutlined />}
-                  title="更多操作"
-                  style={{ padding: '0 4px' }}
-                />
-              </Dropdown>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // 获取节点菜单
-  const getNodeMenu = (doc) => {
-    const items = [];
-
-    if (doc.type === 'library') {
-      items.push({
-        key: 'add-document',
-        label: '新建文档',
-        icon: <FileAddOutlined />,
-        onClick: () => handleAddDocument(doc),
-      });
-      items.push({
-        key: 'export-library',
-        label: '导出文档库',
-        icon: <ExportOutlined />,
-        onClick: () => handleExportLibrary(doc),
-      });
-      items.push({
-        key: 'edit-library',
-        label: '修改信息',
-        icon: <InfoCircleOutlined />,
-        onClick: () => handleEditLibrary(doc),
-      });
-      items.push({
-        key: 'delete-library',
-        label: '删除文档库',
-        icon: <DeleteOutlined />,
-        onClick: () => handleDeleteLibrary(doc),
-      });
-    } else {
-      items.push({
-        key: 'add-subdocument',
-        label: '新建子文档',
-        icon: <FileAddOutlined />,
-        onClick: () => handleAddSubDocument(doc),
-      });
-      
-      items.push({
-        key: 'edit-document-info',
-        label: '修改信息',
-        icon: <InfoCircleOutlined />,
-        onClick: () => handleEditDocumentInfo(doc),
-      });
-      
-      // 只有当文档没有子文档时才显示转换选项
-      const hasChildren = doc.children && doc.children.length > 0;
-      if (!hasChildren) {
-        items.push({
-          key: 'convert-to-draft',
-          label: '转为草稿',
-          icon: <SwapOutlined />,
-          onClick: () => handleConvertToDraft(doc),
-        });
-      }
-      
-      items.push({
-        key: 'delete',
-        label: '删除',
-        icon: <DeleteOutlined />,
-        onClick: () => handleDeleteDocument(doc),
-      });
-    }
-
-    return { items };
-  };
-
-  // 处理节点点击
-  const handleNodeClick = (doc) => {
-    // 点击文档名字直接预览，不展开子文档
-    // 通知父组件
-    if (onNodeSelect) {
-      onNodeSelect(doc, 'view');
-    }
-  };
-
-  // 显示右键菜单
-  const showContextMenu = (event, doc) => {
-    // 这里可以添加右键菜单逻辑，暂时使用默认的下拉菜单
-  };
-
-  // 处理添加文档
   const handleAddDocument = (library) => {
     setParentDocument(library);
     setNewDocType('document');
     setShowNewDocModal(true);
   };
 
-  // 处理添加子文档
   const handleAddSubDocument = (parentDoc) => {
     setParentDocument(parentDoc);
     setNewDocType('document');
     setShowNewDocModal(true);
   };
 
-  // 处理导出文档库
   const handleExportLibrary = async (library) => {
     try {
-      setExportLoading(true);
       const response = await exportLibraryDocuments(library.id);
-      
-      // 处理导出数据
       const exportData = response.data;
-      
-      // 动态导入JSZip
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
-      
-      // 添加每个文档为单独的Markdown文件
-      exportData.documents.forEach(doc => {
+
+      exportData.documents.forEach((doc) => {
         zip.file(doc.fileName, doc.content);
       });
-      
-      // 添加一个README文件，包含文档库信息
-      const readmeContent = `# ${exportData.libraryTitle}\n\n导出时间：${new Date().toLocaleString('zh-CN')}\n\n包含 ${exportData.documents.length} 个文档文件。\n\n## 文档列表\n\n${exportData.documents.map(doc => `- ${doc.fileName} (${doc.originalTitle})`).join('\n')}`;
+
+      const readmeContent = `# ${exportData.libraryTitle}\n\n导出时间：${new Date().toLocaleString('zh-CN')}\n\n包含 ${exportData.documents.length} 个文档文件。\n\n## 文档列表\n\n${exportData.documents
+        .map((doc) => `- ${doc.fileName} (${doc.originalTitle})`)
+        .join('\n')}`;
       zip.file('README.md', readmeContent);
-      
-      // 生成zip文件
-      const content = await zip.generateAsync({type: 'blob'});
-      
-      // 创建下载链接
+
+      const content = await zip.generateAsync({ type: 'blob' });
       const url = window.URL.createObjectURL(content);
       const link = document.createElement('a');
       link.href = url;
@@ -321,23 +124,19 @@ export default function DocumentTree(props) {
       link.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
-      
+
       message.success(`文档库导出成功，包含 ${exportData.documents.length} 个文档`);
     } catch (error) {
       console.error('导出失败:', error);
       message.error('导出失败');
-    } finally {
-      setExportLoading(false);
     }
   };
 
-  // 处理编辑文档库
   const handleEditLibrary = (library) => {
     setEditingLibrary(library);
     setShowEditLibraryModal(true);
   };
 
-  // 处理删除文档库
   const handleDeleteLibrary = (library) => {
     Modal.confirm({
       title: '确认删除',
@@ -349,7 +148,7 @@ export default function DocumentTree(props) {
         try {
           await deleteLibrary(library.id);
           message.success('文档库删除成功');
-          fetchTreeData();
+          await fetchTreeData();
           onRefresh?.();
         } catch (error) {
           message.error('删除失败');
@@ -358,22 +157,17 @@ export default function DocumentTree(props) {
     });
   };
 
-  // 已移除handleViewDocument函数，点击文档名字直接预览
-
-  // 处理编辑文档
   const handleEditDocument = (doc) => {
-    if (doc.type !== 'library' && onNodeSelect) {
-      onNodeSelect(doc, 'edit');
+    if (doc.type !== 'library') {
+      onNodeSelect?.(doc, 'edit');
     }
   };
 
-  // 处理编辑文档信息
   const handleEditDocumentInfo = (doc) => {
     setEditingDocument(doc);
     setShowEditDocumentModal(true);
   };
 
-  // 处理删除文档
   const handleDeleteDocument = (doc) => {
     Modal.confirm({
       title: `确定删除${doc.type === 'library' ? '文档库' : '文档'} "${doc.title}" 吗？`,
@@ -384,12 +178,8 @@ export default function DocumentTree(props) {
         try {
           await deleteDocument(doc.id);
           message.success('删除成功');
-          // 自动刷新数据
           await fetchTreeData();
-          // 通知父组件刷新
-          if (onRefresh) {
-            onRefresh();
-          }
+          onRefresh?.();
         } catch (error) {
           message.error('删除失败');
         }
@@ -397,107 +187,160 @@ export default function DocumentTree(props) {
     });
   };
 
-  // 处理转为草稿
   const handleConvertToDraft = (doc) => {
     setConvertingDocument(doc);
     setShowConvertToDraftModal(true);
   };
 
-  // 处理转换成功
   const handleConvertToDraftSuccess = async () => {
     setShowConvertToDraftModal(false);
     setConvertingDocument(null);
-    // 刷新数据
     await fetchTreeData();
     await fetchLibraries();
-    if (onRefresh) {
-      onRefresh();
-    }
+    onRefresh?.();
   };
 
-  // 处理树节点选择
-  const handleTreeSelect = (selectedKeys, info) => {
-    if (selectedKeys.length > 0) {
-      if (onNodeSelect) {
-        onNodeSelect(info.node, 'select');
+  const handleRefresh = useCallback(async () => {
+    await fetchTreeData();
+    await fetchLibraries();
+    onRefresh?.();
+  }, [fetchLibraries, fetchTreeData, onRefresh]);
+
+  const getNodeMenu = (doc) => {
+    const items = [];
+
+    if (doc.type === 'library') {
+      items.push(
+        {
+          key: 'add-document',
+          label: '新建文档',
+          icon: <FileAddOutlined />,
+          onClick: () => handleAddDocument(doc),
+        },
+        {
+          key: 'export-library',
+          label: '导出文档库',
+          icon: <ExportOutlined />,
+          onClick: () => handleExportLibrary(doc),
+        },
+        {
+          key: 'edit-library',
+          label: '修改信息',
+          icon: <InfoCircleOutlined />,
+          onClick: () => handleEditLibrary(doc),
+        },
+        {
+          key: 'delete-library',
+          label: '删除文档库',
+          icon: <DeleteOutlined />,
+          onClick: () => handleDeleteLibrary(doc),
+        },
+      );
+    } else {
+      items.push(
+        {
+          key: 'add-subdocument',
+          label: '新建子文档',
+          icon: <FileAddOutlined />,
+          onClick: () => handleAddSubDocument(doc),
+        },
+        {
+          key: 'edit-document-info',
+          label: '修改信息',
+          icon: <InfoCircleOutlined />,
+          onClick: () => handleEditDocumentInfo(doc),
+        },
+      );
+
+      if (!doc.children?.length) {
+        items.push({
+          key: 'convert-to-draft',
+          label: '转为草稿',
+          icon: <SwapOutlined />,
+          onClick: () => handleConvertToDraft(doc),
+        });
       }
+
+      items.push({
+        key: 'delete',
+        label: '删除',
+        icon: <DeleteOutlined />,
+        onClick: () => handleDeleteDocument(doc),
+      });
     }
+
+    return { items };
   };
 
-  // 对外暴露的刷新方法
-  const refreshTreeData = async () => {
-    await fetchTreeData();
-  };
+  const renderTreeNode = (doc) => {
+    const isSelected = String(selectedDocumentId || '') === String(doc.id);
 
-  // 处理展开/收起
-  const handleExpand = (expandedKeys) => {
-    setExpandedKeys(expandedKeys);
-  };
+    return (
+      <div
+        className={[
+          'document-tree-node',
+          doc.type === 'library' ? 'document-tree-node-library' : 'document-tree-node-document',
+          isSelected ? 'document-tree-node-selected' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+      >
+        <button className="document-tree-node-title" type="button" onClick={() => onNodeSelect?.(doc, 'view')}>
+          <span className="document-tree-node-icon">
+            {doc.type === 'library' ? <FolderOutlined /> : <FileTextOutlined />}
+          </span>
+          <span className="document-tree-node-text">{doc.title}</span>
+        </button>
 
-  // 刷新数据
-  const handleRefresh = async () => {
-    await fetchTreeData();
-    await fetchLibraries();
-    if (onRefresh) {
-      onRefresh();
-    }
+        <div className="document-tree-node-actions" onClick={(event) => event.stopPropagation()}>
+          {doc.type === 'library' || mobile ? null : (
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEditDocument(doc)}
+              title="编辑"
+              className="document-tree-node-action"
+            />
+          )}
+          <Dropdown menu={getNodeMenu(doc)} trigger={['click']} placement="bottomRight">
+            <Button
+              type="text"
+              size="small"
+              icon={<MoreOutlined />}
+              title="更多操作"
+              className="document-tree-node-action"
+            />
+          </Dropdown>
+        </div>
+      </div>
+    );
   };
 
   useEffect(() => {
     fetchTreeData();
     fetchLibraries();
-  }, []);
+  }, [fetchLibraries, fetchTreeData, refreshNonce]);
 
   return (
-    <div
-      className={['document-tree-container', mobile ? 'document-tree-container-mobile' : '']
-        .filter(Boolean)
-        .join(' ')}
-    >
-      <div className="document-tree-header">
-        <NewDocumentModal
-          type="library"
-          onFinish={async (data) => {
-            // 先刷新本地数据
-            await handleRefresh();
-            // 再通知父组件刷新
-            if (onRefresh) {
-              await onRefresh();
-            }
-            // 如果创建了新文档库，自动选中它
-            if (data && data.type === 'library' && onNodeSelect) {
-              setTimeout(() => {
-                onNodeSelect(data, 'view');
-              }, 200);
-            }
-          }}
-        />
-      </div>
-
+    <div className={['document-tree-container', mobile ? 'document-tree-container-mobile' : ''].filter(Boolean).join(' ')}>
       <div className="document-tree-tree-wrapper">
         <div className="document-tree-content document-tree-scroll">
           <Tree
             showIcon={false}
+            selectable={false}
             blockNode
             loading={loading}
             treeData={treeData}
-            selectedKeys={selectedDocumentId ? [selectedDocumentId.toString()] : []}
             expandedKeys={expandedKeys}
-            onSelect={handleTreeSelect}
-            onExpand={handleExpand}
+            onExpand={setExpandedKeys}
             titleRender={renderTreeNode}
-            style={{ fontSize: '14px' }}
+            className="document-tree-control"
           />
         </div>
       </div>
 
-      {/* 新建文档模态框 */}
-      <Modal
-        title="新建文档"
-        open={showNewDocModal}
-        onCancel={() => setShowNewDocModal(false)}
-        footer={null}
-      >
+      <Modal title="新建文档" open={showNewDocModal} onCancel={() => setShowNewDocModal(false)} footer={null}>
         <NewDocumentModal
           type={newDocType}
           libraries={libraries}
@@ -505,31 +348,24 @@ export default function DocumentTree(props) {
           libraryId={parentDocument?.type === 'library' ? parentDocument.id : parentDocument?.library_id}
           onFinish={async (data) => {
             setShowNewDocModal(false);
-            // 强制刷新树数据
             await fetchTreeData();
             await fetchLibraries();
-            // 通知父组件刷新
-            if (onRefresh) {
-              await onRefresh();
-            }
-            // 如果创建了新文档，自动选中它并展开父节点
-            if (data && data.type === 'document' && onNodeSelect) {
-              // 确保父节点被展开
+            await onRefresh?.();
+            if (data?.type === 'document' && onNodeSelect) {
               if (data.parent_id) {
-                setExpandedKeys(prev => [...new Set([...prev, data.parent_id.toString()])]);
+                setExpandedKeys((prev) => [...new Set([...prev, data.parent_id.toString()])]);
               }
               if (data.library_id) {
-                setExpandedKeys(prev => [...new Set([...prev, data.library_id.toString()])]);
+                setExpandedKeys((prev) => [...new Set([...prev, data.library_id.toString()])]);
               }
               setTimeout(() => {
                 onNodeSelect(data, 'edit');
-              }, 500);
+              }, 300);
             }
           }}
         />
       </Modal>
 
-      {/* 编辑文档库模态框 */}
       <EditLibraryModal
         visible={showEditLibraryModal}
         library={editingLibrary}
@@ -540,16 +376,10 @@ export default function DocumentTree(props) {
         onFinish={async () => {
           setShowEditLibraryModal(false);
           setEditingLibrary(null);
-          // 刷新树数据
-          await fetchTreeData();
-          await fetchLibraries();
-          if (onRefresh) {
-            await onRefresh();
-          }
+          await handleRefresh();
         }}
       />
 
-      {/* 编辑文档信息模态框 */}
       <EditDocumentModal
         visible={showEditDocumentModal}
         document={editingDocument}
@@ -560,16 +390,10 @@ export default function DocumentTree(props) {
         onFinish={async () => {
           setShowEditDocumentModal(false);
           setEditingDocument(null);
-          // 刷新树数据
-          await fetchTreeData();
-          await fetchLibraries();
-          if (onRefresh) {
-            await onRefresh();
-          }
+          await handleRefresh();
         }}
       />
 
-      {/* 转为草稿模态框 */}
       <ConvertToDraftModal
         visible={showConvertToDraftModal}
         document={convertingDocument}
@@ -581,4 +405,4 @@ export default function DocumentTree(props) {
       />
     </div>
   );
-} 
+}

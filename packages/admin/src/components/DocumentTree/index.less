@@ -1,306 +1,252 @@
 .document-tree {
   &-container {
     height: 100%;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-  }
-
-  &-header {
-    margin-bottom: 12px;
-    flex-shrink: 0;
-    background: transparent;
   }
 
   &-tree-wrapper {
     flex: 1;
-    overflow: hidden;
-    border: 1px solid #f0f0f0;
-    border-radius: 6px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    background: #fff;
   }
 
   &-content {
     flex: 1;
-    overflow: auto;
-    padding: 8px;
     min-height: 0;
-    background: #fff;
-    
-    /* 自定义滚动条样式 */
+    overflow: auto;
+    padding: 4px 0;
+    background: transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.32) transparent;
+
     &::-webkit-scrollbar {
       width: 8px;
     }
 
     &::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 4px;
+      background: transparent;
     }
 
     &::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
-      border-radius: 4px;
-      
+      background: rgba(148, 163, 184, 0.32);
+      border-radius: 999px;
+
       &:hover {
-        background: #a8a8a8;
+        background: rgba(148, 163, 184, 0.48);
       }
-    }
-
-    /* Firefox */
-    scrollbar-width: thin;
-    scrollbar-color: #c1c1c1 #f1f1f1;
-  }
-
-  &-scroll {
-    /* 兼容性类名，实际样式在 &-content 中定义 */
-  }
-}
-
-.document-tree-container-mobile {
-  gap: 12px;
-
-  .document-tree-header {
-    margin-bottom: 0;
-
-    .ant-btn {
-      width: 100%;
-      min-height: 42px;
-      border-radius: 12px;
-    }
-  }
-
-  .document-tree-tree-wrapper {
-    border-radius: 16px;
-  }
-
-  .document-tree-content {
-    padding: 10px;
-  }
-}
-
-html[data-theme='dark'] {
-  .document-tree {
-    &-header {
-      background: transparent !important;
-    }
-
-    &-tree-wrapper {
-      background: var(--admin-surface-bg) !important;
-      border-color: var(--admin-surface-border) !important;
-    }
-
-    &-content {
-      background: var(--admin-surface-bg) !important;
-      color: #e5e7eb !important;
-
-      &::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.06);
-      }
-
-      &::-webkit-scrollbar-thumb {
-        background: rgba(148, 163, 184, 0.45);
-
-        &:hover {
-          background: rgba(148, 163, 184, 0.65);
-        }
-      }
-
-      scrollbar-color: rgba(148, 163, 184, 0.45) rgba(255, 255, 255, 0.06);
     }
   }
 }
 
-/* 确保Tree组件的节点能够正确显示 */
-.ant-tree {
-  background: transparent;
-  
+.document-tree-control {
+  background: transparent !important;
+
   .ant-tree-treenode {
-    padding: 2px 0;
-    
-    &:hover {
-      background-color: #f5f5f5;
-    }
+    width: 100%;
+    padding: 0 !important;
   }
-  
-  .ant-tree-node-content-wrapper {
-    transition: all 0.2s ease;
-    border-radius: 4px;
-    
-    &:hover {
-      background-color: #f5f5f5;
-    }
-    
-    &.ant-tree-node-selected {
-      background-color: #e6f7ff !important;
-    }
-  }
-  
+
   .ant-tree-switcher {
+    width: 22px;
+    min-width: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 5px;
+    color: rgba(148, 163, 184, 0.72);
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+
     &:hover {
-      background-color: #f5f5f5;
+      background: rgba(148, 163, 184, 0.08);
     }
+  }
+
+  .ant-tree-node-content-wrapper {
+    width: calc(100% - 22px);
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .ant-tree-indent-unit {
+    width: 16px;
   }
 }
 
-html[data-theme='dark'] {
-  .document-tree-container {
-    .ant-tree {
-      background: var(--admin-surface-bg) !important;
-      color: #e5e7eb !important;
-
-      .ant-tree-treenode:hover,
-      .ant-tree-node-content-wrapper:hover,
-      .ant-tree-switcher:hover {
-        background-color: var(--admin-surface-bg-subtle) !important;
-      }
-
-      .ant-tree-node-content-wrapper.ant-tree-node-selected {
-        background-color: var(--admin-primary-soft-bg) !important;
-      }
-
-      .ant-tree-switcher,
-      .ant-tree-title,
-      .ant-tree-node-content-wrapper,
-      .ant-tree-node-content-wrapper span,
-      .ant-tree-indent-unit,
-      .ant-tree-iconEle {
-        color: #e5e7eb !important;
-      }
-    }
-  }
-}
-
-/* 文档树节点样式 */
 .document-tree-node {
   position: relative;
-  
-  .document-tree-node-title {
-    // 确保图标和文字正确对齐
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-    
-    // 确保文字部分的样式
-    span {
-      display: inline-block;
-      vertical-align: middle;
-      line-height: 1.4;
-    }
-    
-    // 确保图标的样式
-    .anticon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 1;
-      flex-shrink: 0;
-    }
-  }
-  
-  .document-tree-node-actions {
-    // 确保按钮在hover时完全可见
-    transition: opacity 0.2s ease;
-    display: flex !important;
-    align-items: center !important;
-    flex-shrink: 0 !important;
-    
-    .ant-btn {
-      transition: all 0.2s ease;
-      min-width: 24px;
-      height: 24px;
-      
-      &:hover {
-        background-color: rgba(0, 0, 0, 0.06);
-      }
-    }
-  }
-  
-  // 确保按钮始终可见，特别是文档库的单个按钮
-  .document-tree-node-actions {
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-  }
-  
-  &:hover .document-tree-node-actions {
-    opacity: 1;
-  }
-}
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 1px 4px 1px 0;
 
-.document-tree-container-mobile {
-  .document-tree-node {
-    min-height: 38px;
+  &::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    border-radius: 999px;
+    background: transparent;
+    transition: background-color 0.2s ease;
+  }
 
+  &-selected::before {
+    background: var(--admin-primary, #7a8cff);
+  }
+
+  &-library {
+    .document-tree-node-text {
+      font-weight: 600;
+    }
+  }
+
+  &-title {
+    flex: 1;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  &-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    color: rgba(120, 132, 146, 0.86);
+  }
+
+  &-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+    line-height: 1.4;
+  }
+
+  &-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  &-action {
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    color: rgba(120, 132, 146, 0.86);
+
+    &:hover,
+    &:focus {
+      background: rgba(148, 163, 184, 0.1) !important;
+      color: inherit !important;
+    }
+  }
+
+  &:hover,
+  &-selected {
     .document-tree-node-title {
-      gap: 8px !important;
-      min-height: 36px;
+      background: rgba(148, 163, 184, 0.08);
     }
 
     .document-tree-node-actions {
       opacity: 1;
-
-      .ant-btn {
-        min-width: 30px;
-        height: 30px;
-        border-radius: 999px;
-      }
     }
   }
 
-  .ant-tree {
-    .ant-tree-treenode {
-      padding: 4px 0;
+  &-selected {
+    .document-tree-node-title {
+      background: var(--admin-primary-soft-bg, rgba(122, 140, 255, 0.12));
+      color: var(--admin-modal-text, inherit);
     }
 
-    .ant-tree-node-content-wrapper {
-      padding-block: 2px;
+    .document-tree-node-icon,
+    .document-tree-node-action {
+      color: var(--admin-modal-text, inherit);
+    }
+  }
+}
+
+.document-tree-container-mobile {
+  .document-tree-content {
+    padding: 4px 0 12px;
+  }
+
+  .document-tree-node {
+    min-height: 40px;
+
+    &-title {
+      padding: 10px 12px;
+      border-radius: 12px;
+    }
+
+    &-actions {
+      opacity: 1;
+    }
+
+    &::before {
+      left: -5px;
     }
   }
 }
 
 html[data-theme='dark'] {
+  .document-tree-control {
+    .ant-tree-switcher {
+      color: rgba(189, 200, 212, 0.72);
+
+      &:hover {
+        background: rgba(148, 163, 184, 0.08);
+      }
+    }
+  }
+
   .document-tree-node {
-    .document-tree-node-title,
-    .document-tree-node-title span {
-      color: #e5e7eb !important;
+    color: #d9e2ec;
+
+    &-icon,
+    &-action {
+      color: rgba(189, 200, 212, 0.74);
     }
 
-    .document-tree-node-actions {
-      .ant-btn {
-        color: #cbd5e1 !important;
+    &:hover,
+    &-selected {
+      .document-tree-node-title {
+        background: rgba(148, 163, 184, 0.08);
+      }
+    }
 
-        &:hover {
-          background-color: var(--admin-surface-bg-subtle) !important;
-          color: #f8fafc !important;
-        }
+    &-selected {
+      .document-tree-node-title {
+        background: rgba(141, 155, 176, 0.14);
+        color: #f4f7fb;
+      }
+
+      .document-tree-node-icon,
+      .document-tree-node-action {
+        color: #f4f7fb;
       }
     }
   }
 }
-
-/* 响应式设计 - 在窄屏时优化按钮显示 */
-@media (max-width: 200px) {
-  .document-tree-node-actions {
-    // 在很窄的屏幕上，只显示更多操作按钮
-    .ant-btn:not(:last-child) {
-      display: none;
-    }
-  }
-}
-
-/* 确保在任何宽度下都能看到更多操作按钮 */
-.document-tree-node-actions {
-  /* 确保按钮容器不会被压缩 */
-  flex-shrink: 0;
-  justify-content: flex-end;
-  min-width: 28px; // 至少保证能显示一个按钮
-  
-  /* 在容器宽度不足时的响应式处理 */
-  @media (max-width: 200px) {
-    .ant-btn:not(:last-child) {
-      display: none;
-    }
-  }
-} 
