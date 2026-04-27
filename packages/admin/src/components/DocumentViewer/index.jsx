@@ -20,6 +20,7 @@ import '../../style/code-light.css';
 import '../../style/code-dark.css';
 import '../../style/custom-container.css';
 import { getMarkdownThemeId, useAdminMarkdownTheme } from '@/utils/markdownTheme';
+import { resolveDocumentViewerLayout } from './layout';
 import './index.less';
 import { normalizeMathDelimiters } from '../Editor/plugins/normalizeMathDelimiters';
 
@@ -40,7 +41,7 @@ const sanitize = (schema) => {
 };
 
 export default function DocumentViewer(props) {
-  const { value, codeMaxLines = 15, themeConfig } = props;
+  const { value, codeMaxLines = 15, themeConfig, scrollContainer = 'self' } = props;
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
@@ -50,18 +51,19 @@ export default function DocumentViewer(props) {
   const lightThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownLightThemeUrl);
   const darkThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownDarkThemeUrl);
   const normalizedValue = useMemo(() => normalizeMathDelimiters(value || ''), [value]);
-  
+  const layout = useMemo(() => resolveDocumentViewerLayout(scrollContainer), [scrollContainer]);
+
   const plugins = useMemo(() => {
     return [
       customContainer(),
       gfm({ locale: cn }),
       highlight(),
-      math({ 
+      math({
         locale: cn,
         katexOptions: {
           strict: false,
           throwOnError: false,
-        }
+        },
       }),
       customMermaidPlugin(mermaidThemeMode),
       customMermaidExportPlugin(mermaidThemeMode),
@@ -79,33 +81,34 @@ export default function DocumentViewer(props) {
       if (viewerRef.current) {
         // 强制重新应用样式类
         const viewer = viewerRef.current;
-        viewer.className = `document-viewer ${themeClass}`;
-        
+        viewer.className = `document-viewer ${themeClass} ${layout.className}`.trim();
+
         // 确保代码块相关样式正确应用
         const codeBlocks = viewer.querySelectorAll('.code-block-wrapper');
-        codeBlocks.forEach(block => {
+        codeBlocks.forEach((block) => {
           const toggleBtn = block.querySelector('.code-toggle-btn');
           const contentWrapper = block.querySelector('.code-content-wrapper');
           const codeElement = block.querySelector('code');
-          
+
           if (toggleBtn && contentWrapper && codeElement) {
             // 重新检查是否需要折叠
             const codeText = codeElement.textContent || '';
             const lines = codeText.trim().split('\n');
-            const nonEmptyLines = lines.filter(line => line.trim().length > 0);
-            const shouldCollapse = lines.length > codeMaxLines || nonEmptyLines.length > Math.max(codeMaxLines - 3, 5);
-            
+            const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+            const shouldCollapse =
+              lines.length > codeMaxLines || nonEmptyLines.length > Math.max(codeMaxLines - 3, 5);
+
             if (shouldCollapse) {
               contentWrapper.classList.add('code-collapsed');
               toggleBtn.classList.add('code-collapsed');
               toggleBtn.title = '展开代码';
               toggleBtn.setAttribute('aria-label', '展开代码');
               toggleBtn.style.display = 'inline-flex';
-              
+
               // 动态设置折叠高度
               const lineHeight = 1.4;
               const padding = 1; // 额外的padding
-              const maxHeight = (codeMaxLines * lineHeight + padding) + 'em';
+              const maxHeight = codeMaxLines * lineHeight + padding + 'em';
               contentWrapper.style.setProperty('--code-max-height', maxHeight);
               contentWrapper.style.maxHeight = maxHeight;
             } else {
@@ -117,19 +120,15 @@ export default function DocumentViewer(props) {
     }, 100); // 延迟100ms确保DOM完全渲染
 
     return () => clearTimeout(timer);
-  }, [value, themeClass]);
+  }, [codeMaxLines, layout.className, themeClass, value]);
 
   return (
-    <div 
+    <div
       ref={viewerRef}
-      className={`document-viewer ${themeClass}`}
+      className={`document-viewer ${themeClass} ${layout.className}`.trim()}
       data-vb-markdown-light-theme-id={lightThemeId || undefined}
       data-vb-markdown-dark-theme-id={darkThemeId || undefined}
-      style={{ 
-        height: '100%',
-        width: '100%',
-        overflow: 'auto'
-      }}
+      style={layout.style}
     >
       <Viewer
         key={`document-viewer-${mermaidThemeMode}`}
@@ -139,4 +138,4 @@ export default function DocumentViewer(props) {
       />
     </div>
   );
-} 
+}

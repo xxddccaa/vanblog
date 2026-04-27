@@ -1,7 +1,7 @@
 import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
-import { Editor, Viewer } from '@bytemd/react';
+import { Editor } from '@bytemd/react';
 import { useModel } from '@umijs/max';
 import { Spin } from 'antd';
 import { useEffect, useMemo, useRef } from 'react';
@@ -9,6 +9,7 @@ import { createRoot } from 'react-dom/client';
 
 import type { Root } from 'react-dom/client';
 
+import DocumentViewer from '@/components/DocumentViewer';
 import { getMarkdownThemeId, useAdminMarkdownTheme } from '@/utils/markdownTheme';
 import { customMermaidPlugin, normalizeMermaidThemeMode } from '../../Editor/mermaidTheme';
 import { emoji } from '../../Editor/emoji';
@@ -21,7 +22,6 @@ import { customCodeBlock } from '../../Editor/plugins/codeBlock';
 import { Heading } from '../../Editor/plugins/heading';
 import { LinkTarget } from '../../Editor/plugins/linkTarget';
 import { customMermaidExportPlugin } from '../../Editor/plugins/mermaidExport';
-import { normalizeMathDelimiters } from '../../Editor/plugins/normalizeMathDelimiters';
 import { smartCodeBlock } from '../../Editor/plugins/smartCodeBlock';
 import rawHTML from '../../Editor/rawHTML';
 import '../../Editor/index.less';
@@ -111,24 +111,23 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
   );
 
   const overridePreview = useMemo(
-    () =>
-      (previewElement: HTMLElement, previewProps: any) => {
-        if (!previewRootRef.current || previewElementRef.current !== previewElement) {
-          previewRootRef.current?.unmount();
-          previewRootRef.current = createRoot(previewElement);
-          previewElementRef.current = previewElement;
-        }
+    () => (previewElement: HTMLElement, previewProps: any) => {
+      if (!previewRootRef.current || previewElementRef.current !== previewElement) {
+        previewRootRef.current?.unmount();
+        previewRootRef.current = createRoot(previewElement);
+        previewElementRef.current = previewElement;
+      }
 
-        previewRootRef.current.render(
-          <Viewer
-            value={normalizeMathDelimiters(previewProps.value)}
-            plugins={plugins}
-            sanitize={sanitize}
-            remarkRehype={previewProps.remarkRehype}
-          />,
-        );
-      },
-    [plugins],
+      previewRootRef.current.render(
+        <DocumentViewer
+          value={previewProps.value}
+          codeMaxLines={editorCodeMaxLines}
+          themeConfig={themeConfig}
+          scrollContainer="inherit"
+        />,
+      );
+    },
+    [editorCodeMaxLines, themeConfig],
   );
 
   useEffect(

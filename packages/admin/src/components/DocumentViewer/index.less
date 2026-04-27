@@ -234,4 +234,19 @@
     --color-border-muted: var(--admin-editor-border, rgba(111, 186, 255, 0.18)) !important;
     --color-neutral-muted: var(--admin-editor-hover, rgba(111, 186, 255, 0.14)) !important;
   }
+
+  &.document-viewer--inherit-scroll {
+    overflow: visible;
+
+    .bytemd-viewer {
+      height: auto;
+      min-height: 100%;
+      overflow: visible;
+    }
+
+    > .markdown-body,
+    .bytemd-viewer > .markdown-body {
+      min-height: auto;
+    }
+  }
 }
