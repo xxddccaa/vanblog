@@ -3,6 +3,12 @@ import { ModalForm, ProFormSelect, ProFormText } from '@ant-design/pro-component
 import { message, Modal } from 'antd';
 export default function (props) {
   const { title, id, trigger, action, onFinish } = props;
+  const ensureSuccess = (result, fallbackMessage) => {
+    if (result?.statusCode !== 200) {
+      throw new Error(result?.message || fallbackMessage || '发布草稿失败');
+    }
+    return result?.data;
+  };
   return (
     <>
       <ModalForm
@@ -20,19 +26,27 @@ export default function (props) {
             });
             return;
           }
-          await publishDraft(id, {
-            ...values,
-            password: values.pc,
-            top: values.Ctop,
-          });
-          message.success('发布成功！');
-          if (action && action.reload) {
-            action.reload();
+          try {
+            ensureSuccess(
+              await publishDraft(id, {
+                ...values,
+                password: values.pc,
+                top: values.Ctop,
+              }),
+              '发布草稿失败！',
+            );
+            message.success('发布成功！');
+            if (action && action.reload) {
+              action.reload();
+            }
+            if (props.onFinish) {
+              props.onFinish();
+            }
+            return true;
+          } catch (error) {
+            message.error(error?.message || '发布草稿失败！');
+            return false;
           }
-          if (props.onFinish) {
-            props.onFinish();
-          }
-          return true;
         }}
         layout="horizontal"
         labelCol={{ span: 6 }}

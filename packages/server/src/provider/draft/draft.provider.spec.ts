@@ -48,4 +48,37 @@ describe('DraftProvider', () => {
     expect(result).toEqual([]);
     expect(draftModel.find).not.toHaveBeenCalled();
   });
+
+  it('publishes drafts even when the content does not include a more marker', async () => {
+    const articleProvider = {
+      create: jest.fn().mockResolvedValue({ id: 22, title: 'Published draft' }),
+    };
+    const provider = new DraftProvider({} as any, articleProvider as any, {} as any);
+
+    provider.getById = jest.fn().mockResolvedValue({
+      id: 21,
+      title: 'Draft without more',
+      content: 'plain content without marker',
+      tags: ['draft'],
+      category: '默认分类',
+      author: 'tester',
+    } as any);
+    provider.deleteById = jest.fn().mockResolvedValue({ acknowledged: true } as any);
+
+    const result = await provider.publish(21, {
+      hidden: true,
+      pathname: 'draft-without-more',
+    } as any);
+
+    expect(articleProvider.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Draft without more',
+        content: 'plain content without marker',
+        hidden: true,
+        pathname: 'draft-without-more',
+      }),
+    );
+    expect(provider.deleteById).toHaveBeenCalledWith(21);
+    expect(result).toEqual({ id: 22, title: 'Published draft' });
+  });
 });
