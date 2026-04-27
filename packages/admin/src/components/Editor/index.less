@@ -536,3 +536,40 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
     }
   }
 }
+
+/* Keep ByteMD preview visible in narrower admin content widths by stacking
+   the editor and preview panes instead of letting ByteMD hide preview mode. */
+@media (max-width: 1200px) {
+  .editor-wrapper {
+    .bytemd {
+      .bytemd-body {
+        flex-direction: column;
+      }
+
+      .bytemd-body .bytemd-editor,
+      .bytemd-body .bytemd-preview {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0;
+        min-height: 280px;
+        flex: 1 1 0 !important;
+      }
+
+      .bytemd-body .bytemd-editor {
+        border-right: none;
+        border-bottom: 1px solid #e8e8e8;
+      }
+
+      .bytemd-body .bytemd-preview {
+        border-left: none !important;
+        padding: 20px 18px;
+      }
+    }
+  }
+
+  .dark .editor-wrapper {
+    .bytemd-body .bytemd-editor {
+      border-bottom: 1px solid var(--vb-editor-dark-border) !important;
+    }
+  }
+}

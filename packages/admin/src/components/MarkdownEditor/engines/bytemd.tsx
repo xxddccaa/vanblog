@@ -4,12 +4,8 @@ import math from '@bytemd/plugin-math-ssr';
 import { Editor } from '@bytemd/react';
 import { useModel } from '@umijs/max';
 import { Spin } from 'antd';
-import { useEffect, useMemo, useRef } from 'react';
-import { createRoot } from 'react-dom/client';
+import { useEffect, useMemo } from 'react';
 
-import type { Root } from 'react-dom/client';
-
-import DocumentViewer from '@/components/DocumentViewer';
 import { getMarkdownThemeId, useAdminMarkdownTheme } from '@/utils/markdownTheme';
 import { customMermaidPlugin, normalizeMermaidThemeMode } from '../../Editor/mermaidTheme';
 import { emoji } from '../../Editor/emoji';
@@ -52,8 +48,6 @@ const sanitize = (schema) => {
 
 export default function BytemdEngine(props: MarkdownEditorProps) {
   const { loading, setLoading, themeConfig, codeMaxLines } = props;
-  const previewRootRef = useRef<Root | null>(null);
-  const previewElementRef = useRef<HTMLElement | null>(null);
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
@@ -110,35 +104,6 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
     [editorCodeMaxLines, mermaidThemeMode, setLoading],
   );
 
-  const overridePreview = useMemo(
-    () => (previewElement: HTMLElement, previewProps: any) => {
-      if (!previewRootRef.current || previewElementRef.current !== previewElement) {
-        previewRootRef.current?.unmount();
-        previewRootRef.current = createRoot(previewElement);
-        previewElementRef.current = previewElement;
-      }
-
-      previewRootRef.current.render(
-        <DocumentViewer
-          value={previewProps.value}
-          codeMaxLines={editorCodeMaxLines}
-          themeConfig={themeConfig}
-          scrollContainer="inherit"
-        />,
-      );
-    },
-    [editorCodeMaxLines, themeConfig],
-  );
-
-  useEffect(
-    () => () => {
-      previewRootRef.current?.unmount();
-      previewRootRef.current = null;
-      previewElementRef.current = null;
-    },
-    [],
-  );
-
   return (
     <div style={{ height: '100%' }} className={themeClass}>
       <div
@@ -151,9 +116,9 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
             value={props.value}
             plugins={plugins}
             onChange={props.onChange}
+            mode="split"
             locale={cn}
             sanitize={sanitize}
-            overridePreview={overridePreview}
             uploadImages={async (files: File[]) => {
               if (files.length === 1) {
                 setLoading(true);

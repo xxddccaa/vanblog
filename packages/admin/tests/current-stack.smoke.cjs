@@ -338,14 +338,15 @@ async function assertDarkEditorSurface(page, token) {
     const editorBaseColor = editor ? getComputedStyle(editor).color : '';
     const editorBackground = editor ? getComputedStyle(editor).backgroundColor : '';
     const editorType = milkdownEditor ? 'milkdown' : byteMDEditor ? 'bytemd' : 'missing';
-    const editorTokenColors = editorType === 'bytemd'
-      ? Array.from(document.querySelectorAll('.CodeMirror span[class*="cm-"]'))
-          .map((element) => ({
-            classes: element.className,
-            color: getComputedStyle(element).color,
-          }))
-          .filter((token) => token.color && token.color !== editorBaseColor)
-      : [];
+    const editorTokenColors =
+      editorType === 'bytemd'
+        ? Array.from(document.querySelectorAll('.CodeMirror span[class*="cm-"]'))
+            .map((element) => ({
+              classes: element.className,
+              color: getComputedStyle(element).color,
+            }))
+            .filter((token) => token.color && token.color !== editorBaseColor)
+        : [];
 
     const previewBody =
       document.querySelector('.vb-milkdown-editor__pane--preview .markdown-body') ||
@@ -376,7 +377,11 @@ async function assertDarkEditorSurface(page, token) {
   });
 
   assert.equal(syntaxState.htmlTheme, 'dark', 'editor page did not stay in dark theme');
-  assert.notEqual(syntaxState.editorType, 'missing', 'editor page did not render any editor surface');
+  assert.notEqual(
+    syntaxState.editorType,
+    'missing',
+    'editor page did not render any editor surface',
+  );
   assert.ok(syntaxState.editorBaseColor, 'editor surface did not expose a readable text color');
   assert.notEqual(
     syntaxState.editorBaseColor,
@@ -398,6 +403,70 @@ async function assertDarkEditorSurface(page, token) {
       syntaxState.previewTokenSample,
     )}`,
   );
+}
+
+async function assertNarrowByteMdPreviewVisible(page, token) {
+  const articleId = await findSyntaxHighlightArticleId(token);
+
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.evaluate(() => {
+    window.localStorage.setItem('theme', 'dark');
+    window.localStorage.setItem('vanblog_editor_engine', 'bytemd');
+  });
+
+  const bodyText = await openAdminRoute(page, `/editor?type=article&id=${articleId}`);
+  assert.ok(bodyText.includes('保存'), 'ByteMD editor page did not render save action');
+
+  const previewState = await page.evaluate(() => {
+    const root = document.querySelector('.bytemd');
+    const preview = document.querySelector('.bytemd-preview');
+    const previewBody =
+      document.querySelector('.bytemd-preview .document-viewer .markdown-body') ||
+      document.querySelector('.bytemd-preview .markdown-body');
+    const editor = document.querySelector('.bytemd-editor');
+    const rootRect = root ? root.getBoundingClientRect() : null;
+    const previewRect = preview ? preview.getBoundingClientRect() : null;
+    const editorRect = editor ? editor.getBoundingClientRect() : null;
+    const previewStyle = preview ? getComputedStyle(preview) : null;
+
+    return {
+      rootWidth: rootRect ? rootRect.width : 0,
+      previewDisplay: previewStyle ? previewStyle.display : '',
+      previewWidth: previewRect ? previewRect.width : 0,
+      previewHeight: previewRect ? previewRect.height : 0,
+      previewTextLength: previewBody ? (previewBody.textContent || '').trim().length : 0,
+      stacked:
+        Boolean(previewRect && editorRect) &&
+        previewRect.top >= editorRect.bottom - 1 &&
+        Math.abs(previewRect.left - editorRect.left) <= 1,
+    };
+  });
+
+  assert.notEqual(
+    previewState.previewDisplay,
+    'none',
+    `ByteMD preview was hidden: ${JSON.stringify(previewState)}`,
+  );
+  assert.ok(
+    previewState.previewWidth > 0,
+    `ByteMD preview width collapsed: ${JSON.stringify(previewState)}`,
+  );
+  assert.ok(
+    previewState.previewHeight > 0,
+    `ByteMD preview height collapsed: ${JSON.stringify(previewState)}`,
+  );
+  assert.ok(
+    previewState.previewTextLength > 20,
+    `ByteMD preview did not render markdown content: ${JSON.stringify(previewState)}`,
+  );
+  assert.equal(
+    previewState.stacked,
+    true,
+    `ByteMD narrow layout did not stack editor and preview panes: ${JSON.stringify(previewState)}`,
+  );
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(800);
 }
 
 async function assertMobileAdminSurfaces(page) {
@@ -483,6 +552,7 @@ async function main() {
     await assertAdminShell(page);
     await assertMobileAdminSurfaces(page);
     await assertDarkEditorSurface(page, token);
+    await assertNarrowByteMdPreviewVisible(page, token);
     await page.waitForTimeout(2500);
     const walinePrewarmState = await page.evaluate(() =>
       window.sessionStorage.getItem('vanblog.admin.waline-prewarmed'),
