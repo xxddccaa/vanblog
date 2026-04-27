@@ -1,7 +1,8 @@
-import PostPage from '../../../page-components/post/[id]';
-import { getArticlesByOption } from '../../../api/getArticles';
-import { getArticlePath } from '../../../utils/getArticlePath';
-import { getPostPagesProps } from '../../../utils/getPageProps';
+import PostPage from '../../../../page-components/post/[id]';
+import { getArticlesByOption } from '../../../../api/getArticles';
+import { getArticlePath } from '../../../../utils/getArticlePath';
+import { getPostPagesProps } from '../../../../utils/getPageProps';
+import { renderMarkdownToHtml } from '../../../../utils/renderMarkdown';
 import { notFound } from 'next/navigation';
 
 export const dynamicParams = true;
@@ -21,5 +22,13 @@ export default async function PostRoute({ params }: { params: Promise<{ id: stri
   if (!props.article) {
     notFound();
   }
-  return <PostPage {...props} />;
+  return (
+    <PostPage
+      {...props}
+      initialRenderedHtml={renderMarkdownToHtml(
+        props.article.content.replace('<!-- more -->', ''),
+        props.layoutProps.codeMaxLines,
+      )}
+    />
+  );
 }

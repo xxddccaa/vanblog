@@ -87,6 +87,7 @@ describe("layout head sync", () => {
           {
             title: "Dong",
             sideBar: React.createElement("aside", null, "side-bar"),
+            includeMarkdownThemeHead: true,
             option: {
               description: "Dong blog",
               ipcNumber: "",
@@ -149,10 +150,14 @@ describe("layout head sync", () => {
       "bg-dark.webp",
     );
     expect(
-      document.head.querySelector("link[data-vanblog-theme-link][data-theme-for='light']")?.getAttribute("href"),
+      document.head
+        .querySelector("link[data-vanblog-theme-link='true'][data-theme-for='light']")
+        ?.getAttribute("href"),
     ).toBe(withMarkdownThemeAssetVersion("/markdown-themes/light.css"));
     expect(
-      document.head.querySelector("link[data-vanblog-theme-link][data-theme-for='dark']")?.getAttribute("href"),
+      document.head
+        .querySelector("link[data-vanblog-theme-link='true'][data-theme-for='dark']")
+        ?.getAttribute("href"),
     ).toBe(withMarkdownThemeAssetVersion("/markdown-themes/dark.css"));
     expect(
       document.head.querySelector("link[data-vanblog-theme-hotfix='true']")?.getAttribute("href"),
@@ -174,6 +179,77 @@ describe("layout head sync", () => {
       "#13273c",
     );
     expect(document.documentElement.style.backgroundColor).toBe("rgb(19, 39, 60)");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("does not inject markdown theme stylesheets for non-rich pages", async () => {
+    const { default: Layout } = await import("../components/Layout");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          Layout,
+          {
+            title: "Home",
+            sideBar: React.createElement("aside", null, "side-bar"),
+            option: {
+              description: "Dong blog",
+              ipcNumber: "",
+              since: "2020-01-01T00:00:00.000Z",
+              ipcHref: "",
+              gaBeianNumber: "",
+              gaBeianUrl: "",
+              gaBeianLogoUrl: "",
+              copyrightAggreement: "CC BY-NC-SA 4.0",
+              logo: "/logo.svg",
+              categories: [],
+              favicon: "/favicon.ico",
+              siteName: "Dong",
+              siteDesc: "Dong blog",
+              baiduAnalysisID: "",
+              gaAnalysisID: "",
+              logoDark: "/logo-dark.svg",
+              version: "1.0.0",
+              menus: [],
+              showSubMenu: "false",
+              showAdminButton: "false",
+              showFriends: "false",
+              headerLeftContent: "siteName",
+              enableComment: "false",
+              defaultTheme: "dark",
+              enableCustomizing: "false",
+              showDonateButton: "false",
+              showCopyRight: "true",
+              showRSS: "false",
+              showExpirationReminder: "false",
+              openArticleLinksInNewWindow: "false",
+              showEditButton: "false",
+              subMenuOffset: 0,
+              homePageSize: 5,
+              privateSite: "false",
+              codeMaxLines: 12,
+              showRunningTime: "false",
+              backgroundImage: "",
+              backgroundImageDark: "",
+              frontCardBackgroundColor: "#f5fbff",
+              frontCardBackgroundColorDark: "#15314d",
+              markdownLightThemeUrl: "/markdown-themes/light.css",
+              markdownDarkThemeUrl: "/markdown-themes/dark.css",
+            },
+          } as any,
+          React.createElement("main", null, "page-shell"),
+        ),
+      );
+    });
+
+    expect(document.head.querySelector("link[data-vanblog-theme-link='true']")).toBeNull();
+    expect(document.head.querySelector("link[data-vanblog-theme-hotfix='true']")).toBeNull();
 
     await act(async () => {
       root.unmount();

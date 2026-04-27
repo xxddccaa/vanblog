@@ -54,15 +54,19 @@ const headingPlugin = () => (tree) => {
   });
 }
 
+export const bindHeadingAnchors = (markdownBody: HTMLElement) => {
+  const headings = markdownBody.querySelectorAll('.markdown-heading');
+  headings.forEach((heading) => {
+    heading.removeEventListener('click', onClickHeading);
+    heading.addEventListener('click', onClickHeading);
+  });
+};
+
 export function Heading(): BytemdPlugin {
   return {
     rehype: (processor) => processor.use(headingPlugin),
     viewerEffect: ({markdownBody}) => {
-      const headings = markdownBody.querySelectorAll('.markdown-heading');
-      headings.forEach((heading) => {
-        heading.removeEventListener('click', onClickHeading);
-        heading.addEventListener('click', onClickHeading);
-      });
+      bindHeadingAnchors(markdownBody);
     }
   };
 }

@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
-import PostCard from "../components/PostCard";
+import OverviewPostCard from "../components/OverviewPostCard";
 import { Article } from "../types/article";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getIndexPageProps } from "../utils/getPageProps";
@@ -34,7 +34,7 @@ const Home = (props: IndexPageProps) => {
       </Head>
       <div className="space-y-2 md:space-y-4">
         {props.articles.map((article) => (
-          <PostCard
+          <OverviewPostCard
             showEditButton={props.layoutProps.showEditButton === "true"}
             showExpirationReminder={
               props.layoutProps.showExpirationReminder == "true"
@@ -42,7 +42,6 @@ const Home = (props: IndexPageProps) => {
             openArticleLinksInNewWindow={
               props.layoutProps.openArticleLinksInNewWindow == "true"
             }
-            customCopyRight={null}
             private={article.private}
             top={article.top || 0}
             id={getArticlePath(article)}
@@ -52,11 +51,8 @@ const Home = (props: IndexPageProps) => {
             createdAt={new Date(article.createdAt)}
             catelog={article.category}
             content={article.content || ""}
-            type={"overview"}
             enableComment={props.layoutProps.enableComment}
-            copyrightAggreement={props.layoutProps.copyrightAggreement}
-            codeMaxLines={props.layoutProps.codeMaxLines}
-          ></PostCard>
+          />
         ))}
       </div>
       <div className="mt-6 rounded-xl border border-dashed border-gray-300 px-5 py-4 text-center dark:border-dark-2">

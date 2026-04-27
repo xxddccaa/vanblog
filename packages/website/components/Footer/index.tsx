@@ -47,6 +47,7 @@ export default function ({
               lazyLoad={true}
               alt="公安备案 logo"
               width={20}
+              height={20}
             />
           )}
           <a

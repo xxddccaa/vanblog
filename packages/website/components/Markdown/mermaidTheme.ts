@@ -45,7 +45,7 @@ async function loadMermaid() {
   return mermaidLoader;
 }
 
-async function renderMermaidBlocks(markdownBody: HTMLElement, themeMode: MermaidThemeMode) {
+export async function renderMermaidBlocks(markdownBody: HTMLElement, themeMode: MermaidThemeMode) {
   const mermaidBlocks = Array.from(
     markdownBody.querySelectorAll<HTMLElement>(MERMAID_CODE_SELECTOR),
   ).filter((codeBlock) => {

@@ -302,55 +302,59 @@ const shouldCollapseCode = (
   );
 };
 
+export const enhanceCodeBlocks = (markdownBody: HTMLElement, maxLines: number = 15) => {
+  markdownBody.querySelectorAll(".code-block-wrapper").forEach((codeBlock) => {
+    const copyBtn = codeBlock.querySelector(".code-copy-btn") as HTMLElement;
+    const wrapBtn = codeBlock.querySelector(".code-wrap-btn") as HTMLElement;
+    const toggleBtn = codeBlock.querySelector(
+      ".code-toggle-btn"
+    ) as HTMLElement;
+    const codeContentWrapper = codeBlock.querySelector(
+      ".code-content-wrapper"
+    ) as HTMLElement;
+    const codeElement = codeBlock.querySelector("code");
+
+    copyBtn?.removeEventListener("click", onClickCopyCode);
+    wrapBtn?.removeEventListener("click", onClickToggleWrap);
+    toggleBtn?.removeEventListener("click", onClickToggleCode);
+
+    copyBtn?.addEventListener("click", onClickCopyCode);
+    wrapBtn?.addEventListener("click", onClickToggleWrap);
+
+    if (wrapBtn) {
+      setWrapButtonState(
+        wrapBtn,
+        codeContentWrapper?.classList.contains("code-wrap-enabled") ?? false
+      );
+    }
+
+    if (codeElement && shouldCollapseCode(codeElement, maxLines)) {
+      codeContentWrapper?.classList.add("code-collapsed");
+      if (toggleBtn) {
+        setToggleButtonState(toggleBtn, true);
+        toggleBtn.style.display = "inline-flex";
+        toggleBtn.addEventListener("click", onClickToggleCode);
+      }
+
+      if (codeContentWrapper) {
+        const lineHeight = 1.4;
+        const padding = 1;
+        const maxHeight = maxLines * lineHeight + padding + "em";
+        codeContentWrapper.style.setProperty("--code-max-height", maxHeight);
+      }
+    } else if (toggleBtn) {
+      codeContentWrapper?.classList.remove("code-collapsed");
+      setToggleButtonState(toggleBtn, false);
+      toggleBtn.style.display = "none";
+    }
+  });
+};
+
 export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
   return {
     rehype: (processor) => processor.use(codeBlockPlugin),
     viewerEffect: ({ markdownBody }) => {
-      markdownBody.querySelectorAll(".code-block-wrapper").forEach((codeBlock) => {
-        const copyBtn = codeBlock.querySelector(".code-copy-btn") as HTMLElement;
-        const wrapBtn = codeBlock.querySelector(".code-wrap-btn") as HTMLElement;
-        const toggleBtn = codeBlock.querySelector(
-          ".code-toggle-btn"
-        ) as HTMLElement;
-        const codeContentWrapper = codeBlock.querySelector(
-          ".code-content-wrapper"
-        ) as HTMLElement;
-        const codeElement = codeBlock.querySelector("code");
-
-        copyBtn?.removeEventListener("click", onClickCopyCode);
-        wrapBtn?.removeEventListener("click", onClickToggleWrap);
-        toggleBtn?.removeEventListener("click", onClickToggleCode);
-
-        copyBtn?.addEventListener("click", onClickCopyCode);
-        wrapBtn?.addEventListener("click", onClickToggleWrap);
-
-        if (wrapBtn) {
-          setWrapButtonState(
-            wrapBtn,
-            codeContentWrapper?.classList.contains("code-wrap-enabled") ?? false
-          );
-        }
-
-        if (codeElement && shouldCollapseCode(codeElement, maxLines)) {
-          codeContentWrapper?.classList.add("code-collapsed");
-          if (toggleBtn) {
-            setToggleButtonState(toggleBtn, true);
-            toggleBtn.style.display = "inline-flex";
-            toggleBtn.addEventListener("click", onClickToggleCode);
-          }
-
-          if (codeContentWrapper) {
-            const lineHeight = 1.4;
-            const padding = 1;
-            const maxHeight = maxLines * lineHeight + padding + "em";
-            codeContentWrapper.style.setProperty("--code-max-height", maxHeight);
-          }
-        } else if (toggleBtn) {
-          codeContentWrapper?.classList.remove("code-collapsed");
-          setToggleButtonState(toggleBtn, false);
-          toggleBtn.style.display = "none";
-        }
-      });
+      enhanceCodeBlocks(markdownBody, maxLines);
     },
   };
 }

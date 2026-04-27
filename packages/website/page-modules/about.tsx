@@ -3,10 +3,11 @@ import dayjs from "dayjs";
 import { DonateItem } from "../api/getAllData";
 import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
-import PostCard from "../components/PostCard";
+import RichPostCard from "../components/RichPostCard";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getAboutPageProps } from "../utils/getPageProps";
 import { revalidate } from "../utils/loadConfig";
+import { renderMarkdownToHtml } from "../utils/renderMarkdown";
 export interface About {
   updatedAt: string;
   content: string;
@@ -42,21 +43,22 @@ const AboutPage = (props: AboutPageProps) => {
     props.donates.length == 0 || props.showDonateInfo == "false"
       ? props.about.content
       : `${props.about.content}${getDonateTableMarkdown(props.donates)}`;
+  const renderedHtml = renderMarkdownToHtml(content, props.layoutProps.codeMaxLines);
 
   return (
     <Layout
       title="关于我"
       option={props.layoutProps}
       contentWidthMode={props.layoutProps.articleWidthMode}
+      includeMarkdownThemeHead={true}
       sideBar={<AuthorCard option={props.authorCardProps} />}
     >
-      <PostCard
+      <RichPostCard
         showExpirationReminder={
           props.layoutProps.showExpirationReminder == "true"
         }
         openArticleLinksInNewWindow={false}
         id={0}
-        key={"about"}
         private={false}
         title={"关于我"}
         updatedAt={new Date(props.about.updatedAt)}
@@ -64,8 +66,9 @@ const AboutPage = (props: AboutPageProps) => {
         pay={props.pay}
         payDark={props.payDark}
         catelog={"about"}
-        content={content}
-        type={"about"}
+        initialContent={content}
+        initialRenderedHtml={renderedHtml}
+        type="about"
         enableComment={props.layoutProps.enableComment}
         top={0}
         customCopyRight={null}
@@ -73,7 +76,7 @@ const AboutPage = (props: AboutPageProps) => {
         copyrightAggreement={props.layoutProps.copyrightAggreement}
         showEditButton={props.layoutProps.showEditButton === "true"}
         codeMaxLines={props.layoutProps.codeMaxLines}
-      ></PostCard>
+      />
     </Layout>
   );
 };

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Layout from '../../components/Layout';
-import PostCard from '../../components/PostCard';
+import RichPostCard from '../../components/RichPostCard';
 import Toc from '../../components/Toc';
 import { Article } from '../../types/article';
 import { getArticlePath } from '../../utils/getArticlePath';
@@ -19,6 +19,7 @@ export interface PostPagesProps {
   payDark: string[];
   author: string;
   showSubMenu: 'true' | 'false';
+  initialRenderedHtml: string;
 }
 
 export default function PostPages(props: PostPagesProps) {
@@ -36,13 +37,14 @@ export default function PostPages(props: PostPagesProps) {
     <Layout
       option={props.layoutProps}
       title={props.article.title}
+      includeMarkdownThemeHead={true}
       sideBar={hasToc(content) ? <Toc content={content} showSubMenu={props.showSubMenu} /> : null}
       contentWidthMode={props.layoutProps.articleWidthMode}
     >
       <Head>
         <meta name="keywords" content={getArticlesKeyWord([props.article]).join(',')} />
       </Head>
-      <PostCard
+      <RichPostCard
         showEditButton={props.layoutProps.showEditButton === 'true'}
         showExpirationReminder={props.layoutProps.showExpirationReminder == 'true'}
         copyrightAggreement={props.layoutProps.copyrightAggreement}
@@ -50,13 +52,12 @@ export default function PostPages(props: PostPagesProps) {
         customCopyRight={props.article.copyright || null}
         top={props.article.top || 0}
         id={getArticlePath(props.article)}
-        key={props.article.title}
         title={props.article.title}
         updatedAt={new Date(props.article.updatedAt)}
         createdAt={new Date(props.article.createdAt)}
         catelog={props.article.category}
-        content={content}
-        setContent={setContent}
+        initialContent={content}
+        initialRenderedHtml={props.initialRenderedHtml}
         type="article"
         pay={props.pay}
         payDark={props.payDark}

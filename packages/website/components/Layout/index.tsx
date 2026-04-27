@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import Head from "next/head";
 import BackToTopBtn from "../BackToTop";
 import NavBar from "../NavBar";
-import MusicPlayer from "../MusicPlayer";
 import { useEffect, useRef, useState } from "react";
 import BaiduAnalysis from "../BaiduAnalysis";
 import GaAnalysis from "../gaAnalysis";
@@ -26,6 +25,9 @@ import {
 } from "../../utils/markdownTheme";
 
 const NavBarMobile = dynamic(() => import("../NavBarMobile"), {
+  ssr: false,
+});
+const MusicPlayer = dynamic(() => import("../MusicPlayer"), {
   ssr: false,
 });
 
@@ -69,6 +71,12 @@ const syncThemeStylesheet = (theme: "light" | "dark", href: string) => {
   const selector = `${MANAGED_THEME_LINK}[data-theme-for='${theme}']`;
   const existing = document.head.querySelector(selector) as HTMLLinkElement | null;
 
+  // In App Router builds the markdown theme links are rendered on the server
+  // in `app/layout.tsx`. Avoid late-injected links that cause a visible style swap.
+  const appRouterHeadLink = document.head.querySelector(
+    `link[rel='stylesheet'][data-theme-for='${theme}']:not([data-vanblog-managed='true']):not([data-vanblog-theme-link])`,
+  ) as HTMLLinkElement | null;
+
   if (!href) {
     existing?.remove();
     return;
@@ -81,6 +89,14 @@ const syncThemeStylesheet = (theme: "light" | "dark", href: string) => {
     return;
   }
 
+  if (appRouterHeadLink) {
+    appRouterHeadLink.setAttribute("href", versionedHref);
+    appRouterHeadLink.setAttribute("data-vanblog-theme-link", "true");
+    return;
+  }
+
+  // In the App Router build we render these links in `app/layout.tsx`.
+  // Keep this as a compatibility fallback (e.g. tests or legacy entrypoints).
   const link = document.createElement("link");
   link.setAttribute("rel", "stylesheet");
   link.setAttribute("href", versionedHref);
@@ -94,8 +110,20 @@ const syncThemeHotfixStylesheet = () => {
     MANAGED_THEME_HOTFIX_LINK,
   ) as HTMLLinkElement | null;
 
+  const appRouterHotfixLink = document.head.querySelector(
+    "link[rel='stylesheet'][data-vanblog-theme-hotfix='true']:not([data-vanblog-managed='true'])",
+  ) as HTMLLinkElement | null;
+
   if (existing) {
     existing.setAttribute("href", withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
+    return;
+  }
+
+  if (appRouterHotfixLink) {
+    appRouterHotfixLink.setAttribute(
+      "href",
+      withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL),
+    );
     return;
   }
 
@@ -112,6 +140,7 @@ export default function (props: {
   sideBar: any;
   children: any;
   contentWidthMode?: LayoutProps["articleWidthMode"];
+  includeMarkdownThemeHead?: boolean;
 }) {
   // console.log("css", props.option.customCss);
   // console.log("html", props.option.customHtml);
@@ -119,15 +148,6 @@ export default function (props: {
   const [isOpen, setIsOpen] = useState(false);
   const { current } = useRef({ hasInit: false });
   const [theme, setTheme] = useState<RealThemeType>(getTheme(props.option.defaultTheme));
-  const versionedMarkdownLightThemeUrl = withMarkdownThemeAssetVersion(
-    props.option.markdownLightThemeUrl,
-  );
-  const versionedMarkdownDarkThemeUrl = withMarkdownThemeAssetVersion(
-    props.option.markdownDarkThemeUrl,
-  );
-  const versionedMarkdownThemeHotfixUrl = withMarkdownThemeAssetVersion(
-    MARKDOWN_THEME_HOTFIX_URL,
-  );
   const lightThemeId = getMarkdownThemeId(props.option.markdownLightThemeUrl);
   const darkThemeId = getMarkdownThemeId(props.option.markdownDarkThemeUrl);
   const frontCardSurfaces = resolveFrontCardSurfaceColors({
@@ -223,10 +243,17 @@ export default function (props: {
         : "none",
     );
 
-    syncThemeStylesheet("light", props.option.markdownLightThemeUrl || "");
-    syncThemeStylesheet("dark", props.option.markdownDarkThemeUrl || "");
-    syncThemeHotfixStylesheet();
+    if (props.includeMarkdownThemeHead) {
+      syncThemeStylesheet("light", props.option.markdownLightThemeUrl || "");
+      syncThemeStylesheet("dark", props.option.markdownDarkThemeUrl || "");
+      syncThemeHotfixStylesheet();
+    } else {
+      document.head
+        .querySelectorAll(`${MANAGED_THEME_LINK}, ${MANAGED_THEME_HOTFIX_LINK}`)
+        .forEach((element) => element.remove());
+    }
   }, [
+    props.includeMarkdownThemeHead,
     props.option.backgroundImage,
     props.option.backgroundImageDark,
     props.option.description,
@@ -287,36 +314,42 @@ export default function (props: {
         <link rel="icon" href={props.option.favicon}></link>
         <meta name="description" content={props.option.description}></meta>
         <meta name="robots" content="index, follow"></meta>
+        {props.includeMarkdownThemeHead && props.option.markdownLightThemeUrl ? (
+          <link
+            rel="stylesheet"
+            href={withMarkdownThemeAssetVersion(props.option.markdownLightThemeUrl)}
+            data-theme-for="light"
+            data-vanblog-theme-link="true"
+          />
+        ) : null}
+        {props.includeMarkdownThemeHead && props.option.markdownDarkThemeUrl ? (
+          <link
+            rel="stylesheet"
+            href={withMarkdownThemeAssetVersion(props.option.markdownDarkThemeUrl)}
+            data-theme-for="dark"
+            data-vanblog-theme-link="true"
+          />
+        ) : null}
+        {props.includeMarkdownThemeHead ? (
+          <link
+            rel="stylesheet"
+            href={withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL)}
+            data-vanblog-theme-hotfix="true"
+          />
+        ) : null}
         <style>{`
           :root {
             --bg-image: url('${props.option.backgroundImage || ''}');
             --bg-image-dark: url('${props.option.backgroundImageDark || props.option.backgroundImage || ''}');
           }
         `}</style>
-        {/* Markdown 主题 CSS：同时挂载亮/暗两套，通过 HTML data-theme 属性和 CSS 选择器自动切换 */}
-        {props.option.markdownLightThemeUrl && (
-          <link
-            rel="stylesheet"
-            href={versionedMarkdownLightThemeUrl}
-            key="markdown-light-theme"
-            data-theme-for="light"
-          />
-        )}
-        {props.option.markdownDarkThemeUrl && (
-          <link
-            rel="stylesheet"
-            href={versionedMarkdownDarkThemeUrl}
-            key="markdown-dark-theme"
-            data-theme-for="dark"
-          />
-        )}
-        <link
-          rel="stylesheet"
-          href={versionedMarkdownThemeHotfixUrl}
-          key="markdown-theme-hotfix"
-          data-vanblog-theme-hotfix="true"
-        />
       </Head>
+      <a
+        href="#main-content"
+        className="sr-only fixed left-4 top-4 z-[120] rounded-md bg-white px-3 py-2 text-sm text-gray-900 shadow focus:not-sr-only dark:bg-gray-900 dark:text-gray-100"
+      >
+        跳到正文
+      </a>
       <BackToTopBtn></BackToTopBtn>
       <MusicPlayer />
       {props.option.baiduAnalysisID != "" &&

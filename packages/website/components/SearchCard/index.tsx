@@ -17,26 +17,23 @@ export default function (props: {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!props.visible) {
+      return;
+    }
+
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        props.setVisible(false);
+        document.body.style.overflow = "auto";
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, []);
-  const onKeyDown = (ev: KeyboardEvent) => {
-    if (ev.key == "Escape") {
-      props.setVisible(false);
-      event?.preventDefault();
-      document.body.style.overflow = "auto";
-    }
-    if (ev.ctrlKey == true || ev.metaKey == true) {
-      if (ev.key.toLocaleLowerCase() == "k") {
-        props.setVisible(true);
-        event?.preventDefault();
-        document.body.style.overflow = "hidden";
-      }
-    }
-    return false;
-  };
+  }, [props.visible, props.setVisible]);
   const onSearch = async (search: string) => {
     setTyping(false);
     setLoading(true);

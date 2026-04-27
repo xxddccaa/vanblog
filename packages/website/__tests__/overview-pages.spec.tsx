@@ -20,9 +20,9 @@ vi.mock("../components/AuthorCard", () => ({
   default: () => React.createElement("div", null, "author-card"),
 }));
 
-vi.mock("../components/PostCard", () => ({
-  default: ({ title, type }: { title: string; type: string }) =>
-    React.createElement("article", { "data-type": type }, title),
+vi.mock("../components/OverviewPostCard", () => ({
+  default: ({ title }: { title: string }) =>
+    React.createElement("article", { "data-type": "overview" }, title),
 }));
 
 vi.mock("../components/ArchiveSummaryPage", () => ({

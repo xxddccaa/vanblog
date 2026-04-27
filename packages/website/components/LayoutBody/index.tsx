@@ -21,16 +21,17 @@ export default function (props: {
   return (
     <>
       <div className="flex mx-auto justify-center">
-        <div
+        <main
+          id="main-content"
           className={`flex-shrink flex-grow w-full vanblog-main ${mainWidthClass} ${widthModeClass} ${sidebarClass}`}
         >
           {props.children}
-        </div>
-        <div
+        </main>
+        <aside
           className={`hidden lg:block flex-shrink-0 flex-grow-0 vanblog-sider ${hasSidebar ? "w-52" : ""}`}
         >
           {props.sideBar}
-        </div>
+        </aside>
       </div>
     </>
   );

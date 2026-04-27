@@ -15,9 +15,9 @@ vi.mock("../components/AuthorCard", () => ({
   default: () => React.createElement("div", null, "author-card"),
 }));
 
-vi.mock("../components/PostCard", () => ({
-  default: ({ title, type, content }: { title: string; type: string; content: string }) =>
-    React.createElement("article", { "data-type": type }, `${title}:${content}`),
+vi.mock("../components/RichPostCard", () => ({
+  default: ({ title, type, initialContent }: { title: string; type: string; initialContent: string }) =>
+    React.createElement("article", { "data-type": type }, `${title}:${initialContent}`),
 }));
 
 vi.mock("../components/LinkCard", () => ({

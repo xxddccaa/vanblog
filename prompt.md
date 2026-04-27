@@ -377,7 +377,6 @@ type MarkdownEditorProps = {
    我能实际验证的只有不依赖 Milkdown 包安装的部分：
    - 通过：`node --test --experimental-strip-types tests/admin-markdown-editor.unit.test.mjs`
    - 通过：`node --check packages/admin/tests/current-stack.smoke.cjs`
-   - 通过：`graphify update .`
    
    当前阻塞点有两个，都是环境级的，不是代码逻辑级的：
    - `pnpm install` 失败，npm registry DNS 解析报 `EAI_AGAIN`，所以 `@milkdown/react`、`@milkdown/crepe`、`@milkdown/kit` 还没有实际装进工作区。
@@ -389,4 +388,3 @@ type MarkdownEditorProps = {
    3. 在 `18080` host-debug 或 Docker 流程下手工验证 article、draft、about、moment、document 五类编辑页。
 
 我本地的milkdown代码只是给你的参考，你可以搜索一下milkdown如何使用和如何接入。网络问题抛出来我给你解决，但你要尝试使用10829的代理。
-

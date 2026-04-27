@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import Headroom from "headroom.js";
 import { useContext, useEffect, useMemo, useState } from "react";
-import SearchCard from "../SearchCard";
 import ThemeButton from "../ThemeButton";
 import KeyCard from "../KeyCard";
 import { MenuItem } from "../../api/getAllData";
@@ -13,6 +13,10 @@ import RssButton from "../RssButton";
 import Item from "./item";
 import { encodeQuerystring } from "../../utils/encode";
 import { usePathname } from "next/navigation";
+
+const SearchCard = dynamic(() => import("../SearchCard"), {
+  ssr: false,
+});
 
 export default function (props: {
   logo: string;
@@ -95,13 +99,34 @@ export default function (props: {
     }
   }, [props.isOpen]);
 
+  useEffect(() => {
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "k") {
+        ev.preventDefault();
+        setShowSearch(true);
+        document.body.style.overflow = "hidden";
+      }
+      if (ev.key === "Escape") {
+        setShowSearch(false);
+        document.body.style.overflow = "auto";
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
   return (
     <>
-      <SearchCard
-        openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
-        visible={showSearch}
-        setVisible={setShowSearch}
-      ></SearchCard>
+      {showSearch ? (
+        <SearchCard
+          openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
+          visible={showSearch}
+          setVisible={setShowSearch}
+        ></SearchCard>
+      ) : null}
       <div
         id="nav"
         className=" vb-surface-nav sticky top-0 nav-shadow dark:nav-shadow-dark"

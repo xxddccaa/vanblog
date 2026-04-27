@@ -170,23 +170,25 @@ export default function (props: { item: SocialItem }) {
           );
         }}
       >
-        <a
+        <button
+          type="button"
           style={{
             display: "inline-flex",
             width: "100%",
             justifyContent: "start",
+            background: "transparent",
+            border: "none",
+            padding: 0,
           }}
-          onClick={(e) => {
-            e.preventDefault();
+          onClick={() => {
             setEmailShow(!emailShow);
           }}
-          href="#"
         >
           <span className={iconClass} style={iconStyle}>
             {iconElement}
           </span>
           <span className="inline-flex items-center ml-1">{displayName}</span>
-        </a>
+        </button>
       </Popover>
     );
   } 
