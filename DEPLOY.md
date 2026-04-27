@@ -4,7 +4,7 @@
 
 如果你要做的是“构建并发布镜像”，请看 `RELEASE.md`；如果你要做的是“把已经发布好的镜像部署到服务器”，请看这份文档。
 
-当前代码基线已经推进到 `v1.5.6`，生产部署文档也统一以 `kevinchina/deeplearning` 这套长期保留镜像仓库为准。
+当前代码基线已经推进到 `v1.5.7`，生产部署文档也统一以 `kevinchina/deeplearning` 这套长期保留镜像仓库为准。
 
 ## 1. 部署矩阵
 
@@ -86,7 +86,7 @@ cp .env.release.example .env
 
 - `EMAIL`：你的邮箱，用于证书相关场景
 - `VANBLOG_DOCKER_REPO`：默认继续使用 `kevinchina/deeplearning`
-- `VANBLOG_RELEASE_SUFFIX`：本次要部署的镜像版本，例如 `v1.5.6-<image-id>`
+- `VANBLOG_RELEASE_SUFFIX`：本次要部署的镜像版本，例如 `v1.5.7-<image-id>`
 - `POSTGRES_PASSWORD`：建议不要继续使用示例值
 - `VAN_BLOG_WALINE_DATABASE_URL`：Waline 独立 PostgreSQL 数据库连接串，默认是同实例下的 `waline` 数据库
 - `WALINE_JWT_TOKEN`：可选；如需手动指定 Waline 与内部控制面共用密钥可填写，否则留空让系统首次启动时自动生成
@@ -322,7 +322,7 @@ docker compose -f docker-compose.latest.ai.yml up -d
 假设你已经发布了新镜像，只需要更新 `.env` 里的：
 
 ```env
-VANBLOG_RELEASE_SUFFIX=v1.5.6-<image-id>
+VANBLOG_RELEASE_SUFFIX=v1.5.7-<image-id>
 ```
 
 然后执行：
