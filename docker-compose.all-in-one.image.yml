@@ -1,0 +1,45 @@
+services:
+  vanblog:
+    image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-all-in-one-${VANBLOG_RELEASE_SUFFIX:-latest}
+    restart: always
+    init: true
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      EMAIL: ${EMAIL:-someone@example.com}
+      NODE_ENV: production
+      POSTGRES_DB: ${POSTGRES_DB:-vanblog}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      VAN_BLOG_WALINE_DB: ${VAN_BLOG_WALINE_DB:-waline}
+      VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@127.0.0.1:5432/${POSTGRES_DB:-vanblog}}
+      VAN_BLOG_REDIS_URL: ${VAN_BLOG_REDIS_URL:-redis://127.0.0.1:6379}
+      VAN_BLOG_WALINE_DATABASE_URL: ${VAN_BLOG_WALINE_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@127.0.0.1:5432/${VAN_BLOG_WALINE_DB:-waline}}
+      VAN_BLOG_CADDY_MANAGE_HTTPS: ${VAN_BLOG_CADDY_MANAGE_HTTPS:-false}
+      VAN_BLOG_DEBUG_SUPER_TOKEN: ${VAN_BLOG_DEBUG_SUPER_TOKEN:-}
+      VAN_BLOG_CLOUDFLARE_API_TOKEN: ${VAN_BLOG_CLOUDFLARE_API_TOKEN:-}
+      VAN_BLOG_CLOUDFLARE_ZONE_ID: ${VAN_BLOG_CLOUDFLARE_ZONE_ID:-}
+      VANBLOG_ISR_TOKEN: ${VANBLOG_ISR_TOKEN:-}
+      VANBLOG_CADDY_API_URL: http://127.0.0.1:2019
+      VANBLOG_WEBSITE_CONTROL_URL: http://127.0.0.1:3011
+      VANBLOG_WALINE_CONTROL_URL: http://127.0.0.1:8361
+      VANBLOG_WEBSITE_ISR_BASE: http://127.0.0.1:3001/api/revalidate?path=
+      WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
+      VAN_BLOG_SERVER_URL: http://127.0.0.1:3000
+      VAN_BLOG_REVALIDATE: 'false'
+      VAN_BLOG_ALLOW_DOMAINS: ${VAN_BLOG_ALLOW_DOMAINS:-pic.mereith.com}
+    ports:
+      - ${VANBLOG_HTTP_PORT:-80}:80
+    volumes:
+      - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
+      - ${VANBLOG_LOG_DIR:-./log}:/var/log
+      - ${VANBLOG_CADDY_CONFIG_DIR:-./caddy/config}:/root/.config/caddy
+      - ${VANBLOG_CADDY_DATA_DIR:-./caddy/data}:/root/.local/share/caddy
+      - ${VANBLOG_ALIYUNPAN_CONFIG_DIR:-./aliyunpan/config}:/root/.config/aliyunpan
+      - ${VANBLOG_POSTGRES_DIR:-./data/postgres}:/var/lib/postgresql/data
+      - ${VANBLOG_REDIS_DIR:-./data/redis}:/data/redis
+    healthcheck:
+      test: ['CMD-SHELL', '/usr/local/bin/vanblog-all-in-one-healthcheck']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s

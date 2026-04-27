@@ -12,6 +12,9 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
 - `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires `caddy`, `server`, `website`, `admin`, `waline`, `postgres`, and `redis`.
 - `docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology.
+- `docker-compose.all-in-one.yml`: optional source-build single-container entrypoint for the non-AI main stack.
+- `docker-compose.all-in-one.latest.yml`: optional latest-tag single-container quick-start for the non-AI main stack.
+- `docker-compose.all-in-one.image.yml`: optional locked single-container deployment entrypoint for the non-AI main stack.
 - `docker-compose.ai-qa.yml`: optional override that only injects the server-to-FastGPT connection for the AI workspace.
 - `docker-compose.fastgpt.yml`: optional bundled FastGPT stack; keep it out of the default runtime unless AI is explicitly required.
 - `docker-compose.latest.ai.yml`: one-file latest quick-start that bundles the main stack plus the optional AI workspace / FastGPT stack for operators who want a single compose file.
@@ -68,7 +71,7 @@ Add or update tests for each behavior change; there is no visible repo-wide cove
 
 - Backend tests use Jest; keep e2e coverage in `packages/server/test`.
 - Frontend utility tests use Vitest with `*.spec.ts` naming.
-- Deployment regressions belong in `tests/deployment-config.test.mjs` and `tests/blog-compose.e2e.test.mjs`.
+- Deployment regressions belong in `tests/deployment-config.test.mjs`, `tests/blog-compose.e2e.test.mjs`, and `tests/all-in-one-compose.e2e.test.mjs` when the single-container path is affected.
 - For split deployment changes, cover `/admin` routing, static assets, public reading flows, and container exposure/security assumptions.
 
 ## Release & Deployment Notes
@@ -76,11 +79,11 @@ Add or update tests for each behavior change; there is no visible repo-wide cove
 Treat release and deployment work as documented workflows, not guesswork.
 
 - For image publishing or versioned rollout tasks, read `RELEASE.md` first; it is the canonical guide for image naming, release commands, and rollback expectations.
-- For production deployment tasks, read `DEPLOY.md` and use `docker-compose.image.yml` plus `.env.release.example`; do not switch back to the legacy single-image flow.
+- For production deployment tasks, read `DEPLOY.md`; the default locked release path is `docker-compose.image.yml` plus `.env.release.example`, while the optional non-AI all-in-one path uses `docker-compose.all-in-one.image.yml`.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
 - Treat `kevinchina/deeplearning` as the long-term retained image repo / backup repo in docs and release examples unless the user explicitly changes it.
 - `pnpm release:images` only publishes the 5 core VanBlog images; optional FastGPT containers remain governed by `docker-compose.fastgpt.yml` and are documented separately.
-- When documenting deployment choices, keep `docker-compose.latest.yml` and `docker-compose.image.yml` as side-by-side supported paths; AI is always an explicit opt-in overlay via `docker-compose.ai-qa.yml`, `docker-compose.fastgpt.yml`, or `docker-compose.latest.ai.yml`.
+- When documenting deployment choices, keep `docker-compose.latest.yml`, `docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths; AI is always an explicit opt-in overlay via `docker-compose.ai-qa.yml`, `docker-compose.fastgpt.yml`, or `docker-compose.latest.ai.yml`.
 - The AI workspace route is `/admin/ai`, available to admins (`access: isAdmin`); any legacy menu path is redirect-only compatibility.
 - Do not use GitHub Actions to publish Docker Hub images; release workflows are intentionally handled on this machine via local/manual commands.
 - If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.

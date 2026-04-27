@@ -4,9 +4,10 @@
 
 这版开始，仓库除了原有博客主栈，还提供一套**可选启用**的 AI 工作台能力：后台管理员可以在 `/admin/ai` 使用基于博客知识检索增强的问答，但这部分不会并入默认部署，也不会影响不需要 AI 的用户。
 
-当前项目有三个明确约定：
+当前项目有四个明确约定：
 
 - **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续只负责 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis`
+- **可选提供非 AI 单镜像入口**：`docker-compose.all-in-one*.yml` 会把主栈和 `postgres` / `redis` 收进一个容器，方便只维护一个镜像，但它不是默认推荐路径
 - **AI / FastGPT 是可选覆盖层**：只有显式叠加 `docker-compose.ai-qa.yml`，才会让 `server` 连接 FastGPT；只有再叠加 `docker-compose.fastgpt.yml`，才会启动 bundled FastGPT
 - **镜像仓库固定使用 `kevinchina/deeplearning`**：这是当前长期保留、可回滚、可审计的备份仓库，发布与部署文档统一以它为准
 
@@ -33,7 +34,9 @@
 | 源码开发 / 本地调试 | `docker-compose.yml` | 直接从当前仓库构建，适合联调与改代码 |
 | latest 快速部署 | `docker-compose.latest.yml` | 不想维护 `.env`，希望最快拉起主栈 |
 | latest 一文件 + AI | `docker-compose.latest.ai.yml` | 想用一份 compose 同时拉起主栈和 bundled FastGPT |
+| latest 单镜像（无 AI） | `docker-compose.all-in-one.latest.yml` | 只想维护一个非 AI 镜像和一份 compose |
 | 锁定正式版本 | `docker-compose.image.yml` + `.env.release.example` | 需要精确回滚、审计、记录线上版本 |
+| 锁定正式版本（单镜像，无 AI） | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚，但不需要 AI/FastGPT |
 | 锁版 + AI | `docker-compose.image.yml` + `docker-compose.ai-qa.yml` + `docker-compose.fastgpt.yml` | 生产环境按需启用 AI 工作台 |
 
 如果你和我现在的生产目录一样，平时只想维护两份 quick-start 文件，也完全可以：
@@ -117,6 +120,19 @@ docker compose -f docker-compose.latest.yml up -d
 - 不需要额外准备 `.env`
 - 默认使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
 - 首次启动时会自动生成 Waline 共享 JWT，并写入 `log/waline.jwt`
+
+### 2.1 使用非 AI 单镜像 latest 快速部署
+
+```bash
+docker compose -f docker-compose.all-in-one.latest.yml pull
+docker compose -f docker-compose.all-in-one.latest.yml up -d
+```
+
+这个方式适合只想维护一个镜像的场景：
+
+- 对外仍然只暴露一个 HTTP 入口
+- `postgres` / `redis` 会随容器一起启动，但数据目录仍沿用 `./data/postgres`、`./data/redis`
+- 当前首版只覆盖主栈，不包含 `/admin/ai`、FastGPT 与 bundled AI 依赖
 
 如果你想用“一份 compose 文件”同时把博客主栈和 bundled FastGPT 一起拉起来，也可以直接使用：
 
@@ -227,7 +243,7 @@ pnpm host:dev:status
 
 ## 发布与镜像约定
 
-当前推荐使用 **多镜像发布**，而不是旧的单镜像 `kevinchina/deeplearning:vanblog-latest`。
+当前推荐使用 **多镜像发布**；仓库同时补充了一个可选的非 AI all-in-one 单镜像入口，但它和旧的 `kevinchina/deeplearning:vanblog-latest` 遗留方案不是一回事。
 
 核心镜像会发布到长期保留仓库：
 
@@ -248,6 +264,7 @@ kevinchina/deeplearning:vanblog-waline-v1.5.7-<image-id>
 说明：
 
 - `pnpm release:images` / `pnpm release:images:push` 只发布 VanBlog 核心 5 个镜像
+- `pnpm release:all-in-one` / `pnpm release:all-in-one:push` 会额外发布 `vanblog-all-in-one-*` 单镜像标签
 - AI 工作台代码已经包含在 `server` / `admin` 核心镜像里，但 bundled FastGPT 仍然通过 `docker-compose.fastgpt.yml` 固定到当前验证过的上游版本，不并入默认镜像发布
 - 如需对 FastGPT 依赖做长期留档，可按 [`docs/ai-qa-fastgpt.md`](docs/ai-qa-fastgpt.md) 里的版本矩阵自行镜像到你的私有仓库或 `kevinchina/deeplearning` 下的备份标签，但不要在未验证前随意改 compose
 - bundled FastGPT 以后默认沿用当前这套已验证版本；除非你明确决定重新评估上游 FastGPT 技术栈，否则不主动改 AI 依赖基线
@@ -260,6 +277,9 @@ pnpm release:images
 
 # 正式发版
 pnpm release:publish
+
+# 正式发非 AI 单镜像
+pnpm release:all-in-one:publish
 
 # 只补 latest 别名
 pnpm release:latest
@@ -286,6 +306,7 @@ pnpm release:latest
 这样 AI 更容易理解：
 
 - 当前是多容器部署，不再是旧单容器结构
+- 如需单镜像，只使用新的 `docker-compose.all-in-one*.yml` / `vanblog-all-in-one-*` 路径，不要回退到历史遗留单镜像方案
 - `/admin` 必须走 Caddy 子路径代理
 - `kevinchina/deeplearning` 是当前长期保留的镜像仓库
 - `docker-compose.ai-qa.yml` / `docker-compose.fastgpt.yml` 只是可选覆盖层

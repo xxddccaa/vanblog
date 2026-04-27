@@ -37,22 +37,33 @@ export class PostgresStoreService implements OnModuleInit, OnApplicationShutdown
   }
 
   private async bootstrap() {
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_records (
-        collection_name TEXT NOT NULL,
-        record_id TEXT NOT NULL,
-        payload JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (collection_name, record_id)
-      )
-    `);
-    await this.pool.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_records_collection ON vanblog_records (collection_name)',
-    );
-    await this.pool.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_records_payload ON vanblog_records USING GIN (payload)',
-    );
+    const client = await this.pool.connect();
+    try {
+      // Guard schema bootstrap so concurrent initializers do not race on CREATE INDEX.
+      await client.query('SELECT pg_advisory_lock($1, $2)', [12686, 1]);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS vanblog_records (
+          collection_name TEXT NOT NULL,
+          record_id TEXT NOT NULL,
+          payload JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (collection_name, record_id)
+        )
+      `);
+      await client.query(
+        'CREATE INDEX IF NOT EXISTS idx_vanblog_records_collection ON vanblog_records (collection_name)',
+      );
+      await client.query(
+        'CREATE INDEX IF NOT EXISTS idx_vanblog_records_payload ON vanblog_records USING GIN (payload)',
+      );
+    } finally {
+      try {
+        await client.query('SELECT pg_advisory_unlock($1, $2)', [12686, 1]);
+      } finally {
+        client.release();
+      }
+    }
   }
 
   async listCollections(): Promise<string[]> {

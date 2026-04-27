@@ -24,11 +24,13 @@ order: 1
 | 源码部署 | `docker-compose.yml` | 本地调试、二次开发、需要从当前代码直接构建 |
 | latest 快速部署 | `docker-compose.latest.yml` | 不想准备 `.env`，希望先快速把主栈跑起来 |
 | latest 一文件 + AI | `docker-compose.latest.ai.yml` | 想直接用一份 compose 拉起主栈和 bundled FastGPT |
+| latest 单镜像（无 AI） | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像，不需要 AI / FastGPT |
 | 锁版镜像部署 | `docker-compose.image.yml` + `.env.release.example` | 正式上线、精确回滚、审计线上版本 |
 
 双轨说明：
 
 - `docker-compose.latest.yml` / `docker-compose.latest.ai.yml` 适合快速体验与个人维护
+- `docker-compose.all-in-one.latest.yml` 适合“只维护一个非 AI 主栈容器”的场景
 - `docker-compose.image.yml` 适合正式上线、版本审计与回滚
 - 两条镜像部署路径并列保留，不互相替代
 
@@ -63,6 +65,19 @@ docker compose -f docker-compose.latest.ai.yml up -d
 - 想快速体验 `/admin/ai`
 - 想直接使用 bundled FastGPT
 - 暂时不关心精确锁版回滚
+
+### 3. 一份文件使用非 AI 单镜像
+
+```bash
+docker compose -f docker-compose.all-in-one.latest.yml pull
+docker compose -f docker-compose.all-in-one.latest.yml up -d
+```
+
+适合：
+
+- 不需要 `/admin/ai` 与 FastGPT
+- 想把主栈和 `postgres` / `redis` 一起收进一个 VanBlog 容器
+- 仍希望沿用 `./data/postgres`、`./data/redis`、`./log` 这些宿主机目录
 
 ## 方式三：使用版本锁定镜像部署
 

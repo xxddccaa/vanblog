@@ -33,6 +33,7 @@
     "test:current-stack:admin": "pnpm --filter @vanblog/admin test:current-stack",
     "test:deploy": "node --test tests/deployment-config.test.mjs",
     "test:blog-flow": "pnpm build:website && pnpm build:admin && node --test tests/deployment-config.test.mjs && node --test tests/blog-compose.e2e.test.mjs",
+    "test:blog-flow:all-in-one": "node --test tests/deployment-config.test.mjs && node --test --test-force-exit tests/all-in-one-compose.e2e.test.mjs",
     "test:full": "pnpm --filter @vanblog/server test && pnpm --filter @vanblog/theme-default exec vitest run && pnpm --filter @vanblog/admin tsc && pnpm build:website && pnpm build:admin && pnpm test:deploy && node --test tests/blog-compose.e2e.test.mjs",
     "docs:build": "pnpm run -r docs:build",
     "docs:dev": "pnpm run -r docs:dev",
@@ -49,9 +50,14 @@
     "release:images": "bash scripts/release-images.sh",
     "release:images:push": "bash scripts/release-images.sh --push",
     "release:images:help": "bash scripts/release-images.sh --help",
+    "release:all-in-one": "bash scripts/release-all-in-one.sh",
+    "release:all-in-one:push": "bash scripts/release-all-in-one.sh --push",
+    "release:all-in-one:help": "bash scripts/release-all-in-one.sh --help",
     "release:publish": "bash scripts/release-publish.sh",
     "release:publish:help": "bash scripts/release-publish.sh --help",
-    "release:latest": "bash scripts/release-publish.sh sync-latest"
+    "release:latest": "bash scripts/release-publish.sh sync-latest",
+    "release:all-in-one:publish": "bash scripts/release-all-in-one-publish.sh",
+    "release:all-in-one:latest": "bash scripts/release-all-in-one-publish.sh sync-latest"
   },
   "packageManager": "pnpm@10.33.0",
   "devDependencies": {

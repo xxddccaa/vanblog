@@ -2,10 +2,11 @@
 
 这份文档同时面向人工维护者和 AI 代理。
 
-目标有三个：
+目标有四个：
 
 - 统一本仓库的构建、打包、发版与部署方式
 - 明确多镜像发布规范，避免再回到单镜像 `kevinchina/deeplearning:vanblog-latest` 的不可追踪模式
+- 补充一个可选的非 AI all-in-one 单镜像发布入口，方便只维护一个 VanBlog 容器
 - 把 `v1.4.0` 引入的 AI 工作台、可选 FastGPT 部署、文档与测试规则固化下来
 
 当前代码基线已经推进到 `v1.5.7`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
@@ -16,9 +17,11 @@
 
 - VanBlog 核心发布物是 5 个镜像：`caddy`、`server`、`website`、`admin`、`waline`
 - 数据库和缓存继续使用运行时官方镜像：`postgres:16-alpine`、`redis:7-alpine`
+- 仓库额外提供一个可选发布物：`vanblog-all-in-one`，它会把主栈和 `postgres` / `redis` 收进同一个非 AI 容器
 - AI 工作台代码已经包含在 `server` / `admin` 核心镜像里，因此发布核心镜像时，AI 页面与接口会随版本一起进入 VanBlog 主栈
 - 但是 bundled FastGPT 依赖不属于默认镜像发布范围，仍然通过 `docker-compose.fastgpt.yml` 单独管理
 - `pnpm release:images` / `pnpm release:images:push` 不会构建或推送 FastGPT 镜像
+- `pnpm release:all-in-one` / `pnpm release:all-in-one:push` 只发布 `vanblog-all-in-one-*` 单镜像标签
 - bundled FastGPT 当前是“固定版本基线”；除非你明确决定重新评估 FastGPT 上游技术更新，否则以后发布 VanBlog 时不主动改 AI 依赖矩阵
 - 当前验证过的 4 个关键 FastGPT 镜像已经备份到 `kevinchina/deeplearning`，并由 `docker-compose.fastgpt.yml` / `docker-compose.latest.ai.yml` 直接引用：
   - `kevinchina/deeplearning:fastgpt-v4.14.10.2`
@@ -39,7 +42,9 @@
 - **源码部署**：本地或调试环境直接使用 `docker-compose.yml`，从当前仓库源码构建并启动
 - **latest 快速部署**：使用 `docker-compose.latest.yml`，直接拉取 `latest` 标签主栈
 - **latest 一文件 + AI**：使用 `docker-compose.latest.ai.yml`，一次性拉起主栈和 bundled FastGPT
+- **latest 单镜像（无 AI）**：使用 `docker-compose.all-in-one.latest.yml`，拉起一个包含主栈与 `postgres` / `redis` 的容器
 - **锁版镜像部署**：生产环境或分发场景使用 `docker-compose.image.yml`，直接拉取已经发布好的镜像
+- **锁版单镜像（无 AI）**：使用 `docker-compose.all-in-one.image.yml`，拉取 `vanblog-all-in-one-<suffix>` 精确回滚
 
 如果你的生产目录和当前这套线上目录一致，也可以长期只维护两份 quick-start 文件：
 
@@ -55,7 +60,7 @@
 3. 确认根目录 `package.json` 的版本号正确，例如 `1.5.7`，并统一成发布标签 `vX.Y.Z`。
 4. 先补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案，写清楚本版特性、与上一公开稳定版的差异，以及可直接部署的 `docker compose` 配置单。
 5. 给当前代码打版本 tag，并推送到 GitHub。
-6. 使用正式发版总脚本完成 5 个镜像构建、版本 tag 推送、`latest` 同步与远端校验。
+6. 按所选发布路径执行发版脚本：默认主栈使用正式发版总脚本完成 5 个镜像构建、版本 tag 推送、`latest` 同步与远端校验；非 AI 单镜像则使用 `release-all-in-one` 对应脚本。
 7. 发布或更新 GitHub Release 页面，并确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
 8. 记录本次版本号、Git tag、镜像 id（默认用 Git 短 SHA）、Wiki 地址、GitHub Release 地址。
 9. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。

@@ -5,12 +5,19 @@ import { createRequire } from 'node:module';
 
 const compose = fs.readFileSync('docker-compose.yml', 'utf8');
 const composeImage = fs.readFileSync('docker-compose.image.yml', 'utf8');
+const composeAllInOne = fs.readFileSync('docker-compose.all-in-one.yml', 'utf8');
+const composeAllInOneImage = fs.readFileSync('docker-compose.all-in-one.image.yml', 'utf8');
+const composeAllInOneLatest = fs.readFileSync('docker-compose.all-in-one.latest.yml', 'utf8');
 const composeLatestAi = fs.readFileSync('docker-compose.latest.ai.yml', 'utf8');
 const composeAiQa = fs.readFileSync('docker-compose.ai-qa.yml', 'utf8');
 const composeFastgpt = fs.readFileSync('docker-compose.fastgpt.yml', 'utf8');
 const manualCompose = fs.readFileSync('tests/manual-v1.3.0/docker-compose.yaml', 'utf8');
 const caddyfile = fs.readFileSync('docker/caddy/Caddyfile', 'utf8');
 const caddyfileHttps = fs.readFileSync('docker/caddy/Caddyfile.https', 'utf8');
+const allInOneCaddyfile = fs.readFileSync('docker/all-in-one/Caddyfile', 'utf8');
+const allInOneDockerfile = fs.readFileSync('docker/all-in-one.Dockerfile', 'utf8');
+const allInOneEntrypoint = fs.readFileSync('docker/all-in-one/entrypoint.sh', 'utf8');
+const allInOneHealthcheck = fs.readFileSync('docker/all-in-one/healthcheck.sh', 'utf8');
 const serverDockerfile = fs.readFileSync('docker/server.Dockerfile', 'utf8');
 const serverEntrypoint = fs.readFileSync('docker/server/entrypoint.sh', 'utf8');
 const serverTerminalShell = fs.readFileSync('docker/server/terminal-shell.sh', 'utf8');
@@ -176,6 +183,44 @@ test('docker compose defines the split runtime services', () => {
   assert.match(compose, /docker\/admin\.Dockerfile/);
 });
 
+test('all-in-one compose defines a single non-AI service', () => {
+  for (const file of [composeAllInOne, composeAllInOneImage, composeAllInOneLatest]) {
+    assert.match(file, /^services:\s*\n\s{2}vanblog:/m);
+    assert.doesNotMatch(file, /^\s{2}caddy:/m);
+    assert.doesNotMatch(file, /^\s{2}fastgpt-app:/m);
+    assert.match(file, /POSTGRES_DB:/);
+    assert.match(file, /VANBLOG_REDIS_DIR/);
+    assert.match(file, /WALINE_JWT_TOKEN:/);
+  }
+
+  assert.match(composeAllInOne, /docker\/all-in-one\.Dockerfile/);
+  assert.match(composeAllInOneImage, /vanblog-all-in-one-\$\{VANBLOG_RELEASE_SUFFIX:-latest\}/);
+  assert.match(composeAllInOneLatest, /vanblog-all-in-one-latest/);
+});
+
+test('all-in-one runtime keeps AI disabled and uses localhost fan-out', () => {
+  assert.match(allInOneDockerfile, /VANBLOG_IMAGE_NAME=\"vanblog-all-in-one\"/);
+  assert.match(allInOneDockerfile, /COPY docker\/all-in-one\/Caddyfile \/etc\/caddy\/Caddyfile/);
+  assert.match(allInOneDockerfile, /COPY docker\/all-in-one\/entrypoint\.sh/);
+  assert.match(allInOneDockerfile, /COPY docker\/all-in-one\/healthcheck\.sh/);
+
+  assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3000/);
+  assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3001/);
+  assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3002/);
+  assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:8360/);
+  assert.doesNotMatch(allInOneCaddyfile, /ai-terminal/);
+
+  assert.match(allInOneEntrypoint, /VANBLOG_AI_TERMINAL_ENABLED=\"false\"/);
+  assert.match(allInOneEntrypoint, /127\.0\.0\.1:2019/);
+  assert.match(allInOneEntrypoint, /ensure_postgres_database/);
+  assert.match(allInOneEntrypoint, /redis-server/);
+  assert.match(allInOneEntrypoint, /postgres -D/);
+
+  assert.match(allInOneHealthcheck, /pg_isready -h 127\.0\.0\.1/);
+  assert.match(allInOneHealthcheck, /redis-cli -h 127\.0\.0\.1/);
+  assert.match(allInOneHealthcheck, /http:\/\/127\.0\.0\.1:3002\/admin\//);
+});
+
 test('docker compose wires cross-container control endpoints', () => {
   assert.match(compose, /VANBLOG_CADDY_API_URL:\s+http:\/\/caddy:2019/);
   assert.match(compose, /VANBLOG_WEBSITE_CONTROL_URL:\s+http:\/\/website:3011/);
@@ -227,12 +272,16 @@ test('docs reflect the v1.5.7 release baseline and optional deployment model', (
   assert.match(readmeDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(readmeDoc, /docker-compose\.fastgpt\.yml/);
   assert.match(readmeDoc, /docker-compose\.yaml/);
+  assert.match(readmeDoc, /docker-compose\.all-in-one\.latest\.yml/);
+  assert.match(readmeDoc, /docker-compose\.all-in-one\.image\.yml/);
+  assert.match(readmeDoc, /vanblog-all-in-one/);
   assert.match(readmeDoc, /\/admin\/ai/);
   assert.match(readmeDoc, /OpenCode 终端/);
   assert.match(readmeDoc, /docs\/ai-qa-fastgpt\.md/);
 
   assert.match(agentsDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(agentsDoc, /docker-compose\.fastgpt\.yml/);
+  assert.match(agentsDoc, /docker-compose\.all-in-one\.image\.yml/);
   assert.match(agentsDoc, /docs\/ai-qa-fastgpt\.md/);
   assert.match(agentsDoc, /\/admin\/ai/);
   assert.match(agentsDoc, /kevinchina\/deeplearning/);
@@ -304,6 +353,9 @@ test('docs reflect the v1.5.7 release baseline and optional deployment model', (
   assert.match(release141Doc, /managedV2/);
   assert.match(releaseDoc, /docker-compose\.yaml/);
   assert.match(releaseDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(releaseDoc, /docker-compose\.all-in-one\.latest\.yml/);
+  assert.match(releaseDoc, /docker-compose\.all-in-one\.image\.yml/);
+  assert.match(releaseDoc, /release:all-in-one/);
   assert.match(releaseDoc, /kevinchina\/deeplearning:fastgpt-v4\.14\.10\.2/);
   assert.match(releaseDoc, /kevinchina\/deeplearning:fastgpt-plugin-v0\.5\.6/);
   assert.match(releaseDoc, /kevinchina\/deeplearning:aiproxy-v0\.3\.5/);
@@ -320,11 +372,13 @@ test('guide, faq, intro, and reference docs keep the optional AI deployment stor
 
   assert.match(guideGetStartedDoc, /docker-compose\.latest\.ai\.yml/);
   assert.match(guideGetStartedDoc, /docker-compose\.image\.yml/);
+  assert.match(guideGetStartedDoc, /docker-compose\.all-in-one\.latest\.yml/);
   assert.match(guideGetStartedDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(guideGetStartedDoc, /docker-compose\.fastgpt\.yml/);
   assert.match(guideGetStartedDoc, /\/admin\/ai/);
 
   assert.match(guideUpdateDoc, /docker-compose\.latest\.ai\.yml/);
+  assert.match(guideUpdateDoc, /docker-compose\.all-in-one\.latest\.yml/);
   assert.match(guideUpdateDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(guideUpdateDoc, /docker-compose\.fastgpt\.yml/);
   assert.match(guideUpdateDoc, /不主动修改 `docker-compose\.fastgpt\.yml` 的固定版本矩阵/);
@@ -442,6 +496,9 @@ test('waline service is configured to use standalone postgres credentials', () =
   assert.match(composeImage, /PG_DB:\s+\$\{VAN_BLOG_WALINE_DB:-waline\}/);
   assert.match(composeImage, /PG_USER:\s+\$\{POSTGRES_USER:-postgres\}/);
   assert.match(composeImage, /PG_PASSWORD:\s+\$\{POSTGRES_PASSWORD:-postgres\}/);
+  assert.match(composeAllInOne, /VAN_BLOG_WALINE_DB:\s+\$\{VAN_BLOG_WALINE_DB:-waline\}/);
+  assert.match(composeAllInOne, /POSTGRES_USER:\s+\$\{POSTGRES_USER:-postgres\}/);
+  assert.match(composeAllInOne, /POSTGRES_PASSWORD:\s+\$\{POSTGRES_PASSWORD:-postgres\}/);
 });
 
 test('release env example and deploy guide document optional Cloudflare purge credentials', () => {
@@ -491,6 +548,9 @@ test('release env example and deploy guide document optional Cloudflare purge cr
   assert.match(deployDoc, /自动创建 Dataset \/ App \/ API Key/);
   assert.match(deployDoc, /team_subscriptions/);
   assert.match(deployDoc, /currentSubLevel/);
+  assert.match(deployDoc, /docker-compose\.all-in-one\.latest\.yml/);
+  assert.match(deployDoc, /docker-compose\.all-in-one\.image\.yml/);
+  assert.match(deployDoc, /all-in-one 首版只覆盖 HTTP 主栈/);
   assert.match(deployDoc, /\/admin\/ai/);
   assert.match(deployDoc, /所有管理员/);
   assert.match(deployDoc, /共享历史/);
@@ -500,6 +560,7 @@ test('release env example and deploy guide document optional Cloudflare purge cr
   assert.match(releaseDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(releaseDoc, /docker-compose\.fastgpt\.yml/);
   assert.match(releaseDoc, /pnpm release:images.*不会构建或推送 FastGPT 镜像/s);
+  assert.match(releaseDoc, /pnpm release:all-in-one/);
   assert.match(releaseDoc, /FASTGPT_ROOT_PASSWORD/);
   assert.match(releaseDoc, /fastgpt-bootstrap/);
   assert.match(releaseDoc, /FASTGPT_FREE_PLAN_POINTS/);

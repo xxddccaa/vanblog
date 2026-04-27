@@ -8,7 +8,7 @@
 
 ## 1. 部署矩阵
 
-当前建议把部署方式理解成三层：源码构建、latest 快速部署、版本锁定部署。AI 工作台则是在这些基础上按需叠加。
+当前建议把部署方式理解成四层：源码构建、latest 快速部署、版本锁定部署，以及可选的非 AI all-in-one 单镜像部署。AI 工作台则是在多镜像路径上按需叠加。
 
 | 目标 | 推荐文件 | 适用情况 |
 | --- | --- | --- |
@@ -16,6 +16,8 @@
 | latest 快速部署 | `docker-compose.latest.yml` | 不想维护 `.env`，直接拉取 `latest` 主栈 |
 | 一份文件直接带 AI | `docker-compose.latest.ai.yml` | 想用一份 compose 同时拉起主栈和 bundled FastGPT |
 | 锁定某个正式版本 | `docker-compose.image.yml` + `.env.release.example` | 需要精确回滚、审计、复现线上版本 |
+| latest 单镜像（无 AI） | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像，不需要 AI / FastGPT |
+| 锁版单镜像（无 AI） | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚，但不需要 AI |
 | 锁版 + 私有 FastGPT | `docker-compose.image.yml` + `docker-compose.ai-qa.yml` | 已有私有 FastGPT，只给 `server` 注入连接 |
 | 锁版 + bundled FastGPT | `docker-compose.image.yml` + `docker-compose.ai-qa.yml` + `docker-compose.fastgpt.yml` | 同机部署完整 AI 工作台扩展 |
 
@@ -23,6 +25,7 @@
 
 - `docker-compose.latest.yml` / `docker-compose.latest.ai.yml` 适合快速部署、个人维护、先把服务跑起来
 - `docker-compose.image.yml` + `.env.release.example` 适合正式发布、锁版、回滚、审计
+- `docker-compose.all-in-one.latest.yml` / `docker-compose.all-in-one.image.yml` 适合“不需要 AI、希望线上只维护一个 VanBlog 容器”的场景
 - 两条路径都保留，不互相替代
 
 如果你和我当前生产机目录一样，只想长期维护两份 quick-start 文件，也可以直接采用：
@@ -59,6 +62,8 @@ docker compose -f docker-compose.latest.ai.yml up -d
 - `docker-compose.latest.yml`
 - `docker-compose.latest.ai.yml`（只有想一文件启用 AI 时需要）
 - `docker-compose.image.yml`（只有想锁定具体版本时需要）
+- `docker-compose.all-in-one.latest.yml`（只有想走非 AI 单镜像 latest 时需要）
+- `docker-compose.all-in-one.image.yml`（只有想走非 AI 单镜像锁版时需要）
 - `docker-compose.ai-qa.yml`（只有想启用 AI 工作台时需要）
 - `docker-compose.fastgpt.yml`（只有想启用 bundled FastGPT 时需要）
 - `docker-compose.https.yml`（只有想启用内置 HTTPS 时需要）
@@ -73,6 +78,7 @@ docker compose -f docker-compose.latest.ai.yml up -d
 - 如果叠加 `docker-compose.https.yml`，再额外暴露 `443`
 - 默认官方拓扑会自动启用 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361`，不需要再额外开放 Waline 端口
 - 默认镜像拓扑会把共享 Waline JWT 落盘到日志目录中的 `waline.jwt`，因此不要删除该文件所在的数据卷，除非你明确知道会导致 Waline 登录态与控制令牌轮换
+- all-in-one 首版只覆盖 HTTP 主栈，不提供 `/admin/ai`、FastGPT、bundled AI 依赖，也不包含单镜像版 HTTPS overlay
 
 ## 3. 如需锁版部署：生成服务器环境文件
 

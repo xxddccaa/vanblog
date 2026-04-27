@@ -4,7 +4,7 @@ icon: cloud-arrow-up
 order: -3
 ---
 
-当前仓库已经不再使用旧的一键脚本或单镜像部署方式。升级时请先确认自己使用的是哪一套 compose 文件，再按对应路径处理。
+当前仓库已经不再使用旧的一键脚本或历史遗留单镜像方案。升级时请先确认自己使用的是哪一套 compose 文件，再按对应路径处理。
 
 ## 升级前建议
 
@@ -23,6 +23,7 @@ order: -3
 | 源码部署 | `docker-compose.yml` | 重新拉代码并 `up -d --build` |
 | latest 主栈 | `docker-compose.latest.yml` | `pull` 后重新 `up -d` |
 | latest 一文件 + AI | `docker-compose.latest.ai.yml` | `pull` 后重新 `up -d` |
+| latest 单镜像（无 AI） | `docker-compose.all-in-one.latest.yml` | `pull` 后重新 `up -d` |
 | 锁版镜像部署 | `docker-compose.image.yml` + `.env` | 改 `.env` 里的 `VANBLOG_RELEASE_SUFFIX` 再升级 |
 | 锁版 + AI override | `docker-compose.image.yml` + AI override | 主栈升级后继续保留或移除 AI overlay |
 
@@ -69,6 +70,20 @@ docker compose -f docker-compose.latest.ai.yml up -d
 
 - 主栈和 bundled FastGPT 会一起按当前 quick-start 基线升级
 - 如果只是想临时禁用 AI，可切回 `docker-compose.latest.yml`
+
+## latest 单镜像升级
+
+适用于使用 `docker-compose.all-in-one.latest.yml` 的场景。
+
+```bash
+docker compose -f docker-compose.all-in-one.latest.yml pull
+docker compose -f docker-compose.all-in-one.latest.yml up -d
+```
+
+说明：
+
+- 这个路径只覆盖非 AI 主栈
+- `postgres` / `redis` 会继续复用原来的持久化目录
 
 ## 锁版镜像部署升级
 
