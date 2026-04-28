@@ -43,6 +43,10 @@ Use `pnpm` at the repo root.
 - `pnpm test:blog-flow`: build the split stack and run the full compose smoke flow.
 - `pnpm release:images`: build all split release images with versioned tags locally.
 - `pnpm release:images:push`: build and push all split release images.
+- `pnpm release:all-in-one`: build the optional non-AI all-in-one image locally.
+- `pnpm release:all-in-one:push`: build and push the optional non-AI all-in-one image tags.
+- `pnpm release:all-in-one:publish`: publish the optional non-AI all-in-one immutable tag, version tag, and `latest`, then verify the remote tags.
+- `pnpm release:all-in-one:latest`: only sync and verify `kevinchina/deeplearning:vanblog-all-in-one-latest` from an existing version tag.
 - `docker compose up -d --build`: start the split runtime locally.
 - `docker compose -f docker-compose.image.yml up -d`: start from already-published images.
 - `docker compose logs -f caddy server website admin waline postgres redis`: inspect logs for the current top-level compose stack.
@@ -83,6 +87,9 @@ Treat release and deployment work as documented workflows, not guesswork.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
 - Treat `kevinchina/deeplearning` as the long-term retained image repo / backup repo in docs and release examples unless the user explicitly changes it.
 - `pnpm release:images` only publishes the 5 core VanBlog images; optional FastGPT containers remain governed by `docker-compose.fastgpt.yml` and are documented separately.
+- The optional non-AI `docker-compose.all-in-one.latest.yml` path depends on `kevinchina/deeplearning:vanblog-all-in-one-latest`, and that tag is published by the dedicated all-in-one release flow rather than by `pnpm release:images`.
+- For the optional non-AI all-in-one image, use `pnpm release:all-in-one:publish` for a full publish, or `pnpm release:all-in-one:latest --version vX.Y.Z --image-id <image-id>` when the version tags already exist and only the `latest` alias is missing.
+- If a pull of `docker-compose.all-in-one.latest.yml` fails with `manifest unknown`, assume `vanblog-all-in-one-latest` was not synced yet; do not try to fix it with `pnpm release:latest`, which only applies to the split 5-image release flow.
 - When documenting deployment choices, keep `docker-compose.latest.yml`, `docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths; AI is always an explicit opt-in overlay via `docker-compose.ai-qa.yml`, `docker-compose.fastgpt.yml`, or `docker-compose.latest.ai.yml`.
 - The AI workspace route is `/admin/ai`, available to admins (`access: isAdmin`); any legacy menu path is redirect-only compatibility.
 - Do not use GitHub Actions to publish Docker Hub images; release workflows are intentionally handled on this machine via local/manual commands.

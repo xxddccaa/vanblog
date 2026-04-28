@@ -259,12 +259,17 @@ kevinchina/deeplearning:vanblog-server-v1.5.7-<image-id>
 kevinchina/deeplearning:vanblog-website-v1.5.7-<image-id>
 kevinchina/deeplearning:vanblog-admin-v1.5.7-<image-id>
 kevinchina/deeplearning:vanblog-waline-v1.5.7-<image-id>
+kevinchina/deeplearning:vanblog-all-in-one-v1.5.7-<image-id>
+kevinchina/deeplearning:vanblog-all-in-one-v1.5.7
+kevinchina/deeplearning:vanblog-all-in-one-latest
 ```
 
 说明：
 
 - `pnpm release:images` / `pnpm release:images:push` 只发布 VanBlog 核心 5 个镜像
-- `pnpm release:all-in-one` / `pnpm release:all-in-one:push` 会额外发布 `vanblog-all-in-one-*` 单镜像标签
+- `pnpm release:all-in-one` / `pnpm release:all-in-one:push` 只处理 `vanblog-all-in-one-*` 非 AI 单镜像标签
+- `pnpm release:all-in-one:publish` 会构建、推送并校验 `immutable / version / latest` 三套 all-in-one 标签
+- `docker-compose.all-in-one.latest.yml` 依赖 `kevinchina/deeplearning:vanblog-all-in-one-latest`；如果 `pull` 报 `manifest unknown`，通常表示 all-in-one 的 `latest` 还没同步
 - AI 工作台代码已经包含在 `server` / `admin` 核心镜像里，但 bundled FastGPT 仍然通过 `docker-compose.fastgpt.yml` 固定到当前验证过的上游版本，不并入默认镜像发布
 - 如需对 FastGPT 依赖做长期留档，可按 [`docs/ai-qa-fastgpt.md`](docs/ai-qa-fastgpt.md) 里的版本矩阵自行镜像到你的私有仓库或 `kevinchina/deeplearning` 下的备份标签，但不要在未验证前随意改 compose
 - bundled FastGPT 以后默认沿用当前这套已验证版本；除非你明确决定重新评估上游 FastGPT 技术栈，否则不主动改 AI 依赖基线
@@ -281,9 +286,18 @@ pnpm release:publish
 # 正式发非 AI 单镜像
 pnpm release:all-in-one:publish
 
-# 只补 latest 别名
+# 只补 5 个核心镜像的 latest 别名
 pnpm release:latest
+
+# 只补 all-in-one 的 latest 别名
+pnpm release:all-in-one:latest --version v1.5.7 --image-id <image-id>
 ```
+
+补充约定：
+
+- `pnpm release:latest` 只适用于 `caddy` / `server` / `website` / `admin` / `waline` 这 5 个核心镜像
+- `pnpm release:all-in-one:latest` 才适用于 `docker-compose.all-in-one.latest.yml` 对应的单镜像 latest 标签
+- 如果已经确认版本 tag 存在，只是 `vanblog-all-in-one-latest` 漏推，不要手工 `docker tag` / `docker push`，优先用仓库脚本补齐
 
 详细说明请看：
 
