@@ -34,3 +34,41 @@ html.dark .markdown-body table td { border-right: 1px solid var(--vb-hover-bg); 
 html.dark .markdown-body table th { background-color: var(--vb-panel-bg-2); color: var(--element-color-shallow); }
 html.dark .markdown-body table tbody tr:hover td,
 html.dark .markdown-body table tbody td:hover { background-color: var(--vb-hover-bg); color: var(--element-color-shallow); }
+
+/* === Typora-style typography (炭黑石墨 default) === */
+html.dark .markdown-body {
+  line-height: 1.75;
+  letter-spacing: 0;
+}
+
+html.dark .markdown-body p {
+  line-height: 1.75;
+  word-spacing: normal;
+  margin: 1em 0;
+}
+
+html.dark .markdown-body li {
+  line-height: 1.7;
+}
+
+html.dark .markdown-body blockquote {
+  padding: 0.6em 1em;
+  border-radius: 3px;
+  line-height: 1.7;
+  transition: background-color 0.2s ease;
+}
+
+html.dark .markdown-body blockquote::before {
+  content: none;
+}
+
+html.dark .markdown-body blockquote p {
+  margin: 0.35em 0;
+}
+
+html.dark .markdown-body blockquote p:first-child { margin-top: 0; }
+html.dark .markdown-body blockquote p:last-child  { margin-bottom: 0; }
+
+html.dark .markdown-body blockquote:hover {
+  transform: none;
+}

@@ -37,6 +37,7 @@ const referenceEnvDoc = fs.readFileSync('docs/reference/env.md', 'utf8');
 const referenceDirDoc = fs.readFileSync('docs/reference/dir.md', 'utf8');
 const referenceLogDoc = fs.readFileSync('docs/reference/log.md', 'utf8');
 const releasesIndexDoc = fs.readFileSync('docs/releases/README.md', 'utf8');
+const release158Doc = fs.readFileSync('docs/releases/v1.5.8.md', 'utf8');
 const release157Doc = fs.readFileSync('docs/releases/v1.5.7.md', 'utf8');
 const release156Doc = fs.readFileSync('docs/releases/v1.5.6.md', 'utf8');
 const release155Doc = fs.readFileSync('docs/releases/v1.5.5.md', 'utf8');
@@ -264,10 +265,10 @@ test('docker compose wires cross-container control endpoints', () => {
   assert.match(composeImage, /waline:[\s\S]*volumes:[\s\S]*VANBLOG_LOG_DIR/);
 });
 
-test('docs reflect the v1.5.7 release baseline and optional deployment model', () => {
-  assert.equal(packageJson.version, '1.5.7');
+test('docs reflect the v1.5.8 release baseline and optional deployment model', () => {
+  assert.equal(packageJson.version, '1.5.8');
 
-  assert.match(readmeDoc, /v1\.5\.7/);
+  assert.match(readmeDoc, /v1\.5\.8/);
   assert.match(readmeDoc, /kevinchina\/deeplearning/);
   assert.match(readmeDoc, /docker-compose\.ai-qa\.yml/);
   assert.match(readmeDoc, /docker-compose\.fastgpt\.yml/);
@@ -302,6 +303,11 @@ test('docs reflect the v1.5.7 release baseline and optional deployment model', (
   assert.match(aiQaDoc, /kevinchina\/deeplearning:fastgpt-code-sandbox-v4\.14\.10/);
   assert.match(aiQaDoc, /mongo:5\.0\.32/);
 
+  assert.match(releasesIndexDoc, /v1\.5\.8/);
+  assert.match(release158Doc, /v1\.5\.8/);
+  assert.match(release158Doc, /Typora|引用块|行距|字距/);
+  assert.match(release158Doc, /graphite|炭黑石墨|phycat-sky|Phycat Sky/);
+  assert.match(release158Doc, /docker-compose\.image\.yml/);
   assert.match(releasesIndexDoc, /v1\.5\.7/);
   assert.match(release157Doc, /v1\.5\.7/);
   assert.match(release157Doc, /预览|编辑页|ByteMD/);
