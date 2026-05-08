@@ -168,6 +168,10 @@ test('all-in-one compose defines a single non-AI service', () => {
   assert.match(composeAllInOne, /docker\/all-in-one\.Dockerfile/);
   assert.match(composeAllInOneImage, /vanblog-all-in-one-\$\{VANBLOG_RELEASE_SUFFIX:-latest\}/);
   assert.match(composeAllInOneLatest, /vanblog-all-in-one-latest/);
+  assert.match(composeAllInOneLatest, /POSTGRES_SHARED_BUFFERS:\s+\$\{POSTGRES_SHARED_BUFFERS:-8GB\}/);
+  assert.match(composeAllInOneLatest, /POSTGRES_EFFECTIVE_CACHE_SIZE:\s+\$\{POSTGRES_EFFECTIVE_CACHE_SIZE:-24GB\}/);
+  assert.match(composeAllInOneLatest, /REDIS_SAVE_POLICY:\s+\$\{REDIS_SAVE_POLICY:-900 1 300 10 60 10000\}/);
+  assert.match(composeAllInOneLatest, /REDIS_MAXMEMORY:\s+\$\{REDIS_MAXMEMORY:-4gb\}/);
 });
 
 test('all-in-one runtime uses localhost fan-out and no AI terminal flags', () => {
@@ -187,6 +191,11 @@ test('all-in-one runtime uses localhost fan-out and no AI terminal flags', () =>
   assert.match(allInOneEntrypoint, /ensure_postgres_database/);
   assert.match(allInOneEntrypoint, /redis-server/);
   assert.match(allInOneEntrypoint, /postgres -D/);
+  assert.match(allInOneEntrypoint, /write_postgres_runtime_config/);
+  assert.match(allInOneEntrypoint, /shared_buffers =/);
+  assert.match(allInOneEntrypoint, /work_mem =/);
+  assert.match(allInOneEntrypoint, /write_redis_runtime_config/);
+  assert.match(allInOneEntrypoint, /maxmemory-policy/);
   assert.doesNotMatch(allInOneEntrypoint, /VANBLOG_AI_TERMINAL_ENABLED/);
 
   assert.match(allInOneHealthcheck, /pg_isready -h 127\.0\.0\.1/);
@@ -321,9 +330,9 @@ test('Next.js config still supports the expected asset and image behavior', () =
 });
 
 test('package version and release env example stay consistent', () => {
-  assert.equal(packageJson.version, '1.6.0');
+  assert.equal(packageJson.version, '1.6.1');
   assert.match(releaseEnv, /VANBLOG_DOCKER_REPO=kevinchina\/deeplearning/);
-  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.6\.0-replace-with-gitsha8/);
+  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.6\.1-replace-with-gitsha8/);
   assert.doesNotMatch(releaseEnv, /FASTGPT_ROOT_PASSWORD/);
 });
 

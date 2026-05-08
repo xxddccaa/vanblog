@@ -70,6 +70,7 @@ COPY docker/waline/control-auth.cjs /app/waline/control-auth.cjs
 COPY docker/waline/runner.cjs /app/waline/runner.cjs
 COPY packages/admin/default.conf /etc/nginx/http.d/default.conf
 COPY scripts/fix-waline-dashboard.js /app/scripts/fix-waline-dashboard.js
+COPY scripts/fix-waline-adapter.js /app/scripts/fix-waline-adapter.js
 COPY docker/all-in-one/Caddyfile /etc/caddy/Caddyfile
 COPY docker/all-in-one/entrypoint.sh /usr/local/bin/vanblog-all-in-one-entrypoint
 COPY docker/all-in-one/healthcheck.sh /usr/local/bin/vanblog-all-in-one-healthcheck
@@ -79,7 +80,8 @@ RUN chmod +x \
       /app/waline/entrypoint.sh \
       /usr/local/bin/vanblog-all-in-one-entrypoint \
       /usr/local/bin/vanblog-all-in-one-healthcheck \
-    && node /app/scripts/fix-waline-dashboard.js
+    && node /app/scripts/fix-waline-dashboard.js \
+    && node /app/scripts/fix-waline-adapter.js
 
 ENV NODE_ENV=production
 ENV POSTGRES_PORT=5432

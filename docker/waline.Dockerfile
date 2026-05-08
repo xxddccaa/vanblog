@@ -33,10 +33,12 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
 WORKDIR /app
 COPY docker/shared/ensure-waline-jwt.cjs ./ensure-waline-jwt.cjs
 COPY scripts/fix-waline-dashboard.js ./scripts/fix-waline-dashboard.js
+COPY scripts/fix-waline-adapter.js ./scripts/fix-waline-adapter.js
 COPY docker/waline/entrypoint.sh ./waline/entrypoint.sh
 COPY docker/waline/control-auth.cjs ./waline/control-auth.cjs
 COPY docker/waline/runner.cjs ./waline/runner.cjs
-RUN node ./scripts/fix-waline-dashboard.js
+RUN node ./scripts/fix-waline-dashboard.js \
+    && node ./scripts/fix-waline-adapter.js
 
 WORKDIR /app/waline
 ENV NODE_ENV=production

@@ -11,8 +11,20 @@ POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
 POSTGRES_DATA_DIR="${PGDATA:-/var/lib/postgresql/data}"
 POSTGRES_SOCKET_DIR="/var/run/postgresql"
+POSTGRES_SHARED_BUFFERS="${POSTGRES_SHARED_BUFFERS:-}"
+POSTGRES_WORK_MEM="${POSTGRES_WORK_MEM:-}"
+POSTGRES_MAINTENANCE_WORK_MEM="${POSTGRES_MAINTENANCE_WORK_MEM:-}"
+POSTGRES_EFFECTIVE_CACHE_SIZE="${POSTGRES_EFFECTIVE_CACHE_SIZE:-}"
+POSTGRES_MAX_CONNECTIONS="${POSTGRES_MAX_CONNECTIONS:-}"
+POSTGRES_CHECKPOINT_TIMEOUT="${POSTGRES_CHECKPOINT_TIMEOUT:-}"
+POSTGRES_MAX_WAL_SIZE="${POSTGRES_MAX_WAL_SIZE:-}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 REDIS_DATA_DIR="${VANBLOG_REDIS_DIR:-/data/redis}"
+REDIS_CONFIG_FILE="${REDIS_CONFIG_FILE:-/tmp/vanblog-redis.conf}"
+REDIS_SAVE_POLICY="${REDIS_SAVE_POLICY:-60 1}"
+REDIS_APPENDONLY="$(printf '%s' "${REDIS_APPENDONLY:-yes}" | tr '[:upper:]' '[:lower:]')"
+REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-}"
+REDIS_MAXMEMORY_POLICY="${REDIS_MAXMEMORY_POLICY:-}"
 WALINE_DB="${VAN_BLOG_WALINE_DB:-waline}"
 WALINE_USER="${POSTGRES_USER:-postgres}"
 WALINE_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
@@ -65,6 +77,84 @@ ensure_directories() {
   chown -R postgres:postgres /var/lib/postgresql "${POSTGRES_SOCKET_DIR}" "${POSTGRES_DATA_DIR}"
 }
 
+write_postgres_runtime_config() {
+  local main_config="${POSTGRES_DATA_DIR}/postgresql.conf"
+  local tuning_config="${POSTGRES_DATA_DIR}/vanblog-tuning.conf"
+
+  if ! grep -Fq "include_if_exists = 'vanblog-tuning.conf'" "${main_config}"; then
+    echo "include_if_exists = 'vanblog-tuning.conf'" >> "${main_config}"
+  fi
+
+  cat > "${tuning_config}" <<CFG
+listen_addresses = '127.0.0.1'
+port = ${POSTGRES_PORT}
+unix_socket_directories = '${POSTGRES_SOCKET_DIR}'
+CFG
+
+  if [[ -n "${POSTGRES_SHARED_BUFFERS}" ]]; then
+    echo "shared_buffers = '${POSTGRES_SHARED_BUFFERS}'" >> "${tuning_config}"
+  fi
+  if [[ -n "${POSTGRES_WORK_MEM}" ]]; then
+    echo "work_mem = '${POSTGRES_WORK_MEM}'" >> "${tuning_config}"
+  fi
+  if [[ -n "${POSTGRES_MAINTENANCE_WORK_MEM}" ]]; then
+    echo "maintenance_work_mem = '${POSTGRES_MAINTENANCE_WORK_MEM}'" >> "${tuning_config}"
+  fi
+  if [[ -n "${POSTGRES_EFFECTIVE_CACHE_SIZE}" ]]; then
+    echo "effective_cache_size = '${POSTGRES_EFFECTIVE_CACHE_SIZE}'" >> "${tuning_config}"
+  fi
+  if [[ -n "${POSTGRES_MAX_CONNECTIONS}" ]]; then
+    echo "max_connections = ${POSTGRES_MAX_CONNECTIONS}" >> "${tuning_config}"
+  fi
+  if [[ -n "${POSTGRES_CHECKPOINT_TIMEOUT}" ]]; then
+    echo "checkpoint_timeout = '${POSTGRES_CHECKPOINT_TIMEOUT}'" >> "${tuning_config}"
+  fi
+  if [[ -n "${POSTGRES_MAX_WAL_SIZE}" ]]; then
+    echo "max_wal_size = '${POSTGRES_MAX_WAL_SIZE}'" >> "${tuning_config}"
+  fi
+
+  chown postgres:postgres "${tuning_config}"
+}
+
+write_redis_runtime_config() {
+  case "${REDIS_APPENDONLY}" in
+    yes|no)
+      ;;
+    *)
+      log "invalid REDIS_APPENDONLY value: ${REDIS_APPENDONLY}; expected yes or no"
+      exit 1
+      ;;
+  esac
+
+  cat > "${REDIS_CONFIG_FILE}" <<CFG
+bind 127.0.0.1
+port ${REDIS_PORT}
+dir ${REDIS_DATA_DIR}
+appendonly ${REDIS_APPENDONLY}
+CFG
+
+  if [[ -z "${REDIS_SAVE_POLICY}" ]]; then
+    echo 'save ""' >> "${REDIS_CONFIG_FILE}"
+  else
+    read -r -a save_tokens <<< "${REDIS_SAVE_POLICY}"
+    if (( ${#save_tokens[@]} == 0 || ${#save_tokens[@]} % 2 != 0 )); then
+      log "invalid REDIS_SAVE_POLICY value: ${REDIS_SAVE_POLICY}"
+      exit 1
+    fi
+    local i
+    for ((i = 0; i < ${#save_tokens[@]}; i += 2)); do
+      echo "save ${save_tokens[i]} ${save_tokens[i + 1]}" >> "${REDIS_CONFIG_FILE}"
+    done
+  fi
+
+  if [[ -n "${REDIS_MAXMEMORY}" ]]; then
+    echo "maxmemory ${REDIS_MAXMEMORY}" >> "${REDIS_CONFIG_FILE}"
+  fi
+  if [[ -n "${REDIS_MAXMEMORY_POLICY}" ]]; then
+    echo "maxmemory-policy ${REDIS_MAXMEMORY_POLICY}" >> "${REDIS_CONFIG_FILE}"
+  fi
+}
+
 init_postgres() {
   if [[ -f "${POSTGRES_DATA_DIR}/PG_VERSION" ]]; then
     local existing_version
@@ -92,12 +182,6 @@ init_postgres() {
 
   rm -f "${password_file}"
 
-  cat >> "${POSTGRES_DATA_DIR}/postgresql.conf" <<CFG
-listen_addresses = '127.0.0.1'
-port = ${POSTGRES_PORT}
-unix_socket_directories = '${POSTGRES_SOCKET_DIR}'
-CFG
-
   cat >> "${POSTGRES_DATA_DIR}/pg_hba.conf" <<CFG
 host all all 127.0.0.1/32 scram-sha-256
 host all all ::1/128 scram-sha-256
@@ -122,12 +206,8 @@ SQL
 
 start_redis() {
   log "starting Redis"
-  redis-server \
-    --bind 127.0.0.1 \
-    --port "${REDIS_PORT}" \
-    --appendonly yes \
-    --dir "${REDIS_DATA_DIR}" \
-    --save 60 1 &
+  write_redis_runtime_config
+  redis-server "${REDIS_CONFIG_FILE}" &
   redis_pid=$!
   wait_for_command "Redis" redis-cli -h 127.0.0.1 -p "${REDIS_PORT}" ping
 }
@@ -207,6 +287,7 @@ trap cleanup EXIT INT TERM
 
 ensure_directories
 init_postgres
+write_postgres_runtime_config
 start_postgres
 ensure_postgres_database "${POSTGRES_DB}"
 ensure_postgres_database "${WALINE_DB}"
