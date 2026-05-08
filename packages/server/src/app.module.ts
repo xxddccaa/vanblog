@@ -101,14 +101,8 @@ import { NavCategoryController } from './controller/admin/nav-category/nav-categ
 import { NavController } from './controller/public/nav/nav.controller';
 import { AITaggingController } from './controller/admin/ai-tagging/ai-tagging.controller';
 import { AITaggingProvider } from './provider/ai-tagging/ai-tagging.provider';
-import { AiQaController } from './controller/admin/ai-qa/ai-qa.controller';
-import { AiQaTerminalController } from './controller/admin/ai-qa/ai-qa-terminal.controller';
-import { AiQaTerminalAuthController } from './controller/admin/ai-qa/ai-qa-terminal-auth.controller';
-import { AiQaProvider } from './provider/ai-qa/ai-qa.provider';
-import { AiQaTerminalProvider } from './provider/ai-qa/ai-qa-terminal.provider';
 import { AutoBackupController } from './controller/admin/auto-backup/auto-backup.controller';
 import { AutoBackupTask } from './schedule/auto-backup.task';
-import { AiQaTask } from './schedule/ai-qa.task';
 import { AliyunpanProvider } from './provider/aliyunpan/aliyunpan.provider';
 import { MusicController } from './controller/admin/music/music.controller';
 import { Document, DocumentSchema } from './scheme/document.schema';
@@ -206,9 +200,6 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     NavCategoryController,
     NavController,
     AITaggingController,
-    AiQaController,
-    AiQaTerminalController,
-    AiQaTerminalAuthController,
     AutoBackupController,
     MusicController,
     DocumentController,
@@ -256,10 +247,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     NavToolProvider,
     NavCategoryProvider,
     AITaggingProvider,
-    AiQaProvider,
-    AiQaTerminalProvider,
     AutoBackupTask,
-    AiQaTask,
     AliyunpanProvider,
     DocumentProvider,
     MindMapProvider,

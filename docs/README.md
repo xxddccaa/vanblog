@@ -4,19 +4,11 @@ icon: home
 index: false
 heroText: VanBlog
 heroImage: /merge.png
-tagline: 一套基于 Docker Compose 多容器架构、支持可选 AI 工作台的个人博客系统。
+tagline: 一套基于 Docker Compose 多容器架构的个人博客系统。
 actions:
   - text: 💡 快速上手
     link: /guide/get-started.html
     type: primary
-
-  - text: 🤖 AI 工作台
-    link: /guide/ai-workspace.html
-    type: secondary
-
-  - text: 📚 AI / FastGPT 清单
-    link: /ai-qa-fastgpt.html
-    type: secondary
 
   - text: 🏷️ 发布说明
     link: /releases/
@@ -34,10 +26,6 @@ features:
   - title: 前后台一体
     icon: window-maximize
     details: 内置前台站点、后台管理、公开 API 与评论服务，统一由 Caddy 对外转发
-
-  - title: 可选 AI 工作台
-    icon: robot
-    details: /admin/ai 面向所有管理员开放，可把博客内容同步到 FastGPT 作为知识增强，但默认部署不会强行带 AI
 
   - title: 可维护性
     icon: wrench

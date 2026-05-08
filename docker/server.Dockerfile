@@ -18,8 +18,7 @@ RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALP
     && pnpm config set network-timeout 600000 -g \
     && pnpm config set registry https://registry.npmmirror.com -g \
     && pnpm config set fetch-retries 20 -g \
-    && pnpm config set fetch-timeout 600000 -g \
-    && npm install -g opencode-ai wetty@2.6.0
+    && pnpm config set fetch-timeout 600000 -g
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/server/package.json ./packages/server/
@@ -62,8 +61,7 @@ COPY --from=builder /prod/server/ ./
 COPY --from=builder /app/packages/server/dist ./dist
 COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
 COPY docker/server/entrypoint.sh /app/server/entrypoint.sh
-COPY docker/server/terminal-shell.sh /app/server/terminal-shell.sh
-RUN chmod +x /app/server/entrypoint.sh /app/server/terminal-shell.sh
+RUN chmod +x /app/server/entrypoint.sh
 
 ENV NODE_ENV=production
 ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
@@ -78,5 +76,4 @@ VOLUME /var/log
 VOLUME /root/.config/aliyunpan
 
 EXPOSE 3000
-EXPOSE 7681
 CMD ["bash", "entrypoint.sh"]

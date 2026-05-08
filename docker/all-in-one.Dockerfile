@@ -62,7 +62,6 @@ COPY --from=builder /prod/waline/ /app/waline/
 
 COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
 COPY docker/server/entrypoint.sh /app/server/entrypoint.sh
-COPY docker/server/terminal-shell.sh /app/server/terminal-shell.sh
 COPY docker/website/entrypoint.sh /app/website/entrypoint.sh
 COPY docker/website/control-auth.cjs /app/website/control-auth.cjs
 COPY docker/website/runner.cjs /app/website/runner.cjs
@@ -76,7 +75,6 @@ COPY docker/all-in-one/entrypoint.sh /usr/local/bin/vanblog-all-in-one-entrypoin
 COPY docker/all-in-one/healthcheck.sh /usr/local/bin/vanblog-all-in-one-healthcheck
 RUN chmod +x \
       /app/server/entrypoint.sh \
-      /app/server/terminal-shell.sh \
       /app/website/entrypoint.sh \
       /app/waline/entrypoint.sh \
       /usr/local/bin/vanblog-all-in-one-entrypoint \

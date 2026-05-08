@@ -42,17 +42,6 @@ cd vanblog
 
 :::
 
-::: info AI 说明
-
-`docker-compose.yml` 默认**不会**启动 FastGPT，也不会自动给 `server` 注入 AI 工作台连接。
-
-如果你需要 `/admin/ai`：
-
-- 连接已有私有 FastGPT：叠加 `docker-compose.ai-qa.yml`
-- 同机启动 bundled FastGPT：再叠加 `docker-compose.fastgpt.yml`
-
-:::
-
 ### 3. 启动项目
 
 在仓库根目录执行：
@@ -72,12 +61,7 @@ docker compose logs -f caddy server website admin waline postgres redis
 ### 4. 常用维护命令
 
 ```bash
-# 停止服务
 docker compose down
-
-# 停止并删除匿名卷（谨慎使用）
 docker compose down -v
-
-# 更新后重新构建启动
 docker compose up -d --build
 ```

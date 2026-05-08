@@ -15,12 +15,8 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `docker-compose.all-in-one.yml`: optional source-build single-container entrypoint for the non-AI main stack.
 - `docker-compose.all-in-one.latest.yml`: optional latest-tag single-container quick-start for the non-AI main stack.
 - `docker-compose.all-in-one.image.yml`: optional locked single-container deployment entrypoint for the non-AI main stack.
-- `docker-compose.ai-qa.yml`: optional override that only injects the server-to-FastGPT connection for the AI workspace.
-- `docker-compose.fastgpt.yml`: optional bundled FastGPT stack; keep it out of the default runtime unless AI is explicitly required.
-- `docker-compose.latest.ai.yml`: one-file latest quick-start that bundles the main stack plus the optional AI workspace / FastGPT stack for operators who want a single compose file.
 - `RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
 - `DEPLOY.md`: production deployment guide for pulling published images with `.env.release.example`.
-- `docs/ai-qa-fastgpt.md`: source-of-truth doc for the optional `/admin/ai` workspace, FastGPT wiring, and pinned bundled FastGPT baseline.
 - `.env.release.example`: server-side environment template for image deployments.
 - `tests/`: deployment and blog-flow integration tests for the compose stack.
 - `docs/`: Markdown documentation.
@@ -86,12 +82,11 @@ Treat release and deployment work as documented workflows, not guesswork.
 - For production deployment tasks, read `DEPLOY.md`; the default locked release path is `docker-compose.image.yml` plus `.env.release.example`, while the optional non-AI all-in-one path uses `docker-compose.all-in-one.image.yml`.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
 - Treat `kevinchina/deeplearning` as the long-term retained image repo / backup repo in docs and release examples unless the user explicitly changes it.
-- `pnpm release:images` only publishes the 5 core VanBlog images; optional FastGPT containers remain governed by `docker-compose.fastgpt.yml` and are documented separately.
+- `pnpm release:images` only publishes the 5 core VanBlog images.
 - The optional non-AI `docker-compose.all-in-one.latest.yml` path depends on `kevinchina/deeplearning:vanblog-all-in-one-latest`, and that tag is published by the dedicated all-in-one release flow rather than by `pnpm release:images`.
 - For the optional non-AI all-in-one image, use `pnpm release:all-in-one:publish` for a full publish, or `pnpm release:all-in-one:latest --version vX.Y.Z --image-id <image-id>` when the version tags already exist and only the `latest` alias is missing.
 - If a pull of `docker-compose.all-in-one.latest.yml` fails with `manifest unknown`, assume `vanblog-all-in-one-latest` was not synced yet; do not try to fix it with `pnpm release:latest`, which only applies to the split 5-image release flow.
-- When documenting deployment choices, keep `docker-compose.latest.yml`, `docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths; AI is always an explicit opt-in overlay via `docker-compose.ai-qa.yml`, `docker-compose.fastgpt.yml`, or `docker-compose.latest.ai.yml`.
-- The AI workspace route is `/admin/ai`, available to admins (`access: isAdmin`); any legacy menu path is redirect-only compatibility.
+- When documenting deployment choices, keep `docker-compose.latest.yml`, `docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths.
 - Do not use GitHub Actions to publish Docker Hub images; release workflows are intentionally handled on this machine via local/manual commands.
 - If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.
 - For release or deployment changes, prefer validating with `pnpm test:full`; if you only need a narrower config/routing check, at minimum run `pnpm test:blog-flow`, and also run `pnpm test:deploy` for config- or routing-focused changes.

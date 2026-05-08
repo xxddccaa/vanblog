@@ -755,7 +755,6 @@ export const layout = ({ initialState, setInitialState }) => {
       else if (menu.path === '/document') menuMapping.document = menu;
       else if (menu.path === '/mindmap') menuMapping.mindmap = menu;
       else if (menu.path === '/static/img') menuMapping.static = menu;
-      else if (menu.path === '/ai') menuMapping.ai = menu;
       else if (menu.path === '/site') menuMapping.site = menu;
     });
 
@@ -775,16 +774,6 @@ export const layout = ({ initialState, setInitialState }) => {
         return null;
       })
       .filter(Boolean);
-
-    const hasAiMenu = configuredMenus.some((item) => item.path === '/ai');
-    if (!hasAiMenu && menuMapping.ai) {
-      const siteIndex = configuredMenus.findIndex((item) => item.path === '/site');
-      if (siteIndex >= 0) {
-        configuredMenus.splice(siteIndex, 0, menuMapping.ai);
-      } else {
-        configuredMenus.push(menuMapping.ai);
-      }
-    }
 
     return configuredMenus;
   };

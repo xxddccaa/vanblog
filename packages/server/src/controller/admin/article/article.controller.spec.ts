@@ -44,17 +44,11 @@ describe('ArticleController', () => {
       activePath: jest.fn(),
       ...overrides.isrProvider,
     };
-    const aiQaProvider = {
-      syncArticleById: jest.fn().mockResolvedValue({ action: 'updated' }),
-      deleteSource: jest.fn().mockResolvedValue({ deleted: true }),
-      ...overrides.aiQaProvider,
-    };
 
     return {
-      controller: new ArticleController(articleProvider as any, isrProvider as any, {} as any, aiQaProvider as any),
+      controller: new ArticleController(articleProvider as any, isrProvider as any, {} as any),
       articleProvider,
       isrProvider,
-      aiQaProvider,
     };
   };
 
@@ -64,7 +58,7 @@ describe('ArticleController', () => {
       pathname: 'stable-post',
       title: 'old title',
     };
-    const { controller, articleProvider, isrProvider, aiQaProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         getById: jest.fn().mockResolvedValue(beforeObj),
         updateById: jest.fn().mockResolvedValue({ id: 7, title: 'new title' }),
@@ -85,7 +79,6 @@ describe('ArticleController', () => {
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
     expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
     expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
-    expect(aiQaProvider.syncArticleById).toHaveBeenCalledWith(7, 'article-update');
   });
 
   it('does not let an async ISR failure break article updates', async () => {
@@ -127,7 +120,7 @@ describe('ArticleController', () => {
       pathname: 'stable-post',
       title: 'old title',
     };
-    const { controller, articleProvider, isrProvider, aiQaProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         getById: jest.fn().mockResolvedValue(beforeObj),
         getByPathName: jest.fn().mockResolvedValue(beforeObj),
@@ -231,7 +224,7 @@ describe('ArticleController', () => {
   });
 
   it('uses precise article invalidation for creates', async () => {
-    const { controller, articleProvider, isrProvider, aiQaProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         create: jest.fn().mockResolvedValue({ id: 8, pathname: 'new-post' }),
       },
@@ -248,7 +241,6 @@ describe('ArticleController', () => {
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
     expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
     expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
-    expect(aiQaProvider.syncArticleById).toHaveBeenCalledWith(8, 'article-create');
   });
 
   it('uses precise article invalidation for deletes instead of full-site refresh', async () => {
@@ -258,7 +250,7 @@ describe('ArticleController', () => {
       category: 'System Design',
       tags: ['Cloudflare'],
     };
-    const { controller, articleProvider, isrProvider, aiQaProvider } = createController({
+    const { controller, articleProvider, isrProvider } = createController({
       articleProvider: {
         getById: jest.fn().mockResolvedValue(beforeObj),
       },
@@ -272,7 +264,6 @@ describe('ArticleController', () => {
     expect(isrProvider.activeAll).not.toHaveBeenCalled();
     expect(isrProvider.activeUrl).toHaveBeenCalledWith('/tag', false);
     expect(isrProvider.activePath).toHaveBeenCalledWith('tag');
-    expect(aiQaProvider.deleteSource).toHaveBeenCalledWith('article', '7', 'article-delete');
   });
 
   it('rejects numeric create pathnames without triggering invalidation side effects', async () => {

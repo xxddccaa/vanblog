@@ -15,8 +15,6 @@ export interface Config {
   cloudflareZoneId: string;
   demo: boolean | string;
   log: string;
-  fastgptInternalUrl: string;
-  fastgptRootPassword: string;
 }
 
 export const loadDatabaseUrl = () =>
@@ -41,6 +39,4 @@ export const config: Config = {
   log: loadConfig('log', '/var/log'),
   codeRunnerPath: loadConfig('codeRunner.path', '/app/codeRunner'),
   pluginRunnerPath: loadConfig('pluginRunner.path', '/app/pluginRunner'),
-  fastgptInternalUrl: loadConfig('fastgpt.internalUrl', ''),
-  fastgptRootPassword: loadConfig('fastgpt.rootPassword', ''),
 };
