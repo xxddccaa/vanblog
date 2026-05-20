@@ -25,6 +25,7 @@ export default function (props: {
   updatedAt: Date;
   createdAt: Date;
   catelog: string;
+  categories?: string[];
   content: string;
   setContent?: (content: string) => void;
   type: "overview" | "article" | "about";
@@ -107,6 +108,7 @@ export default function (props: {
           updatedAt={props.updatedAt}
           createdAt={props.createdAt}
           catelog={props.catelog}
+          categories={props.categories}
           enableComment={props.enableComment}
         />
         

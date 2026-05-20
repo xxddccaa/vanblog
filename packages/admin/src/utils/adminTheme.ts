@@ -26,7 +26,7 @@ const LEGACY_ADMIN_THEME_CONFIG: AdminThemeConfig = {
 
 export const DEFAULT_ADMIN_THEME_CONFIG: AdminThemeConfig = {
   lightPrimaryColor: '#1772b4',
-  darkPrimaryColor: '#8d9bb0',
+  darkPrimaryColor: '#60a5fa',
   lightBackgroundColor: '#f4f8fb',
   darkBackgroundColor: '#111315',
 };
@@ -36,7 +36,7 @@ export const ADMIN_DARK_THEME_PRESETS: AdminDarkThemePreset[] = [
     key: 'graphite',
     label: '炭黑石墨',
     description: '近黑石墨底色，低饱和钢蓝强调，整体最稳。',
-    darkPrimaryColor: '#8d9bb0',
+    darkPrimaryColor: '#60a5fa',
     darkBackgroundColor: '#111315',
   },
   {

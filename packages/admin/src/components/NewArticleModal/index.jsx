@@ -1,13 +1,38 @@
-import { createArticle, getAllCategories, getTags } from '@/services/van-blog/api';
+import { createArticle, createCategory, getAllCategories, getTags } from '@/services/van-blog/api';
 import {
   ModalForm,
   ProFormDateTimePicker,
   ProFormSelect,
   ProFormText,
 } from '@ant-design/pro-components';
-import { Button, Modal } from 'antd';
+import { Button, Modal, message } from 'antd';
 import moment from 'moment';
 import AuthorField from '../AuthorField';
+
+const normalizeCategories = (value) => {
+  const source = Array.isArray(value) ? value : value ? [value] : [];
+  return Array.from(new Set(source.map((item) => String(item || '').trim()).filter(Boolean)));
+};
+
+const loadCategoryOptions = async () => {
+  const { data: categories } = await getAllCategories();
+  return (categories || []).map((e) => ({
+    label: e,
+    value: e,
+  }));
+};
+
+const ensureCategoriesExist = async (categories) => {
+  const { data: existingCategories } = await getAllCategories();
+  const existing = new Set(existingCategories || []);
+  const missing = categories.filter((category) => !existing.has(category));
+  for (const category of missing) {
+    const result = await createCategory({ name: category });
+    if (result?.statusCode && result.statusCode !== 200) {
+      throw new Error(result?.message || `创建分类 / 专栏 "${category}" 失败`);
+    }
+  }
+};
 
 export default function (props) {
   const { onFinish } = props;
@@ -33,6 +58,15 @@ export default function (props) {
         const washedValues = {};
         for (const [k, v] of Object.entries(values)) {
           washedValues[k.replace('C', '')] = v;
+        }
+
+        washedValues.categories = normalizeCategories(washedValues.categories);
+        washedValues.category = washedValues.categories[0];
+        try {
+          await ensureCategoriesExist(washedValues.categories);
+        } catch (error) {
+          message.error(error?.message || '创建分类 / 专栏失败');
+          return false;
         }
 
         const { data } = await createArticle(washedValues);
@@ -100,21 +134,21 @@ export default function (props) {
       <ProFormSelect
         width="md"
         required
-        id="categoryC"
-        name="categoryC"
-        tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
-        label="分类"
-        placeholder="请选择分类"
+        id="categoriesC"
+        name="categoriesC"
+        label="分类 / 专栏"
+        placeholder="搜索或输入分类/专栏"
         rules={[{ required: true, message: '这是必填项' }]}
-        request={async () => {
-          const { data: categories } = await getAllCategories();
-          return categories?.map((e) => {
-            return {
-              label: e,
-              value: e,
-            };
-          });
+        fieldProps={{
+          mode: 'tags',
+          showSearch: true,
+          tokenSeparators: [','],
+          filterOption: (input, option) =>
+            String(option?.label || option?.value || '')
+              .toLowerCase()
+              .includes(input.toLowerCase()),
         }}
+        request={loadCategoryOptions}
       />
       <ProFormDateTimePicker
         placeholder="不填默认为此刻"

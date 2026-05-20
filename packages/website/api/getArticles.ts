@@ -1,4 +1,4 @@
-import { Article } from "../types/article";
+import { Article, getArticleCategories } from "../types/article";
 import { encodeQuerystring } from "../utils/encode";
 import { config, getServerFetchOptions } from "../utils/loadConfig";
 export type SortOrder = "asc" | "desc";
@@ -106,6 +106,7 @@ const toArticleShell = (article: any): Article => ({
   updatedAt: article?.updatedAt,
   createdAt: article?.createdAt,
   category: article?.category,
+  categories: getArticleCategories(article),
   content: article?.content,
   private: Boolean(article?.private),
   tags: Array.isArray(article?.tags) ? article.tags : [],

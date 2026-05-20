@@ -4,7 +4,7 @@
 
 如果你要做的是“构建并发布镜像”，请看 `RELEASE.md`；如果你要做的是“把已经发布好的镜像部署到服务器”，请看这份文档。
 
-当前代码基线已经推进到 `v1.6.1`，生产部署文档也统一以 `kevinchina/deeplearning` 这套长期保留镜像仓库为准。
+当前代码基线已经推进到 `v1.6.2`，生产部署文档也统一以 `kevinchina/deeplearning` 这套长期保留镜像仓库为准。
 
 ## 1. 部署矩阵
 
@@ -152,6 +152,73 @@ docker compose -f docker-compose.all-in-one.image.yml up -d
 ```
 
 这个路径仍然会把 PostgreSQL、Redis、Caddy、server、website、admin、waline 都收进一个容器，但数据目录仍走宿主机挂载。
+
+### 5.1 直接 `docker run`
+
+如果你不想维护 compose 文件，也可以直接启动 `all-in-one` 镜像。
+
+最小可运行示例：
+
+```bash
+docker run -d \
+  --name vanblog \
+  --restart always \
+  --init \
+  --shm-size 1g \
+  -p 80:80 \
+  -v "$(pwd)/data/static:/app/static" \
+  -v "$(pwd)/log:/var/log" \
+  -v "$(pwd)/caddy/config:/root/.config/caddy" \
+  -v "$(pwd)/caddy/data:/root/.local/share/caddy" \
+  -v "$(pwd)/aliyunpan/config:/root/.config/aliyunpan" \
+  -v "$(pwd)/data/postgres:/var/lib/postgresql/data" \
+  -v "$(pwd)/data/redis:/data/redis" \
+  kevinchina/deeplearning:vanblog-all-in-one-latest
+```
+
+说明：
+
+- 从当前代码基线开始，`kevinchina/deeplearning:vanblog-all-in-one-latest` 镜像本身已经内置了和 `docker-compose.all-in-one.latest.yml` 一致的默认环境变量，包括 PostgreSQL / Redis 的那组默认性能参数
+- 也就是说，不传这些环境变量时，镜像会默认按下面这组值启动：
+  - `POSTGRES_DB=vanblog`
+  - `POSTGRES_USER=postgres`
+  - `POSTGRES_PASSWORD=postgres`
+  - `POSTGRES_SHARED_BUFFERS=8GB`
+  - `POSTGRES_WORK_MEM=32MB`
+  - `POSTGRES_MAINTENANCE_WORK_MEM=1GB`
+  - `POSTGRES_EFFECTIVE_CACHE_SIZE=24GB`
+  - `POSTGRES_MAX_CONNECTIONS=200`
+  - `POSTGRES_CHECKPOINT_TIMEOUT=15min`
+  - `POSTGRES_MAX_WAL_SIZE=8GB`
+  - `REDIS_SAVE_POLICY=900 1 300 10 60 10000`
+  - `REDIS_APPENDONLY=yes`
+  - `REDIS_MAXMEMORY=4gb`
+  - `REDIS_MAXMEMORY_POLICY=allkeys-lru`
+  - `VAN_BLOG_WALINE_DB=waline`
+- 但 `docker run -d 镜像` 这件事有一个天然边界：端口映射、重启策略、`init`、`shm-size`、数据卷挂载，不可能由镜像自己替你强制加上，所以真正可上线的最小命令至少还是上面这种带 `-p` 和 `-v` 的写法
+- 如果你希望改密码或改数据库名，推荐显式传环境变量，例如：
+
+```bash
+docker run -d \
+  --name vanblog \
+  --restart always \
+  --init \
+  --shm-size 1g \
+  -p 80:80 \
+  -e POSTGRES_PASSWORD='your-postgres-password' \
+  -e EMAIL='you@example.com' \
+  -e WALINE_JWT_TOKEN='your-waline-jwt-token' \
+  -v "$(pwd)/data/static:/app/static" \
+  -v "$(pwd)/log:/var/log" \
+  -v "$(pwd)/caddy/config:/root/.config/caddy" \
+  -v "$(pwd)/caddy/data:/root/.local/share/caddy" \
+  -v "$(pwd)/aliyunpan/config:/root/.config/aliyunpan" \
+  -v "$(pwd)/data/postgres:/var/lib/postgresql/data" \
+  -v "$(pwd)/data/redis:/data/redis" \
+  kevinchina/deeplearning:vanblog-all-in-one-latest
+```
+
+如果你想把它进一步收敛成“一行命令”，建议额外提供一个官方 `scripts/docker-run-all-in-one.sh` 包装脚本，而不是指望裸 `docker run -d 镜像` 自动补齐宿主机参数。
 
 ## 6. 上线后建议检查
 

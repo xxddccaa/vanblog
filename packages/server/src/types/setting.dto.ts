@@ -264,7 +264,7 @@ export const defaultAdminLayoutSetting: AdminLayoutSetting = {
 
 export const defaultAdminThemeSetting: AdminThemeSetting = {
   lightPrimaryColor: '#1772b4',
-  darkPrimaryColor: '#8d9bb0',
+  darkPrimaryColor: '#60a5fa',
   lightBackgroundColor: '#f4f8fb',
   darkBackgroundColor: '#111315',
 };

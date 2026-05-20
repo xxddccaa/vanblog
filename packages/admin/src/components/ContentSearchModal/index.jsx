@@ -135,11 +135,16 @@ const ContentSearchModal = ({
         <Icon className="result-icon" />
         <span className="result-title">{item.title}</span>
         <span className="result-id">#{item.id}</span>
-        {item.category && (
-          <Tag size="small" color="blue" className="result-category">
-            {item.category}
+        {(Array.isArray(item.categories) && item.categories.length
+          ? item.categories
+          : item.category
+            ? [item.category]
+            : []
+        ).map((category) => (
+          <Tag size="small" color="blue" className="result-category" key={`${item.id}-${category}`}>
+            {category}
           </Tag>
-        )}
+        ))}
         {type === 'document' && item.type && (
           <Tag size="small" color={item.type === 'library' ? 'gold' : 'green'} className="result-type">
             {item.type === 'library' ? '文档库' : '文档'}

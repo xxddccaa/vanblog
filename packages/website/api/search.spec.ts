@@ -35,4 +35,25 @@ describe('filterSearchIndex', () => {
     const result = filterSearchIndex(index, 'edge');
     expect(result[0].id).toBe(2);
   });
+
+  it('matches categories arrays when normalized search text is absent', () => {
+    const result = filterSearchIndex(
+      [
+        {
+          id: 3,
+          title: 'Multi Column Post',
+          category: 'Architecture',
+          categories: ['Architecture', 'Frontend'],
+          tags: [],
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-01-04T00:00:00.000Z',
+          preview: 'A post in multiple categories.',
+        },
+      ],
+      'frontend',
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(3);
+  });
 });

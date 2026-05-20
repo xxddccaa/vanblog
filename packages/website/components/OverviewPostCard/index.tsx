@@ -12,6 +12,7 @@ export default function OverviewPostCard(props: {
   updatedAt: Date;
   createdAt: Date;
   catelog: string;
+  categories?: string[];
   content: string;
   private: boolean;
   top: number;
@@ -23,6 +24,12 @@ export default function OverviewPostCard(props: {
   const summary = props.private
     ? '该文章已加密，点击 `阅读全文` 并输入密码后方可查看。'
     : getOverviewPreview(props.content || '');
+  const categories =
+    Array.isArray(props.categories) && props.categories.length
+      ? props.categories
+      : props.catelog
+        ? [props.catelog]
+        : [];
 
   return (
     <div className="post-card-wrapper">
@@ -50,15 +57,20 @@ export default function OverviewPostCard(props: {
           <span className="inline-flex items-center px-2">
             {dayjs(props.createdAt).format('YYYY-MM-DD')}
           </span>
-          {props.catelog ? (
+          {categories.length ? (
             <span className="inline-flex items-center px-2">
-              <Link
-                href={`/category/${encodeQuerystring(props.catelog)}`}
-                target={getTarget(props.openArticleLinksInNewWindow)}
-                className="cursor-pointer transition hover:font-medium hover:text-gray-900 dark:hover:text-dark-hover"
-              >
-                {props.catelog}
-              </Link>
+              <span className="inline-flex flex-wrap justify-center gap-x-2 gap-y-1">
+                {categories.map((category) => (
+                  <Link
+                    key={`category-${category}`}
+                    href={`/category/${encodeQuerystring(category)}`}
+                    target={getTarget(props.openArticleLinksInNewWindow)}
+                    className="cursor-pointer text-blue-500 transition hover:text-blue-600 hover:font-medium dark:text-blue-400 dark:hover:text-blue-300"
+                  >
+                    {category}
+                  </Link>
+                ))}
+              </span>
             </span>
           ) : null}
         </div>

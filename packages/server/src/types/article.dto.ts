@@ -6,6 +6,7 @@ export class CreateArticleDto {
   tags?: string[];
   top?: number;
   category: string;
+  categories?: string[];
   hidden?: boolean;
   private?: boolean;
   password?: string;
@@ -20,6 +21,7 @@ export class UpdateArticleDto {
   content?: string;
   tags?: string[];
   category?: string;
+  categories?: string[];
   hidden?: boolean;
   top?: number;
   private?: boolean;

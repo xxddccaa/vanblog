@@ -8,7 +8,7 @@
 - 明确多镜像发布规范，避免再回到单镜像 `kevinchina/deeplearning:vanblog-latest` 的不可追踪模式
 - 保留一个可选的 all-in-one 单镜像发布入口，方便只维护一个 VanBlog 容器
 
-当前代码基线已经推进到 `v1.6.1`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
+当前代码基线已经推进到 `v1.6.2`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
 
 ## 1. 发布边界
 
@@ -34,7 +34,7 @@
 
 1. 在 `master` 上整理代码并提交。
 2. 运行完整测试，优先通过 `pnpm test:full`。
-3. 确认根目录 `package.json` 的版本号正确，例如 `1.6.1`，并统一成发布标签 `vX.Y.Z`。
+3. 确认根目录 `package.json` 的版本号正确，例如 `1.6.2`，并统一成发布标签 `vX.Y.Z`。
 4. 补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案。
 5. 给当前代码打版本 tag，并推送到 GitHub。
 6. 按所选发布路径执行发版脚本。
@@ -125,7 +125,7 @@ bash scripts/release-images.sh
 
 默认行为：
 
-- 自动读取 `package.json` 版本，例如 `1.6.1`，并规范成 `v1.6.1`
+- 自动读取 `package.json` 版本，例如 `1.6.2`，并规范成 `v1.6.2`
 - 自动读取当前 Git 短 SHA 作为 `image-id`
 - 自动执行 `pnpm test:blog-flow`
 - 为 5 个服务构建镜像
@@ -146,7 +146,7 @@ bash scripts/release-publish.sh
 
 ```bash
 bash scripts/release-publish.sh \
-  --version v1.6.1 \
+  --version v1.6.2 \
   --image-id <image-id> \
   --repo kevinchina/deeplearning
 ```

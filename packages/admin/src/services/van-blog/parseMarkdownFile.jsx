@@ -260,24 +260,30 @@ export const parseMarkdownFile = async (file, allowNotExistCategory) => {
     return;
   }
   let category = undefined;
+  let categories = [];
   if (categoris.length > 0 && allCategories?.length > 0) {
     for (const each of categoris) {
       if (allCategories.includes(each)) {
-        category = each;
-        break;
+        categories.push(each);
       }
     }
   }
   const categoryInFile = attributes?.category;
   if (categoryInFile && allCategories.includes(categoryInFile)) {
-    category = categoryInFile;
+    categories = [categoryInFile, ...categories.filter((each) => each !== categoryInFile)];
   }
-  if (allowNotExistCategory && !category) {
-    category = categoris[0] || attributes?.category;
-    if (!category) {
-      category = undefined;
-    }
+  if (allowNotExistCategory) {
+    const rawCategories = [
+      ...(Array.isArray(categoris) ? categoris : []),
+      attributes?.category,
+    ].filter(Boolean);
+    categories = [
+      ...categories,
+      ...rawCategories.filter((each) => !categories.includes(each)),
+    ];
   }
+  categories = [...new Set(categories.map((each) => String(each || '').trim()).filter(Boolean))];
+  category = categories[0];
   const tags = attributes?.tags || [];
   if (attributes?.tag) {
     tags.push(attributes?.tag);
@@ -303,6 +309,7 @@ export const parseMarkdownFile = async (file, allowNotExistCategory) => {
     top,
     tags,
     category,
+    categories,
     password,
     private: privateAttr,
     hidden,
@@ -317,6 +324,7 @@ export const parseObjToMarkdown = (obj) => {
   const frontmatter = {};
   for (const key of [
     'title',
+    'categories',
     'category',
     'tags',
     'top',

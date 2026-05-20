@@ -1,4 +1,4 @@
-import { createArticle, getAllCategories, getTags } from '@/services/van-blog/api';
+import { createArticle, createCategory, getAllCategories, getTags } from '@/services/van-blog/api';
 import { parseMarkdownFile } from '@/services/van-blog/parseMarkdownFile';
 import {
   ModalForm,
@@ -10,6 +10,31 @@ import {
 import { Button, Form, Upload } from 'antd';
 import moment from 'moment';
 import { useState } from 'react';
+const normalizeCategories = (value) => {
+  const source = Array.isArray(value) ? value : value ? [value] : [];
+  return Array.from(new Set(source.map((item) => String(item || '').trim()).filter(Boolean)));
+};
+
+const loadCategoryOptions = async () => {
+  const { data: categories } = await getAllCategories();
+  return (categories || []).map((e) => ({
+    label: e,
+    value: e,
+  }));
+};
+
+const ensureCategoriesExist = async (categories) => {
+  const { data: existingCategories } = await getAllCategories();
+  const existing = new Set(existingCategories || []);
+  const missing = categories.filter((category) => !existing.has(category));
+  for (const category of missing) {
+    const result = await createCategory({ name: category });
+    if (result?.statusCode && result.statusCode !== 200) {
+      throw new Error(result?.message || `创建分类 / 专栏 "${category}" 失败`);
+    }
+  }
+};
+
 export default function (props) {
   const { onFinish } = props;
   const [visible, setVisible] = useState(false);
@@ -17,6 +42,9 @@ export default function (props) {
   const handleUpload = async (file) => {
     const vals = await parseMarkdownFile(file);
     if (vals) {
+      vals.categories = normalizeCategories(vals.categories || vals.category);
+      vals.category = vals.categories[0];
+      await ensureCategoriesExist(vals.categories);
       await createArticle(vals);
     }
   };
@@ -56,6 +84,9 @@ export default function (props) {
           for (const [k, v] of Object.entries(values)) {
             washedValues[k.replace('C', '')] = v;
           }
+          washedValues.categories = normalizeCategories(washedValues.categories || washedValues.category);
+          washedValues.category = washedValues.categories[0];
+          await ensureCategoriesExist(washedValues.categories);
 
           await createArticle(washedValues);
           if (onFinish) {
@@ -99,21 +130,21 @@ export default function (props) {
         <ProFormSelect
           width="md"
           required
-          id="category"
-          name="category"
-          label="分类"
-          placeholder="请选择分类"
-          tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
+          id="categories"
+          name="categories"
+          label="分类 / 专栏"
+          placeholder="搜索或输入分类/专栏"
           rules={[{ required: true, message: '这是必填项' }]}
-          request={async () => {
-            const { data: categories } = await getAllCategories();
-            return categories?.map((e) => {
-              return {
-                label: e,
-                value: e,
-              };
-            });
+          fieldProps={{
+            mode: 'tags',
+            showSearch: true,
+            tokenSeparators: [','],
+            filterOption: (input, option) =>
+              String(option?.label || option?.value || '')
+                .toLowerCase()
+                .includes(input.toLowerCase()),
           }}
+          request={loadCategoryOptions}
         />
         <ProFormDateTimePicker
           showTime={{

@@ -40,6 +40,16 @@ const DEFAULT_ARTICLE_PAGE_SIZE = 20;
 const ARTICLE_PAGE_SIZE_OPTIONS = ['10', '20', '50', '100'];
 const ARTICLE_PAGE_SIZE_STORAGE_KEY = 'van-blog-admin-num-article-page-size';
 
+const getRecordCategories = (record) => {
+  const source =
+    Array.isArray(record?.categories) && record.categories.length
+      ? record.categories
+      : record?.category
+        ? [record.category]
+        : [];
+  return Array.from(new Set(source.map((item) => String(item || '').trim()).filter(Boolean)));
+};
+
 const normalizeArticlePageSize = (value, fallback = DEFAULT_ARTICLE_PAGE_SIZE) => {
   const parsed = parseInt(value, 10);
   if (Number.isNaN(parsed)) {
@@ -373,7 +383,17 @@ export default () => {
           <Card className="admin-mobile-record-card">
             <div className="admin-mobile-record-title-row">
               <div className="admin-mobile-record-title">{record.title || `文章 ${record.id}`}</div>
-              <Tag color="blue">{record.category || '未分类'}</Tag>
+              <Space wrap size={[0, 4]}>
+                {getRecordCategories(record).length ? (
+                  getRecordCategories(record).map((category) => (
+                    <Tag color="blue" key={`${record.id}-${category}`}>
+                      {category}
+                    </Tag>
+                  ))
+                ) : (
+                  <Tag color="blue">未分类</Tag>
+                )}
+              </Space>
             </div>
             <div className="admin-mobile-record-meta">
               <span>ID {record.id}</span>

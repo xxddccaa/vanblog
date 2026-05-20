@@ -14,6 +14,7 @@ interface SearchIndexItem {
   pathname?: string;
   title: string;
   category: string;
+  categories?: string[];
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -28,6 +29,7 @@ export interface UnifiedSearchResult {
   title: string;
   preview: string;
   category?: string;
+  categories?: string[];
   tags?: string[];
   createdAt: string;
   updatedAt: string;
@@ -46,6 +48,16 @@ export class SearchIndexProvider {
     private readonly mindMapProvider: MindMapProvider,
   ) {}
 
+  private getArticleCategories(article: any): string[] {
+    const source =
+      Array.isArray(article?.categories) && article.categories.length
+        ? article.categories
+        : article?.category
+          ? [article.category]
+          : [];
+    return Array.from(new Set(source.map((item: any) => String(item || '').trim()).filter(Boolean)));
+  }
+
   private normalizeArticleResult(article: any): UnifiedSearchResult {
     return {
       type: 'article',
@@ -54,6 +66,7 @@ export class SearchIndexProvider {
       title: article.title,
       preview: buildArticlePreview(article.content || '', 280),
       category: article.category,
+      categories: this.getArticleCategories(article),
       tags: article.tags || [],
       createdAt: new Date(article.createdAt).toISOString(),
       updatedAt: new Date(article.updatedAt || article.createdAt).toISOString(),
@@ -125,18 +138,19 @@ export class SearchIndexProvider {
     const searchIndex: SearchIndexItem[] = articles.map((article) => {
       const preview = buildArticlePreview(article.content || '', 280);
       const tags = article.tags || [];
+      const categories = this.getArticleCategories(article);
 
       return {
         id: article.id,
         pathname: article.pathname,
         title: article.title,
         category: article.category,
+        categories,
         tags,
         createdAt: new Date(article.createdAt).toISOString(),
         updatedAt: new Date(article.updatedAt || article.createdAt).toISOString(),
         preview,
-        searchText: [article.title, article.category, tags.join(' '), preview]
-          .filter(Boolean)
+        searchText: Array.from(new Set([article.title, ...categories, article.category, ...tags, preview].filter(Boolean)))
           .join(' ')
           .toLowerCase(),
       };

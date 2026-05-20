@@ -50,6 +50,7 @@ const Home = (props: IndexPageProps) => {
             updatedAt={new Date(article.updatedAt)}
             createdAt={new Date(article.createdAt)}
             catelog={article.category}
+            categories={article.categories}
             content={article.content || ""}
             enableComment={props.layoutProps.enableComment}
           />

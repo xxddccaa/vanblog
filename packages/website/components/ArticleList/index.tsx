@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import Link from "next/link";
 
 import { getTarget } from "../Link/tools";
-import { type Article } from "../../types/article";
+import { getArticleCategories, type Article } from "../../types/article";
 import { getArticlePath } from "../../utils/getArticlePath";
 
 export default (props: {
@@ -27,6 +27,18 @@ export default (props: {
           <div className="ml-2 md:ml-4 text-base flex-grow flex-shrink overflow-hidden text-gray-600 group-hover:text-gray-800 dark:text-dark dark:group-hover:text-dark">
             {article.title}
           </div>
+          {getArticleCategories(article).length > 0 && (
+            <div className="ml-2 hidden flex-wrap gap-1 md:flex">
+              {getArticleCategories(article).slice(0, 3).map((category) => (
+                <span
+                  key={`${article.id}-${category}`}
+                  className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-600 dark:bg-gray-700 dark:text-dark-light"
+                >
+                  {category}
+                </span>
+              ))}
+            </div>
+          )}
           {props.showTags && article.tags && article.tags.length > 0 && (
             <div className="ml-2 flex flex-wrap gap-1">
               {article.tags.slice(0, 3).map((tag, index) => (

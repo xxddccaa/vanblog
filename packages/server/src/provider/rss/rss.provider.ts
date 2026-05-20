@@ -21,6 +21,16 @@ export class RssProvider {
     private readonly markdownProvider: MarkdownProvider,
   ) {}
 
+  private getArticleCategories(article: any): string[] {
+    const source =
+      Array.isArray(article?.categories) && article.categories.length
+        ? article.categories
+        : article?.category
+          ? [article.category]
+          : [];
+    return Array.from(new Set(source.map((item: any) => String(item || '').trim()).filter(Boolean)));
+  }
+
   async generateRssFeed(info?: string, delay?: number) {
     // 生成 RSS 订阅需要遍历全部文章数据，所以防抖时间长一点吧。
     if (this.timer) {
@@ -94,10 +104,7 @@ export class RssProvider {
       });
       for (const article of articles) {
         const url = `${siteUrl}post/${article.pathname || article.id}`;
-        const category = {
-          name: article.category,
-          domain: `${siteUrl}/category/${article.category}`,
-        };
+        const categories = this.getArticleCategories(article);
         const html = `<div class="markdown-body rss">
       <link rel="stylesheet" href="${siteUrl}markdown.css">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.5.1/katex.min.css">
@@ -115,7 +122,10 @@ export class RssProvider {
           description: this.markdownProvider.renderMarkdown(
             this.markdownProvider.getDescription(article.content),
           ),
-          category: [category],
+          category: categories.map((category) => ({
+            name: category,
+            domain: `${siteUrl}/category/${category}`,
+          })),
           content: html,
           author: [author],
           contributor: [author],

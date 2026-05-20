@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, forwardRef, NotFoundException, NotAcceptableException } from '@nestjs/common';
 import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { CreateArticleDto, SearchArticleOption, UpdateArticleDto } from 'src/types/article.dto';
@@ -49,6 +49,7 @@ export class ArticleProvider {
     content: 1,
     tags: 1,
     category: 1,
+    categories: 1,
     updatedAt: 1,
     createdAt: 1,
     lastVisitedTime: 1,
@@ -69,6 +70,7 @@ export class ArticleProvider {
     content: 1,
     tags: 1,
     category: 1,
+    categories: 1,
     lastVisitedTime: 1,
     updatedAt: 1,
     createdAt: 1,
@@ -89,6 +91,7 @@ export class ArticleProvider {
     title: 1,
     tags: 1,
     category: 1,
+    categories: 1,
     updatedAt: 1,
     lastVisitedTime: 1,
     createdAt: 1,
@@ -116,6 +119,7 @@ export class ArticleProvider {
         content: item.content,
         tags: item.tags,
         category: item.category,
+        categories: this.getArticleCategories(item),
         updatedAt: item.updatedAt,
         createdAt: item.createdAt,
         id: item.id,
@@ -128,7 +132,7 @@ export class ArticleProvider {
     if (!article) {
       return article;
     }
-    const payload = { ...(article?._doc || article) };
+    const payload = this.withNormalizedCategoryFields({ ...(article?._doc || article) });
     if (view === 'list') {
       delete payload.content;
       delete payload.password;
@@ -137,6 +141,55 @@ export class ArticleProvider {
       delete payload.password;
     }
     return payload;
+  }
+
+  public normalizeCategoryList(article: { category?: string; categories?: string[] } = {}) {
+    const rawCategories = Array.isArray(article.categories) ? article.categories : [];
+    const source = rawCategories.length ? rawCategories : article.category ? [article.category] : [];
+    return [...new Set(source.map((item) => String(item || '').trim()).filter(Boolean))];
+  }
+
+  public getArticleCategories(article: { category?: string; categories?: string[] } = {}) {
+    return this.normalizeCategoryList(article);
+  }
+
+  public hasCategory(article: { category?: string; categories?: string[] }, category: string) {
+    const normalizedCategory = String(category || '').trim();
+    if (!normalizedCategory) {
+      return false;
+    }
+    return this.getArticleCategories(article).includes(normalizedCategory);
+  }
+
+  private normalizeArticleCategoryPayload<T extends { category?: string; categories?: string[] }>(
+    payload: T,
+    requireCategory: boolean,
+  ): T & { category?: string; categories?: string[] } {
+    const categories = this.normalizeCategoryList(payload);
+    if (requireCategory && categories.length === 0) {
+      throw new NotAcceptableException('至少需要选择一个分类 / 专栏！');
+    }
+    if (categories.length === 0) {
+      const { categories: _categories, category: _category, ...rest } = payload as any;
+      return rest as T;
+    }
+    return {
+      ...payload,
+      category: categories[0],
+      categories,
+    };
+  }
+
+  private withNormalizedCategoryFields<T extends { category?: string; categories?: string[] }>(article: T): T {
+    if (!article) {
+      return article;
+    }
+    const categories = this.normalizeCategoryList(article);
+    return {
+      ...article,
+      category: article.category || categories[0],
+      categories,
+    };
   }
 
   private trimArticleList<T extends { id: number }>(articles: T[], limit: number, excludeId?: number) {
@@ -151,7 +204,7 @@ export class ArticleProvider {
     const categoryNames = [
       ...new Set(
         articles
-          .map((article) => article?._doc?.category || article?.category)
+          .flatMap((article) => this.getArticleCategories(article?._doc || article))
           .filter(Boolean),
       ),
     ];
@@ -167,7 +220,9 @@ export class ArticleProvider {
     return articles.map((article) => {
       const payload = { ...(article?._doc || article) };
       const isPrivateInArticle = Boolean(payload.private);
-      const isPrivateInCategory = Boolean(categoryPrivateMap.get(payload.category));
+      const isPrivateInCategory = this.getArticleCategories(payload).some((category) =>
+        Boolean(categoryPrivateMap.get(category)),
+      );
       delete payload.password;
 
       if (isPrivateInArticle || isPrivateInCategory) {
@@ -191,6 +246,7 @@ export class ArticleProvider {
       article?.title,
       article?.content,
       article?.category,
+      ...this.getArticleCategories(article),
       ...(Array.isArray(article?.tags) ? article.tags : []),
     ]
       .filter(Boolean)
@@ -215,7 +271,8 @@ export class ArticleProvider {
     skipUpdateWordCount?: boolean,
     id?: number,
   ): Promise<Article> {
-    const createdData = new this.articleModel(createArticleDto);
+    const normalizedDto = this.normalizeArticleCategoryPayload(createArticleDto, true);
+    const createdData = new this.articleModel(normalizedDto);
     const newId = id || (await this.getNewId());
     createdData.id = newId;
     if (!skipUpdateWordCount) {
@@ -440,7 +497,7 @@ export class ArticleProvider {
 
     // id 相同就合并，以导入的优先
     for (const a of articles) {
-      const { id, ...createDto } = a;
+      const { id, ...createDto } = this.withNormalizedCategoryFields(a);
       const oldArticle = await this.getById(id, 'admin');
       if (oldArticle) {
         this.updateById(
@@ -602,7 +659,7 @@ export class ArticleProvider {
       .sort({ createdAt: -1 })
       .lean()
       .exec();
-    return articles as any;
+    return articles.map((article) => this.withNormalizedCategoryFields(article)) as any;
   }
 
   async getLatestPublicArticles(limit: number = 5, excludeId?: number) {
@@ -644,13 +701,18 @@ export class ArticleProvider {
       true,
     );
     const currentTags = new Set(current.tags || []);
+    const currentCategories = new Set(this.getArticleCategories(current));
 
     const scored = articles
       .filter((article) => article.id !== current.id)
       .map((article: any) => {
         const articleTags = article.tags || [];
         const overlapCount = articleTags.filter((tag: string) => currentTags.has(tag)).length;
-        const categoryScore = article.category === current.category ? 3 : 0;
+        const categoryScore = this.getArticleCategories(article).some((category) =>
+          currentCategories.has(category),
+        )
+          ? 3
+          : 0;
         const tagScore = overlapCount * 2;
         const viewerScore = Math.min(Number(article.viewer || 0), 500) / 500;
         const totalScore = categoryScore + tagScore + viewerScore;
@@ -792,7 +854,7 @@ export class ArticleProvider {
 
     const allArticles = await this.getAll('list', false);
     const filteredArticles = allArticles.filter((article) => {
-      if (filter?.category && article.category !== filter.category) {
+      if (filter?.category && !this.hasCategory(article, filter.category)) {
         return false;
       }
       if (filter?.tag && !(article.tags || []).includes(filter.tag)) {
@@ -886,7 +948,7 @@ export class ArticleProvider {
         ) {
           return false;
         }
-        if (filter?.category && article.category !== filter.category) {
+        if (filter?.category && !this.hasCategory(article, filter.category)) {
           return false;
         }
         if (filter?.tag && !(article.tags || []).includes(filter.tag)) {
@@ -935,7 +997,7 @@ export class ArticleProvider {
       const categoryNames = [
         ...new Set(
           articles
-            .map((a: any) => a?._doc?.category || a?.category)
+            .flatMap((a: any) => this.getArticleCategories(a?._doc || a))
             .filter(Boolean),
         ),
       ];
@@ -955,8 +1017,8 @@ export class ArticleProvider {
         //@ts-ignore
         const isPrivateInArticle = a?._doc?.private || a?.private;
         //@ts-ignore
-        const categoryName = a?._doc?.category || a?.category;
-        const isPrivateInCategory = categoryPrivateMap.get(categoryName) || false;
+        const categoryNames = this.getArticleCategories(a?._doc || a);
+        const isPrivateInCategory = categoryNames.some((categoryName) => categoryPrivateMap.get(categoryName) || false);
         const isPrivate = isPrivateInArticle || isPrivateInCategory;
         if (isPrivate) {
           tmpArticles.push({
@@ -1079,11 +1141,14 @@ export class ArticleProvider {
     if (option.category) {
       if (option.regMatch) {
         and.push({
-          category: { $regex: `${option.category}`, $options: 'i' },
+          $or: [
+            { category: { $regex: `${option.category}`, $options: 'i' } },
+            { categories: { $regex: `${option.category}`, $options: 'i' } },
+          ],
         });
       } else {
         and.push({
-          category: option.category,
+          $or: [{ category: option.category }, { categories: option.category }],
         });
       }
     }
@@ -1156,6 +1221,7 @@ export class ArticleProvider {
     } else {
       articles = await this.articleModel.find(query, view).sort(sort).lean().exec();
     }
+    articles = articles.map((article) => this.withNormalizedCategoryFields(article));
     const total = await this.articleModel.countDocuments(query).exec();
     if (option.withPreviewContent && !option.withWordCount) {
       articles = articles.map((article: any) => {
@@ -1232,9 +1298,9 @@ export class ArticleProvider {
   }
 
   async getByPathName(pathname: string, view: ArticleView): Promise<Article> {
-    const article = await this.structuredDataService.getArticleByPathname(pathname);
-    if (article) {
-      return this.projectArticleForView(article, view);
+    const structuredArticle = await this.structuredDataService.getArticleByPathname(pathname);
+    if (structuredArticle) {
+      return this.projectArticleForView(structuredArticle, view);
     }
     const $and: any = [
       {
@@ -1249,7 +1315,7 @@ export class ArticleProvider {
       },
     ];
 
-    return await this.articleModel
+    const modelArticle = await this.articleModel
       .findOne(
         {
           pathname: decodeURIComponent(pathname),
@@ -1259,12 +1325,13 @@ export class ArticleProvider {
       )
       .lean()
       .exec();
+    return this.withNormalizedCategoryFields(modelArticle as any) as any;
   }
 
   async getById(id: number, view: ArticleView): Promise<Article> {
-    const article = await this.structuredDataService.getArticleById(id);
-    if (article) {
-      return this.projectArticleForView(article, view);
+    const structuredArticle = await this.structuredDataService.getArticleById(id);
+    if (structuredArticle) {
+      return this.projectArticleForView(structuredArticle, view);
     }
     const $and: any = [
       {
@@ -1279,7 +1346,7 @@ export class ArticleProvider {
       },
     ];
 
-    return await this.articleModel
+    const modelArticle = await this.articleModel
       .findOne(
         {
           id,
@@ -1289,6 +1356,7 @@ export class ArticleProvider {
       )
       .lean()
       .exec();
+    return this.withNormalizedCategoryFields(modelArticle as any) as any;
   }
   async getByIdWithPassword(id: number | string, password: string): Promise<any> {
     const article: any = await this.getByIdOrPathname(id, 'admin');
@@ -1304,9 +1372,17 @@ export class ArticleProvider {
         return null;
       }
     }
-    const category = ((await this.getCategoryByName(article.category)) || {}) as any;
+    const categories = await this.structuredDataService.getCategoriesByNames(this.getArticleCategories(article));
+    let categoryDocs = categories;
+    if (!categoryDocs.length && !this.structuredDataService.isInitialized()) {
+      categoryDocs = await this.categoryModal
+        .find({ name: { $in: this.getArticleCategories(article) } })
+        .lean()
+        .exec();
+    }
 
-    const categoryPassword = category.private ? category.password : undefined;
+    const privateCategory = (categoryDocs || []).find((category: any) => category?.private);
+    const categoryPassword = privateCategory?.password;
     const targetPassword = categoryPassword ? categoryPassword : article.password;
     if (!targetPassword || targetPassword == '') {
       return { ...(article?._doc || article), password: undefined };
@@ -1351,8 +1427,15 @@ export class ArticleProvider {
     }
 
     // 检查分类是不是加密了
-    const category = await this.getCategoryByName(curArticle.category);
-    if (category && category.private) {
+    const categoryNames = this.getArticleCategories(curArticle);
+    let categoryDocs = await this.structuredDataService.getCategoriesByNames(categoryNames);
+    if (!categoryDocs.length && !this.structuredDataService.isInitialized()) {
+      categoryDocs = await this.categoryModal
+        .find({ name: { $in: categoryNames } })
+        .lean()
+        .exec();
+    }
+    if ((categoryDocs || []).some((category: any) => category?.private)) {
       curArticle.private = true;
       curArticle.content = undefined;
     }
@@ -1476,6 +1559,7 @@ export class ArticleProvider {
       title: each.title,
       id: each.id,
       category: each.category,
+      categories: this.getArticleCategories(each),
       tags: each.tags,
       updatedAt: each.updatedAt,
       createdAt: each.createdAt,
@@ -1500,6 +1584,7 @@ export class ArticleProvider {
             { content: { $regex: safePattern, $options: 'i' } },
             { title: { $regex: safePattern, $options: 'i' } },
             { category: { $regex: safePattern, $options: 'i' } },
+            { categories: { $regex: safePattern, $options: 'i' } },
             { tags: { $regex: safePattern, $options: 'i' } },
           ],
         },
@@ -1533,7 +1618,11 @@ export class ArticleProvider {
         .exec();
       const titleData = rawData.filter((each) => each.title.toLocaleLowerCase().includes(normalizedSearch));
       const contentData = rawData.filter((each) => each.content.toLocaleLowerCase().includes(normalizedSearch));
-      const categoryData = rawData.filter((each) => each.category.toLocaleLowerCase().includes(normalizedSearch));
+      const categoryData = rawData.filter((each) =>
+        this.getArticleCategories(each).some((category) =>
+          category.toLocaleLowerCase().includes(normalizedSearch),
+        ),
+      );
       const tagData = rawData.filter((each) =>
         each.tags.map((t) => t.toLocaleLowerCase()).includes(normalizedSearch),
       );
@@ -1582,7 +1671,10 @@ export class ArticleProvider {
     // 获取原始文章以比较标签变化
     const originalArticle = await this.getById(id, 'admin');
     
-    const updateData = { ...updateArticleDto, updatedAt: new Date() };
+    const updateData = {
+      ...this.normalizeArticleCategoryPayload(updateArticleDto, updateArticleDto.categories !== undefined || updateArticleDto.category !== undefined),
+      updatedAt: new Date(),
+    };
     if (!skipUpdateWordCount) {
       this.metaProvider.updateTotalWords('修改文章');
     }

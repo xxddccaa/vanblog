@@ -48,7 +48,7 @@ docker compose -f docker-compose.all-in-one.latest.yml up -d
 1. 修改 `.env` 中的版本变量，例如：
 
 ```env
-VANBLOG_RELEASE_SUFFIX=v1.6.1-<image-id>
+VANBLOG_RELEASE_SUFFIX=v1.6.2-<image-id>
 ```
 
 2. 拉取并启动新版本：

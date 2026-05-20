@@ -1,4 +1,5 @@
 import {
+  createCategory,
   getAllCategories,
   getTags,
   updateArticle,
@@ -10,6 +11,31 @@ import { Form, message, Modal } from 'antd';
 import moment from 'moment';
 import { useEffect } from 'react';
 import AuthorField from '../AuthorField';
+const normalizeCategories = (value: any) => {
+  const source = Array.isArray(value) ? value : value ? [value] : [];
+  return Array.from(new Set(source.map((item) => String(item || '').trim()).filter(Boolean)));
+};
+
+const loadCategoryOptions = async () => {
+  const { data: categories } = await getAllCategories();
+  return (categories || []).map((e: string) => ({
+    label: e,
+    value: e,
+  }));
+};
+
+const ensureCategoriesExist = async (categories: string[]) => {
+  const { data: existingCategories } = await getAllCategories();
+  const existing = new Set(existingCategories || []);
+  const missing = categories.filter((category) => !existing.has(category));
+  for (const category of missing) {
+    const result = await createCategory({ name: category });
+    if (result?.statusCode && result.statusCode !== 200) {
+      throw new Error(result?.message || `创建分类 / 专栏 "${category}" 失败`);
+    }
+  }
+};
+
 export default function (props: {
   currObj: any;
   setLoading: any;
@@ -30,11 +56,27 @@ export default function (props: {
         title: values?.title,
       };
     }
+    if (type === 'article') {
+      const categories = normalizeCategories(values?.categories || values?.category);
+      return {
+        ...values,
+        categories,
+        category: categories[0],
+      };
+    }
     return values;
   };
   useEffect(() => {
-    if (form && form.setFieldsValue) form.setFieldsValue(currObj);
-  }, [currObj]);
+    if (form && form.setFieldsValue) {
+      form.setFieldsValue({
+        ...currObj,
+        categories:
+          type === 'article'
+            ? normalizeCategories(currObj?.categories || currObj?.category)
+            : currObj?.categories,
+      });
+    }
+  }, [currObj, form, type]);
   return (
     <ModalForm
       form={form}
@@ -63,7 +105,8 @@ export default function (props: {
         setLoading(true);
         try {
           if (type == 'article') {
-            ensureSuccess(await updateArticle(currObj?.id, values), '修改文章失败！');
+            await ensureCategoriesExist(submitValues.categories || []);
+            ensureSuccess(await updateArticle(currObj?.id, submitValues), '修改文章失败！');
             onFinish();
             message.success('修改文章成功！');
           } else if (type == 'draft') {
@@ -116,25 +159,37 @@ export default function (props: {
           }}
         />
       )}
-      {type !== 'document' && (
+      {type === 'article' && (
+        <ProFormSelect
+          width="md"
+          required
+          id="categories"
+          name="categories"
+          label="分类 / 专栏"
+          placeholder="搜索或输入分类/专栏"
+          rules={[{ required: true, message: '这是必填项' }]}
+          fieldProps={{
+            mode: 'tags',
+            showSearch: true,
+            tokenSeparators: [','],
+            filterOption: (input, option) =>
+              String(option?.label || option?.value || '')
+                .toLowerCase()
+                .includes(input.toLowerCase()),
+          }}
+          request={loadCategoryOptions}
+        />
+      )}
+      {type === 'draft' && (
         <ProFormSelect
           width="md"
           required
           id="category"
-          tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
           name="category"
           label="分类"
           placeholder="请选择分类"
           rules={[{ required: true, message: '这是必填项' }]}
-          request={async () => {
-            const { data: categories } = await getAllCategories();
-            return categories?.map((e) => {
-              return {
-                label: e,
-                value: e,
-              };
-            });
-          }}
+          request={loadCategoryOptions}
         />
       )}
       {type !== 'document' && (

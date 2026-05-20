@@ -59,6 +59,18 @@ export class PublicController {
     }
 
     const payload = { ...(article as any) };
+    if (payload.category !== undefined || payload.categories !== undefined) {
+      const rawCategories = Array.isArray(payload.categories) ? payload.categories : [];
+      const categories = rawCategories.length
+        ? rawCategories
+        : payload.category
+          ? [payload.category]
+          : [];
+      payload.categories = Array.from(
+        new Set(categories.map((item) => String(item || '').trim()).filter(Boolean)),
+      );
+      payload.category = payload.category || payload.categories[0];
+    }
     for (const key of [
       'viewer',
       'visited',

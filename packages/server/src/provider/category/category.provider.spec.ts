@@ -1,6 +1,84 @@
 import { CategoryProvider } from './category.provider';
 
 describe('CategoryProvider', () => {
+  it('returns articles whose categories include the requested category in the fallback path', async () => {
+    const articleProvider = {
+      getAll: jest.fn().mockResolvedValue([
+        { id: 1, title: 'A only', category: 'A', categories: ['A'] },
+        { id: 2, title: 'A and B', category: 'A', categories: ['A', 'B'] },
+        { id: 3, title: 'C only', category: 'C', categories: ['C'] },
+      ]),
+      hasCategory: jest.fn((article, category) =>
+        (article.categories || [article.category]).includes(category),
+      ),
+    };
+    const provider = new CategoryProvider({} as any, articleProvider as any, {
+      getArticlesByCategory: jest.fn().mockResolvedValue([]),
+      isInitialized: jest.fn().mockReturnValue(false),
+    } as any);
+
+    await expect(provider.getArticlesByCategory('B', true)).resolves.toEqual([
+      expect.objectContaining({ id: 2 }),
+    ]);
+  });
+
+  it('renames only the matched category inside article category arrays', async () => {
+    const articleProvider = {
+      getAll: jest.fn().mockResolvedValue([
+        { id: 2, category: 'A', categories: ['A', 'B'] },
+      ]),
+      getArticleCategories: jest.fn((article) => article.categories || [article.category]),
+      hasCategory: jest.fn((article, category) =>
+        (article.categories || [article.category]).includes(category),
+      ),
+      updateById: jest.fn().mockResolvedValue(undefined),
+    };
+    const categoryModel = {
+      findOne: jest.fn().mockReturnValue({
+        lean: jest.fn(() => ({ exec: jest.fn().mockResolvedValue(null) })),
+      }),
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const structuredDataService = {
+      getCategoryByName: jest
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 1, name: 'A', sort: 0 }),
+      isInitialized: jest.fn().mockReturnValue(false),
+      getArticlesByCategory: jest.fn().mockResolvedValue([]),
+      renameCategoryInArticles: jest.fn().mockResolvedValue(undefined),
+      upsertCategory: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new CategoryProvider(
+      categoryModel as any,
+      articleProvider as any,
+      structuredDataService as any,
+    );
+
+    await provider.updateCategoryByName('A', { name: 'C' } as any);
+
+    expect(articleProvider.updateById).toHaveBeenCalledWith(2, {
+      categories: ['C', 'B'],
+    });
+    expect(structuredDataService.renameCategoryInArticles).toHaveBeenCalledWith('A', 'C');
+  });
+
+  it('blocks deleting a category used by any article category array', async () => {
+    const provider = new CategoryProvider({} as any, {
+      getAll: jest.fn().mockResolvedValue([
+        { id: 2, category: 'A', categories: ['A', 'B'] },
+      ]),
+      hasCategory: jest.fn((article, category) =>
+        (article.categories || [article.category]).includes(category),
+      ),
+    } as any, {
+      getArticlesByCategory: jest.fn().mockResolvedValue([]),
+      isInitialized: jest.fn().mockReturnValue(false),
+    } as any);
+
+    await expect(provider.deleteOne('B')).rejects.toThrow('分类已有文章，无法删除');
+  });
+
   it('creates a category using the PG category list to determine the next sort value', async () => {
     const created = {
       toObject: () => ({

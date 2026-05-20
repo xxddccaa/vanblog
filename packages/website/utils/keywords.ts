@@ -1,4 +1,4 @@
-import { Article } from "../types/article";
+import { Article, getArticleCategories } from "../types/article";
 
 export const getArticlesKeyWord = (articles: Article[]) => {
   // 文章标签分类生成 keywords
@@ -11,8 +11,10 @@ export const getArticlesKeyWord = (articles: Article[]) => {
           keywords.push(t);
         }
       }
-      if (!keywords.includes(a.category)) {
-        keywords.push(a.category);
+      for (const category of getArticleCategories(a)) {
+        if (!keywords.includes(category)) {
+          keywords.push(category);
+        }
       }
     }
     return keywords;

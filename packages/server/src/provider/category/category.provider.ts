@@ -53,10 +53,9 @@ export class CategoryProvider {
       countMap.set(category, 0);
     });
     allArticles.forEach((article) => {
-      if (!article.category) {
-        return;
+      for (const category of this.articleProvider.getArticleCategories(article)) {
+        countMap.set(category, (countMap.get(category) || 0) + 1);
       }
-      countMap.set(article.category, (countMap.get(article.category) || 0) + 1);
     });
     return categories.map((name) => ({
       name,
@@ -103,7 +102,7 @@ export class CategoryProvider {
       return articles as any;
     }
     const allArticles = await this.articleProvider.getAll('list', includeHidden);
-    return allArticles.filter((article) => article.category === name);
+    return allArticles.filter((article) => this.articleProvider.hasCategory(article, name));
   }
 
   async addOne(name: string) {
@@ -174,11 +173,15 @@ export class CategoryProvider {
       const articles = await this.getArticlesByCategory(name, true);
       if (articles && articles.length) {
         for (const article of articles) {
+          const categories = this.articleProvider
+            .getArticleCategories(article)
+            .map((category) => (category === name ? dto.name : category));
           await this.articleProvider.updateById(article.id, {
-            category: dto.name,
+            categories,
           });
         }
       }
+      await this.structuredDataService.renameCategoryInArticles(name, dto.name);
     }
     const currentCategory = await this.getCategoryByName(name);
     await this.categoryModal.updateOne(

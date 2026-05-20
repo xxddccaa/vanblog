@@ -28,6 +28,7 @@ export default function RichPostCard(props: {
   updatedAt: Date;
   createdAt: Date;
   catelog: string;
+  categories?: string[];
   initialContent: string;
   initialRenderedHtml: string;
   type: 'article' | 'about';
@@ -106,6 +107,7 @@ export default function RichPostCard(props: {
           updatedAt={props.updatedAt}
           createdAt={props.createdAt}
           catelog={props.catelog}
+          categories={props.categories}
           enableComment={props.enableComment}
         />
 

@@ -101,6 +101,7 @@ export function SubTitle(props: {
   updatedAt: Date;
   createdAt: Date;
   catelog: string;
+  categories?: string[];
   enableComment: "true" | "false";
   id: number | string;
   openArticleLinksInNewWindow: boolean;
@@ -109,6 +110,12 @@ export function SubTitle(props: {
   const iconClass =
     "mr-1 fill-gray-400 dark:text-dark dark:group-hover:text-dark-hover group-hover:text-gray-900 ";
   const showDynamicFragments = props.type === "article";
+  const categories =
+    Array.isArray(props.categories) && props.categories.length
+      ? props.categories
+      : props.catelog
+        ? [props.catelog]
+        : [];
   return (
     <div className="text-center text-xs md:text-sm divide-x divide-gray-400 text-gray-400 dark:text-dark post-card-sub-title">
       <span className="inline-flex px-2 items-center">
@@ -136,7 +143,7 @@ export function SubTitle(props: {
           : ` ${dayjs(props.updatedAt).format("YYYY-MM-DD")}`}
       </span>
 
-      {props.type != "about" && (
+      {props.type != "about" && categories.length > 0 && (
         <span className="inline-flex px-2 items-center group dark:group cursor-pointer">
           <span className={iconClass}>
             <svg
@@ -154,12 +161,19 @@ export function SubTitle(props: {
               ></path>
             </svg>
           </span>
-          <Link
-            href={`/category/${encodeQuerystring(props.catelog)}`}
-            target={getTarget(props.openArticleLinksInNewWindow)}
-          >
-            <div className="cursor-pointer group-hover:text-gray-900 dark:group-hover:text-dark-hover hover:font-medium ">{`${props.catelog}`}</div>
-          </Link>
+          <span className="inline-flex flex-wrap justify-center gap-x-2 gap-y-1">
+            {categories.map((category) => (
+              <Link
+                key={`category-${category}`}
+                href={`/category/${encodeQuerystring(category)}`}
+                target={getTarget(props.openArticleLinksInNewWindow)}
+              >
+                <span className="cursor-pointer text-blue-500 transition hover:text-blue-600 hover:font-medium dark:text-blue-400 dark:hover:text-blue-300">
+                  {category}
+                </span>
+              </Link>
+            ))}
+          </span>
         </span>
       )}
       {showDynamicFragments && (

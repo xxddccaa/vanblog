@@ -65,6 +65,7 @@ const PostPages = (props: PostPagesProps) => {
         updatedAt={new Date(props.article.updatedAt)}
         createdAt={new Date(props.article.createdAt)}
         catelog={props.article.category}
+        categories={props.article.categories}
         content={content}
         setContent={setContent}
         type={"article"}

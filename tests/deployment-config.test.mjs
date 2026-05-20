@@ -179,6 +179,11 @@ test('all-in-one runtime uses localhost fan-out and no AI terminal flags', () =>
   assert.match(allInOneDockerfile, /COPY docker\/all-in-one\/Caddyfile \/etc\/caddy\/Caddyfile/);
   assert.match(allInOneDockerfile, /COPY docker\/all-in-one\/entrypoint\.sh/);
   assert.match(allInOneDockerfile, /COPY docker\/all-in-one\/healthcheck\.sh/);
+  assert.match(allInOneDockerfile, /ENV POSTGRES_SHARED_BUFFERS=8GB/);
+  assert.match(allInOneDockerfile, /ENV POSTGRES_EFFECTIVE_CACHE_SIZE=24GB/);
+  assert.match(allInOneDockerfile, /ENV REDIS_SAVE_POLICY="900 1 300 10 60 10000"/);
+  assert.match(allInOneDockerfile, /ENV REDIS_MAXMEMORY=4gb/);
+  assert.match(allInOneDockerfile, /ENV VAN_BLOG_SERVER_URL="http:\/\/127\.0\.0\.1:3000"/);
   assert.doesNotMatch(allInOneDockerfile, /terminal-shell/);
 
   assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3000/);
@@ -298,6 +303,8 @@ test('docs still describe supported deployment paths', () => {
   assert.match(deployDoc, /docker-compose\.latest\.yml/);
   assert.match(deployDoc, /docker-compose\.image\.yml/);
   assert.match(deployDoc, /docker-compose\.all-in-one\.latest\.yml/);
+  assert.match(deployDoc, /docker run -d/);
+  assert.match(guideGetStartedDoc, /docker run -d/);
 
   assert.match(releaseDoc, /docker-compose\.latest\.yml/);
   assert.match(releaseDoc, /docker-compose\.image\.yml/);
@@ -330,9 +337,9 @@ test('Next.js config still supports the expected asset and image behavior', () =
 });
 
 test('package version and release env example stay consistent', () => {
-  assert.equal(packageJson.version, '1.6.1');
+  assert.equal(packageJson.version, '1.6.2');
   assert.match(releaseEnv, /VANBLOG_DOCKER_REPO=kevinchina\/deeplearning/);
-  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.6\.1-replace-with-gitsha8/);
+  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.6\.2-replace-with-gitsha8/);
   assert.doesNotMatch(releaseEnv, /FASTGPT_ROOT_PASSWORD/);
 });
 

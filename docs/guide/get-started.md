@@ -49,6 +49,27 @@ docker compose -f docker-compose.all-in-one.latest.yml up -d
 - 想把主栈和 `postgres` / `redis` 一起收进一个 VanBlog 容器
 - 仍希望沿用 `./data/postgres`、`./data/redis`、`./log` 这些宿主机目录
 
+如果你连 compose 文件都不想维护，也可以直接：
+
+```bash
+docker run -d \
+  --name vanblog \
+  --restart always \
+  --init \
+  --shm-size 1g \
+  -p 80:80 \
+  -v "$(pwd)/data/static:/app/static" \
+  -v "$(pwd)/log:/var/log" \
+  -v "$(pwd)/caddy/config:/root/.config/caddy" \
+  -v "$(pwd)/caddy/data:/root/.local/share/caddy" \
+  -v "$(pwd)/aliyunpan/config:/root/.config/aliyunpan" \
+  -v "$(pwd)/data/postgres:/var/lib/postgresql/data" \
+  -v "$(pwd)/data/redis:/data/redis" \
+  kevinchina/deeplearning:vanblog-all-in-one-latest
+```
+
+这个镜像现在已经内置了和 `docker-compose.all-in-one.latest.yml` 一致的默认环境变量；但端口映射、数据卷挂载、重启策略这些宿主机参数，仍然需要你在 `docker run` 时自己显式传入。
+
 ## 方式三：使用版本锁定镜像部署
 
 ### 1. 准备环境变量

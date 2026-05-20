@@ -56,6 +56,7 @@ export default function PostPages(props: PostPagesProps) {
         updatedAt={new Date(props.article.updatedAt)}
         createdAt={new Date(props.article.createdAt)}
         catelog={props.article.category}
+        categories={props.article.categories}
         initialContent={content}
         initialRenderedHtml={props.initialRenderedHtml}
         type="article"

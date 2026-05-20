@@ -41,6 +41,12 @@ const toStableArticleShell = (article: Partial<Article> | null | undefined): Art
   updatedAt: article?.updatedAt || "",
   createdAt: article?.createdAt || "",
   category: article?.category || "",
+  categories:
+    Array.isArray(article?.categories) && article.categories.length
+      ? article.categories
+      : article?.category
+        ? [article.category]
+        : [],
   content: article?.content || "",
   private: Boolean(article?.private),
   tags: Array.isArray(article?.tags) ? article.tags : [],

@@ -1,6 +1,94 @@
 import { ArticleProvider } from './article.provider';
 
 describe('ArticleProvider', () => {
+  it('normalizes legacy category-only article creation into categories', async () => {
+    const savedArticle = {
+      id: 0,
+      title: 'Legacy Category',
+      category: 'Tech',
+      categories: ['Tech'],
+      toObject() {
+        return {
+          id: this.id,
+          title: this.title,
+          category: this.category,
+          categories: this.categories,
+        };
+      },
+      save: jest.fn().mockImplementation(function () {
+        return Promise.resolve(this);
+      }),
+    };
+    const articleModel: any = jest.fn().mockImplementation((payload) => Object.assign(savedArticle, payload));
+    const structuredDataService = {
+      nextArticleId: jest.fn().mockResolvedValue(7),
+      upsertArticle: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      { updateTotalWords: jest.fn() } as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.create({ title: 'Legacy Category', category: 'Tech' } as any, true);
+
+    expect(articleModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'Tech',
+        categories: ['Tech'],
+      }),
+    );
+    expect(result).toMatchObject({ id: 7, category: 'Tech', categories: ['Tech'] });
+    expect(structuredDataService.upsertArticle).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 7, category: 'Tech', categories: ['Tech'] }),
+    );
+  });
+
+  it('deduplicates multi-category article creation and keeps category as the first category', async () => {
+    const savedArticle = {
+      id: 0,
+      title: 'Multi Category',
+      category: 'A',
+      categories: ['A', 'B'],
+      toObject() {
+        return {
+          id: this.id,
+          title: this.title,
+          category: this.category,
+          categories: this.categories,
+        };
+      },
+      save: jest.fn().mockImplementation(function () {
+        return Promise.resolve(this);
+      }),
+    };
+    const articleModel: any = jest.fn().mockImplementation((payload) => Object.assign(savedArticle, payload));
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      { updateTotalWords: jest.fn() } as any,
+      {} as any,
+      {
+        nextArticleId: jest.fn().mockResolvedValue(8),
+        upsertArticle: jest.fn().mockResolvedValue(undefined),
+      } as any,
+    );
+
+    await provider.create(
+      { title: 'Multi Category', category: 'ignored', categories: [' A ', 'B', 'A', ''] } as any,
+      true,
+    );
+
+    expect(articleModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'A',
+        categories: ['A', 'B'],
+      }),
+    );
+  });
+
   it('uses the structured PG adjacent-article query before falling back to the model scan', async () => {
     const articleModel = {
       find: jest.fn(),

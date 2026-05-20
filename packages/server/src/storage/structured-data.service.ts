@@ -123,6 +123,7 @@ export class StructuredDataService implements OnModuleInit {
         title TEXT NOT NULL,
         content TEXT NOT NULL DEFAULT '',
         category TEXT,
+        categories TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
         top_value INTEGER NOT NULL DEFAULT 0,
         hidden BOOLEAN NOT NULL DEFAULT FALSE,
         private_flag BOOLEAN NOT NULL DEFAULT FALSE,
@@ -333,6 +334,12 @@ export class StructuredDataService implements OnModuleInit {
     `);
 
     await this.store.query(
+      `ALTER TABLE vanblog_articles ADD COLUMN IF NOT EXISTS categories TEXT[] NOT NULL DEFAULT ARRAY[]::text[]`,
+    );
+    await this.store.query(
+      `UPDATE vanblog_articles SET categories = ARRAY[category]::text[] WHERE category IS NOT NULL AND category <> '' AND cardinality(categories) = 0`,
+    );
+    await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_created_at ON vanblog_articles (created_at DESC)',
     );
     await this.store.query(
@@ -355,6 +362,9 @@ export class StructuredDataService implements OnModuleInit {
     );
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_category ON vanblog_articles (category)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_categories ON vanblog_articles USING GIN (categories)',
     );
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_title_lower ON vanblog_articles (LOWER(title))',
@@ -533,6 +543,12 @@ export class StructuredDataService implements OnModuleInit {
     return Number.isFinite(normalized) ? normalized : null;
   }
 
+  private normalizeArticleCategories(categories?: any, category?: string) {
+    const rawCategories = Array.isArray(categories) ? categories : [];
+    const source = rawCategories.length ? rawCategories : category ? [category] : [];
+    return [...new Set(source.map((item) => String(item || '').trim()).filter(Boolean))];
+  }
+
   private mapUserRow(row: any) {
     if (!row) {
       return null;
@@ -623,6 +639,7 @@ export class StructuredDataService implements OnModuleInit {
       content: row.content || '',
       tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
       category: row.category || undefined,
+      categories: this.normalizeArticleCategories(row.categories, row.category || undefined),
       top: Number(row.top_value || 0),
       hidden: Boolean(row.hidden),
       private: Boolean(row.private_flag),
@@ -873,6 +890,7 @@ export class StructuredDataService implements OnModuleInit {
         a.title,
         a.content,
         a.category,
+        a.categories,
         a.top_value,
         a.hidden,
         a.private_flag,
@@ -906,6 +924,7 @@ export class StructuredDataService implements OnModuleInit {
         a.title,
         ''::text AS content,
         a.category,
+        a.categories,
         a.top_value,
         a.hidden,
         a.private_flag,
@@ -1052,6 +1071,7 @@ export class StructuredDataService implements OnModuleInit {
     const prefix = alias ? `${alias}.` : '';
     return this.buildWeightedSearchVectorSql([
       { expr: `${prefix}title`, weight: 'A' },
+      { expr: `array_to_string(${prefix}categories, ' ')`, weight: 'B' },
       { expr: `${prefix}category`, weight: 'B' },
       { expr: `${prefix}author`, weight: 'C' },
       { expr: `${prefix}content`, weight: 'D' },
@@ -1115,8 +1135,22 @@ export class StructuredDataService implements OnModuleInit {
       clauses.push('a.hidden = FALSE');
     }
     if (filters.category) {
-      params.push(regMatch ? `%${filters.category}%` : filters.category);
-      clauses.push(`a.category ${regMatch ? 'ILIKE' : '='} $${params.length}`);
+      if (regMatch) {
+        params.push(`%${filters.category}%`);
+        clauses.push(`
+          (
+            a.category ILIKE $${params.length}
+            OR EXISTS (
+              SELECT 1
+              FROM unnest(a.categories) AS category_name
+              WHERE category_name ILIKE $${params.length}
+            )
+          )
+        `);
+      } else {
+        params.push(filters.category);
+        clauses.push(`(a.category = $${params.length} OR $${params.length} = ANY(a.categories))`);
+      }
     }
     if (filters.title) {
       params.push(`%${filters.title}%`);
@@ -1404,23 +1438,26 @@ export class StructuredDataService implements OnModuleInit {
       if (articleId === null) {
         continue;
       }
+      const categories = this.normalizeArticleCategories(article.categories, article.category);
+      const category = categories[0] || article.category || null;
       await this.store.query(
         `
           INSERT INTO vanblog_articles (
-            id, title, content, category, top_value, hidden, private_flag, deleted,
+            id, title, content, category, categories, top_value, hidden, private_flag, deleted,
             viewer, visited, author, password, pathname, copyright,
             last_visited_time, created_at, updated_at, source_record_id
           ) VALUES (
-            $1,$2,$3,$4,$5,$6,$7,$8,
-            $9,$10,$11,$12,$13,$14,
-            $15,$16,$17,$18
+            $1,$2,$3,$4,$5::text[],$6,$7,$8,$9,
+            $10,$11,$12,$13,$14,$15,
+            $16,$17,$18,$19
           )
         `,
         [
           articleId,
           article.title,
           article.content || '',
-          article.category || null,
+          category,
+          categories,
           article.top || 0,
           Boolean(article.hidden),
           Boolean(article.private),
@@ -2343,21 +2380,24 @@ export class StructuredDataService implements OnModuleInit {
       return;
     }
     await this.ensureSequenceAtLeast('vanblog_articles_id_seq', article.id);
+    const categories = this.normalizeArticleCategories(article.categories, article.category);
+    const category = categories[0] || article.category || null;
     await this.store.query(
       `
         INSERT INTO vanblog_articles (
-          id, title, content, category, top_value, hidden, private_flag, deleted,
+          id, title, content, category, categories, top_value, hidden, private_flag, deleted,
           viewer, visited, author, password, pathname, copyright,
           last_visited_time, created_at, updated_at, source_record_id
         ) VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,
-          $9,$10,$11,$12,$13,$14,
-          $15,$16,$17,$18
+          $1,$2,$3,$4,$5::text[],$6,$7,$8,$9,
+          $10,$11,$12,$13,$14,$15,
+          $16,$17,$18,$19
         )
         ON CONFLICT (id) DO UPDATE SET
           title = EXCLUDED.title,
           content = EXCLUDED.content,
           category = EXCLUDED.category,
+          categories = EXCLUDED.categories,
           top_value = EXCLUDED.top_value,
           hidden = EXCLUDED.hidden,
           private_flag = EXCLUDED.private_flag,
@@ -2377,7 +2417,8 @@ export class StructuredDataService implements OnModuleInit {
         article.id,
         article.title,
         article.content || '',
-        article.category || null,
+        category,
+        categories,
         article.top || 0,
         Boolean(article.hidden),
         Boolean(article.private),
@@ -3540,7 +3581,7 @@ export class StructuredDataService implements OnModuleInit {
                   COUNT(a.id)::int AS value
                 FROM vanblog_categories c
                 LEFT JOIN vanblog_articles a
-                  ON a.category = c.name
+                  ON (a.category = c.name OR c.name = ANY(a.categories))
                  AND a.deleted = FALSE
                 GROUP BY c.id, c.name, c.sort_order
                 ORDER BY c.sort_order ASC, c.id ASC
@@ -3764,6 +3805,7 @@ export class StructuredDataService implements OnModuleInit {
             a.title,
             a.content,
             a.category,
+            a.categories,
             a.top_value,
             a.hidden,
             a.private_flag,
@@ -4044,6 +4086,7 @@ export class StructuredDataService implements OnModuleInit {
         similarity(COALESCE(a.title, ''), $${keywordParamIndex}),
         similarity(COALESCE(a.content, ''), $${keywordParamIndex}),
         similarity(COALESCE(a.category, ''), $${keywordParamIndex}),
+        similarity(COALESCE(array_to_string(a.categories, ' '), ''), $${keywordParamIndex}),
         similarity(COALESCE(a.author, ''), $${keywordParamIndex})
       )
     `;
@@ -4057,6 +4100,7 @@ export class StructuredDataService implements OnModuleInit {
           OR a.title ILIKE '%' || $${keywordParamIndex} || '%'
           OR a.content ILIKE '%' || $${keywordParamIndex} || '%'
           OR COALESCE(a.category, '') ILIKE '%' || $${keywordParamIndex} || '%'
+          OR COALESCE(array_to_string(a.categories, ' '), '') ILIKE '%' || $${keywordParamIndex} || '%'
           OR COALESCE(a.author, '') ILIKE '%' || $${keywordParamIndex} || '%'
           OR EXISTS (
             SELECT 1
@@ -4887,6 +4931,47 @@ export class StructuredDataService implements OnModuleInit {
     return result.rows.map((row) => this.mapCategoryRow(row)).filter(Boolean);
   }
 
+  async renameCategoryInArticles(oldName: string, newName: string) {
+    if (!oldName || !newName || oldName === newName) {
+      return;
+    }
+    await this.store.query(
+      `
+        UPDATE vanblog_articles
+        SET
+          categories = (
+            SELECT COALESCE(array_agg(next_category ORDER BY first_ord), ARRAY[]::text[])
+            FROM (
+              SELECT next_category, MIN(ord) AS first_ord
+              FROM unnest(
+                CASE
+                  WHEN cardinality(categories) = 0 AND category IS NOT NULL AND category <> ''
+                    THEN ARRAY[category]::text[]
+                  ELSE categories
+                END
+              ) WITH ORDINALITY AS source(current_category, ord)
+              CROSS JOIN LATERAL (
+                SELECT CASE WHEN current_category = $1 THEN $2 ELSE current_category END AS next_category
+              ) AS mapped
+              WHERE next_category <> ''
+              GROUP BY next_category
+            ) AS deduped_categories
+          ),
+          category = CASE WHEN category = $1 THEN $2 ELSE category END,
+          updated_at = NOW()
+        WHERE category = $1 OR $1 = ANY(categories)
+      `,
+      [oldName, newName],
+    );
+    await this.store.query(
+      `
+        UPDATE vanblog_articles
+        SET category = categories[1]
+        WHERE cardinality(categories) > 0
+      `,
+    );
+  }
+
   async getMaxCategoryId() {
     const result = await this.store.query<{ max_id: number | null }>(
       `SELECT MAX(id) AS max_id FROM vanblog_categories`,
@@ -4907,7 +4992,7 @@ export class StructuredDataService implements OnModuleInit {
           COUNT(a.id)::int AS article_count
         FROM vanblog_categories c
         LEFT JOIN vanblog_articles a
-          ON a.category = c.name
+          ON (a.category = c.name OR c.name = ANY(a.categories))
          AND a.deleted = FALSE
          AND ($1::boolean OR a.hidden = FALSE)
         GROUP BY c.id, c.name, c.sort_order
@@ -4929,7 +5014,7 @@ export class StructuredDataService implements OnModuleInit {
           COUNT(a.id)::int AS value
         FROM vanblog_categories c
         LEFT JOIN vanblog_articles a
-          ON a.category = c.name
+          ON (a.category = c.name OR c.name = ANY(a.categories))
          AND a.deleted = FALSE
          AND ($1::boolean OR a.hidden = FALSE)
         GROUP BY c.id, c.name, c.sort_order

@@ -1843,6 +1843,13 @@ export class BackupController {
     try {
       const categoryNames = new Set<string>();
       content.forEach((item) => {
+        if (Array.isArray(item.categories)) {
+          for (const category of item.categories) {
+            if (typeof category === 'string' && category.trim()) {
+              categoryNames.add(category.trim());
+            }
+          }
+        }
         if (item.category && typeof item.category === 'string' && item.category.trim()) {
           categoryNames.add(item.category.trim());
         }

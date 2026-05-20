@@ -23,6 +23,9 @@ export class Article extends Document {
   @Prop({ index: true })
   category: string;
 
+  @Prop({ default: [], index: true })
+  categories: string[];
+
   @Prop({ default: false, index: true })
   hidden: boolean;
 

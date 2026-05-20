@@ -610,7 +610,16 @@ export default function () {
             {type != 'about' && type != 'moment' && type != 'document' && (
               <>
                 <Tag color="green">{typeMap[type] || '-'}</Tag>
-                <Tag color="blue">{currObj?.category || '-'}</Tag>
+                {(Array.isArray(currObj?.categories) && currObj.categories.length
+                  ? currObj.categories
+                  : currObj?.category
+                    ? [currObj.category]
+                    : ['-']
+                ).map((category) => (
+                  <Tag color="blue" key={`category-${category}`}>
+                    {category}
+                  </Tag>
+                ))}
                 <Tags tags={currObj?.tags} />
               </>
             )}

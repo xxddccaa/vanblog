@@ -170,6 +170,18 @@ export class ISRProvider {
     return leftTags.join('||') === rightTags.join('||');
   }
 
+  private getArticleCategories(article?: Article): string[] {
+    const rawCategories = Array.isArray((article as any)?.categories) ? (article as any).categories : [];
+    const source = rawCategories.length ? rawCategories : article?.category ? [article.category] : [];
+    return Array.from(new Set(source.map((item) => String(item || '').trim()).filter(Boolean)));
+  }
+
+  private sameCategorySet(left?: Article, right?: Article) {
+    const leftCategories = this.getArticleCategories(left).sort();
+    const rightCategories = this.getArticleCategories(right).sort();
+    return leftCategories.join('||') === rightCategories.join('||');
+  }
+
   private didPaginationShapeChange(beforeObj?: Article, article?: Article) {
     if (!beforeObj || !article) {
       return true;
@@ -191,7 +203,7 @@ export class ISRProvider {
     return (
       beforeObj.title !== article.title ||
       beforeObj.content !== article.content ||
-      beforeObj.category !== article.category ||
+      !this.sameCategorySet(beforeObj, article) ||
       beforeObj.pathname !== article.pathname ||
       !this.sameTagSet(beforeObj.tags, article.tags)
     );
@@ -210,7 +222,7 @@ export class ISRProvider {
     }
 
     return (
-      beforeObj.category !== article.category ||
+      !this.sameCategorySet(beforeObj, article) ||
       !this.sameTagSet(beforeObj.tags, article.tags) ||
       this.didPaginationShapeChange(beforeObj, article)
     );
@@ -258,16 +270,6 @@ export class ISRProvider {
     return urls;
   }
 
-  private async getCategoryListingUrl(article: Article) {
-    const encodedCategory = encodeQuerystring(article.category);
-    return await this.getListingPageUrl(
-      article.id,
-      { category: article.category },
-      `/category/${encodedCategory}`,
-      `/category/${encodedCategory}/page`,
-    );
-  }
-
   private getArchiveYear(article?: Article) {
     if (!article?.createdAt) {
       return null;
@@ -301,18 +303,22 @@ export class ISRProvider {
   }
 
   private getCategoryArchiveUrls(article?: Article) {
-    if (!article?.category) {
+    const categories = this.getArticleCategories(article);
+    if (!categories.length) {
       return [];
     }
     const year = this.getArchiveYear(article);
     const month = this.getArchiveMonth(article);
-    const encodedCategory = encodeQuerystring(article.category);
-    const urls = [`/category/${encodedCategory}`];
-    if (year) {
-      urls.push(`/category/${encodedCategory}/archive/${year}`);
-    }
-    if (year && month) {
-      urls.push(`/category/${encodedCategory}/archive/${year}/${month}`);
+    const urls: string[] = [];
+    for (const category of categories) {
+      const encodedCategory = encodeQuerystring(category);
+      urls.push(`/category/${encodedCategory}`);
+      if (year) {
+        urls.push(`/category/${encodedCategory}/archive/${year}`);
+      }
+      if (year && month) {
+        urls.push(`/category/${encodedCategory}/archive/${year}/${month}`);
+      }
     }
     return urls;
   }
@@ -360,19 +366,28 @@ export class ISRProvider {
       toCacheTag('post', article.pathname),
       toCacheTag('archive-year', this.getArchiveYear(article)),
       toCacheTag('archive-month', this.getArchiveMonthKey(article)),
-      toCacheTag('category', article.category),
       toCacheTag('timeline', new Date(article.createdAt).getFullYear()),
     ]);
 
+    for (const category of this.getArticleCategories(article)) {
+      cacheTags.add(toCacheTag('category', category));
+      cacheTags.add(toCacheTag('category-archive-summary', category));
+      cacheTags.add(
+        toCacheTag('category-archive-month', `${category}-${this.getArchiveMonthKey(article)}`),
+      );
+    }
     for (const tag of article.tags || []) {
       cacheTags.add(toCacheTag('tag', tag));
     }
     if (beforeObj?.pathname) {
       cacheTags.add(toCacheTag('post', beforeObj.pathname));
     }
-    if (beforeObj?.category) {
-      cacheTags.add(toCacheTag('category', beforeObj.category));
-      cacheTags.add(toCacheTag('category-archive-summary', beforeObj.category));
+    for (const category of this.getArticleCategories(beforeObj)) {
+      cacheTags.add(toCacheTag('category', category));
+      cacheTags.add(toCacheTag('category-archive-summary', category));
+      cacheTags.add(
+        toCacheTag('category-archive-month', `${category}-${this.getArchiveMonthKey(beforeObj)}`),
+      );
     }
     if (beforeObj?.createdAt) {
       cacheTags.add(toCacheTag('timeline', new Date(beforeObj.createdAt).getFullYear()));
@@ -382,26 +397,9 @@ export class ISRProvider {
     for (const tag of beforeObj?.tags || []) {
       cacheTags.add(toCacheTag('tag', tag));
     }
-    if (article.category) {
-      cacheTags.add(toCacheTag('category-archive-summary', article.category));
-      cacheTags.add(
-        toCacheTag(
-          'category-archive-month',
-          `${article.category}-${this.getArchiveMonthKey(article)}`,
-        ),
-      );
-    }
     for (const tag of article.tags || []) {
       cacheTags.add(toCacheTag('tag-archive-summary', tag));
       cacheTags.add(toCacheTag('tag-archive-month', `${tag}-${this.getArchiveMonthKey(article)}`));
-    }
-    if (beforeObj?.category) {
-      cacheTags.add(
-        toCacheTag(
-          'category-archive-month',
-          `${beforeObj.category}-${this.getArchiveMonthKey(beforeObj)}`,
-        ),
-      );
     }
     for (const tag of beforeObj?.tags || []) {
       cacheTags.add(toCacheTag('tag-archive-summary', tag));

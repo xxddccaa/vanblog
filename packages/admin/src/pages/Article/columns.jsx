@@ -6,6 +6,15 @@ import { parseObjToMarkdown } from '@/services/van-blog/parseMarkdownFile';
 import { message, Modal, Space, Tag } from 'antd';
 import { history } from '@umijs/max';
 import { genActiveObj } from '../../services/van-blog/activeColTools';
+const getRecordCategories = (record) => {
+  const source = Array.isArray(record?.categories) && record.categories.length
+    ? record.categories
+    : record?.category
+      ? [record.category]
+      : [];
+  return Array.from(new Set(source.map((item) => String(item || '').trim()).filter(Boolean)));
+};
+
 export const columns = [
   {
     dataIndex: 'id',
@@ -55,6 +64,21 @@ export const columns = [
         value: each,
       }));
       return data;
+    },
+    render: (_, record) => {
+      const categories = getRecordCategories(record);
+      if (!categories.length) {
+        return '-';
+      }
+      return (
+        <Space wrap size={[0, 4]}>
+          {categories.map((category) => (
+            <Tag color="blue" key={`${record.id}-${category}`}>
+              {category}
+            </Tag>
+          ))}
+        </Space>
+      );
     },
   },
   {

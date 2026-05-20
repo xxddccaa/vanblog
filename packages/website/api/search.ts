@@ -3,6 +3,7 @@ export interface SearchIndexItem {
   id: number;
   pathname?: string;
   category: string;
+  categories?: string[];
   tags: string[];
   updatedAt: string;
   createdAt: string;
@@ -21,7 +22,12 @@ export function filterSearchIndex(index: SearchIndexItem[], keyword: string) {
 
   return index
     .filter((item) => {
-      const haystack = item.searchText || [item.title, item.category, (item.tags || []).join(' '), item.preview || ''].join(' ').toLowerCase();
+      const categories = Array.isArray(item.categories) && item.categories.length
+        ? item.categories
+        : item.category
+          ? [item.category]
+          : [];
+      const haystack = item.searchText || [item.title, categories.join(' '), item.category, (item.tags || []).join(' '), item.preview || ''].join(' ').toLowerCase();
       return haystack.includes(normalized);
     })
     .sort((left, right) => {
