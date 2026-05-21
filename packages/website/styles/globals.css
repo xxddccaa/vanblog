@@ -11,6 +11,7 @@
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
+    overscroll-behavior-y: none;
   }
   html.dark {
     background-color: var(--vb-front-page-bg-dark, #0c1928);
@@ -22,6 +23,7 @@
   }
   body {
     min-height: 100vh;
+    overscroll-behavior-y: none;
     background-color: var(--vb-front-page-bg-light, #f4f8fb) !important;
     background-image: var(--bg-image);
     background-size: cover;

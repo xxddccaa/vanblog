@@ -8,7 +8,7 @@
 - 明确多镜像发布规范，避免再回到单镜像 `kevinchina/deeplearning:vanblog-latest` 的不可追踪模式
 - 保留一个可选的 all-in-one 单镜像发布入口，方便只维护一个 VanBlog 容器
 
-当前代码基线已经推进到 `v1.6.2`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
+当前代码基线已经推进到 `v1.6.3`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
 
 ## 1. 发布边界
 
