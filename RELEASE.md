@@ -8,7 +8,7 @@
 - 明确多镜像发布规范，避免再回到单镜像 `kevinchina/deeplearning:vanblog-latest` 的不可追踪模式
 - 保留一个可选的 all-in-one 单镜像发布入口，方便只维护一个 VanBlog 容器
 
-当前代码基线已经推进到 `v1.6.3`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
+当前代码基线已经推进到 `v1.6.4`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
 
 ## 1. 发布边界
 
@@ -18,7 +18,8 @@
 - 数据库和缓存继续使用运行时官方镜像：`postgres:16-alpine`、`redis:7-alpine`
 - 仓库额外提供一个可选发布物：`vanblog-all-in-one`，它会把主栈和 `postgres` / `redis` 收进同一个容器
 - `pnpm release:images` / `pnpm release:images:push` 只负责 5 个核心镜像
-- `pnpm release:all-in-one` / `pnpm release:all-in-one:push` 只发布 `vanblog-all-in-one-*` 单镜像标签
+- `pnpm release:publish` 只负责发布 5 个核心镜像，不会发布 `vanblog-all-in-one-latest`
+- `pnpm release:all-in-one` / `pnpm release:all-in-one:push` / `pnpm release:all-in-one:publish` 只发布 `vanblog-all-in-one-*` 单镜像标签
 
 ## 2. 发布机制建议
 
@@ -37,10 +38,11 @@
 3. 确认根目录 `package.json` 的版本号正确，例如 `1.6.2`，并统一成发布标签 `vX.Y.Z`。
 4. 补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案。
 5. 给当前代码打版本 tag，并推送到 GitHub。
-6. 按所选发布路径执行发版脚本。
-7. 确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
-8. 记录本次版本号、Git tag、镜像 id。
-9. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署。
+6. 先执行 `pnpm release:publish` 发布 5 个核心镜像。
+7. 如果本次也要维护 `docker-compose.all-in-one.latest.yml` 的快速部署入口，继续执行 `pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>`，确保 `kevinchina/deeplearning:vanblog-all-in-one-latest` 同步到同一版本。
+8. 确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
+9. 记录本次版本号、Git tag、镜像 id、5 个核心镜像发布结果，以及 all-in-one latest 是否已同步。
+10. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署；单镜像部署使用 `docker-compose.all-in-one.image.yml` 或已经同步的 `docker-compose.all-in-one.latest.yml`。
 
 ## 3. 镜像命名规范
 
@@ -165,9 +167,25 @@ bash scripts/release-images.sh --push
 
 ### 6.4 all-in-one 发布
 
+`pnpm release:publish` 不会发布 all-in-one。每次需要维护 `kevinchina/deeplearning:vanblog-all-in-one-latest` 时，都要单独执行 all-in-one 发布流程。
+
 ```bash
 pnpm release:all-in-one
 pnpm release:all-in-one:push
 pnpm release:all-in-one:publish
 pnpm release:all-in-one:latest --version vX.Y.Z --image-id <id>
+```
+
+正式发版推荐在 5 个核心镜像发布成功后继续执行：
+
+```bash
+pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>
+```
+
+该命令会发布并验证：
+
+```bash
+kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id>
+kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z
+kevinchina/deeplearning:vanblog-all-in-one-latest
 ```
