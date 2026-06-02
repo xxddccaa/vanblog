@@ -3,23 +3,18 @@
 @tailwind utilities;
 
 @layer base {
+  /* 背景图只挂在 body 上，绝不能挂在 html 上。html 是 canvas 元素——rubber-band
+     越界滚动（触控板/部分浏览器的弹性回弹）时，上下边界外的空白由 canvas 背景绘制。
+     若把背景图放在 html，上拉/下拉越界就会直接露出整张背景图。这里 html 只保留纯色，
+     由于 html 有非透明 background-color，body 的背景不会再向 canvas 传播，越界空白
+     处显示的就是这块纯色页面底色。 */
   html {
     @apply bg-slate-100;
     background-color: var(--vb-front-page-bg-light, #f4f8fb);
-    background-image: var(--bg-image);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
     overscroll-behavior-y: none;
   }
   html.dark {
     background-color: var(--vb-front-page-bg-dark, #0c1928);
-    background-image: var(--bg-image-dark);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
   }
   body {
     min-height: 100vh;
