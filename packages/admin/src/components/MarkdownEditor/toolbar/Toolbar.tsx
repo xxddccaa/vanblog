@@ -5,6 +5,7 @@ import i18n from '@emoji-mart/data/i18n/zh.json';
 import Picker from '@emoji-mart/react';
 import {
   BoldOutlined,
+  BgColorsOutlined,
   CodeOutlined,
   FontSizeOutlined,
   ItalicOutlined,
@@ -17,11 +18,17 @@ import {
   UndoOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown, Popover, Space } from 'antd';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { MenuProps } from 'antd';
 
-import { COMMON_CODE_LANGUAGES, CUSTOM_CONTAINER_TITLES } from '../utils';
+import TextColorControls from '../TextColorControls';
+import {
+  COMMON_CODE_LANGUAGES,
+  CUSTOM_CONTAINER_TITLES,
+  DEFAULT_TEXT_COLOR,
+  normalizeTextColor,
+} from '../utils';
 
 type ToolbarProps = {
   loading: boolean;
@@ -32,6 +39,7 @@ type ToolbarProps = {
   onBold: () => void;
   onItalic: () => void;
   onStrike: () => void;
+  onTextColor: (color: string) => void;
   onInlineCode: () => void;
   onLink: () => void;
   onQuote: () => void;
@@ -65,6 +73,7 @@ export default function Toolbar(props: ToolbarProps) {
     onBold,
     onItalic,
     onStrike,
+    onTextColor,
     onInlineCode,
     onLink,
     onQuote,
@@ -80,6 +89,8 @@ export default function Toolbar(props: ToolbarProps) {
     onInsertContainer,
     onInsertEmoji,
   } = props;
+  const [textColorOpen, setTextColorOpen] = useState(false);
+  const [textColorValue, setTextColorValue] = useState<string>(DEFAULT_TEXT_COLOR);
 
   const containerItems = useMemo<MenuProps['items']>(
     () =>
@@ -140,6 +151,28 @@ export default function Toolbar(props: ToolbarProps) {
         >
           删除线
         </Button>
+        <Popover
+          trigger="click"
+          open={textColorOpen}
+          onOpenChange={setTextColorOpen}
+          placement="bottomLeft"
+          overlayClassName="vb-text-color-popover"
+          content={
+            <TextColorControls
+              value={textColorValue}
+              onChange={setTextColorValue}
+              onApply={(color) => {
+                onTextColor(normalizeTextColor(color));
+                setTextColorOpen(false);
+              }}
+              onClose={() => setTextColorOpen(false)}
+            />
+          }
+        >
+          <Button icon={<BgColorsOutlined />} disabled={loading} title="文字颜色">
+            文字颜色
+          </Button>
+        </Popover>
         <Button icon={<CodeOutlined />} onClick={onInlineCode} disabled={loading} title="行内代码">
           行内代码
         </Button>

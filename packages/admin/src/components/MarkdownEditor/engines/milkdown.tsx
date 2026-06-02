@@ -49,9 +49,11 @@ import {
   buildLinkSnippet,
   buildMathBlockSnippet,
   buildMoreSnippet,
+  buildTextColorSnippet,
   buildTaskListSnippet,
   getLastCodeLanguage,
   saveLastCodeLanguage,
+  TEXT_COLOR_PLACEHOLDER,
 } from '../utils';
 import '../index.less';
 
@@ -324,6 +326,15 @@ export default function MilkdownEngine(props: MarkdownEditorProps) {
       onBold: () => runEditorCommand(callCommand(toggleStrongCommand.key)),
       onItalic: () => runEditorCommand(callCommand(toggleEmphasisCommand.key)),
       onStrike: () => runEditorCommand(callCommand(toggleStrikethroughCommand.key)),
+      onTextColor: (color: string) =>
+        runEditorAction((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const { from, to, empty } = view.state.selection;
+          const selectedText = empty
+            ? TEXT_COLOR_PLACEHOLDER
+            : view.state.doc.textBetween(from, to, '\n');
+          insert(buildTextColorSnippet(selectedText || TEXT_COLOR_PLACEHOLDER, color), true)(ctx);
+        }),
       onInlineCode: () => runEditorCommand(callCommand(toggleInlineCodeCommand.key)),
       onLink: () =>
         runEditorAction((ctx) => {
@@ -373,6 +384,7 @@ export default function MilkdownEngine(props: MarkdownEditorProps) {
           onBold={toolbarHandlers.onBold}
           onItalic={toolbarHandlers.onItalic}
           onStrike={toolbarHandlers.onStrike}
+          onTextColor={toolbarHandlers.onTextColor}
           onInlineCode={toolbarHandlers.onInlineCode}
           onLink={toolbarHandlers.onLink}
           onQuote={toolbarHandlers.onQuote}

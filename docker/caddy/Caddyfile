@@ -80,7 +80,7 @@
     reverse_proxy server:3000
   }
   handle /swagger* {
-    respond "Not Found" 404
+    reverse_proxy server:3000
   }
   handle /api/user* {
     uri strip_prefix /api

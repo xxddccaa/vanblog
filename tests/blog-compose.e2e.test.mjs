@@ -322,16 +322,16 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     const swagger = await waitFor(async () => {
       try {
         const response = await fetchText(`${baseUrl}/swagger`);
-        return response.status === 404 ? response : false;
+        return response.status === 200 ? response : false;
       } catch {
         return false;
       }
     }, {
       timeoutMs: 90 * 1000,
       intervalMs: 3000,
-      label: 'swagger ui to stay private at the public entrypoint',
+      label: 'swagger ui to be reachable at the public entrypoint',
     });
-    assert.equal(swagger.status, 404);
+    assert.equal(swagger.status, 200);
 
     const walineAdmin = await waitFor(async () => {
       try {

@@ -18,4 +18,11 @@ describe('MarkdownProvider', () => {
     expect(html).toContain('\\(E=mc^2\\)');
     expect(html).not.toContain('katex');
   });
+
+  it('preserves inline color styles in raw html content', () => {
+    const html = provider.renderMarkdown('<span style="color:#ff4d4f">红字</span>');
+
+    expect(html).toContain('<span style="color:#ff4d4f">红字</span>');
+    expect(html).not.toContain('&lt;span');
+  });
 });

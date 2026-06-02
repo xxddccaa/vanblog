@@ -331,6 +331,12 @@ async function assertDarkEditorSurface(page, token) {
   assert.ok(bodyText.includes('保存'), 'editor page did not render save action');
 
   const syntaxState = await page.evaluate(() => {
+    // The text-color action is a ByteMD toolbar plugin (tippy tooltip, no DOM title attr) and,
+    // if the Milkdown engine is active, an antd button with a title. Match the stable icon marker
+    // so detection works regardless of which engine resolves.
+    const textColorButton = document.querySelector(
+      '[data-vb-text-color-icon="true"], button[title="文字颜色"], [title="文字颜色"]',
+    );
     const htmlTheme = document.documentElement.dataset.theme || '';
     const milkdownEditor = document.querySelector('.vb-milkdown-editor .milkdown .editor');
     const byteMDEditor = document.querySelector('.CodeMirror');
@@ -373,6 +379,7 @@ async function assertDarkEditorSurface(page, token) {
       previewHighlightedTokenCount: previewTokenColors.length,
       editorTokenSample: editorTokenColors.slice(0, 5),
       previewTokenSample: previewTokenColors.slice(0, 5),
+      hasTextColorButton: Boolean(textColorButton),
     };
   });
 
@@ -389,6 +396,11 @@ async function assertDarkEditorSurface(page, token) {
     `dark editor text still uses light-theme black: ${JSON.stringify(syntaxState)}`,
   );
   assert.ok(syntaxState.editorBackground, 'editor surface did not expose a background color');
+  assert.equal(
+    syntaxState.hasTextColorButton,
+    true,
+    `editor toolbar did not render text color action: ${JSON.stringify(syntaxState)}`,
+  );
   if (syntaxState.editorType === 'bytemd') {
     assert.ok(
       syntaxState.editorHighlightedTokenCount > 0,
@@ -418,6 +430,9 @@ async function assertNarrowByteMdPreviewVisible(page, token) {
   assert.ok(bodyText.includes('保存'), 'ByteMD editor page did not render save action');
 
   const previewState = await page.evaluate(() => {
+    const textColorButton = document.querySelector(
+      '[data-vb-text-color-icon="true"], .bytemd-toolbar-left [title="文字颜色"], .bytemd-toolbar-icon[title="文字颜色"], [title="文字颜色"]',
+    );
     const root = document.querySelector('.bytemd');
     const preview = document.querySelector('.bytemd-preview');
     const previewBody =
@@ -435,6 +450,7 @@ async function assertNarrowByteMdPreviewVisible(page, token) {
       previewWidth: previewRect ? previewRect.width : 0,
       previewHeight: previewRect ? previewRect.height : 0,
       previewTextLength: previewBody ? (previewBody.textContent || '').trim().length : 0,
+      hasTextColorButton: Boolean(textColorButton),
       stacked:
         Boolean(previewRect && editorRect) &&
         previewRect.top >= editorRect.bottom - 1 &&
@@ -460,6 +476,11 @@ async function assertNarrowByteMdPreviewVisible(page, token) {
     `ByteMD preview did not render markdown content: ${JSON.stringify(previewState)}`,
   );
   assert.equal(
+    previewState.hasTextColorButton,
+    true,
+    `ByteMD editor toolbar did not render text color action: ${JSON.stringify(previewState)}`,
+  );
+  assert.equal(
     previewState.stacked,
     true,
     `ByteMD narrow layout did not stack editor and preview panes: ${JSON.stringify(previewState)}`,
@@ -467,6 +488,191 @@ async function assertNarrowByteMdPreviewVisible(page, token) {
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(800);
+}
+
+async function assertDarkByteMdEmojiClickable(page, token) {
+  // Regression guard: in dark mode the ByteMD toolbar carries backdrop-filter, which
+  // creates a stacking context. The toolbar must stay promoted above the editor body so
+  // its absolutely-positioned popups (emoji picker, text-color panel) overlay the editor
+  // instead of being painted under CodeMirror. When that breaks, the emoji panel is visible
+  // but un-clickable (pointer hits the editor) and the editor shows through it.
+  const articleId = await findSyntaxHighlightArticleId(token);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => {
+    window.localStorage.setItem('theme', 'dark');
+    window.localStorage.setItem('vanblog_editor_engine', 'bytemd');
+  });
+
+  const bodyText = await openAdminRoute(page, `/editor?type=article&id=${articleId}`);
+  assert.ok(bodyText.includes('保存'), 'ByteMD dark editor page did not render save action');
+
+  // Open the emoji panel by clicking its toolbar action.
+  const opened = await page.evaluate(() => {
+    const button = document
+      .querySelector('.bytemd [data-vb-emoji-icon="true"]')
+      ?.closest('.bytemd-toolbar-icon');
+    if (!button) {
+      return { found: false };
+    }
+    button.click();
+    return { found: true };
+  });
+  assert.equal(opened.found, true, 'ByteMD dark editor did not render the emoji toolbar action');
+  await page.waitForTimeout(300);
+
+  const panelState = await page.evaluate(() => {
+    const container = document.querySelector('.emoji-container');
+    if (!container) {
+      return { exists: false };
+    }
+    const rect = container.getBoundingClientRect();
+    const cx = rect.x + rect.width / 2;
+    const cy = rect.y + rect.height / 2;
+    const top = document.elementFromPoint(cx, cy);
+    return {
+      exists: true,
+      hidden: container.classList.contains('hidden'),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      opacity: getComputedStyle(container).opacity,
+      // True when the picker (or its descendants) is the front-most element at the panel
+      // center — i.e. a real mouse click would land on an emoji, not on the editor below.
+      topIsPicker: Boolean(top && top.closest('.emoji-container')),
+      topTag: top ? `${top.tagName}.${String(top.className).split(' ')[0]}` : 'none',
+    };
+  });
+
+  assert.equal(panelState.exists, true, 'ByteMD dark editor did not mount the emoji panel');
+  assert.equal(panelState.hidden, false, 'ByteMD dark emoji panel stayed hidden after opening');
+  assert.ok(
+    panelState.width > 200 && panelState.height > 200,
+    `ByteMD dark emoji panel did not lay out: ${JSON.stringify(panelState)}`,
+  );
+  assert.equal(
+    panelState.topIsPicker,
+    true,
+    `ByteMD dark emoji panel is covered by the editor (clicks fall through): ${JSON.stringify(
+      panelState,
+    )}`,
+  );
+}
+
+function parseRgb(value) {
+  const match = String(value).match(/rgba?\(([^)]+)\)/);
+  if (!match) {
+    return null;
+  }
+  const parts = match[1].split(',').map((piece) => parseFloat(piece.trim()));
+  const [r, g, b] = parts;
+  const a = parts.length === 4 ? parts[3] : 1;
+  return { r, g, b, a };
+}
+
+// Composite a (possibly translucent) overlay color over an opaque base, so we can reason
+// about what the user actually sees for a hovered dropdown row.
+function compositeOver(overlay, base) {
+  if (!overlay || !base) {
+    return base || overlay;
+  }
+  const a = overlay.a;
+  return {
+    r: overlay.r * a + base.r * (1 - a),
+    g: overlay.g * a + base.g * (1 - a),
+    b: overlay.b * a + base.b * (1 - a),
+    a: 1,
+  };
+}
+
+function relativeLuminance({ r, g, b }) {
+  const channel = (value) => {
+    const srgb = value / 255;
+    return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function contrastRatio(a, b) {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const lighter = Math.max(la, lb);
+  const darker = Math.min(la, lb);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+async function assertDarkByteMdDropdownHoverReadable(page, token) {
+  // Regression guard: ByteMD ships `.bytemd-dropdown-item:hover { background:#f6f8fa }` (a hard
+  // light color). In dark mode the menu text is light, so a hovered heading/code-language row
+  // turned into light-on-light and became unreadable. The dark overrides must keep the hovered
+  // row's text and background contrast usable.
+  const articleId = await findSyntaxHighlightArticleId(token);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => {
+    window.localStorage.setItem('theme', 'dark');
+    window.localStorage.setItem('vanblog_editor_engine', 'bytemd');
+  });
+
+  const bodyText = await openAdminRoute(page, `/editor?type=article&id=${articleId}`);
+  assert.ok(bodyText.includes('保存'), 'ByteMD dark editor page did not render save action');
+
+  // Hover the heading toolbar icon (first ByteMD action) so its dropdown opens.
+  const headingBox = await page.evaluate(() => {
+    const icon = document.querySelector('.bytemd-toolbar-left .bytemd-toolbar-icon');
+    if (!icon) {
+      return null;
+    }
+    const rect = icon.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  });
+  assert.ok(headingBox, 'ByteMD dark editor did not render a heading toolbar action');
+  await page.mouse.move(headingBox.x, headingBox.y);
+  await page.waitForTimeout(400);
+
+  const itemBox = await page.evaluate(() => {
+    const box = [...document.querySelectorAll('.tippy-box[data-state="visible"]')].find((node) =>
+      /标题/.test(node.textContent || ''),
+    );
+    if (!box) {
+      return null;
+    }
+    const items = [...box.querySelectorAll('.bytemd-dropdown-item')];
+    if (items.length < 2) {
+      return null;
+    }
+    const rect = items[1].getBoundingClientRect();
+    const panel = getComputedStyle(box).backgroundColor;
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, panel };
+  });
+  assert.ok(itemBox, 'ByteMD dark heading dropdown did not open with selectable items');
+
+  await page.mouse.move(itemBox.x, itemBox.y);
+  await page.waitForTimeout(250);
+
+  const hovered = await page.evaluate(({ x, y }) => {
+    const target = document.elementFromPoint(x, y);
+    const item = target ? target.closest('.bytemd-dropdown-item') : null;
+    if (!item) {
+      return null;
+    }
+    const cs = getComputedStyle(item);
+    return { color: cs.color, background: cs.backgroundColor };
+  }, itemBox);
+  assert.ok(hovered, 'could not resolve the hovered ByteMD dropdown item');
+
+  const panelRgb = parseRgb(itemBox.panel) || { r: 27, g: 28, b: 30, a: 1 };
+  const hoverBgRgb = compositeOver(parseRgb(hovered.background), panelRgb);
+  const textRgb = parseRgb(hovered.color);
+  const ratio = contrastRatio(textRgb, hoverBgRgb);
+
+  assert.ok(
+    ratio >= 3,
+    `dark heading dropdown hover row is unreadable (contrast ${ratio.toFixed(2)}): ${JSON.stringify({
+      hovered,
+      panel: itemBox.panel,
+      hoverBgRgb,
+    })}`,
+  );
 }
 
 async function assertMobileAdminSurfaces(page) {
@@ -553,6 +759,8 @@ async function main() {
     await assertMobileAdminSurfaces(page);
     await assertDarkEditorSurface(page, token);
     await assertNarrowByteMdPreviewVisible(page, token);
+    await assertDarkByteMdEmojiClickable(page, token);
+    await assertDarkByteMdDropdownHoverReadable(page, token);
     await page.waitForTimeout(2500);
     const walinePrewarmState = await page.evaluate(() =>
       window.sessionStorage.getItem('vanblog.admin.waline-prewarmed'),
@@ -560,7 +768,7 @@ async function main() {
     assert.ok(walinePrewarmState, 'waline prewarm did not run after entering admin shell');
 
     const cases = [
-      { route: '/welcome', title: '分析概览', tabTexts: ['👥 访客统计', '📝 文章分析'] },
+      { route: '/welcome', title: '分析概览', tabTexts: ['访客统计', '文章分析'] },
       { route: '/mindmap', title: '思维导图管理', tabTexts: [] },
       { route: '/nav', title: '导航管理', tabTexts: ['分类管理'] },
       { route: '/static/img', title: '图片管理', tabTexts: [] },

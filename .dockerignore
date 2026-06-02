@@ -28,6 +28,9 @@ logs
 !packages/website/.next/static
 !packages/website/.next/static/**
 .pnpm-store
+.playwright-mcp
+.serena
+output
 tests/host-dev/runtime
 tests/manual-v1.3.0/runtime
 tests/manual-v1.2.1/runtime

@@ -3,14 +3,174 @@
   top: 32px;
   left: 0;
   z-index: 999;
+  border: 1px solid var(--admin-editor-border, rgba(15, 23, 42, 0.12));
+  border-radius: 12px;
+  background: var(--admin-editor-panel-bg, #fff);
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
 }
 
-.bytemd-toolbar-left .hidden {
+.vb-text-color-container {
+  position: absolute;
+  top: 57px;
+  left: 0;
+  z-index: 999;
+}
+
+.bytemd-toolbar-icon.vb-text-color-button-active,
+.bytemd-toolbar-icon.vb-emoji-button-active {
+  color: var(--admin-editor-accent, #1772b4);
+  background: var(--admin-editor-active, rgba(23, 114, 180, 0.12));
+}
+
+.bytemd .hidden {
   display: none;
 }
 
 body .emoji-categories {
-  background-color: gray;
+  background-color: var(--admin-editor-panel-bg, #fff);
+}
+
+.emoji-container em-emoji-picker {
+  --background-rgb: 255, 255, 255;
+  --border-color: transparent;
+  --category-icon-active-color: var(--admin-editor-accent, #1772b4);
+  --color-border-over: rgba(15, 23, 42, 0.12);
+  --rgb-accent: 23, 114, 180;
+  --rgb-background: 255, 255, 255;
+  --rgb-color: 15, 23, 42;
+  --rgb-input: 247, 250, 252;
+  background: var(--admin-editor-panel-bg, #fff);
+}
+
+html.dark .emoji-container,
+html[data-theme='dark'] .emoji-container,
+body[data-theme='dark'] .emoji-container,
+.dark .emoji-container {
+  background: var(--vb-editor-dark-panel, #111315);
+  border-color: var(--vb-editor-dark-border, rgba(111, 186, 255, 0.18));
+  box-shadow: 0 16px 38px rgba(6, 15, 32, 0.42);
+}
+
+html.dark .emoji-container em-emoji-picker,
+html[data-theme='dark'] .emoji-container em-emoji-picker,
+body[data-theme='dark'] .emoji-container em-emoji-picker,
+.dark .emoji-container em-emoji-picker {
+  --background-rgb: 17, 19, 21;
+  --border-color: transparent;
+  --category-icon-active-color: var(--vb-editor-dark-accent, #8d9bb0);
+  --color-border-over: rgba(111, 186, 255, 0.18);
+  --rgb-accent: 141, 155, 176;
+  --rgb-background: 17, 19, 21;
+  --rgb-color: 236, 239, 244;
+  --rgb-input: 26, 29, 32;
+  background: var(--vb-editor-dark-panel, #111315);
+}
+
+.vb-text-color-panel {
+  width: 240px;
+  padding: 12px;
+  border: 1px solid var(--admin-editor-border, rgba(15, 23, 42, 0.12));
+  border-radius: 12px;
+  background: var(--admin-editor-panel-bg, #fff);
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.18);
+  color: var(--admin-editor-text, #0f172a);
+}
+
+.vb-text-color-panel--compact {
+  width: 240px;
+}
+
+.vb-text-color-panel__title {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--admin-editor-muted, #64748b);
+}
+
+.vb-text-color-panel__presets {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.vb-text-color-panel__preset {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.15s;
+}
+
+.vb-text-color-panel__preset:hover {
+  transform: scale(1.2);
+  border-color: rgba(15, 23, 42, 0.3);
+}
+
+.vb-text-color-panel__preset.is-active,
+.vb-text-color-panel__preset:focus {
+  border-color: var(--admin-editor-accent, #1772b4);
+  transform: scale(1.2);
+}
+
+.vb-text-color-panel__custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vb-text-color-panel__custom .vb-text-color-panel__picker {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.vb-text-color-popover .ant-popover-inner {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.vb-text-color-popover .ant-popover-inner-content {
+  padding: 0;
+}
+
+html.dark .vb-text-color-panel,
+html[data-theme='dark'] .vb-text-color-panel,
+body[data-theme='dark'] .vb-text-color-panel,
+.dark .vb-text-color-panel {
+  background: linear-gradient(
+    180deg,
+    var(--vb-editor-dark-panel, #111315),
+    var(--vb-editor-dark-panel-2, #111315)
+  );
+  border-color: var(--vb-editor-dark-border, rgba(111, 186, 255, 0.18));
+  box-shadow: 0 16px 38px rgba(6, 15, 32, 0.42);
+  color: var(--vb-editor-dark-text, #eceff4);
+}
+
+html.dark .vb-text-color-panel__title,
+html[data-theme='dark'] .vb-text-color-panel__title,
+body[data-theme='dark'] .vb-text-color-panel__title,
+.dark .vb-text-color-panel__title {
+  color: var(--vb-editor-dark-text, #eceff4);
+}
+
+html.dark .vb-text-color-panel__preset,
+html[data-theme='dark'] .vb-text-color-panel__preset,
+body[data-theme='dark'] .vb-text-color-panel__preset,
+.dark .vb-text-color-panel__preset {
+  border-color: rgba(111, 186, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24);
+}
+
+html.dark .vb-text-color-panel__preview,
+html[data-theme='dark'] .vb-text-color-panel__preview,
+body[data-theme='dark'] .vb-text-color-panel__preview,
+.dark .vb-text-color-panel__preview {
+  background: rgba(111, 186, 255, 0.08);
 }
 
 .relative {
@@ -223,6 +383,27 @@ body[data-theme='dark'] .tippy-content,
   color: var(--vb-editor-dark-text) !important;
 }
 
+/* ByteMD 工具栏下拉（标题 / 代码语言等）渲染在 tippy 浮层里，自带浅色 hover
+   背景 `#f6f8fa`。暗色模式下文字是浅色，hover 时就变成浅底浅字、整条看不清。
+   这里给暗色下的下拉项一个可见的深色 hover 底，并锁定文字为浅色。 */
+html.dark .tippy-box .bytemd-dropdown-item:hover,
+html[data-theme='dark'] .tippy-box .bytemd-dropdown-item:hover,
+body[data-theme='dark'] .tippy-box .bytemd-dropdown-item:hover,
+.dark .tippy-box .bytemd-dropdown-item:hover {
+  background-color: var(--vb-editor-dark-active, rgba(141, 155, 176, 0.18)) !important;
+}
+
+html.dark .tippy-box .bytemd-dropdown-item,
+html.dark .tippy-box .bytemd-dropdown-item-title,
+html[data-theme='dark'] .tippy-box .bytemd-dropdown-item,
+html[data-theme='dark'] .tippy-box .bytemd-dropdown-item-title,
+body[data-theme='dark'] .tippy-box .bytemd-dropdown-item,
+body[data-theme='dark'] .tippy-box .bytemd-dropdown-item-title,
+.dark .tippy-box .bytemd-dropdown-item,
+.dark .tippy-box .bytemd-dropdown-item-title {
+  color: var(--vb-editor-dark-text) !important;
+}
+
 html.dark .tippy-box[data-placement^='top'] > .tippy-arrow::before,
 html[data-theme='dark'] .tippy-box[data-placement^='top'] > .tippy-arrow::before,
 body[data-theme='dark'] .tippy-box[data-placement^='top'] > .tippy-arrow::before,
@@ -383,10 +564,19 @@ body[data-theme='dark'] .editor-wrapper .CodeMirror .cm-strong,
       border: none;
       display: flex;
       flex-direction: column;
+      position: relative;
 
       .bytemd-toolbar {
         flex-shrink: 0;
         border-bottom: 1px solid #e8e8e8;
+        overflow: visible;
+        display: flow-root;
+        /* 工具栏内的表情 / 文字颜色面板是 position:absolute 浮层，必须盖在编辑区之上。
+           暗色模式给工具栏加了 backdrop-filter，会凭空生成层叠上下文，把这些浮层的
+           z-index 困在工具栏内部，导致 CodeMirror 正文反盖到面板上（无法点表情、面板透出底色）。
+           这里让工具栏自身成为定位元素并抬到正文之上，浮层才能正常浮在编辑区上方。 */
+        position: relative;
+        z-index: 30;
       }
 
       .bytemd-body {

@@ -5,9 +5,12 @@ import {
   buildLinkSnippet,
   buildMathBlockSnippet,
   buildMoreSnippet,
+  buildTextColorSnippet,
   buildTaskListSnippet,
   insertTextAtRange,
+  normalizeTextColor,
   resolveEditorEngine,
+  TEXT_COLOR_PRESETS,
 } from './utils';
 
 describe('MarkdownEditor utils', () => {
@@ -33,6 +36,20 @@ describe('MarkdownEditor utils', () => {
     );
     expect(buildLinkSnippet('iframe', 'https://example.com/embed')).toBe(
       '[iframe](https://example.com/embed)',
+    );
+  });
+
+  it('normalizes text colors to preset or hex values only', () => {
+    expect(normalizeTextColor('')).toBe(TEXT_COLOR_PRESETS[0]);
+    expect(normalizeTextColor(' red ')).toBe(TEXT_COLOR_PRESETS[0]);
+    expect(normalizeTextColor('#FF4D4F')).toBe('#ff4d4f');
+    expect(normalizeTextColor('#12ab34')).toBe('#12ab34');
+    expect(normalizeTextColor('var(--danger)')).toBe(TEXT_COLOR_PRESETS[0]);
+  });
+
+  it('builds span wrappers for colorized inline text', () => {
+    expect(buildTextColorSnippet('希望我进行什么技术尝试可以留言~', '#ff4d4f')).toBe(
+      '<span style="color:#ff4d4f">希望我进行什么技术尝试可以留言~</span>',
     );
   });
 

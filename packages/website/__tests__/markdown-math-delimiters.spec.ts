@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getProcessor } from 'bytemd';
 import math from '@bytemd/plugin-math-ssr';
 import { normalizeMathDelimiters } from '../components/Markdown/normalizeMathDelimiters';
+import { renderMarkdownToHtml } from '../utils/renderMarkdown';
 
 function renderMarkdown(content: string) {
   return String(
@@ -57,5 +58,12 @@ describe('normalizeMathDelimiters', () => {
     expect(html).toContain('math-display');
     expect(html).not.toContain('\\(');
     expect(html).not.toContain('\\[');
+  });
+
+  it('preserves inline color styles through the website markdown renderer', () => {
+    const html = renderMarkdownToHtml('<span style="color:#ff4d4f">红字</span>');
+
+    expect(html).toContain('<span style="color:#ff4d4f">红字</span>');
+    expect(html).not.toContain('&lt;span');
   });
 });

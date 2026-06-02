@@ -12,6 +12,7 @@ import { emoji } from '../../Editor/emoji';
 import { historyIcon } from '../../Editor/history';
 import { imgUploadPlugin, uploadImg } from '../../Editor/imgUpload';
 import { insertMore } from '../../Editor/insertMore';
+import { textColor } from '../../Editor/textColor';
 import { cn } from '../../Editor/locales';
 import { customContainer } from '../../Editor/plugins/customContainer';
 import { customCodeBlock } from '../../Editor/plugins/codeBlock';
@@ -92,6 +93,7 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
       customMermaidPlugin(mermaidThemeMode),
       customMermaidExportPlugin(mermaidThemeMode),
       imgUploadPlugin(setLoading),
+      textColor(),
       emoji(),
       insertMore(),
       rawHTML(),

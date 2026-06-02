@@ -4,6 +4,18 @@ export const EDITOR_ENGINE_STORAGE_KEY = 'vanblog_editor_engine';
 export const DEFAULT_EDITOR_ENGINE: EditorEngine = 'bytemd';
 export const LAST_CODE_LANGUAGE_KEY = 'vanblog_last_code_language';
 export const DEFAULT_CODE_LANGUAGE = 'js';
+export const TEXT_COLOR_PLACEHOLDER = '彩色文本';
+export const TEXT_COLOR_PRESETS = [
+  '#ff4d4f',
+  '#fa8c16',
+  '#fadb14',
+  '#52c41a',
+  '#1677ff',
+  '#722ed1',
+  '#8c8c8c',
+] as const;
+export const DEFAULT_TEXT_COLOR = TEXT_COLOR_PRESETS[0];
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 
 export const CUSTOM_CONTAINER_TITLES: Record<CustomContainerType, string> = {
   info: '相关信息',
@@ -96,6 +108,28 @@ export function buildLinkSnippet(label = '链接文本', href = 'https://') {
 export function buildImageMarkdown(url: string, alt = '', title = '') {
   const safeTitle = title ? ` "${title}"` : '';
   return `![${alt}](${url}${safeTitle})`;
+}
+
+export function normalizeTextColor(value?: string | null): string {
+  const normalized = (value || '').trim().toLowerCase();
+
+  if (!normalized) {
+    return DEFAULT_TEXT_COLOR;
+  }
+
+  if ((TEXT_COLOR_PRESETS as readonly string[]).includes(normalized)) {
+    return normalized;
+  }
+
+  if (HEX_COLOR_RE.test(normalized)) {
+    return normalized;
+  }
+
+  return DEFAULT_TEXT_COLOR;
+}
+
+export function buildTextColorSnippet(text = TEXT_COLOR_PLACEHOLDER, color: string = DEFAULT_TEXT_COLOR) {
+  return `<span style="color:${normalizeTextColor(color)}">${text}</span>`;
 }
 
 export function insertTextAtRange(
