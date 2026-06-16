@@ -16,7 +16,7 @@
 
 - VanBlog 核心发布物是 5 个镜像：`caddy`、`server`、`website`、`admin`、`waline`
 - 数据库和缓存继续使用运行时官方镜像：`postgres:16-alpine`、`redis:7-alpine`
-- 仓库额外提供一个可选发布物：`vanblog-all-in-one`，它会把主栈和 `postgres` / `redis` 收进同一个容器
+- `vanblog-all-in-one` 是**必发**发布物：它把主栈和 `postgres` / `redis` 收进同一个容器，每次发版都必须随 5 个核心镜像一起发布并同步 `latest`
 - `pnpm release:images` / `pnpm release:images:push` 只负责 5 个核心镜像
 - `pnpm release:publish` 只负责发布 5 个核心镜像，不会发布 `vanblog-all-in-one-latest`
 - `pnpm release:all-in-one` / `pnpm release:all-in-one:push` / `pnpm release:all-in-one:publish` 只发布 `vanblog-all-in-one-*` 单镜像标签
@@ -39,9 +39,9 @@
 4. 补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案。
 5. 给当前代码打版本 tag，并推送到 GitHub。
 6. 先执行 `pnpm release:publish` 发布 5 个核心镜像。
-7. 如果本次也要维护 `docker-compose.all-in-one.latest.yml` 的快速部署入口，继续执行 `pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>`，确保 `kevinchina/deeplearning:vanblog-all-in-one-latest` 同步到同一版本。
+7. **必做**：紧接着执行 `pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>`，发布 `vanblog-all-in-one-*` 并把 `kevinchina/deeplearning:vanblog-all-in-one-latest` 同步到同一版本。all-in-one 每次发版都要发，不再是可选步骤。
 8. 确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
-9. 记录本次版本号、Git tag、镜像 id、5 个核心镜像发布结果，以及 all-in-one latest 是否已同步。
+9. 记录本次版本号、Git tag、镜像 id、5 个核心镜像发布结果，以及 all-in-one（版本标签 + latest）发布结果。
 10. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署；单镜像部署使用 `docker-compose.all-in-one.image.yml` 或已经同步的 `docker-compose.all-in-one.latest.yml`。
 
 ## 3. 镜像命名规范
@@ -165,9 +165,9 @@ pnpm release:images:push
 bash scripts/release-images.sh --push
 ```
 
-### 6.4 all-in-one 发布
+### 6.4 all-in-one 发布（每次发版必做）
 
-`pnpm release:publish` 不会发布 all-in-one。每次需要维护 `kevinchina/deeplearning:vanblog-all-in-one-latest` 时，都要单独执行 all-in-one 发布流程。
+`pnpm release:publish` 不会发布 all-in-one，因此每次发版都必须单独执行一次 all-in-one 发布流程，把版本标签与 `kevinchina/deeplearning:vanblog-all-in-one-latest` 一起同步。
 
 ```bash
 pnpm release:all-in-one
@@ -176,7 +176,7 @@ pnpm release:all-in-one:publish
 pnpm release:all-in-one:latest --version vX.Y.Z --image-id <id>
 ```
 
-正式发版推荐在 5 个核心镜像发布成功后继续执行：
+正式发版在 5 个核心镜像发布成功后，紧接着执行：
 
 ```bash
 pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>
