@@ -1,5 +1,4 @@
 import { decode } from "js-base64";
-import Head from "next/head";
 import Script from "next/script";
 import { createElement } from "react";
 
@@ -130,10 +129,13 @@ export default function (props: {
 
   return (
     <>
-      <Head>
-        {props.customCss ? <style>{decode(props.customCss)}</style> : null}
-        {renderHeadTags()}
-      </Head>
+      {/* 注意：App Router 下 next/head 的 <Head> 是空操作，会被静默丢弃。
+          自定义 CSS / head 标签必须直接渲染（React 会就地输出 <style>，
+          CSS 不论挂在 head 还是 body 都全局生效）。早先用 <Head> 包裹时
+          customCss 整段丢失，导致依赖自定义 CSS 定位的元素（如 mouse-drag
+          画布的 position:fixed）退回普通流，撑出整屏空白可滚动区。 */}
+      {props.customCss ? <style>{decode(props.customCss)}</style> : null}
+      {renderHeadTags()}
       {props.customHtml ? (
         <div
           dangerouslySetInnerHTML={{ __html: decode(props.customHtml) }}
