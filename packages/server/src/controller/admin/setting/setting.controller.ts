@@ -11,6 +11,7 @@ import {
   defaultAdminLayoutSetting,
   AdminThemeSetting,
   defaultAdminThemeSetting,
+  FontSetting,
 } from 'src/types/setting.dto';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
@@ -99,6 +100,29 @@ export class SettingController {
   @Get('layout')
   async getLayoutSetting() {
     const res = await this.settingProvider.getLayoutSetting();
+    return {
+      statusCode: 200,
+      data: res,
+    };
+  }
+  @Put('font')
+  async updateFontSetting(@Body() body: Partial<FontSetting>) {
+    if (config?.demo == true || config?.demo == 'true') {
+      return {
+        statusCode: 401,
+        message: '演示站禁止修改字体设置！',
+      };
+    }
+    const res = await this.settingProvider.updateFontSetting(body);
+    this.isrProvider.activeAll('更新 font 设置');
+    return {
+      statusCode: 200,
+      data: res,
+    };
+  }
+  @Get('font')
+  async getFontSetting() {
+    const res = await this.settingProvider.getFontSetting();
     return {
       statusCode: 200,
       data: res,

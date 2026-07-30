@@ -113,7 +113,10 @@ export class StaticProvider {
     let currentSign = encryptFileMD5(buf);
     const staticConfigInDB = await this.settingProvider.getStaticSetting();
     let compressSuccess = true;
-    let uploadBaseName = sanitizeStorageFileStem(nameWithoutExtension, type === 'music' ? 'music' : 'image');
+    let uploadBaseName = sanitizeStorageFileStem(
+      nameWithoutExtension,
+      type === 'music' ? 'music' : type === 'font' ? 'font' : 'image',
+    );
     if (type == 'img') {
       const { detectedType } = this.getAllowedImageMeta(buffer);
       fileType = detectedType;
@@ -159,6 +162,17 @@ export class StaticProvider {
       const hasFile = await this.getOneBySign(currentSign);
       if (hasFile) {
         throw new HttpException('文件已存在，请勿重复上传', HttpStatus.CONFLICT);
+      }
+    }
+
+    // 字体文件重复上传时直接复用已有文件（内容哈希相同即同一份字体）
+    if (type == 'font') {
+      const hasFile = await this.getOneBySign(currentSign);
+      if (hasFile) {
+        return {
+          src: hasFile.realPath,
+          isNew: false,
+        };
       }
     }
 
@@ -309,7 +323,8 @@ export class StaticProvider {
   ) {
     const storageSetting = await this.settingProvider.getStaticSetting();
     let storageType = storageSetting?.storageType || 'local';
-    if (type == 'customPage') {
+    if (type == 'customPage' || type == 'font') {
+      // 自定义页面与字体固定走本地存储（picgo 图床仅支持图片）
       storageType = 'local';
     }
     switch (storageType) {

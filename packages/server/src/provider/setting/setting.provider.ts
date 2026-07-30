@@ -19,6 +19,8 @@ import {
   defaultAutoBackupSetting,
   MusicSetting,
   defaultMusicSetting,
+  FontSetting,
+  defaultFontSetting,
 } from 'src/types/setting.dto';
 import { SettingDocument } from 'src/scheme/setting.schema';
 import { encode } from 'js-base64';
@@ -1820,6 +1822,26 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     const existingSetting = await this.findSettingRecord('music');
     const res = await this.upsertSettingValue('music', newValue);
     this.logger.log(existingSetting ? '音乐设置已更新' : '音乐设置已创建');
+    return res;
+  }
+
+  async getFontSetting(): Promise<FontSetting> {
+    const res = await this.findSettingRecord('font');
+    if (res) {
+      return { ...defaultFontSetting, ...(res?.value as any) };
+    } else {
+      await this.createSettingValue('font', defaultFontSetting);
+      return defaultFontSetting;
+    }
+  }
+
+  async updateFontSetting(dto: Partial<FontSetting>) {
+    const oldValue = await this.getFontSetting();
+    const newValue = { ...oldValue, ...dto };
+
+    const existingSetting = await this.findSettingRecord('font');
+    const res = await this.upsertSettingValue('font', newValue);
+    this.logger.log(existingSetting ? '字体设置已更新' : '字体设置已创建');
     return res;
   }
 }

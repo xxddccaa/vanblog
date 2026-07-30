@@ -948,6 +948,7 @@ export class PublicController {
       totalWordCount,
       layoutSetting,
       socialsWithIcons,
+      fontSetting,
     ] = await Promise.all([
       this.tagProvider.getAllTags(false),
       this.metaProvider.getAll(),
@@ -957,6 +958,7 @@ export class PublicController {
       this.metaProvider.getTotalWords(),
       this.settingProvider.getLayoutSetting(),
       this.metaProvider.getSocials(),
+      this.settingProvider.getFontSetting(),
     ]);
     const metaDoc = (meta as any)?._doc || meta;
     const layoutRes = layoutSetting
@@ -975,6 +977,7 @@ export class PublicController {
       totalArticles,
       totalWordCount,
       ...(layoutRes ? { layout: layoutRes } : {}),
+      ...(fontSetting && fontSetting.mode !== 'off' ? { font: fontSetting } : {}),
     };
     await this.cacheProvider.set(cacheKey, data, 30);
     this.setLastModified(

@@ -73,7 +73,7 @@ export class LocalProvider {
         meta,
         realPath,
       };
-    } else if (type == 'music') {
+    } else if (type == 'music' || type == 'font') {
       const { safeFileName, srcPath } = this.resolveFlatStaticFile(type, fileName);
       let realPath = `/static/${type}/${safeFileName}`;
 
@@ -83,7 +83,7 @@ export class LocalProvider {
         }
       }
 
-      // 确保音乐目录存在
+      // 确保目录存在（音乐 / 字体等扁平静态资源）
       checkOrCreateByFilePath(srcPath);
 
       const byteLength = buffer.byteLength;

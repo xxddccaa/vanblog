@@ -22,6 +22,7 @@ export type SettingType =
   | 'adminTheme'
   | 'autoBackup'
   | 'music'
+  | 'font'
   | 'aiTagging';
 
 export type SettingValue =
@@ -35,6 +36,7 @@ export type SettingValue =
   | AdminThemeSetting
   | AutoBackupSetting
   | MusicSetting
+  | FontSetting
   | Record<string, any>;
 
 export interface ISRSetting {
@@ -47,7 +49,7 @@ export interface MenuSetting {
 }
 
 export type StorageType = 'picgo' | 'local';
-export type StaticType = 'img' | 'customPage' | 'music';
+export type StaticType = 'img' | 'customPage' | 'music' | 'font';
 export interface LoginSetting {
   enableMaxLoginRetry: boolean;
   maxRetryTimes: number;
@@ -145,6 +147,7 @@ export const StoragePath: Record<StaticType, string> = {
   img: `img`,
   customPage: `customPage`,
   music: `music`,
+  font: `font`,
 };
 export class StaticSetting {
   storageType: StorageType;
@@ -312,4 +315,33 @@ export const defaultMusicSetting: MusicSetting = {
   volume: 50,
   currentPlaylist: [],
   currentIndex: 0,
+};
+
+// 前台字体设置：三模式
+// off    —— 维持原样，前台不注入任何字体规则
+// preset —— 启用内置预设（霞鹜文楷 + EB Garamond），随包发，无需上传
+// custom —— 使用用户上传的字体（faces）+ 自定义 font-family 栈
+export type FontMode = 'off' | 'preset' | 'custom';
+export type FontScope = 'body' | 'site';
+
+export interface FontFace {
+  family: string; // @font-face 的 font-family 名
+  src: string; // 上传后返回的 URL，形如 /static/font/<md5>.<name>.woff2
+  weight?: string; // 例如 'normal' | 'bold' | '400'
+  style?: string; // 'normal' | 'italic'
+  format?: string; // 'woff2' | 'woff' | 'truetype' | 'opentype'
+}
+
+export interface FontSetting {
+  mode: FontMode;
+  scope: FontScope; // body = 仅文章正文 .markdown-body；site = 全站
+  fontFamily?: string; // custom 模式的 font-family 栈
+  faces?: FontFace[]; // custom 模式上传的字体
+}
+
+export const defaultFontSetting: FontSetting = {
+  mode: 'off',
+  scope: 'body',
+  fontFamily: '',
+  faces: [],
 };

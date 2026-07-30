@@ -106,6 +106,7 @@ import { AutoBackupController } from './controller/admin/auto-backup/auto-backup
 import { AutoBackupTask } from './schedule/auto-backup.task';
 import { AliyunpanProvider } from './provider/aliyunpan/aliyunpan.provider';
 import { MusicController } from './controller/admin/music/music.controller';
+import { FontController } from './controller/admin/font/font.controller';
 import { Document, DocumentSchema } from './scheme/document.schema';
 import { DocumentProvider } from './provider/document/document.provider';
 import { DocumentController } from './controller/admin/document/document.controller';
@@ -203,6 +204,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     AITaggingController,
     AutoBackupController,
     MusicController,
+    FontController,
     DocumentController,
     MindMapController,
     SearchController,
