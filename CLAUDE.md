@@ -105,6 +105,23 @@ pnpm release:all-in-one:latest --version vX.Y.Z --image-id <id>
 
 机器上有两套 `18080` 调试入口，详情见 `docs/host-debug.md`，另有专用 `docs/reference/test-env.md`。Claude 进入快速迭代时**优先用 host-debug**。
 
+### Volume 挂载快速调试（18083）
+
+详情见 `docs/quick-debug.md`。适合后端 API 代码快速迭代，比 Docker 全量重建快 12 倍。
+
+```bash
+cd /data/xiedong/test-vanblog
+docker compose -f docker-compose.debug.yml up -d       # 首次启动
+
+# 改 server 代码后：
+pnpm --filter @vanblog/server build                     # ~3 秒增量编译
+docker compose -f docker-compose.debug.yml restart vanblog  # ~45 秒 ready
+```
+
+核心原理：本地 `packages/server/dist` 通过 volume 挂载到容器 `/app/server/dist`，编译后重启容器即可生效，无需重建镜像。website/admin 用 `docker cp` 热补丁（路径与坑见 `docs/quick-debug.md`，不要 volume 挂 `.next`）。不适用于新增 npm 依赖或 Dockerfile 改动。
+
+### host-debug 模式（18080）
+
 ```bash
 pnpm host:dev:up          # 起 host caddy + 宿主机 server/website/admin/waline；postgres/redis 仍在 docker
 pnpm host:dev:down

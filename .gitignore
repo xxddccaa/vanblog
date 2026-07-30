@@ -164,3 +164,9 @@ tests/manual-v*/runtime/
 .pnpm-store/
 .codex
 .codex-run/
+
+# local reference clones and debug artifacts
+reference/
+output/
+.playwright-mcp/
+.serena/
