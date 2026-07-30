@@ -1275,17 +1275,17 @@ body .markdown-body .code-content-wrapper::-webkit-scrollbar-thumb {
   overflow-wrap: anywhere;
 }
 
-/* Mermaid 容器只负责版式和留白，让官方 SVG 主题自己控制颜色。 */
+/* Mermaid 容器：极简包裹，让 mermaid 官方主题引擎控制颜色。 */
 .markdown-body {
-  --vb-mermaid-surface: rgba(148, 163, 184, 0.08);
-  --vb-mermaid-border: rgba(148, 163, 184, 0.28);
+  --vb-mermaid-surface: transparent;
+  --vb-mermaid-border: transparent;
 }
 
 html[data-theme='dark'] .markdown-body,
 body[data-theme='dark'] .markdown-body,
 .dark .markdown-body {
-  --vb-mermaid-surface: rgba(148, 163, 184, 0.08);
-  --vb-mermaid-border: var(--vb-front-dark-border, rgba(148, 163, 184, 0.24));
+  --vb-mermaid-surface: transparent;
+  --vb-mermaid-border: transparent;
 }
 
 .markdown-body .mermaid,
@@ -1296,10 +1296,10 @@ body[data-theme='dark'] .markdown-body,
   align-items: center;
   text-align: center;
   background-color: var(--vb-mermaid-surface);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 8px;
+  padding: 12px 0;
   margin: 16px 0;
-  border: 1px solid var(--vb-mermaid-border);
+  border: none;
   overflow: auto;
 }
 
@@ -1453,3 +1453,165 @@ html.dark .markdown-body .hljs *,
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* ===== Diagram Containers (PlantUML, GraphViz, WaveDrom, etc.) ===== */
+.markdown-body .vb-diagram-container {
+  --vb-diagram-surface: rgba(148, 163, 184, 0.08);
+  --vb-diagram-border: rgba(148, 163, 184, 0.28);
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  margin: 16px 0;
+  background-color: var(--vb-diagram-surface);
+  border-radius: 8px;
+  border: 1px solid var(--vb-diagram-border);
+  overflow: auto;
+}
+
+.dark .markdown-body .vb-diagram-container {
+  --vb-diagram-surface: rgba(148, 163, 184, 0.08);
+  --vb-diagram-border: var(--vb-front-dark-border, rgba(148, 163, 184, 0.24));
+}
+
+.markdown-body .vb-diagram-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Kroki SVG 统一白色圆角底板；暗色下由下面的滤镜整体转为柔和深灰。 */
+.markdown-body .vb-diagram-container > svg {
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+/* 只滤直接子级：D2 等返回嵌套 <svg><svg>，后代选择器会命中两层导致双重反色（变回灰白）。 */
+.dark .markdown-body .vb-diagram-container[data-diagram-type="graphviz"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="dot"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="viz"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="d2"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="plantuml"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="puml"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="c4plantuml"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="ditaa"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="erd"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="nomnoml"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="svgbob"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="blockdiag"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="seqdiag"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="actdiag"] > svg,
+.dark .markdown-body .vb-diagram-container[data-diagram-type="nwdiag"] > svg {
+  filter: invert(0.85) saturate(0.6) brightness(1.1);
+}
+
+.markdown-body .vb-diagram-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.markdown-body .vb-diagram-container:hover .vb-diagram-toolbar {
+  opacity: 1;
+}
+
+.markdown-body .vb-diagram-action-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  color: #475569;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.markdown-body .vb-diagram-action-btn:hover {
+  background: rgba(241, 245, 249, 1);
+}
+
+.dark .markdown-body .vb-diagram-action-btn {
+  background: rgba(30, 41, 59, 0.9);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.dark .markdown-body .vb-diagram-action-btn:hover {
+  background: rgba(51, 65, 85, 1);
+}
+
+.markdown-body .vb-diagram-error {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.dark .markdown-body .vb-diagram-error {
+  color: #fca5a5;
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+/* ===== Footnotes ===== */
+.markdown-body .footnotes {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 2em;
+  padding-top: 1em;
+  font-size: 0.875em;
+  color: #64748b;
+}
+.markdown-body .footnotes ol {
+  padding-left: 1.5em;
+}
+.markdown-body .footnotes li {
+  margin-bottom: 0.5em;
+}
+.markdown-body sup a[data-footnote-ref] {
+  font-size: 0.75em;
+  vertical-align: super;
+  text-decoration: none;
+  color: var(--vb-md-accent, #3b82f6);
+}
+.markdown-body a[data-footnote-backref] {
+  text-decoration: none;
+  font-size: 0.85em;
+}
+.dark .markdown-body .footnotes {
+  border-color: var(--vb-front-dark-border, #334155);
+  color: #94a3b8;
+}
+
+/* ===== Mark / Sub / Sup ===== */
+.markdown-body mark {
+  background-color: #fef3c7;
+  padding: 0.1em 0.25em;
+  border-radius: 3px;
+  color: inherit;
+}
+.dark .markdown-body mark {
+  background-color: rgba(251, 191, 36, 0.2);
+  color: #fcd34d;
+}
+.markdown-body sub, .markdown-body sup {
+  font-size: 0.75em;
+}
+
+/* ===== Abbreviations ===== */
+.markdown-body abbr {
+  text-decoration: underline dotted;
+  text-decoration-color: #94a3b8;
+  cursor: help;
+}
+.dark .markdown-body abbr {
+  text-decoration-color: #64748b;
+}
+

@@ -14,6 +14,7 @@ import { DraftProvider } from './provider/draft/draft.provider';
 import { MetaProvider } from './provider/meta/meta.provider';
 import { TagProvider } from './provider/tag/tag.provider';
 import { PublicController } from './controller/public/public.controller';
+import { DiagramController } from './controller/public/diagram/diagram.controller';
 import { AboutMetaController } from './controller/admin/about/about.meta.controller';
 import { LinkMetaController } from './controller/admin/link/link.meta.controller';
 import { RewardMetaController } from './controller/admin/reward/reward.meta.controller';
@@ -205,6 +206,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     DocumentController,
     MindMapController,
     SearchController,
+    DiagramController,
   ],
   providers: [
     AppService,

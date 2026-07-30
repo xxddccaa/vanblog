@@ -105,12 +105,12 @@ export class RssProvider {
       for (const article of articles) {
         const url = `${siteUrl}post/${article.pathname || article.id}`;
         const categories = this.getArticleCategories(article);
+        const renderedContent = await this.markdownProvider.renderMarkdownWithDiagrams(article.content);
         const html = `<div class="markdown-body rss">
       <link rel="stylesheet" href="${siteUrl}markdown.css">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.5.1/katex.min.css">
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.6.0/build/styles/default.min.css">
-      ${this.markdownProvider
-        .renderMarkdown(article.content)
+      ${renderedContent
         .replace(
           /<div class="mermaid">/g,
           `<div class="mermaid" style="background: #f3f3f3; padding: 8px;"> <p>Mermaid 图表 RSS 暂无法显示，具体请查看原文</p>`,

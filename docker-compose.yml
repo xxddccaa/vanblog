@@ -52,6 +52,7 @@ services:
       VANBLOG_CADDY_API_URL: http://caddy:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
       VANBLOG_WALINE_CONTROL_URL: http://waline:8361
+      VANBLOG_KROKI_URL: http://kroki:8000
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
       WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
     volumes:
@@ -176,3 +177,15 @@ services:
       timeout: 10s
       retries: 10
       start_period: 10s
+
+  kroki:
+    image: yuzutech/kroki
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s

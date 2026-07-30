@@ -2,6 +2,7 @@ import type { BytemdPlugin } from 'bytemd';
 import copy from 'copy-to-clipboard';
 import { message } from 'antd';
 import { visit } from 'unist-util-visit';
+import { ALL_DIAGRAM_LANGUAGES } from './diagrams/types';
 
 type CodeActionIcon = 'copy' | 'wrap' | 'toggle';
 
@@ -136,6 +137,7 @@ const createCodeBlockPlugin = (disableCollapse: boolean) => () => (tree) => {
         }
       }
       if (language === 'mermaid') return;
+      if (ALL_DIAGRAM_LANGUAGES.includes(language)) return;
 
       const codeCopyBtn = {
         type: 'element',

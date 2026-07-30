@@ -7,6 +7,8 @@ import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
 import { customMermaidExportPlugin } from './mermaidExport';
 import { customMermaidPlugin, normalizeMermaidThemeMode } from './mermaidTheme';
+import { diagramPlugin } from './diagrams';
+import { extendedSyntaxPlugin } from './extendedSyntax';
 import { customContainer } from './customContainer';
 import "katex/dist/katex.min.css";
 import rawHTML from "./rawHTML";
@@ -51,6 +53,8 @@ export default function ({ content, codeMaxLines = 15 }: { content: string; code
       }),
       customMermaidPlugin(mermaidThemeMode),
       customMermaidExportPlugin(mermaidThemeMode),
+      diagramPlugin(mermaidThemeMode),
+      extendedSyntaxPlugin(),
       customContainer(),
       customCodeBlock(codeMaxLines),
       LinkTarget(),

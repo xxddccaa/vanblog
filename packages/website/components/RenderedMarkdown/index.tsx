@@ -68,6 +68,13 @@ function RenderedMarkdownEnhancer({
           enhanceMermaidExportControls(markdownBody, mermaidThemeMode);
         }
       }
+
+      // Render non-mermaid diagrams (PlantUML, GraphViz, WaveDrom, etc.)
+      const { renderDiagramBlocks } = await import('../Markdown/diagrams/renderDiagramBlocks');
+      if (!disposed && containerRef.current) {
+        const diagramThemeMode = normalizeMermaidThemeMode(theme);
+        await renderDiagramBlocks(markdownBody, diagramThemeMode);
+      }
     };
 
     void applyEnhancements();

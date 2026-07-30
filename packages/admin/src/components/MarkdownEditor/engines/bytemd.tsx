@@ -19,6 +19,8 @@ import { customCodeBlock } from '../../Editor/plugins/codeBlock';
 import { Heading } from '../../Editor/plugins/heading';
 import { LinkTarget } from '../../Editor/plugins/linkTarget';
 import { customMermaidExportPlugin } from '../../Editor/plugins/mermaidExport';
+import { diagramPlugin } from '../../Editor/plugins/diagrams';
+import { extendedSyntaxPlugin } from '../../Editor/plugins/extendedSyntax';
 import { smartCodeBlock } from '../../Editor/plugins/smartCodeBlock';
 import rawHTML from '../../Editor/rawHTML';
 import '../../Editor/index.less';
@@ -92,6 +94,8 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
       }),
       customMermaidPlugin(mermaidThemeMode),
       customMermaidExportPlugin(mermaidThemeMode),
+      diagramPlugin(mermaidThemeMode),
+      extendedSyntaxPlugin(),
       imgUploadPlugin(setLoading),
       textColor(),
       emoji(),

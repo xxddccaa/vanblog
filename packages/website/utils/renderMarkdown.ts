@@ -8,6 +8,7 @@ import { Heading } from '../components/Markdown/heading';
 import { Img } from '../components/Markdown/img';
 import { LinkTarget } from '../components/Markdown/linkTarget';
 import { normalizeMathDelimiters } from '../components/Markdown/normalizeMathDelimiters';
+import { extendedSyntaxPlugin } from '../components/Markdown/extendedSyntax';
 import rawHTML from '../components/Markdown/rawHTML';
 
 const sanitize = (schema: any) => {
@@ -38,6 +39,7 @@ const getServerMarkdownProcessor = (codeMaxLines = 15) =>
           throwOnError: false,
         },
       }),
+      extendedSyntaxPlugin(),
       customContainer(),
       customCodeBlock(codeMaxLines),
       LinkTarget(),

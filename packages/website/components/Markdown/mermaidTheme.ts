@@ -29,10 +29,46 @@ export function normalizeMermaidThemeMode(themeMode?: string): MermaidThemeMode 
 export function getMermaidConfig(themeMode: MermaidThemeMode = 'light') {
   const resolvedThemeMode = normalizeMermaidThemeMode(themeMode);
 
+  if (resolvedThemeMode === 'dark') {
+    return {
+      startOnLoad: true,
+      darkMode: true,
+      theme: 'dark' as const,
+      themeVariables: {
+        primaryColor: '#1e3a5f',
+        primaryTextColor: '#e2e8f0',
+        primaryBorderColor: '#4a9eff',
+        lineColor: '#94a3b8',
+        secondaryColor: '#1e293b',
+        tertiaryColor: '#334155',
+        noteBkgColor: '#1e293b',
+        noteTextColor: '#e2e8f0',
+        actorTextColor: '#e2e8f0',
+        actorBorder: '#4a9eff',
+        actorBkg: '#1e293b',
+        signalColor: '#e2e8f0',
+        labelBoxBkgColor: '#1e293b',
+        labelTextColor: '#e2e8f0',
+      },
+      fontFamily: MERMAID_FONT_FAMILY,
+    };
+  }
+
   return {
     startOnLoad: true,
-    darkMode: resolvedThemeMode === 'dark',
-    theme: resolvedThemeMode === 'dark' ? 'dark' : 'default',
+    darkMode: false,
+    theme: 'default' as const,
+    themeVariables: {
+      primaryColor: '#dbeafe',
+      primaryTextColor: '#1e293b',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#64748b',
+      secondaryColor: '#f1f5f9',
+      tertiaryColor: '#e2e8f0',
+      noteBkgColor: '#fef3c7',
+      noteTextColor: '#1e293b',
+      noteBorderColor: '#f59e0b',
+    },
     fontFamily: MERMAID_FONT_FAMILY,
   };
 }

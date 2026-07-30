@@ -2,6 +2,7 @@ import { BytemdPlugin } from "bytemd";
 import copy from "copy-to-clipboard";
 import toast from "react-hot-toast";
 import { visit } from "unist-util-visit";
+import { ALL_DIAGRAM_LANGUAGES } from "./diagrams/types";
 
 type CodeActionIcon = "copy" | "wrap" | "toggle";
 
@@ -138,6 +139,7 @@ const codeBlockPlugin = () => (tree) => {
         }
       }
       if (language === "mermaid") return;
+      if (ALL_DIAGRAM_LANGUAGES.includes(language)) return;
 
       const codeCopyBtn = {
         type: "element",
