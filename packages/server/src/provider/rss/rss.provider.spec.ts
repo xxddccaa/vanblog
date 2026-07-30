@@ -62,6 +62,7 @@ describe('RssProvider', () => {
       } as any,
       {
         renderMarkdown: jest.fn((value: string) => `<p>${value}</p>`),
+        renderMarkdownWithDiagrams: jest.fn(async (value: string) => `<p>${value}</p>`),
         getDescription: jest.fn((value: string) => value.slice(0, 20)),
       } as any,
     );
