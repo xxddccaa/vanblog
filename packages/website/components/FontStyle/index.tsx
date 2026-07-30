@@ -1,22 +1,50 @@
 import React from "react";
 import type { FontSettingProp } from "../../api/getAllData";
 
-// 内置预设：霞鹜文楷（中文）+ EB Garamond（英文/数字），@font-face 由
-// styles/preset-fonts.css 提供（在 (rich)/layout 恒定 import，仅声明不下载）。
-// 这里只负责输出作用域上的 font-family 规则。
-const PRESET_FONT_FAMILY =
-  '"EB Garamond", "LXGW WenKai", "PingFang SC", "Microsoft YaHei", -apple-system, system-ui, "Segoe UI Emoji", "Segoe UI Symbol", sans-serif';
+// 内置字体注册表（与后台 Font 设置页的选项保持一致）。
+// family 为 null 表示"系统默认，不下载"；href 为该字体子集化后的 @font-face 表。
+export interface PresetFontDef {
+  label: string;
+  family: string | null;
+  href?: string;
+}
 
-// 作用域选择器：
-// body —— 仅文章正文；用 `html` 前缀提高优先级，压过 markdown 主题 CSS 里
-//         对 .markdown-body 设置的 font-family（否则换某些主题会失效）。
-// site —— 全站。
+export const PRESET_CN_FONTS: Record<string, PresetFontDef> = {
+  system: { label: "系统默认", family: null },
+  lxgw: { label: "霞鹜文楷", family: "LXGW WenKai", href: "/fonts/preset/lxgw/index.css" },
+  misans: { label: "MiSans（近苹方）", family: "MiSans", href: "/fonts/preset/misans/index.css" },
+  songti: {
+    label: "思源宋体",
+    family: "Source Han Serif SC",
+    href: "/fonts/preset/songti/index.css",
+  },
+};
+
+export const PRESET_EN_FONTS: Record<string, PresetFontDef> = {
+  system: { label: "系统默认", family: null },
+  ebgaramond: {
+    label: "EB Garamond",
+    family: "EB Garamond",
+    href: "/fonts/preset/ebg/index.css",
+  },
+  inter: { label: "Inter", family: "Inter", href: "/fonts/preset/inter/index.css" },
+  jetbrains: {
+    label: "JetBrains Mono",
+    family: "JetBrains Mono",
+    href: "/fonts/preset/jetbrains/index.css",
+  },
+};
+
+// 系统回退栈（英文/中文都留"系统默认"时，即维持博客原本的字体观感）
+const SYSTEM_FALLBACK =
+  '"PingFang SC", "Microsoft YaHei", -apple-system, system-ui, "Segoe UI Emoji", "Segoe UI Symbol", sans-serif';
+
+// 作用域：body → 仅正文（html 前缀提高优先级压过 markdown 主题 CSS）；site → 全站
 function scopeSelector(scope: "body" | "site"): string {
   return scope === "site" ? "body" : "html .markdown-body";
 }
 
 function escapeFontFamily(value: string): string {
-  // 只用于内联到 <style> 文本，去掉可能破坏样式块的字符。
   return value.replace(/[<>{}]/g, "");
 }
 
@@ -40,12 +68,25 @@ function buildFaceCss(face: {
 ${weight}${style}}`;
 }
 
+// 预设模式：英文字体在前、中文字体在后（逐字形回退实现"英文用 A、中文用 B"），
+// 未选（system）的一侧自动回退到系统字体。
+function presetFontFamily(font: FontSettingProp): string {
+  const en = PRESET_EN_FONTS[font.enFont || "system"]?.family;
+  const cn = PRESET_CN_FONTS[font.cnFont || "system"]?.family;
+  const parts: string[] = [];
+  if (en) parts.push(`"${en}"`);
+  if (cn) parts.push(`"${cn}"`);
+  if (!parts.length) return ""; // 两侧都系统默认 → 不注入
+  return `${parts.join(", ")}, ${SYSTEM_FALLBACK}`;
+}
+
 export function buildFontCss(font?: FontSettingProp): string {
   if (!font || font.mode === "off") return "";
   const selector = scopeSelector(font.scope || "body");
 
   if (font.mode === "preset") {
-    return `${selector} { font-family: ${PRESET_FONT_FAMILY} !important; }`;
+    const stack = presetFontFamily(font);
+    return stack ? `${selector} { font-family: ${stack} !important; }` : "";
   }
 
   // custom
@@ -58,9 +99,16 @@ export function buildFontCss(font?: FontSettingProp): string {
   return [faceCss, familyRule].filter(Boolean).join("\n");
 }
 
-// 预设的 @font-face 分片声明表（~200KB）单独作为静态文件按需加载：
-// 仅 preset 模式注入 <link>，off/custom 模式零成本。版本号用于发布时刷新 CDN 缓存。
-const PRESET_FONTS_HREF = "/fonts/preset/preset-fonts.css";
+// 预设模式下需要按需加载的 @font-face 表（仅选中的字体，system 不加载）
+function presetHrefs(font: FontSettingProp): string[] {
+  const hrefs: string[] = [];
+  const en = PRESET_EN_FONTS[font.enFont || "system"]?.href;
+  const cn = PRESET_CN_FONTS[font.cnFont || "system"]?.href;
+  if (en) hrefs.push(en);
+  if (cn) hrefs.push(cn);
+  return hrefs;
+}
+
 const ASSET_VERSION =
   process.env.NEXT_PUBLIC_MARKDOWN_THEME_ASSET_VERSION || "dev";
 
@@ -69,14 +117,14 @@ export default function FontStyle(props: { font?: FontSettingProp }) {
   if (!font || font.mode === "off") return null;
 
   const css = buildFontCss(font);
+  const hrefs = font.mode === "preset" ? presetHrefs(font) : [];
+  if (!css && !hrefs.length) return null;
+
   return (
     <>
-      {font.mode === "preset" ? (
-        <link
-          rel="stylesheet"
-          href={`${PRESET_FONTS_HREF}?v=${ASSET_VERSION}`}
-        />
-      ) : null}
+      {hrefs.map((href) => (
+        <link key={href} rel="stylesheet" href={`${href}?v=${ASSET_VERSION}`} />
+      ))}
       {css ? <style data-vb-font={font.mode}>{css}</style> : null}
     </>
   );

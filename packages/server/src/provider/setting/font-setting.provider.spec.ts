@@ -33,11 +33,13 @@ describe('SettingProvider font', () => {
   it('merges persisted font setting over the defaults', async () => {
     const { provider, structuredDataService } = createProvider();
     structuredDataService.getSetting.mockResolvedValue({
-      value: { mode: 'preset', scope: 'site' },
+      value: { mode: 'preset', scope: 'site', cnFont: 'lxgw', enFont: 'inter' },
     });
     await expect(provider.getFontSetting()).resolves.toEqual({
       mode: 'preset',
       scope: 'site',
+      cnFont: 'lxgw',
+      enFont: 'inter',
       fontFamily: '',
       faces: [],
     });

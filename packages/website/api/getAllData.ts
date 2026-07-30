@@ -210,6 +210,8 @@ export interface FontFaceSetting {
 export interface FontSettingProp {
   mode: "off" | "preset" | "custom";
   scope: "body" | "site";
+  cnFont?: string;
+  enFont?: string;
   fontFamily?: string;
   faces?: FontFaceSetting[];
 }

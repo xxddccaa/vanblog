@@ -8,20 +8,37 @@ describe("buildFontCss", () => {
     expect(buildFontCss({ mode: "off", scope: "body" })).toBe("");
   });
 
-  it("preset mode emits scoped font-family rule with !important", () => {
-    const css = buildFontCss({ mode: "preset", scope: "body" });
+  it("preset mode with cn+en emits en-first, cn-second family rule with !important", () => {
+    const css = buildFontCss({
+      mode: "preset",
+      scope: "body",
+      enFont: "ebgaramond",
+      cnFont: "lxgw",
+    });
     expect(css).toContain("html .markdown-body");
-    expect(css).toContain("EB Garamond");
-    expect(css).toContain("LXGW WenKai");
+    // 英文在前、中文在后
+    expect(css.indexOf('"EB Garamond"')).toBeLessThan(css.indexOf('"LXGW WenKai"'));
     expect(css).toContain("!important");
-    // preset 不内联 @font-face（由 preset-fonts.css 提供）
     expect(css).not.toContain("@font-face");
   });
 
+  it("preset with only cn selected falls back en to system", () => {
+    const css = buildFontCss({ mode: "preset", scope: "body", cnFont: "misans", enFont: "system" });
+    expect(css).toContain('"MiSans"');
+    expect(css).not.toContain('"EB Garamond"');
+    expect(css).toContain("PingFang SC"); // 系统回退
+  });
+
+  it("preset with both sides system emits nothing", () => {
+    expect(buildFontCss({ mode: "preset", scope: "body", cnFont: "system", enFont: "system" })).toBe("");
+    // 缺省也视作 system
+    expect(buildFontCss({ mode: "preset", scope: "body" })).toBe("");
+  });
+
   it("preset site scope targets body", () => {
-    const css = buildFontCss({ mode: "preset", scope: "site" });
+    const css = buildFontCss({ mode: "preset", scope: "site", cnFont: "songti", enFont: "system" });
     expect(css.startsWith("body {")).toBe(true);
-    expect(css).not.toContain(".markdown-body");
+    expect(css).toContain('"Source Han Serif SC"');
   });
 
   it("custom mode emits @font-face with font-display swap and the family rule", () => {

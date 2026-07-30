@@ -335,6 +335,8 @@ export interface FontFace {
 export interface FontSetting {
   mode: FontMode;
   scope: FontScope; // body = 仅文章正文 .markdown-body；site = 全站
+  cnFont?: string; // preset 模式：内置中文字体 id（system/lxgw/misans/songti）
+  enFont?: string; // preset 模式：内置英文字体 id（system/ebgaramond/inter/jetbrains）
   fontFamily?: string; // custom 模式的 font-family 栈
   faces?: FontFace[]; // custom 模式上传的字体
 }
@@ -342,6 +344,8 @@ export interface FontSetting {
 export const defaultFontSetting: FontSetting = {
   mode: 'off',
   scope: 'body',
+  cnFont: 'system',
+  enFont: 'system',
   fontFamily: '',
   faces: [],
 };
