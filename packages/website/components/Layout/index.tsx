@@ -13,6 +13,7 @@ import { LayoutProps } from "../../utils/getLayoutProps";
 import { RealThemeType, ThemeContext } from "../../utils/themeContext";
 import { getTheme } from "../../utils/theme";
 import CustomLayout from "../CustomLayout";
+import FontStyle from "../FontStyle";
 import { Toaster } from "react-hot-toast";
 import Footer from "../Footer";
 import LayoutBody from "../LayoutBody";
@@ -421,6 +422,8 @@ export default function (props: {
           {/* </ImageProvider> */}
         </div>
       </ThemeContext.Provider>
+      {/* 字体设置恒生效，不受 enableCustomizing 门控（字体是核心设置） */}
+      <FontStyle font={props.option.font} />
       {props.option.enableCustomizing == "true" && (
         <CustomLayout
           customCss={props.option.customCss}

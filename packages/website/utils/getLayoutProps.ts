@@ -1,4 +1,4 @@
-import { defaultMenu, MenuItem, PublicMetaProp } from "../api/getAllData";
+import { defaultMenu, MenuItem, PublicMetaProp, FontSettingProp } from "../api/getAllData";
 import dayjs from "dayjs";
 import { AuthorCardProps } from "../components/AuthorCard";
 import { checkLogin } from "./auth";
@@ -64,6 +64,8 @@ export interface LayoutProps {
   // Markdown 主题 CSS（亮色 / 暗色）
   markdownLightThemeUrl?: string;
   markdownDarkThemeUrl?: string;
+  // 前台字体设置（三模式：off / preset / custom）
+  font?: FontSettingProp;
 }
 
 export interface HeadTag {
@@ -222,6 +224,7 @@ export function getLayoutProps(data: PublicMetaProp): LayoutProps {
     frontCardBackgroundColorDark: siteInfo?.frontCardBackgroundColorDark || "#111315",
     markdownLightThemeUrl: markdownThemeConfig.markdownLightThemeUrl,
     markdownDarkThemeUrl: markdownThemeConfig.markdownDarkThemeUrl,
+    font: data?.font,
     ...customSetting,
   };
 }

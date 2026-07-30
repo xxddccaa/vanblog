@@ -199,6 +199,21 @@ export interface MetaProps {
     markdownDarkThemePreset?: string;
   };
 }
+export interface FontFaceSetting {
+  family: string;
+  src: string;
+  weight?: string;
+  style?: string;
+  format?: string;
+}
+
+export interface FontSettingProp {
+  mode: "off" | "preset" | "custom";
+  scope: "body" | "site";
+  fontFamily?: string;
+  faces?: FontFaceSetting[];
+}
+
 export interface PublicMetaProp {
   version: string;
   tags: string[];
@@ -212,6 +227,7 @@ export interface PublicMetaProp {
     html?: string;
     head?: HeadTag[];
   };
+  font?: FontSettingProp;
 }
 
 export const version = process.env["VAN_BLOG_VERSION"] || "dev";

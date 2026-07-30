@@ -355,6 +355,17 @@ module.exports = withBundleAnalyzer({
         ],
       },
       {
+        // 内置预设字体：woff2 分片文件名带内容哈希、preset-fonts.css 由 ?v= 版本号刷新，
+        // 均可长期 immutable 缓存，做到"下载一次、翻页不再请求"。
+        source: "/fonts/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
         source: "/markdown-themes/:path*",
         headers: [
           {
