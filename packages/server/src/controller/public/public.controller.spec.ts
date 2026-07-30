@@ -169,6 +169,10 @@ describe('PublicController', () => {
         updatedAt: '2026-04-08T00:00:00.000Z',
         layout: 'default',
       }),
+      getFontSetting: jest.fn().mockResolvedValue({
+        mode: 'off',
+        scope: 'body',
+      }),
       getAdminThemeSetting: jest.fn().mockResolvedValue(defaultAdminThemeSetting),
       encodeLayoutSetting: jest.fn().mockReturnValue({
         layout: 'default',
