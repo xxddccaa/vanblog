@@ -8,6 +8,7 @@ import thinstyle from '../Welcome/index.less';
 
 const SiteInfo = lazy(() => import('./tabs/SiteInfo'));
 const Customizing = lazy(() => import('./tabs/Customizing'));
+const Font = lazy(() => import('./tabs/Font'));
 const Backup = lazy(() => import('./tabs/Backup'));
 const AutoBackup = lazy(() => import('./tabs/AutoBackup'));
 const User = lazy(() => import('./tabs/User'));
@@ -20,6 +21,7 @@ const AdminLayout = lazy(() => import('./tabs/AdminLayout'));
 const tabComponentMap = {
   siteInfo: SiteInfo,
   customizing: Customizing,
+  font: Font,
   backup: Backup,
   autoBackup: AutoBackup,
   user: User,
@@ -45,6 +47,11 @@ export default function () {
       label: '客制化',
       shortLabel: '客制化',
       key: 'customizing',
+    },
+    {
+      label: '字体设置',
+      shortLabel: '字体',
+      key: 'font',
     },
     {
       label: '用户设置',

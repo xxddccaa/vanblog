@@ -64,6 +64,17 @@ export async function updateLayoutConfig(body) {
     data: body,
   });
 }
+export async function getFontSetting() {
+  return request('/api/admin/setting/font', {
+    method: 'GET',
+  });
+}
+export async function updateFontSetting(body) {
+  return request('/api/admin/setting/font', {
+    method: 'PUT',
+    data: body,
+  });
+}
 export async function getWalineConfig() {
   return request('/api/admin/setting/waline', {
     method: 'GET',
