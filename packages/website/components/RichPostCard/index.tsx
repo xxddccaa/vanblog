@@ -109,6 +109,7 @@ export default function RichPostCard(props: {
           catelog={props.catelog}
           categories={props.categories}
           enableComment={props.enableComment}
+          wordCountContent={lock ? undefined : resolvedContent}
         />
 
         {props.type === 'article' && props.tags && props.tags.length > 0 && (

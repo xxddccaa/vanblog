@@ -6,6 +6,7 @@ import { encodeQuerystring } from "../../utils/encode";
 import PostViewerStats from "../PostViewerStats";
 import { getTarget } from "../Link/tools";
 import { checkLogin } from "../../utils/auth";
+import { countWords, formatWordCount } from "../../utils/wordCount";
 
 export function Title(props: {
   type: "article" | "about" | "overview";
@@ -105,11 +106,19 @@ export function SubTitle(props: {
   enableComment: "true" | "false";
   id: number | string;
   openArticleLinksInNewWindow: boolean;
+  wordCountContent?: string;
 }) {
   const iconSize = "16";
   const iconClass =
     "mr-1 fill-gray-400 dark:text-dark dark:group-hover:text-dark-hover group-hover:text-gray-900 ";
   const showDynamicFragments = props.type === "article";
+  const wordStats = useMemo(
+    () =>
+      props.type === "article" && props.wordCountContent
+        ? countWords(props.wordCountContent)
+        : null,
+    [props.type, props.wordCountContent],
+  );
   const categories =
     Array.isArray(props.categories) && props.categories.length
       ? props.categories
@@ -174,6 +183,48 @@ export function SubTitle(props: {
               </Link>
             ))}
           </span>
+        </span>
+      )}
+      {wordStats && wordStats.total > 0 && (
+        <span className="inline-flex px-2 items-center whitespace-nowrap">
+          <span className={iconClass}>
+            <svg
+              viewBox="0 0 24 24"
+              width={iconSize}
+              height={iconSize}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </span>
+          {formatWordCount(wordStats.total)} 字
+        </span>
+      )}
+      {wordStats && wordStats.minutes > 0 && (
+        <span className="inline-flex px-2 items-center whitespace-nowrap">
+          <span className={iconClass}>
+            <svg
+              viewBox="0 0 24 24"
+              width={iconSize}
+              height={iconSize}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </span>
+          约 {wordStats.minutes} 分钟
         </span>
       )}
       {showDynamicFragments && (

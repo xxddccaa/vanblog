@@ -21,10 +21,10 @@ export default () => {
   const [display, setDisplay] = useState(false);
 
   useEffect(() => {
-    const onScroll = throttle((event: any) => {
-      event.stopPropagation();
-      event.preventDefault();
-
+    // 注意：不要在这里 stopPropagation/preventDefault——scroll 事件不可取消，
+    // 而 document 捕获阶段的 stopPropagation 会截断事件传播，
+    // 饿死所有 window 层的 scroll 监听（阅读进度条、TOC scrollspy 等）。
+    const onScroll = throttle(() => {
       setDisplay(getScrollTop() > 300);
     }, 500);
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Layout from '../../components/Layout';
+import ReadingProgressBar from '../../components/ReadingProgressBar';
 import RichPostCard from '../../components/RichPostCard';
 import Toc from '../../components/Toc';
 import { Article } from '../../types/article';
@@ -44,6 +45,7 @@ export default function PostPages(props: PostPagesProps) {
       <Head>
         <meta name="keywords" content={getArticlesKeyWord([props.article]).join(',')} />
       </Head>
+      <ReadingProgressBar />
       <RichPostCard
         showEditButton={props.layoutProps.showEditButton === 'true'}
         showExpirationReminder={props.layoutProps.showExpirationReminder == 'true'}
