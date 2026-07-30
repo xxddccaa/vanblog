@@ -1,13 +1,42 @@
-import { createDraft, getAllCategories, getTags } from '@/services/van-blog/api';
+import { createCategory, createDraft, getAllCategories, getTags } from '@/services/van-blog/api';
 import {
   ModalForm,
   ProFormDateTimePicker,
   ProFormSelect,
   ProFormText,
 } from '@ant-design/pro-components';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import moment from 'moment';
 import AuthorField from '../AuthorField';
+
+const normalizeCategory = (value) => {
+  const source = Array.isArray(value) ? value : value ? [value] : [];
+  return source.map((item) => String(item || '').trim()).filter(Boolean)[0];
+};
+
+const loadCategoryOptions = async () => {
+  const { data: categories } = await getAllCategories();
+  return (categories || []).map((e) => ({
+    label: e,
+    value: e,
+  }));
+};
+
+const ensureCategoryExists = async (category) => {
+  if (!category) {
+    return;
+  }
+  const { data: existingCategories } = await getAllCategories();
+  const existing = new Set(existingCategories || []);
+  if (existing.has(category)) {
+    return;
+  }
+  const result = await createCategory({ name: category });
+  if (result?.statusCode && result.statusCode !== 200) {
+    throw new Error(result?.message || `创建分类 "${category}" 失败`);
+  }
+};
+
 export default function (props) {
   const { onFinish } = props;
   return (
@@ -25,6 +54,14 @@ export default function (props) {
         const washedValues = {};
         for (const [k, v] of Object.entries(values)) {
           washedValues[k.replace('C', '')] = v;
+        }
+
+        washedValues.category = normalizeCategory(washedValues.category);
+        try {
+          await ensureCategoryExists(washedValues.category);
+        } catch (error) {
+          message.error(error?.message || '创建分类失败');
+          return false;
         }
 
         const { data } = await createDraft(washedValues);
@@ -65,18 +102,20 @@ export default function (props) {
         id="categoryC"
         name="categoryC"
         label="分类"
-        tooltip="首次使用请先在站点管理-数据管理-分类管理中添加分类"
-        placeholder="请选择分类"
+        tooltip="可搜索已有分类，或直接输入并回车创建新的分类"
+        placeholder="搜索或输入分类"
         rules={[{ required: true, message: '这是必填项' }]}
-        request={async () => {
-          const { data: categories } = await getAllCategories();
-          return categories?.map((e) => {
-            return {
-              label: e,
-              value: e,
-            };
-          });
+        fieldProps={{
+          mode: 'tags',
+          maxCount: 1,
+          showSearch: true,
+          tokenSeparators: [','],
+          filterOption: (input, option) =>
+            String(option?.label || option?.value || '')
+              .toLowerCase()
+              .includes(input.toLowerCase()),
         }}
+        request={loadCategoryOptions}
       />
       <ProFormDateTimePicker
         width="md"
