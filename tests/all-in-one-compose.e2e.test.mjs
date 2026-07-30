@@ -425,13 +425,27 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
       env: composeEnv,
     });
     const services = parseComposePsOutput(psResult.stdout);
-    assert.equal(services.length, 1, 'All-in-one compose should only start one service');
-    assert.equal(services[0]?.Service, 'vanblog');
-    const publishers = services[0]?.Publishers || [];
+    const serviceNames = services.map((service) => service.Service).sort();
+    assert.deepEqual(
+      serviceNames,
+      ['kroki', 'vanblog'],
+      'All-in-one compose should start vanblog plus the kroki companion only',
+    );
+    const vanblogService = services.find((service) => service.Service === 'vanblog');
+    const publishers = vanblogService?.Publishers || [];
     assert.equal(
       publishers.some((publisher) => publisher.TargetPort !== 80 && publisher.PublishedPort > 0),
       false,
       'Only the HTTP entrypoint should be published to the host',
+    );
+    const krokiService = services.find((service) => service.Service === 'kroki');
+    const krokiPublishers = (krokiService?.Publishers || []).filter(
+      (publisher) => publisher.PublishedPort > 0,
+    );
+    assert.equal(
+      krokiPublishers.length,
+      0,
+      'Kroki must stay internal and never publish ports to the host',
     );
   } finally {
     clearInterval(keepAlive);
