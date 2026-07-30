@@ -251,6 +251,15 @@ export const columns = [
                 导出
               </a>,
               <a
+                key={'exportPdf' + record.id}
+                onClick={async () => {
+                  const { exportArticlePdf } = await import('@/components/ArticleExport');
+                  exportArticlePdf(record.id);
+                }}
+              >
+                导出 PDF
+              </a>,
+              <a
                 key={'deleteArticle' + record.id}
                 onClick={() => {
                   Modal.confirm({
