@@ -1,4 +1,5 @@
 import Footer from '@/components/Footer';
+import FontSync from '@/components/FontSync';
 import { logoutAndRedirect } from '@/components/LogoutButton';
 import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
 import {
@@ -842,6 +843,7 @@ export const layout = ({ initialState, setInitialState }) => {
           <SiderCollapseSync />
           <AdminViewportSync />
           <WalinePrewarm />
+          <FontSync />
           {children}
         </>
       );

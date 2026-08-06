@@ -1,5 +1,6 @@
 import { getFontSetting, updateFontSetting } from '@/services/van-blog/api';
 import UploadBtn from '@/components/UploadBtn';
+import { CN_FONTS, EN_FONTS, SYSTEM_FALLBACK, findFont } from '@/utils/fontInject';
 import {
   Alert,
   Button,
@@ -17,24 +18,6 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 
 const { Text, Paragraph } = Typography;
-
-// 内置字体注册表（与前台 FontStyle 的 PRESET_*_FONTS 保持一致）
-const CN_FONTS = [
-  { value: 'system', label: '系统默认（不下载）', family: null },
-  { value: 'lxgw', label: '霞鹜文楷', family: 'LXGW WenKai', href: '/fonts/preset/lxgw/index.css' },
-  { value: 'misans', label: 'MiSans（近苹方）', family: 'MiSans', href: '/fonts/preset/misans/index.css' },
-  { value: 'songti', label: '思源宋体', family: 'Source Han Serif SC', href: '/fonts/preset/songti/index.css' },
-];
-const EN_FONTS = [
-  { value: 'system', label: '系统默认（不下载）', family: null },
-  { value: 'ebgaramond', label: 'EB Garamond', family: 'EB Garamond', href: '/fonts/preset/ebg/index.css' },
-  { value: 'inter', label: 'Inter', family: 'Inter', href: '/fonts/preset/inter/index.css' },
-  { value: 'jetbrains', label: 'JetBrains Mono', family: 'JetBrains Mono', href: '/fonts/preset/jetbrains/index.css' },
-];
-const SYSTEM_FALLBACK =
-  '"PingFang SC", "Microsoft YaHei", -apple-system, system-ui, sans-serif';
-
-const findFont = (list, value) => list.find((f) => f.value === value) || list[0];
 
 const EXT_FORMAT = { woff2: 'woff2', woff: 'woff', ttf: 'truetype', otf: 'opentype' };
 const guessFormat = (src) => EXT_FORMAT[(src || '').split('.').pop()?.toLowerCase()] || undefined;
@@ -232,9 +215,12 @@ export default function FontTab() {
         <div style={{ marginBottom: 16 }}>
           <div style={{ marginBottom: 8, fontWeight: 500 }}>作用范围</div>
           <Radio.Group value={scope} onChange={(e) => setScope(e.target.value)}>
-            <Radio.Button value="body">仅文章正文</Radio.Button>
+            <Radio.Button value="body">文章与内容区</Radio.Button>
             <Radio.Button value="site">全站</Radio.Button>
           </Radio.Group>
+          <Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+            「文章与内容区」覆盖正文、主页/列表预览、文章标题、归档/分类/标签等阅读内容，不含导航栏/侧栏/页脚/搜索等操作 UI；「全站」则连导航侧栏也一并换字体。
+          </Paragraph>
         </div>
       )}
 

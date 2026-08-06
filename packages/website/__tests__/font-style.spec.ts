@@ -15,11 +15,16 @@ describe("buildFontCss", () => {
       enFont: "ebgaramond",
       cnFont: "lxgw",
     });
+    expect(css).toContain("html .vanblog-main");
+    // 正文容器 .markdown-body 也被显式命中（压过其自带 font-family）
     expect(css).toContain("html .markdown-body");
     // 英文在前、中文在后
     expect(css.indexOf('"EB Garamond"')).toBeLessThan(css.indexOf('"LXGW WenKai"'));
     expect(css).toContain("!important");
     expect(css).not.toContain("@font-face");
+    // 内容区内的表单控件还原为系统 UI 字体
+    expect(css).toContain(":is(button, input, select, textarea)");
+    expect(css).toContain("ui-sans-serif");
   });
 
   it("preset with only cn selected falls back en to system", () => {
@@ -35,9 +40,10 @@ describe("buildFontCss", () => {
     expect(buildFontCss({ mode: "preset", scope: "body" })).toBe("");
   });
 
-  it("preset site scope targets body", () => {
+  it("preset site scope targets whole body", () => {
     const css = buildFontCss({ mode: "preset", scope: "site", cnFont: "songti", enFont: "system" });
-    expect(css.startsWith("body {")).toBe(true);
+    expect(css.startsWith("html body,")).toBe(true);
+    expect(css).toContain("html body, html .markdown-body {");
     expect(css).toContain('"Source Han Serif SC"');
   });
 
@@ -62,7 +68,8 @@ describe("buildFontCss", () => {
     expect(css).toContain('url("/static/font/abc123.MyFont.woff2")');
     expect(css).toContain('format("woff2")');
     expect(css).toContain("font-display: swap");
-    expect(css).toContain('html .markdown-body { font-family: "MyFont", sans-serif !important; }');
+    expect(css).toContain('html .vanblog-main, html .markdown-body { font-family: "MyFont", sans-serif !important; }');
+    expect(css).toContain('html .vanblog-main :is(button, input, select, textarea)');
   });
 
   it("custom mode without faces still emits the family rule", () => {
@@ -73,7 +80,7 @@ describe("buildFontCss", () => {
       faces: [],
     });
     expect(css).not.toContain("@font-face");
-    expect(css).toContain('body { font-family: "X", serif !important; }');
+    expect(css).toContain('html body, html .markdown-body { font-family: "X", serif !important; }');
   });
 
   it("custom mode with neither faces nor family emits nothing", () => {

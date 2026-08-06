@@ -39,9 +39,27 @@ export const PRESET_EN_FONTS: Record<string, PresetFontDef> = {
 const SYSTEM_FALLBACK =
   '"PingFang SC", "Microsoft YaHei", -apple-system, system-ui, "Segoe UI Emoji", "Segoe UI Symbol", sans-serif';
 
-// 作用域：body → 仅正文（html 前缀提高优先级压过 markdown 主题 CSS）；site → 全站
-function scopeSelector(scope: "body" | "site"): string {
-  return scope === "site" ? "body" : "html .markdown-body";
+// 系统 UI 字体栈：内容区内的表单控件（按钮/输入/下拉/文本域）还原用，
+// 让"点"的 UI 保持系统字体，只有"读"的内容套自定义字体。
+const UI_FONT_STACK =
+  'ui-sans-serif, system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+
+// 内容根：body → 文章相关内容区 .vanblog-main（排除导航/侧栏/页脚/搜索）；site → 全站 body。
+function contentRoot(scope: "body" | "site"): string {
+  return scope === "site" ? "html body" : "html .vanblog-main";
+}
+
+// 主字体规则的选择器：内容根 + 正文容器 .markdown-body。
+// .markdown-body 在 github-markdown.css 里有自己的 font-family（直接命中该元素），
+// 仅靠内容根的继承会被它截断，所以必须把 .markdown-body 一起显式命中压过。
+function fontFamilySelector(scope: "body" | "site"): string {
+  return `${contentRoot(scope)}, html .markdown-body`;
+}
+
+// Tailwind preflight 给 button/input/select/textarea 设了 font-family:inherit，
+// 扩大作用域后这些控件会继承正文字体；这里把内容根内的它们还原成系统 UI 字体。
+function controlResetRule(scope: "body" | "site"): string {
+  return `${contentRoot(scope)} :is(button, input, select, textarea) { font-family: ${UI_FONT_STACK} !important; }`;
 }
 
 function escapeFontFamily(value: string): string {
@@ -82,11 +100,13 @@ function presetFontFamily(font: FontSettingProp): string {
 
 export function buildFontCss(font?: FontSettingProp): string {
   if (!font || font.mode === "off") return "";
-  const selector = scopeSelector(font.scope || "body");
+  const scope = font.scope || "body";
+  const selector = fontFamilySelector(scope);
 
   if (font.mode === "preset") {
     const stack = presetFontFamily(font);
-    return stack ? `${selector} { font-family: ${stack} !important; }` : "";
+    if (!stack) return "";
+    return `${selector} { font-family: ${stack} !important; }\n${controlResetRule(scope)}`;
   }
 
   // custom
@@ -94,7 +114,7 @@ export function buildFontCss(font?: FontSettingProp): string {
   const faceCss = faces.map(buildFaceCss).filter(Boolean).join("\n");
   const stack = (font.fontFamily || "").trim();
   const familyRule = stack
-    ? `${selector} { font-family: ${escapeFontFamily(stack)} !important; }`
+    ? `${selector} { font-family: ${escapeFontFamily(stack)} !important; }\n${controlResetRule(scope)}`
     : "";
   return [faceCss, familyRule].filter(Boolean).join("\n");
 }
@@ -123,9 +143,25 @@ export default function FontStyle(props: { font?: FontSettingProp }) {
   return (
     <>
       {hrefs.map((href) => (
-        <link key={href} rel="stylesheet" href={`${href}?v=${ASSET_VERSION}`} />
+        // precedence 让 React 19 把样式表当作可提升资源：跨 SSR/hydration 按 href 去重并
+        // 提升到 <head>，避免服务端渲染在 head、客户端又在 body 各插一份的重复问题。
+        <link
+          key={href}
+          rel="stylesheet"
+          href={`${href}?v=${ASSET_VERSION}`}
+          precedence="vanblog-font"
+        />
       ))}
-      {css ? <style data-vb-font={font.mode}>{css}</style> : null}
+      {css ? (
+        // <style> 需同时带 href(去重键) + precedence，React 19 才会去重并提升。
+        <style
+          href={`vanblog-font-${font.mode}-${font.scope || "body"}`}
+          precedence="vanblog-font"
+          data-vb-font={font.mode}
+        >
+          {css}
+        </style>
+      ) : null}
     </>
   );
 }
