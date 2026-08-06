@@ -145,8 +145,8 @@ docs/.vuepress/dist/
 temp.json
 staticFolder
 localBuild.sh
-log
-log/**
+# 运行时日志目录（VANBLOG_LOG_DIR:-./log），锚定到仓库根，避免误伤 packages/**/log/ 等源码目录
+/log/
 
 v8-compile-cache*
 
@@ -165,8 +165,8 @@ tests/manual-v*/runtime/
 .codex
 .codex-run/
 
-# local reference clones and debug artifacts
-reference/
-output/
+# local reference clones and debug artifacts（均锚定仓库根，避免误伤 docs/reference/ 等源码）
+/reference/
+/output/
 .playwright-mcp/
 .serena/
