@@ -47,6 +47,10 @@
   line-height: 2em;
   padding-right: 1.8em;
   cursor: pointer;
+  /* 长标题保持单行，超出用省略号；完整内容通过悬停 tooltip 浮出 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .markdown-navigation .title-anchor:hover,
@@ -108,6 +112,13 @@
   font-size: 16px;
 }
 
+/* 移动端触屏没有悬停，无法用 tooltip 看全，标题恢复换行显示 */
+.toc-mobile .markdown-navigation .title-anchor {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 .dark .toc-mobile .markdown-navigation .title-anchor  {
   color:#9e9e9e;
 }
@@ -122,4 +133,58 @@
   background-color: inherit;
   color:#374151;
   font-weight: normal;
+}
+
+/* TOC 悬停 tooltip：通过 Portal 渲染到 body，用 fixed 定位逃出侧栏 overflow 裁切 */
+.toc-tooltip {
+  position: fixed;
+  z-index: 60;
+  max-width: 22rem;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #fff;
+  background-color: rgba(30, 30, 32, 0.94);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.toc-tooltip.toc-tooltip-visible {
+  opacity: 1;
+}
+/* 箭头指向被悬停的目录项 */
+.toc-tooltip::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: translateY(-50%);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+/* 朝左弹出（默认）：箭头在右缘，指向右侧的目录项 */
+.toc-tooltip-left::before {
+  right: -5px;
+  border-left: 5px solid rgba(30, 30, 32, 0.94);
+}
+/* 朝右弹出：箭头在左缘，指向左侧的目录项 */
+.toc-tooltip-right::before {
+  left: -5px;
+  border-right: 5px solid rgba(30, 30, 32, 0.94);
+}
+.dark .toc-tooltip {
+  background-color: rgba(58, 60, 65, 0.97);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.dark .toc-tooltip-left::before {
+  border-left-color: rgba(58, 60, 65, 0.97);
+}
+.dark .toc-tooltip-right::before {
+  border-right-color: rgba(58, 60, 65, 0.97);
 }

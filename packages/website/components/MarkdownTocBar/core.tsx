@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import throttle from "lodash/throttle";
 import { getEl, NavItem } from "./tools";
 import { scrollTo } from "../../utils/scroll";
+
+interface TooltipState {
+  text: string;
+  top: number;
+  left: number;
+  placement: "left" | "right";
+  maxWidth: number;
+}
+
 export default function (props: {
   items: NavItem[];
   headingOffset: number;
@@ -10,6 +20,8 @@ export default function (props: {
   const { items } = props;
   const [currIndex, setCurrIndex] = useState(-1);
   const currIndexRef = useRef(-1);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [tooltipReady, setTooltipReady] = useState(false);
 
   const updateHash = (hash: string) => {
     if (hash) {
@@ -100,6 +112,45 @@ export default function (props: {
       handleScroll.cancel();
     };
   }, [handleScroll]);
+
+  // 悬停时，仅当标题被省略号截断（scrollWidth > clientWidth）才浮出完整内容。
+  // 移动端已换行显示全文，无需 tooltip。
+  const showTooltip = (e: React.MouseEvent<HTMLDivElement>, text: string) => {
+    if (props.mobile) {
+      return;
+    }
+    const el = e.currentTarget;
+    if (el.scrollWidth <= el.clientWidth) {
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const gap = 8;
+    // TOC 侧栏恒在页面右侧，tooltip 默认朝右侧空白区弹出，避免遮挡左侧正文；
+    // 仅当右侧空间实在不足、而左侧更宽时才回退到左侧。
+    const spaceRight = window.innerWidth - rect.right;
+    const spaceLeft = rect.left;
+    const placement: "left" | "right" =
+      spaceRight < 120 && spaceLeft > spaceRight ? "left" : "right";
+    // 按弹出方向的实际可用空间收窄，避免超出视口横向溢出；上限 22rem(352px)。
+    const avail = (placement === "right" ? spaceRight : spaceLeft) - gap - 8;
+    const maxWidth = Math.max(120, Math.min(352, avail));
+    setTooltip({
+      text,
+      top: rect.top + rect.height / 2,
+      left: placement === "right" ? rect.right + gap : rect.left - gap,
+      placement,
+      maxWidth,
+    });
+    setTooltipReady(false);
+    // 下一帧再置为可见，触发淡入过渡
+    requestAnimationFrame(() => setTooltipReady(true));
+  };
+
+  const hideTooltip = () => {
+    setTooltipReady(false);
+    setTooltip(null);
+  };
+
   const res = [];
   for (const each of items) {
     const cls = `title-anchor title-level${each.level} ${
@@ -109,7 +160,10 @@ export default function (props: {
       <div
         key={each.index}
         className={cls}
+        onMouseEnter={(e) => showTooltip(e, each.text)}
+        onMouseLeave={hideTooltip}
         onClick={() => {
+          hideTooltip();
           const el: any = getEl(each, items);
 
           if (el) {
@@ -158,6 +212,27 @@ export default function (props: {
         </div>
         <div style={{ marginBottom: 10, marginTop: -2 }} />
       </div>
+      {tooltip && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className={`toc-tooltip toc-tooltip-${tooltip.placement}${
+                tooltipReady ? " toc-tooltip-visible" : ""
+              }`}
+              style={{
+                top: tooltip.top,
+                left: tooltip.left,
+                maxWidth: tooltip.maxWidth,
+                transform:
+                  tooltip.placement === "right"
+                    ? "translateY(-50%)"
+                    : "translate(-100%, -50%)",
+              }}
+            >
+              {tooltip.text}
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }
