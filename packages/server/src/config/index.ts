@@ -15,6 +15,7 @@ export interface Config {
   cloudflareZoneId: string;
   demo: boolean | string;
   log: string;
+  logLevel: string;
 }
 
 export const loadDatabaseUrl = () =>
@@ -37,6 +38,9 @@ export const config: Config = {
   cloudflareApiToken: loadConfig('cloudflare.apiToken', ''),
   cloudflareZoneId: loadConfig('cloudflare.zoneId', ''),
   log: loadConfig('log', '/var/log'),
+  // 生产日志级别：silent(仅error) | balanced(默认, error+warn+log) | verbose(全开)
+  // env: VAN_BLOG_LOG_LEVEL
+  logLevel: loadConfig('logLevel', 'balanced'),
   codeRunnerPath: loadConfig('codeRunner.path', '/app/codeRunner'),
   pluginRunnerPath: loadConfig('pluginRunner.path', '/app/pluginRunner'),
 };

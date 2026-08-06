@@ -18,14 +18,24 @@ export class LogProvider {
   systemLogPath = path.join(config.log, 'vanblog-stdio.log');
   constructor() {
     checkOrCreate(config.log);
+    // 事件文件(vanblog-event.log)始终按 info 记全，作为后台「系统日志」审计源；
+    // 镜像到 stdout 的这一份按 config.logLevel 控制，避免生产 docker logs 被审计事件刷屏。
+    const stdoutLevel =
+      (config.logLevel || 'balanced').toLowerCase() === 'silent'
+        ? 'silent'
+        : (config.logLevel || 'balanced').toLowerCase() === 'verbose'
+          ? 'debug'
+          : 'info';
     const streams = [
       {
+        level: 'info' as const,
         stream: fs.createWriteStream(this.logPath, {
           flags: 'a+',
         }),
       },
-      { stream: process.stdout },
+      { level: stdoutLevel as pino.Level, stream: process.stdout },
     ];
+    // 基础 level 取最宽松，实际过滤交给每个 stream 的 level。
     this.logger = pino({ level: 'debug' }, pino.multistream(streams));
     this.logger.info({ event: 'start' });
   }

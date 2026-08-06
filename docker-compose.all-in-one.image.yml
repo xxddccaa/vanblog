@@ -1,8 +1,16 @@
+# docker json-file 日志轮转：给每个服务的 docker logs 落盘封顶，避免长期运行涨爆磁盘。
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   vanblog:
     image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-all-in-one-${VANBLOG_RELEASE_SUFFIX:-latest}
     restart: always
     init: true
+    logging: *default-logging
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       EMAIL: ${EMAIL:-someone@example.com}
@@ -22,6 +30,7 @@ services:
       VANBLOG_CADDY_API_URL: http://127.0.0.1:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://127.0.0.1:3011
       VANBLOG_WALINE_CONTROL_URL: http://127.0.0.1:8361
+      VAN_BLOG_WALINE_API_URL: ${VAN_BLOG_WALINE_API_URL:-http://127.0.0.1:8360}
       VANBLOG_KROKI_URL: ${VANBLOG_KROKI_URL:-http://kroki:8000}
       VANBLOG_WEBSITE_ISR_BASE: http://127.0.0.1:3001/api/revalidate?path=
       WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
@@ -48,6 +57,7 @@ services:
   kroki:
     image: yuzutech/kroki
     restart: unless-stopped
+    logging: *default-logging
     expose:
       - "8000"
     healthcheck:

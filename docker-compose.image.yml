@@ -1,5 +1,12 @@
+# docker json-file 日志轮转：给每个服务的 docker logs 落盘封顶，避免长期运行涨爆磁盘。
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 services:
   caddy:
+    logging: *default-logging
     image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-caddy-${VANBLOG_RELEASE_SUFFIX:-latest}
     restart: always
     depends_on:
@@ -22,6 +29,7 @@ services:
       - ${VANBLOG_HTTP_PORT:-80}:80
 
   server:
+    logging: *default-logging
     image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-server-${VANBLOG_RELEASE_SUFFIX:-latest}
     restart: always
     init: true
@@ -61,6 +69,7 @@ services:
       start_period: 30s
 
   website:
+    logging: *default-logging
     image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-website-${VANBLOG_RELEASE_SUFFIX:-latest}
     restart: always
     init: true
@@ -87,6 +96,7 @@ services:
       start_period: 20s
 
   admin:
+    logging: *default-logging
     image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-admin-${VANBLOG_RELEASE_SUFFIX:-latest}
     restart: always
     expose:
@@ -99,6 +109,7 @@ services:
       start_period: 20s
 
   waline:
+    logging: *default-logging
     image: ${VANBLOG_DOCKER_REPO:-kevinchina/deeplearning}:vanblog-waline-${VANBLOG_RELEASE_SUFFIX:-latest}
     restart: always
     init: true
@@ -129,6 +140,7 @@ services:
       start_period: 30s
 
   postgres:
+    logging: *default-logging
     image: postgres:16-alpine
     restart: always
     environment:
@@ -146,11 +158,12 @@ services:
       start_period: 20s
 
   redis:
+    logging: *default-logging
     image: redis:7-alpine
     restart: always
     volumes:
       - ${VANBLOG_REDIS_DIR:-./data/redis}:/data
-    command: ['redis-server', '--appendonly', 'yes']
+    command: ['redis-server', '--appendonly', 'yes', '--loglevel', 'warning']
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 15s
@@ -159,6 +172,7 @@ services:
       start_period: 10s
 
   kroki:
+    logging: *default-logging
     image: yuzutech/kroki
     restart: unless-stopped
     expose:

@@ -22,6 +22,20 @@ import fs from 'fs';
 
 const STDIO_TEE_FLAG = Symbol.for('vanblog.stdio-tee-enabled');
 
+// 生产日志级别：把 config.logLevel 映射成 NestJS logger 级别数组。
+// balanced(默认) 保留 error/warn/log 业务日志，砍掉 debug/verbose；silent 仅 error；verbose 全开。
+function resolveNestLogLevels(level: string) {
+  switch ((level || 'balanced').toLowerCase()) {
+    case 'silent':
+      return ['error'] as const;
+    case 'verbose':
+      return ['error', 'warn', 'log', 'debug', 'verbose'] as const;
+    case 'balanced':
+    default:
+      return ['error', 'warn', 'log'] as const;
+  }
+}
+
 function enableStdioLogMirror(logPath: string) {
   const runtime = globalThis as typeof globalThis & {
     [STDIO_TEE_FLAG]?: boolean;
@@ -31,8 +45,30 @@ function enableStdioLogMirror(logPath: string) {
     return;
   }
 
+  // stdio 镜像文件是后台「系统日志」页的数据源，但历史上只增不减（曾涨到 6MB+）。
+  // 加一个简单的大小上限：超过 STDIO_LOG_MAX_BYTES 就滚动一份 .1（只留一份旧的），
+  // 磁盘占用被限制在约 2×上限。滚动逻辑绝不能让服务崩，全部 try/catch 兜底。
+  const STDIO_LOG_MAX_BYTES = 10 * 1024 * 1024;
+
+  const rotateIfOversized = () => {
+    try {
+      if (!fs.existsSync(logPath)) return;
+      if (fs.statSync(logPath).size <= STDIO_LOG_MAX_BYTES) return;
+      const rolled = `${logPath}.1`;
+      try {
+        if (fs.existsSync(rolled)) fs.rmSync(rolled);
+      } catch {
+        // ignore
+      }
+      fs.renameSync(logPath, rolled);
+    } catch {
+      // 滚动失败不影响主流程
+    }
+  };
+
   checkOrCreate(path.dirname(logPath));
-  const stream = fs.createWriteStream(logPath, { flags: 'a' });
+  rotateIfOversized();
+  let stream = fs.createWriteStream(logPath, { flags: 'a' });
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
@@ -51,6 +87,22 @@ function enableStdioLogMirror(logPath: string) {
 
   process.stdout.write = mirrorWrite(originalStdoutWrite);
   process.stderr.write = mirrorWrite(originalStderrWrite);
+
+  // 长期运行时周期检查文件大小，超限即滚动并重开写入流。
+  const rotateTimer = setInterval(() => {
+    try {
+      if (!fs.existsSync(logPath)) return;
+      if (fs.statSync(logPath).size <= STDIO_LOG_MAX_BYTES) return;
+      const previous = stream;
+      rotateIfOversized();
+      stream = fs.createWriteStream(logPath, { flags: 'a' });
+      previous.end();
+    } catch {
+      // ignore
+    }
+  }, 5 * 60 * 1000);
+  rotateTimer.unref();
+
   process.on('exit', () => {
     stream.end();
   });
@@ -61,7 +113,9 @@ async function bootstrap() {
   enableStdioLogMirror(path.join(globalConfig.log, 'vanblog-stdio.log'));
   const jwtSecret = await initJwt();
   global.jwtSecret = jwtSecret;
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger: [...resolveNestLogLevels(globalConfig.logLevel)],
+  });
   app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
   app.use(json({ limit: '50mb' }));

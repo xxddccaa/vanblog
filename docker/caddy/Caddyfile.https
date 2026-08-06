@@ -17,9 +17,19 @@
 (van) {
   encode zstd gzip
   log {
-    output file /var/log/vanblog-access.log
+    output file /var/log/vanblog-access.log {
+      roll_size 5MiB
+      roll_keep 3
+    }
     format json
   }
+  # 跳过内部健康检查(wget 探活)的 access log，避免每 15s 一条刷爆磁盘。
+  # 仅命中 path=/ 且 UA 以 Wget 开头，真实浏览器访问首页不受影响。
+  @vanblog_healthcheck {
+    path /
+    header User-Agent Wget*
+  }
+  log_skip @vanblog_healthcheck
   tls {
     on_demand
   }
