@@ -45,6 +45,9 @@ export class SearchArticleOption {
   sortTop?: SortOrder;
   startTime?: string;
   endTime?: string;
+  // 按归档年月精确筛选（使用数据库会话时区，与归档汇总的 EXTRACT 口径一致）
+  archiveYear?: number;
+  archiveMonth?: number;
   sortViewer?: SortOrder;
   toListView?: boolean;
   withPreviewContent?: boolean;

@@ -243,4 +243,44 @@ describe('StructuredDataService', () => {
       expect.stringContaining(`''::text AS html`),
     );
   });
+
+  it('matches tags exactly (not substring) when regMatch is false so tag pages exclude Django/Google for Go', async () => {
+    const store = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: '1' }] })
+        .mockResolvedValueOnce({ rows: [] }),
+    };
+    const service = new StructuredDataService(store as any);
+
+    await service.queryArticles(
+      { page: 1, pageSize: -1, regMatch: false, tags: 'Go', toListView: true },
+      true,
+    );
+
+    const [countSql, countParams] = store.query.mock.calls[0];
+    expect(countSql).toContain('t.tag_name = ANY(');
+    expect(countSql).not.toContain('t.tag_name ILIKE');
+    expect(countParams).toContainEqual(['Go']);
+  });
+
+  it('filters archive month via session-timezone EXTRACT so detail matches the archive summary buckets', async () => {
+    const store = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ total: '3' }] })
+        .mockResolvedValueOnce({ rows: [] }),
+    };
+    const service = new StructuredDataService(store as any);
+
+    await service.getArchiveMonthArticles('2024', '2', true);
+
+    const [countSql, countParams] = store.query.mock.calls[0];
+    // Must use the same EXTRACT(...) grouping basis as getArchiveSummary,
+    // not absolute UTC created_at bounds (which drop month-boundary articles).
+    expect(countSql).toContain('EXTRACT(YEAR FROM a.created_at)::int =');
+    expect(countSql).toContain('EXTRACT(MONTH FROM a.created_at)::int =');
+    expect(countSql).not.toContain('a.created_at >=');
+    expect(countParams).toEqual([2024, 2]);
+  });
 });

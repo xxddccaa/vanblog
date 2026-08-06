@@ -57,7 +57,13 @@ export default function MomentPage({ initialMoments, initialTotal, authorCardPro
       if (replace) {
         setMoments(data.moments);
       } else {
-        setMoments((prev) => [...prev, ...data.moments]);
+        // 发布新动态会把整体顺序前移一位，导致下一页首条与当前页末条重复；
+        // 追加时按 id 去重，避免重复渲染与 React key 冲突。
+        setMoments((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          const additions = (data.moments || []).filter((m) => !seen.has(m.id));
+          return [...prev, ...additions];
+        });
       }
       setTotal(data.total);
     } catch (error) {

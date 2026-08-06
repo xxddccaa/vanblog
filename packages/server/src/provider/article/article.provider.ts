@@ -943,8 +943,8 @@ export class ArticleProvider {
       .filter((article) => {
         const createdAt = new Date(article.createdAt);
         if (
-          createdAt.getUTCFullYear() !== numericYear ||
-          createdAt.getUTCMonth() + 1 !== numericMonth
+          createdAt.getFullYear() !== numericYear ||
+          createdAt.getMonth() + 1 !== numericMonth
         ) {
           return false;
         }

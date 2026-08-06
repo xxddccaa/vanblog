@@ -58,30 +58,33 @@ export default function NavPage({ initialNavData, authorCardProps, layoutProps }
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    if (!layoutProps.menus.some((menu) => menu.value === '/nav')) {
-      const menusCopy = [...layoutProps.menus];
-      menusCopy.splice(6, 0, {
-        id: typeof menusCopy[0]?.id === 'number' ? 100 : Date.now(),
-        name: '导航',
-        value: '/nav',
-        level: 0,
-      });
-      layoutProps.menus = menusCopy;
+  // 注入 /nav 菜单项（若尚未配置），派生出新对象而非改动传入的 props，
+  // 否则突变不会触发重渲染，首屏会渲染出旧值。
+  const layoutOption = useMemo(() => {
+    const menus = layoutProps.menus || [];
+    if (menus.some((menu) => menu.value === '/nav')) {
+      return layoutProps;
     }
+    const menusCopy = [...menus];
+    menusCopy.splice(6, 0, {
+      id: 100,
+      name: '导航',
+      value: '/nav',
+      level: 0,
+    });
+    return { ...layoutProps, menus: menusCopy };
   }, [layoutProps]);
 
-  useEffect(() => {
-    if (!authorCardProps.author || authorCardProps.author === '作者名字') {
-      const updatedProps = { ...authorCardProps };
-      if (authorCardProps.author === '作者名字') updatedProps.author = '站长';
-      if (authorCardProps.desc === '作者描述') updatedProps.desc = '网站管理员';
-      if (!authorCardProps.logo || authorCardProps.logo === '/logo.svg') {
-        updatedProps.logo = layoutProps.logo || '/logo.svg';
-      }
-      Object.assign(authorCardProps, updatedProps);
+  // 作者卡默认值回退，同样派生新对象，保证首屏即生效。
+  const authorCard = useMemo(() => {
+    const next = { ...authorCardProps };
+    if (next.author === '作者名字') next.author = '站长';
+    if (next.desc === '作者描述') next.desc = '网站管理员';
+    if (!next.logo || next.logo === '/logo.svg') {
+      next.logo = layoutProps.logo || '/logo.svg';
     }
-  }, [authorCardProps, layoutProps]);
+    return next;
+  }, [authorCardProps, layoutProps.logo]);
 
   const categories = useMemo(() => {
     const allCategories = ['全部工具'];
@@ -186,8 +189,8 @@ export default function NavPage({ initialNavData, authorCardProps, layoutProps }
         <meta property="og:type" content="website" />
       </Head>
 
-      <Layout option={layoutProps}
-      contentWidthMode={layoutProps.articleWidthMode} title={`导航 - ${siteName}`} sideBar={<AuthorCard option={authorCardProps} />}>
+      <Layout option={layoutOption}
+      contentWidthMode={layoutProps.articleWidthMode} title={`导航 - ${siteName}`} sideBar={<AuthorCard option={authorCard} />}>
         <div className="vb-surface-card dark:text-dark card-shadow dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8 max-w-4xl mx-auto">
           <div className={styles.navSearchSection}>
             <input

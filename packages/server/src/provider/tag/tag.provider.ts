@@ -162,6 +162,8 @@ export class TagProvider {
       page: page || 1,
       pageSize: pageSize || -1,
       toListView: true,
+      // 标签必须精确匹配，否则 ILIKE '%tag%' 会把 Go 匹配到 Django/Google/golang 等
+      regMatch: false,
     };
 
     const result = await this.articleProvider.getByOption(searchOption, !includeHidden);

@@ -1122,6 +1122,8 @@ export class StructuredDataService implements OnModuleInit {
     regMatch?: boolean;
     startTime?: string;
     endTime?: string;
+    archiveYear?: number;
+    archiveMonth?: number;
     author?: string;
   }) {
     const params: any[] = [];
@@ -1199,6 +1201,14 @@ export class StructuredDataService implements OnModuleInit {
     if (filters.endTime) {
       params.push(new Date(filters.endTime));
       clauses.push(`a.created_at <= $${params.length}`);
+    }
+    // 归档按月筛选：用与 getArchiveSummary 分桶相同的 EXTRACT（会话时区）口径，
+    // 避免汇总按本地月分桶、详情按 UTC 边界过滤导致月份边界文章丢失/错位。
+    if (filters.archiveYear && filters.archiveMonth) {
+      params.push(filters.archiveYear);
+      clauses.push(`EXTRACT(YEAR FROM a.created_at)::int = $${params.length}`);
+      params.push(filters.archiveMonth);
+      clauses.push(`EXTRACT(MONTH FROM a.created_at)::int = $${params.length}`);
     }
 
     return {
@@ -3760,16 +3770,13 @@ export class StructuredDataService implements OnModuleInit {
       };
     }
 
-    const start = new Date(Date.UTC(numericYear, numericMonth - 1, 1, 0, 0, 0, 0));
-    const end = new Date(Date.UTC(numericYear, numericMonth, 1, 0, 0, 0, 0));
-
     const result = await this.queryArticles(
       {
         page: 1,
         pageSize: -1,
         regMatch: false,
-        startTime: start.toISOString(),
-        endTime: new Date(end.getTime() - 1).toISOString(),
+        archiveYear: numericYear,
+        archiveMonth: numericMonth,
         category: filter?.category,
         tags: filter?.tag,
         toListView: true,
@@ -3861,6 +3868,8 @@ export class StructuredDataService implements OnModuleInit {
       regMatch: normalizedOption.regMatch,
       startTime: normalizedOption.startTime,
       endTime: normalizedOption.endTime,
+      archiveYear: normalizedOption.archiveYear,
+      archiveMonth: normalizedOption.archiveMonth,
       author: normalizedOption.author,
     });
     const countResult = await this.store.query<{ total: string }>(

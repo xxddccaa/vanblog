@@ -131,7 +131,7 @@ export const batchExport = async (ids: string[], isDraft = false) => {
 
 export const exportEachById = async (id: string, isDraft = false) => {
   const fn = isDraft ? getDraftById : getArticleById;
-  const { data: obj } = await getArticleById(id);
+  const { data: obj } = await fn(id);
   const md = parseObjToMarkdown(obj);
   const data = new Blob([md]);
   const url = URL.createObjectURL(data);
