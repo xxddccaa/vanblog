@@ -337,9 +337,9 @@ test('Next.js config still supports the expected asset and image behavior', () =
 });
 
 test('package version and release env example stay consistent', () => {
-  assert.equal(packageJson.version, '1.7.1');
+  assert.equal(packageJson.version, '1.7.2');
   assert.match(releaseEnv, /VANBLOG_DOCKER_REPO=kevinchina\/deeplearning/);
-  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.7\.1-replace-with-gitsha8/);
+  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.7\.2-replace-with-gitsha8/);
   assert.doesNotMatch(releaseEnv, /FASTGPT_ROOT_PASSWORD/);
 });
 
@@ -351,4 +351,54 @@ test('deployment docs still point to admin and init entrypoints', () => {
   assert.doesNotMatch(readmeDoc, /\/admin\/ai/);
   assert.doesNotMatch(deployDoc, /\/admin\/ai/);
   assert.doesNotMatch(guideGetStartedDoc, /\/admin\/ai/);
+});
+
+test('all compose files cap docker logs with json-file rotation', () => {
+  const composes = [
+    compose,
+    composeImage,
+    composeLatest,
+    composeAllInOne,
+    composeAllInOneImage,
+    composeAllInOneLatest,
+  ];
+  for (const file of composes) {
+    assert.match(file, /x-logging:\s*&default-logging/);
+    assert.match(file, /driver:\s*json-file/);
+    assert.match(file, /max-size:\s*"10m"/);
+    assert.match(file, /max-file:\s*"3"/);
+    assert.match(file, /logging:\s*\*default-logging/);
+  }
+});
+
+test('all-in-one overrides waline api url to localhost (fixes ENOTFOUND + comment count)', () => {
+  for (const file of [composeAllInOne, composeAllInOneImage, composeAllInOneLatest]) {
+    assert.match(file, /VAN_BLOG_WALINE_API_URL:\s*\$\{VAN_BLOG_WALINE_API_URL:-http:\/\/127\.0\.0\.1:8360\}/);
+  }
+  assert.match(allInOneEntrypoint, /VAN_BLOG_WALINE_API_URL/);
+});
+
+test('caddy access logs skip internal healthchecks and roll', () => {
+  for (const file of [caddyfile, caddyfileHttps, allInOneCaddyfile]) {
+    assert.match(file, /log_skip @vanblog_healthcheck/);
+    assert.match(file, /header User-Agent Wget\*/);
+    assert.match(file, /roll_size 5MiB/);
+    assert.match(file, /roll_keep 3/);
+    // 不能误伤 caddy.log（后台 Caddy 日志页读取源）
+    assert.match(file, /output file \/var\/log\/caddy\.log/);
+  }
+});
+
+test('redis noise is reduced to warning level', () => {
+  assert.match(allInOneEntrypoint, /REDIS_LOGLEVEL="\$\{REDIS_LOGLEVEL:-warning\}"/);
+  assert.match(allInOneEntrypoint, /loglevel \$\{REDIS_LOGLEVEL\}/);
+  for (const file of [compose, composeImage, composeLatest]) {
+    assert.match(file, /--loglevel['",\s]+warning/);
+  }
+});
+
+test('release env documents the new log-governance knobs', () => {
+  assert.match(releaseEnv, /VAN_BLOG_LOG_LEVEL/);
+  assert.match(releaseEnv, /VAN_BLOG_WALINE_API_URL/);
+  assert.match(releaseEnv, /REDIS_LOGLEVEL/);
 });
