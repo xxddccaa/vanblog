@@ -27,6 +27,29 @@
   display: none;
 }
 
+// 悬停联动高亮：颜色写死，避免复用 --admin-editor-* 时被解析成过淡的通用描边色
+.editor-wrapper .bytemd-preview .markdown-body .vb-source-hover-active {
+  border-radius: 8px;
+  outline: 2px solid rgba(23, 114, 180, 0.5);
+  outline-offset: 3px;
+  box-shadow:
+    inset 0 0 0 9999px rgba(23, 114, 180, 0.12),
+    0 8px 22px rgba(23, 114, 180, 0.16) !important;
+  transition:
+    box-shadow 160ms ease,
+    outline-color 160ms ease;
+}
+
+html.dark .editor-wrapper .bytemd-preview .markdown-body .vb-source-hover-active,
+html[data-theme='dark'] .editor-wrapper .bytemd-preview .markdown-body .vb-source-hover-active,
+body[data-theme='dark'] .editor-wrapper .bytemd-preview .markdown-body .vb-source-hover-active,
+.dark .editor-wrapper .bytemd-preview .markdown-body .vb-source-hover-active {
+  outline-color: rgba(111, 186, 255, 0.6);
+  box-shadow:
+    inset 0 0 0 9999px rgba(111, 186, 255, 0.14),
+    0 8px 24px rgba(6, 15, 32, 0.34) !important;
+}
+
 body .emoji-categories {
   background-color: var(--admin-editor-panel-bg, #fff);
 }

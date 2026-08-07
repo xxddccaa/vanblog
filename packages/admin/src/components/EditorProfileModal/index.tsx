@@ -9,7 +9,7 @@ export default function (props: { setValue: any; value: any; trigger: any }) {
       width={450}
       autoFocusFirstInput
       submitTimeout={3000}
-      initialValues={value || {}}
+      initialValues={{ sourceHover: 'open', ...(value || {}) }}
       onFinish={async (vals) => {
         setValue({ ...value, ...vals });
         message.success('保存成功！');
@@ -54,6 +54,28 @@ export default function (props: { setValue: any; value: any; trigger: any }) {
         label="本地缓存"
         tooltip="默认开启，开启后将在本地缓存编辑器内容，当本地内容比服务器内容更新时间更近时，将使用本地内容展示在编辑器中。"
         placeholder="是否开启本地缓存"
+        request={async () => {
+          return [
+            {
+              label: '开启',
+              value: 'open',
+            },
+            {
+              label: '关闭',
+              value: 'close',
+            },
+          ];
+        }}
+      />
+
+      <ProFormSelect
+        width="md"
+        required
+        id="sourceHover"
+        name="sourceHover"
+        label="预览联动高亮"
+        tooltip="默认开启。鼠标悬停左侧源码时，会高亮右侧预览中对应的块。若不喜欢这种联动效果，可在此关闭。"
+        placeholder="是否开启预览联动高亮"
         request={async () => {
           return [
             {

@@ -39,7 +39,7 @@ export default function () {
   const [loading, setLoading] = useState(true);
   const [siteInfo, setSiteInfo] = useState(null);
   const [editorConfig, setEditorConfig] = useCacheState(
-    { afterSave: 'stay', useLocalCache: 'open' },
+    { afterSave: 'stay', useLocalCache: 'open', sourceHover: 'open' },
     'editorConfig',
   );
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -673,6 +673,7 @@ export default function () {
           setLoading={setLoading}
           themeConfig={siteInfo}
           codeMaxLines={siteInfo?.codeMaxLines || 15}
+          sourceHover={editorConfig?.sourceHover !== 'close'}
           value={value}
           onChange={(val) => {
             setValue(val);

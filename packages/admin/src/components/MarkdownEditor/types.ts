@@ -7,6 +7,8 @@ export type MarkdownEditorProps = {
   setLoading: (loading: boolean) => void;
   themeConfig?: MarkdownThemeConfig;
   codeMaxLines?: number;
+  /** 预览联动高亮开关，默认开启 */
+  sourceHover?: boolean;
 };
 
 export type EditorEngine = 'milkdown' | 'bytemd';

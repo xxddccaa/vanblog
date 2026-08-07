@@ -32,6 +32,7 @@ import 'bytemd/dist/index.css';
 import 'katex/dist/katex.css';
 
 import type { MarkdownEditorProps } from '../types';
+import { sourceHoverPlugin } from '../plugins/sourceHover';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -50,7 +51,7 @@ const sanitize = (schema) => {
 };
 
 export default function BytemdEngine(props: MarkdownEditorProps) {
-  const { loading, setLoading, themeConfig, codeMaxLines } = props;
+  const { loading, setLoading, themeConfig, codeMaxLines, sourceHover = true } = props;
   const { initialState } = useModel('@@initialState');
   const navTheme = initialState.settings.navTheme;
   const themeClass = navTheme.toLowerCase().includes('dark') ? 'dark' : 'light';
@@ -80,8 +81,8 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
     };
   }, [navTheme]);
 
-  const plugins = useMemo(
-    () => [
+  const plugins = useMemo(() => {
+    const list = [
       customContainer(),
       gfm({ locale: cn }),
       highlight(),
@@ -106,9 +107,14 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
       customCodeBlock(editorCodeMaxLines),
       LinkTarget(),
       smartCodeBlock(),
-    ],
-    [editorCodeMaxLines, mermaidThemeMode, setLoading],
-  );
+    ];
+
+    if (sourceHover) {
+      list.push(sourceHoverPlugin());
+    }
+
+    return list;
+  }, [editorCodeMaxLines, mermaidThemeMode, setLoading, sourceHover]);
 
   return (
     <div style={{ height: '100%' }} className={themeClass}>
