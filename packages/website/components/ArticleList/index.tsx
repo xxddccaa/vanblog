@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getTarget } from "../Link/tools";
 import { getArticleCategories, type Article } from "../../types/article";
 import { getArticlePath } from "../../utils/getArticlePath";
+import TruncatedTitle from "../TruncatedTitle";
 
 export default (props: {
   articles: Article[];
@@ -12,6 +13,7 @@ export default (props: {
   openArticleLinksInNewWindow: boolean;
   onClick?: () => void;
   showTags?: boolean;
+  truncateTitle?: boolean;
 }) => (
   <div className="space-y-2" onClick={props.onClick}>
     {props.articles.map((article) => (
@@ -24,8 +26,16 @@ export default (props: {
           <div className="text-gray-400 flex-grow-0 flex-shrink-0 text-sm  group-hover:text-gray-600 dark:text-dark-400 dark:group-hover:text-dark-light">
             {dayjs(article.createdAt).format("YYYY-MM-DD")}
           </div>
-          <div className="ml-2 md:ml-4 text-base flex-grow flex-shrink overflow-hidden text-gray-600 group-hover:text-gray-800 dark:text-dark dark:group-hover:text-dark">
-            {article.title}
+          <div
+            className={`ml-2 md:ml-4 text-base flex-grow flex-shrink overflow-hidden text-gray-600 group-hover:text-gray-800 dark:text-dark dark:group-hover:text-dark${
+              props.truncateTitle ? " min-w-0" : ""
+            }`}
+          >
+            {props.truncateTitle ? (
+              <TruncatedTitle title={article.title} />
+            ) : (
+              article.title
+            )}
           </div>
           {getArticleCategories(article).length > 0 && (
             <div className="ml-2 hidden flex-wrap gap-1 md:flex">

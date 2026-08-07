@@ -45,7 +45,7 @@ export default function PostFragments(props: {
       <div className="mb-3 text-sm text-gray-500 dark:text-dark-light">
         当前文章评论数：{data?.commentCount ?? 0}
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="space-y-4">
         {sections.map((section) => (
           <div
             key={section.key}
@@ -59,6 +59,7 @@ export default function PostFragments(props: {
               showYear={false}
               openArticleLinksInNewWindow={props.openArticleLinksInNewWindow}
               showTags={false}
+              truncateTitle
             />
           </div>
         ))}
