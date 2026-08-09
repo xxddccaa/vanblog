@@ -9,7 +9,7 @@ import { MetaProvider } from '../meta/meta.provider';
 import { VisitProvider } from '../visit/visit.provider';
 import { sleep } from 'src/utils/sleep';
 import { CategoryDocument } from 'src/scheme/category.schema';
-import { buildArticlePreview } from 'src/utils/articlePreview';
+import { buildArticleMarkdownPreview } from 'src/utils/articlePreview';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 import { escapeRegExp } from 'src/utils/escapeRegExp';
 
@@ -1048,7 +1048,7 @@ export class ArticleProvider {
 
         return {
           ...article,
-          content: buildArticlePreview(article.content || ''),
+          content: buildArticleMarkdownPreview(article.content || ''),
         };
       });
     }
@@ -1233,7 +1233,7 @@ export class ArticleProvider {
         }
         return {
           ...article,
-          content: buildArticlePreview(article.content || ''),
+          content: buildArticleMarkdownPreview(article.content || ''),
         };
       });
     }

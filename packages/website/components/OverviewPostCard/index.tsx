@@ -2,9 +2,9 @@ import React from 'react';
 import dayjs from 'dayjs';
 import Link from 'next/link';
 import { encodeQuerystring } from '../../utils/encode';
-import { getOverviewPreview } from '../../utils/getOverviewPreview';
 import { getTarget } from '../Link/tools';
 import TopPinIcon from '../TopPinIcon';
+import Markdown from '../Markdown';
 
 export default function OverviewPostCard(props: {
   id: number | string;
@@ -20,10 +20,10 @@ export default function OverviewPostCard(props: {
   openArticleLinksInNewWindow: boolean;
   showEditButton: boolean;
   showExpirationReminder: boolean;
+  codeMaxLines?: number;
 }) {
-  const summary = props.private
-    ? '该文章已加密，点击 `阅读全文` 并输入密码后方可查看。'
-    : getOverviewPreview(props.content || '');
+  // 服务端已把正文截断成“保留 Markdown 的预览片段”，这里直接按 Markdown 渲染。
+  const summary = props.private ? '' : (props.content || '').trim();
   const categories =
     Array.isArray(props.categories) && props.categories.length
       ? props.categories
@@ -76,9 +76,13 @@ export default function OverviewPostCard(props: {
         </div>
 
         <div className="mx-2 mt-4 text-sm text-gray-600 md:text-base">
-          <p className="leading-7 whitespace-pre-line break-words text-gray-600 dark:text-dark">
-            {summary}
-          </p>
+          {props.private ? (
+            <p className="leading-7 whitespace-pre-line break-words text-gray-600 dark:text-dark">
+              该文章已加密，点击 `阅读全文` 并输入密码后方可查看。
+            </p>
+          ) : summary ? (
+            <Markdown content={summary} codeMaxLines={props.codeMaxLines} />
+          ) : null}
         </div>
 
         <div className="mt-4 flex w-full justify-center">

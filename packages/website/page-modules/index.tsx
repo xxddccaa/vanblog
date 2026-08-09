@@ -53,6 +53,7 @@ const Home = (props: IndexPageProps) => {
             categories={article.categories}
             content={article.content || ""}
             enableComment={props.layoutProps.enableComment}
+            codeMaxLines={props.layoutProps.codeMaxLines}
           />
         ))}
       </div>
