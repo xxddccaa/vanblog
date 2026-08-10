@@ -54,6 +54,7 @@ export default function LinkPage(props: LinkPageProps) {
       contentWidthMode={props.layoutProps.articleWidthMode}
       title="友情链接"
       sideBar={<AuthorCard option={props.authorCardProps} />}
+      includeMarkdownThemeHead={true}
     >
       <div className="vb-surface-card dark:text-dark card-shadow dark:card-shadow-dark py-4 px-8 md:py-6 md:px-8">
         <div className="text-center mb-8">

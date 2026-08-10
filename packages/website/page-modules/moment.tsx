@@ -194,6 +194,7 @@ export default function MomentPage({
       contentWidthMode={layoutProps.articleWidthMode}
       title={"动态 - " + layoutProps.siteName}
       sideBar={<AuthorCard option={authorCardProps} />}
+      includeMarkdownThemeHead={true}
     >
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">

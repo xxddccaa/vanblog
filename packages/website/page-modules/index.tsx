@@ -25,6 +25,7 @@ const Home = (props: IndexPageProps) => {
       contentWidthMode={props.layoutProps.articleWidthMode}
       title={props.layoutProps.siteName}
       sideBar={<AuthorCard option={props.authorCardProps}></AuthorCard>}
+      includeMarkdownThemeHead={true}
     >
       <Head>
         <meta

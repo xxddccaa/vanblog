@@ -153,7 +153,7 @@ export default function MomentPage({ initialMoments, initialTotal, authorCardPro
 
   return (
     <Layout option={layoutProps}
-      contentWidthMode={layoutProps.articleWidthMode} title={`动态 - ${layoutProps.siteName}`} sideBar={<AuthorCard option={authorCardProps} />}>
+      contentWidthMode={layoutProps.articleWidthMode} title={`动态 - ${layoutProps.siteName}`} sideBar={<AuthorCard option={authorCardProps} />} includeMarkdownThemeHead={true}>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-dark mb-2">动态</h1>
