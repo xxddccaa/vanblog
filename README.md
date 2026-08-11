@@ -10,7 +10,7 @@
 
 我的博客地址：<https://www.dong-blog.fun/>
 
-当前仓库开发与发布统一以 `Node.js 24.14.1` + `pnpm 10.33.0` 为基线，根目录也提供了 `.nvmrc` 与 `.node-version` 方便宿主机和 CI 对齐。
+当前仓库开发与发布统一以 `Node.js 22.22.2` + `pnpm 10.33.0` 为基线，根目录也提供了 `.nvmrc` 与 `.node-version` 方便宿主机和 CI 对齐。
 
 ## 当前基线
 
@@ -25,7 +25,7 @@
 | 场景 | 组合 | 适用情况 |
 | --- | --- | --- |
 | 源码开发 / 本地调试 | `docker-compose.yml` | 直接从当前仓库构建，适合联调与改代码 |
-| latest 快速部署 | `docker-compose.latest.yml` | 不想维护 `.env`，希望最快拉起主栈 |
+| latest 快速部署 | `docker-compose.latest.yml` + `.env` | 使用最新主栈镜像，并显式提供数据库随机密码 |
 | latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像和一份 compose |
 | 锁定正式版本 | `docker-compose.image.yml` + `.env.release.example` | 需要精确回滚、审计、记录线上版本 |
 | 锁定正式版本（单镜像） | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚 |
@@ -52,6 +52,8 @@
 git clone https://github.com/xxddccaa/vanblog.git
 cd vanblog
 pnpm install
+printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
+  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
 docker compose up -d --build
 ```
 
@@ -70,13 +72,15 @@ http://<你的 IP 或域名>/admin/init
 ### 2. 使用 latest 镜像快速部署
 
 ```bash
+printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
+  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
 docker compose -f docker-compose.latest.yml pull
 docker compose -f docker-compose.latest.yml up -d
 ```
 
 这个方式适合快速体验主栈：
 
-- 不需要额外准备 `.env`
+- PostgreSQL 与 Redis 密码必须通过 `.env` 显式提供，避免共享默认凭证
 - 默认使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
 - 首次启动时会自动生成 Waline 共享 JWT，并写入 `log/waline.jwt`
 
@@ -91,6 +95,7 @@ docker compose -f docker-compose.all-in-one.latest.yml up -d
 
 - 对外仍然只暴露一个 HTTP 入口
 - `postgres` / `redis` 会随容器一起启动，但数据目录仍沿用 `./data/postgres`、`./data/redis`
+- 未显式提供密码时，容器会生成随机 PostgreSQL/Redis 密码并保存在 `log/vanblog-secrets/`
 
 ### 3. 锁定到某个正式发布版本
 
@@ -104,6 +109,7 @@ cp .env.release.example .env
 - `VANBLOG_DOCKER_REPO`
 - `VANBLOG_RELEASE_SUFFIX`
 - `POSTGRES_PASSWORD`
+- `REDIS_PASSWORD`
 - `WALINE_JWT_TOKEN`（可留空，首次启动会自动生成并写入 `log/waline.jwt`）
 
 启动：

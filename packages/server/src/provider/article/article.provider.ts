@@ -12,6 +12,11 @@ import { CategoryDocument } from 'src/scheme/category.schema';
 import { buildArticleMarkdownPreview } from 'src/utils/articlePreview';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 import { escapeRegExp } from 'src/utils/escapeRegExp';
+import {
+  hashPasswordCredential,
+  isArgonPasswordHash,
+  verifyProtectedContentPassword,
+} from 'src/utils/crypto';
 
 export type ArticleView = 'admin' | 'public' | 'list';
 
@@ -272,6 +277,9 @@ export class ArticleProvider {
     id?: number,
   ): Promise<Article> {
     const normalizedDto = this.normalizeArticleCategoryPayload(createArticleDto, true);
+    if (normalizedDto.password && !isArgonPasswordHash(normalizedDto.password)) {
+      normalizedDto.password = await hashPasswordCredential(normalizedDto.password);
+    }
     const createdData = new this.articleModel(normalizedDto);
     const newId = id || (await this.getNewId());
     createdData.id = newId;
@@ -355,19 +363,26 @@ export class ArticleProvider {
         return;
       }
     }
-    const oldViewer = article.viewer || 0;
-    const oldVIsited = article.visited || 0;
-    const newViewer = oldViewer + 1;
-    const newVisited = isNew ? oldVIsited + 1 : oldVIsited;
+    await this.incrementArticleViewer(article, isNew);
+  }
+
+  private async incrementArticleViewer(article: any, isNew: boolean) {
     const nowTime = new Date();
+    if (this.structuredDataService.isInitialized()) {
+      await this.structuredDataService.incrementArticleViewer(article.id, isNew === true);
+      return;
+    }
+
     await this.articleModel.updateOne(
       { id: article.id },
-      { visited: newVisited, viewer: newViewer, lastVisitedTime: nowTime },
+      {
+        $inc: { viewer: 1, visited: isNew === true ? 1 : 0 },
+        $set: { lastVisitedTime: nowTime },
+      },
     );
+    const refreshed = await this.getById(article.id, 'admin');
     await this.structuredDataService.upsertArticle({
-      ...(article?._doc || article),
-      visited: newVisited,
-      viewer: newViewer,
+      ...(refreshed?._doc || refreshed || article?._doc || article),
       lastVisitedTime: nowTime,
     });
   }
@@ -377,21 +392,7 @@ export class ArticleProvider {
     if (!article) {
       return;
     }
-    const oldViewer = article.viewer || 0;
-    const oldVIsited = article.visited || 0;
-    const newViewer = oldViewer + 1;
-    const newVisited = isNew ? oldVIsited + 1 : oldVIsited;
-    const nowTime = new Date();
-    await this.articleModel.updateOne(
-      { id: id },
-      { visited: newVisited, viewer: newViewer, lastVisitedTime: nowTime },
-    );
-    await this.structuredDataService.upsertArticle({
-      ...(article?._doc || article),
-      visited: newVisited,
-      viewer: newViewer,
-      lastVisitedTime: nowTime,
-    });
+    await this.incrementArticleViewer(article, isNew);
   }
 
   async getRecentVisitedArticles(num: number, view: ArticleView) {
@@ -1387,7 +1388,7 @@ export class ArticleProvider {
     if (!targetPassword || targetPassword == '') {
       return { ...(article?._doc || article), password: undefined };
     } else {
-      if (targetPassword == password) {
+      if (await verifyProtectedContentPassword(targetPassword, password)) {
         return { ...(article?._doc || article), password: undefined };
       } else {
         return null;
@@ -1671,8 +1672,19 @@ export class ArticleProvider {
     // 获取原始文章以比较标签变化
     const originalArticle = await this.getById(id, 'admin');
     
+    const normalizedUpdateDto = this.normalizeArticleCategoryPayload(
+      updateArticleDto,
+      updateArticleDto.categories !== undefined || updateArticleDto.category !== undefined,
+    );
+    if (normalizedUpdateDto.password) {
+      normalizedUpdateDto.password = isArgonPasswordHash(normalizedUpdateDto.password)
+        ? normalizedUpdateDto.password
+        : await hashPasswordCredential(normalizedUpdateDto.password);
+    } else if (normalizedUpdateDto.password === '') {
+      delete normalizedUpdateDto.password;
+    }
     const updateData = {
-      ...this.normalizeArticleCategoryPayload(updateArticleDto, updateArticleDto.categories !== undefined || updateArticleDto.category !== undefined),
+      ...normalizedUpdateDto,
       updatedAt: new Date(),
     };
     if (!skipUpdateWordCount) {

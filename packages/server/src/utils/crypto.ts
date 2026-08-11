@@ -4,6 +4,7 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import { sha256 } from 'js-sha256';
+import { Algorithm, hash, verify } from '@node-rs/argon2';
 
 // 随机盐
 export function makeSalt(): string {
@@ -21,6 +22,42 @@ export function encryptPassword(username: string, password: string, salt: string
     return '';
   }
   return sha256(sha256(username + sha256(password + salt)) + salt + sha256(username + salt));
+}
+
+export async function hashPasswordCredential(password: string) {
+  return await hash(password, {
+    algorithm: Algorithm.Argon2id,
+    memoryCost: 64 * 1024,
+    timeCost: 3,
+    parallelism: 1,
+    outputLen: 32,
+  });
+}
+
+export async function verifyPasswordCredential(
+  storedPassword: string,
+  submittedPassword: string,
+  legacyPassword?: string,
+) {
+  if (storedPassword?.startsWith('$argon2id$')) {
+    return await verify(storedPassword, submittedPassword);
+  }
+  return Boolean(legacyPassword && storedPassword === legacyPassword);
+}
+
+export function isArgonPasswordHash(value: string) {
+  return typeof value === 'string' && value.startsWith('$argon2id$');
+}
+
+export async function verifyProtectedContentPassword(
+  storedPassword: string,
+  submittedPassword: string,
+) {
+  if (!storedPassword || !submittedPassword) return false;
+  if (isArgonPasswordHash(storedPassword)) {
+    return await verify(storedPassword, submittedPassword);
+  }
+  return storedPassword === submittedPassword;
 }
 /**
  * 把没加过盐的密码洗成加盐的

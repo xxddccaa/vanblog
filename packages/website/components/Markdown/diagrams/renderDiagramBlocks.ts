@@ -2,6 +2,7 @@ import type { DiagramThemeMode } from './types';
 import { ALL_DIAGRAM_LANGUAGES, KROKI_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
 import { renderWithKroki } from './krokiRenderer';
 import { renderWaveDrom } from './wavedromRenderer';
+import { sanitizeDiagramSvg } from '../sanitize';
 
 export async function renderDiagramBlocks(
   container: HTMLElement,
@@ -59,7 +60,7 @@ async function renderSingleDiagram(
     wrapper.setAttribute('data-diagram-type', language);
     wrapper.setAttribute('data-diagram-source', source);
     wrapper.setAttribute('data-vb-diagram-rendered', themeMode);
-    wrapper.innerHTML = svg;
+    wrapper.innerHTML = sanitizeDiagramSvg(svg);
 
     addExportToolbar(wrapper, themeMode);
 

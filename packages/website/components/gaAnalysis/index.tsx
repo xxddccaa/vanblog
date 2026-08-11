@@ -18,15 +18,16 @@ export default function (props: { id: string }) {
       script.dataset.vanblogGa = props.id;
       document.head.appendChild(script);
 
-      const inline = document.createElement("script");
-      inline.dataset.vanblogGaInit = props.id;
-      inline.text = `
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){window.dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '${props.id}');
-      `;
-      document.head.appendChild(inline);
+      const analyticsWindow = window as Window & {
+        dataLayer?: unknown[][];
+        gtag?: (...args: unknown[]) => void;
+      };
+      analyticsWindow.dataLayer = analyticsWindow.dataLayer || [];
+      analyticsWindow.gtag = (...args: unknown[]) => {
+        analyticsWindow.dataLayer?.push(args);
+      };
+      analyticsWindow.gtag('js', new Date());
+      analyticsWindow.gtag('config', props.id);
     };
 
     const trigger = () => {

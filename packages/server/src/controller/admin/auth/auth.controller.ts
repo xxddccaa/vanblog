@@ -22,7 +22,7 @@ import { CacheProvider } from 'src/provider/cache/cache.provider';
 import { InitProvider } from 'src/provider/init/init.provider';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
-import { getNetIp } from 'src/provider/log/utils';
+import { getNetIp, getRequestIp } from 'src/provider/log/utils';
 
 @ApiTags('tag')
 @Controller('/api/admin/auth/')
@@ -39,8 +39,7 @@ export class AuthController {
 
   private async clearLoginRetryCounter(request: any) {
     try {
-      const { ip } = await getNetIp(request);
-      const normalizedIp = String(ip || '').trim();
+      const normalizedIp = getRequestIp(request) || 'unknown';
       if (!normalizedIp) {
         return;
       }
@@ -51,8 +50,8 @@ export class AuthController {
   }
 
   private async ensureSensitiveRecoveryRequestIsPrivate(request: any) {
-    const { ip } = await getNetIp(request);
-    if (String(ip || '').trim()) {
+    const network = await getNetIp(request);
+    if (!network.valid || !network.isPrivate) {
       throw new UnauthorizedException({
         statusCode: 401,
         message: '敏感恢复入口仅允许在受信任网络中使用',
@@ -74,7 +73,9 @@ export class AuthController {
     this.logProvider.login(request, true);
     await this.clearLoginRetryCounter(request);
     const data = await this.authProvider.login(request.user);
-    this.pipelineProvider.dispatchEvent('login', data);
+    this.pipelineProvider.dispatchEvent('login', {
+      user: data?.user,
+    });
     return {
       statusCode: 200,
       data,
@@ -90,9 +91,7 @@ export class AuthController {
         message: '无登录凭证！',
       });
     }
-    this.pipelineProvider.dispatchEvent('logout', {
-      token,
-    });
+    this.pipelineProvider.dispatchEvent('logout', {});
     await this.tokenProvider.disableToken(token);
     return {
       statusCode: 200,

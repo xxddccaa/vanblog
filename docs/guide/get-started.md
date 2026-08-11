@@ -33,6 +33,8 @@ order: 1
 ### 1. 主栈 quick-start
 
 ```bash
+printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
+  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
 docker compose -f docker-compose.latest.yml pull
 docker compose -f docker-compose.latest.yml up -d
 ```
@@ -62,13 +64,13 @@ docker run -d \
   -v "$(pwd)/log:/var/log" \
   -v "$(pwd)/caddy/config:/root/.config/caddy" \
   -v "$(pwd)/caddy/data:/root/.local/share/caddy" \
-  -v "$(pwd)/aliyunpan/config:/root/.config/aliyunpan" \
+  -v "$(pwd)/aliyunpan/config:/home/vanblog/.config/aliyunpan" \
   -v "$(pwd)/data/postgres:/var/lib/postgresql/data" \
   -v "$(pwd)/data/redis:/data/redis" \
   kevinchina/deeplearning:vanblog-all-in-one-latest
 ```
 
-这个镜像现在已经内置了和 `docker-compose.all-in-one.latest.yml` 一致的默认环境变量；但端口映射、数据卷挂载、重启策略这些宿主机参数，仍然需要你在 `docker run` 时自己显式传入。
+这个镜像未收到密码时会自动生成 PostgreSQL/Redis 随机密码并保存在 `log/vanblog-secrets/`；端口映射、数据卷挂载、重启策略这些宿主机参数仍需显式传入。
 
 ## 方式三：使用版本锁定镜像部署
 
@@ -84,6 +86,7 @@ cp .env.release.example .env
 - `VANBLOG_DOCKER_REPO`
 - `VANBLOG_RELEASE_SUFFIX`
 - `POSTGRES_PASSWORD`
+- `REDIS_PASSWORD`
 - `WALINE_JWT_TOKEN`（可选）
 
 ### 2. 启动服务

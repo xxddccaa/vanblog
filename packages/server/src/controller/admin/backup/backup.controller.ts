@@ -43,6 +43,9 @@ import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
 import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 import { BackupImportJobProvider } from 'src/provider/backup-import-job/backup-import-job.provider';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
+import { parseBackupBuffer, writeEncryptedBackupFile } from 'src/utils/backupCrypto';
 
 interface PreparedImportPayload {
   backupVersion: string;
@@ -337,8 +340,7 @@ export class BackupController {
     file: Express.Multer.File,
     includeAnalytics = false,
   ): Promise<PreparedImportPayload> {
-    const json = file.buffer.toString();
-    const data = this.normalizeBackupPayload(JSON.parse(json));
+    const data = this.normalizeBackupPayload(parseBackupBuffer(file.buffer));
     const currentAdmin = await this.userProvider.getUser();
     const canRestoreProtectedData = await this.canRestoreProtectedData();
     const backupVersion = data.backupInfo?.version || '1.0.0';
@@ -404,6 +406,7 @@ export class BackupController {
 
   @Get('export')
   async getAll(@Res() res: Response) {
+    let temporaryDirectory: string | undefined;
     try {
       this.logger.log('开始导出完整站点 JSON...');
 
@@ -565,8 +568,9 @@ export class BackupController {
           legacyFields: ['mongoCollections'],
           credentialWarnings: {
             tokensExcluded: true,
+            encrypted: true,
             message:
-              '为避免凭证泄露，JSON 备份不会导出登录会话 Token 或 API Token；恢复后需重新登录并重新创建 API Token。',
+              '备份已使用 AES-256-GCM 加密；登录会话 Token 和 API Token 仍不会导出，恢复后需重新登录并重新创建 API Token。',
           },
           artifactWarnings: hasUnembeddedArtifacts
             ? {
@@ -590,18 +594,23 @@ export class BackupController {
         `数据导出完成，共包含 ${Object.keys(data.backupInfo.counts).length} 种数据类型`,
       );
 
-      const name = `vanblog-backup-${dayjs().format('YYYY-MM-DD-HHmmss')}.json`;
-      fs.writeFileSync(name, JSON.stringify(data, null, 2));
-      res.download(name, (err) => {
+      const name = `vanblog-backup-${dayjs().format('YYYY-MM-DD-HHmmss')}.vbe`;
+      temporaryDirectory = fs.mkdtempSync(path.join(tmpdir(), 'vanblog-backup-'));
+      fs.chmodSync(temporaryDirectory, 0o700);
+      const temporaryFile = path.join(temporaryDirectory, name);
+      await writeEncryptedBackupFile(temporaryFile, data);
+      res.download(temporaryFile, (err) => {
+        fs.rmSync(temporaryDirectory!, { recursive: true, force: true });
         if (!err) {
           this.logger.log('备份文件下载成功');
-          fs.rmSync(name, { force: true });
           return;
         }
         this.logger.error('备份文件下载失败', err.stack);
-        fs.rmSync(name, { force: true });
       });
     } catch (error) {
+      if (temporaryDirectory) {
+        fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+      }
       this.logger.error('导出数据时发生错误', error.stack);
       res.status(500).json({
         statusCode: 500,

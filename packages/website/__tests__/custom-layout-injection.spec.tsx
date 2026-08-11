@@ -39,5 +39,6 @@ describe("CustomLayout custom CSS injection", () => {
       })
     );
     expect(html).toContain("window.__vanblogCustom");
+    expect(html).not.toContain("eval");
   });
 });

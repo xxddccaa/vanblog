@@ -1,17 +1,53 @@
 {
   "name": "root",
-  "version": "1.7.6",
+  "version": "1.8.0",
   "private": true,
   "engines": {
-    "node": ">=24 <25",
+    "node": ">=22 <23",
     "pnpm": "^10.33.0"
   },
   "pnpm": {
     "overrides": {
+      "@babel/runtime-corejs3@7.23.4": "7.29.7",
+      "@babel/core@7.29.0": "7.29.6",
+      "@tootallnate/once@2.0.0": "2.0.1",
       "baseline-browser-mapping": "^2.10.18",
+      "braces@3.0.2": "3.0.3",
+      "brace-expansion@2.1.0": "2.1.4",
+      "brace-expansion@5.0.5": "5.0.9",
       "browserslist": "^4.28.2",
       "caniuse-lite": "^1.0.30001787",
-      "giget": "^1.2.3"
+      "body-parser@2.2.2": "2.3.0",
+      "dompurify@3.4.12": "3.4.13",
+      "diff@5.1.0": "5.2.2",
+      "form-data@2.3.3": "2.5.6",
+      "form-data@3.0.1": "3.0.5",
+      "form-data@4.0.0": "4.0.6",
+      "formidable@2.1.2": "2.1.3",
+      "flatted@3.2.9": "3.4.2",
+      "immutable@4.3.4": "4.3.9",
+      "immutable@4.3.8": "4.3.9",
+      "jws@3.2.2": "3.2.3",
+      "js-yaml@5.2.1": "5.2.3",
+      "koa@2.14.2": "2.16.4",
+      "lodash@4.17.21": "4.18.1",
+      "lodash-es@4.17.21": "4.18.1",
+      "minimatch@8.0.4": "8.0.7",
+      "nanoid@3.3.11": "3.3.17",
+      "picomatch@2.3.1": "2.3.2",
+      "postcss@8.5.9": "8.5.23",
+      "protobufjs@5.0.3": "7.6.5",
+      "qs@6.5.3": "6.14.2",
+      "qs@6.11.2": "6.15.3",
+      "qs@6.14.2": "6.15.3",
+      "qs@6.15.1": "6.15.3",
+      "sanitize-html>htmlparser2": "10.0.0",
+      "underscore@1.13.6": "1.13.8",
+      "validator@9.4.1": "13.15.35",
+      "ws@5.2.3": "5.2.7"
+    },
+    "patchedDependencies": {
+      "@waline/vercel@1.41.4": "patches/@waline__vercel@1.41.4.patch"
     }
   },
   "scripts": {
@@ -21,6 +57,7 @@
     "build:server": "pnpm --filter @vanblog/server build",
     "build:test": "act -j test --secret-file=.env",
     "build:website": "pnpm --filter @vanblog/theme-default build",
+    "audit:prod": "node scripts/audit-production.mjs",
     "dev": "pnpm --filter @vanblog/server --filter @vanblog/admin --parallel dev",
     "dev:server": "pnpm --filter @vanblog/server dev:noweb ",
     "dev:website": "pnpm --filter @vanblog/theme-default dev",
@@ -61,14 +98,14 @@
   },
   "packageManager": "pnpm@10.33.0",
   "devDependencies": {
-    "cross-env": "^7.0.3",
-    "nan": "^2.18.0",
     "@typescript-eslint/eslint-plugin": "^6.13.1",
-    "@umijs/fabric": "^4.0.1",
     "@typescript-eslint/parser": "^6.13.1",
+    "@umijs/fabric": "^4.0.1",
+    "cross-env": "^7.0.3",
     "eslint": "^8.54.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.1",
+    "nan": "^2.18.0",
     "prettier": "^3.1.0",
     "standard-version": "^9.5.0"
   }

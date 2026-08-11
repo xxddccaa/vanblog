@@ -1,6 +1,36 @@
 import { ArticleProvider } from './article.provider';
 
 describe('ArticleProvider', () => {
+  it('increments article views directly in structured storage when PG mode is active', async () => {
+    const articleModel = {
+      updateOne: jest.fn(),
+    };
+    const structuredDataService = {
+      getArticleByPathname: jest.fn().mockResolvedValue({
+        id: 12,
+        title: 'Atomic views',
+        viewer: 7,
+        visited: 3,
+      }),
+      isInitialized: jest.fn().mockReturnValue(true),
+      incrementArticleViewer: jest.fn().mockResolvedValue(true),
+      upsertArticle: jest.fn(),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    await provider.updateViewerByPathname('atomic-views', true);
+
+    expect(structuredDataService.incrementArticleViewer).toHaveBeenCalledWith(12, true);
+    expect(articleModel.updateOne).not.toHaveBeenCalled();
+    expect(structuredDataService.upsertArticle).not.toHaveBeenCalled();
+  });
+
   it('normalizes legacy category-only article creation into categories', async () => {
     const savedArticle = {
       id: 0,

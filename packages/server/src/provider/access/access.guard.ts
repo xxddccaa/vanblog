@@ -38,7 +38,7 @@ export class AccessGuard implements CanActivate {
         }
         // 其他都为协作者
         const { permissions } = user || {};
-        if (!permissions || permissions.length == 0) {
+        if (!Array.isArray(permissions) || permissions.length == 0) {
           return false;
         } else {
           if (permissions.includes('all')) {
@@ -60,8 +60,8 @@ export class AccessGuard implements CanActivate {
         }
       }
     } catch (err) {
-      // 出了问题可能是 404 路由，就不管了。
-      return true;
+      this.logger.warn(`权限校验异常，已拒绝请求: ${err?.message || err}`);
+      return false;
     }
   }
 }

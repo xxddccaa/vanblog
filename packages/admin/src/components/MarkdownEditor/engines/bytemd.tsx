@@ -33,22 +33,7 @@ import 'katex/dist/katex.css';
 
 import type { MarkdownEditorProps } from '../types';
 import { sourceHoverPlugin } from '../plugins/sourceHover';
-
-const sanitize = (schema) => {
-  schema.protocols.src.push('data');
-  schema.tagNames.push('center');
-  schema.tagNames.push('iframe');
-  schema.tagNames.push('script');
-  schema.attributes['*'].push('style');
-  schema.attributes['*'].push('src');
-  schema.attributes['*'].push('scrolling');
-  schema.attributes['*'].push('border');
-  schema.attributes['*'].push('frameborder');
-  schema.attributes['*'].push('framespacing');
-  schema.attributes['*'].push('allowfullscreen');
-  schema.strip = [];
-  return schema;
-};
+import { configureMarkdownSanitizeSchema } from '../../Editor/sanitize';
 
 export default function BytemdEngine(props: MarkdownEditorProps) {
   const { loading, setLoading, themeConfig, codeMaxLines, sourceHover = true } = props;
@@ -130,7 +115,7 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
             onChange={props.onChange}
             mode="split"
             locale={cn}
-            sanitize={sanitize}
+            sanitize={configureMarkdownSanitizeSchema}
             uploadImages={async (files: File[]) => {
               if (files.length === 1) {
                 setLoading(true);

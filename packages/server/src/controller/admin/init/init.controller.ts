@@ -30,8 +30,8 @@ export class InitController {
   ) {}
 
   private async ensureInitRequestIsPrivate(request: any) {
-    const { ip } = await getNetIp(request);
-    if (String(ip || '').trim()) {
+    const network = await getNetIp(request);
+    if (!network.valid || !network.isPrivate) {
       throw new UnauthorizedException({
         statusCode: 401,
         message: '初始化入口仅允许在受信任网络中使用',

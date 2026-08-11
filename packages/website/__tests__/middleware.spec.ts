@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { proxy, config } from "../proxy";
+import { buildContentSecurityPolicy, proxy, config } from "../proxy";
 
 describe("website proxy cache normalization", () => {
+  it("uses nonce-based script CSP without unsafe script fallbacks", () => {
+    const policy = buildContentSecurityPolicy("test-nonce");
+
+    expect(policy).toContain("script-src 'self' 'nonce-test-nonce' 'strict-dynamic'");
+    expect(policy).not.toMatch(/script-src[^;]*'unsafe-inline'/);
+    expect(policy).not.toMatch(/script-src[^;]*'unsafe-eval'/);
+  });
+
   it("redirects public html requests to a tracking-param-free url", () => {
     const result = proxy({
       method: "GET",
@@ -89,6 +97,8 @@ describe("website proxy cache normalization", () => {
 
     expect(result.status).toBe(200);
     expect(result.headers.get("x-middleware-next")).toBe("1");
+    expect(result.headers.get("content-security-policy")).toContain("script-src");
+    expect(result.headers.get("x-middleware-override-headers")).toContain("x-nonce");
   });
 
   it("forwards a normalized theme variant header for anonymous public html requests", () => {

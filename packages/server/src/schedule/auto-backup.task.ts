@@ -26,6 +26,7 @@ import { DocumentProvider } from 'src/provider/document/document.provider';
 import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
 import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
 import { config } from 'src/config';
+import { writeEncryptedBackupFile } from 'src/utils/backupCrypto';
 
 @Injectable()
 export class AutoBackupTask {
@@ -79,9 +80,10 @@ export class AutoBackupTask {
 
   private ensureBackupDirectoryExists() {
     if (!fs.existsSync(this.backupDir)) {
-      fs.mkdirSync(this.backupDir, { recursive: true });
+      fs.mkdirSync(this.backupDir, { recursive: true, mode: 0o700 });
       this.logger.log(`创建备份目录: ${this.backupDir}`);
     }
+    fs.chmodSync(this.backupDir, 0o700);
   }
 
   // 初始化动态定时任务
@@ -150,13 +152,16 @@ export class AutoBackupTask {
     );
 
     this.backupTimer = setTimeout(async () => {
-      this.logger.log(`实例 ${this.instanceId} - 执行定时备份...`);
-      await this.executeBackup();
-      await this.cleanupOldBackups();
-      this.logger.log(`实例 ${this.instanceId} - 定时备份完成`);
-
-      // 设置下一次备份（24小时后）
-      this.scheduleNextBackup(backupTime);
+      try {
+        this.logger.log(`实例 ${this.instanceId} - 执行定时备份...`);
+        await this.executeBackup();
+        await this.cleanupOldBackups();
+        this.logger.log(`实例 ${this.instanceId} - 定时备份完成`);
+      } catch (error) {
+        this.logger.error(`实例 ${this.instanceId} - 定时备份失败: ${error?.message || error}`);
+      } finally {
+        this.scheduleNextBackup(backupTime);
+      }
     }, delay);
   }
 
@@ -198,12 +203,15 @@ export class AutoBackupTask {
     );
 
     this.aliyunpanTimer = setTimeout(async () => {
-      this.logger.log('执行定时阿里云盘同步...');
-      await this.executeAliyunpanSync();
-      this.logger.log('定时阿里云盘同步完成');
-
-      // 设置下一次同步（24小时后）
-      this.scheduleNextAliyunpanSync(syncTime);
+      try {
+        this.logger.log('执行定时阿里云盘同步...');
+        await this.executeAliyunpanSync();
+        this.logger.log('定时阿里云盘同步完成');
+      } catch (error) {
+        this.logger.error(`定时阿里云盘同步失败: ${error?.message || error}`);
+      } finally {
+        this.scheduleNextAliyunpanSync(syncTime);
+      }
     }, delay);
   }
 
@@ -417,18 +425,19 @@ export class AutoBackupTask {
           legacyFields: ['mongoCollections'],
           credentialWarnings: {
             tokensExcluded: true,
+            encrypted: true,
             message:
-              '为避免凭证泄露，自动 JSON 备份不会导出登录会话 Token 或 API Token；恢复后需重新登录并重新创建 API Token。',
+              '备份已使用 AES-256-GCM 加密；登录会话 Token 和 API Token 仍不会导出，恢复后需重新登录并重新创建 API Token。',
           },
         },
       };
 
       // 生成文件名 (和导出功能保持一致的命名格式)
-      const fileName = `vanblog-backup-${dayjs().format('YYYY-MM-DD-HHmmss')}.json`;
+      const fileName = `vanblog-backup-${dayjs().format('YYYY-MM-DD-HHmmss')}.vbe`;
       const filePath = path.join(this.backupDir, fileName);
 
-      // 写入文件
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      // 流式序列化并加密，避免同时在内存中保留完整 JSON 字符串。
+      await writeEncryptedBackupFile(filePath, data);
 
       this.logger.log(`实例 ${this.instanceId} - 自动备份完成: ${fileName}`);
     } catch (error) {
@@ -449,7 +458,11 @@ export class AutoBackupTask {
       const backupSetting = await this.getAutoBackupSetting();
       const files = fs
         .readdirSync(this.backupDir)
-        .filter((file) => file.startsWith('vanblog-backup-') && file.endsWith('.json'))
+        .filter(
+          (file) =>
+            file.startsWith('vanblog-backup-') &&
+            (file.endsWith('.vbe') || file.endsWith('.json')),
+        )
         .map((file) => ({
           name: file,
           path: path.join(this.backupDir, file),
@@ -534,7 +547,11 @@ export class AutoBackupTask {
     try {
       const files = fs
         .readdirSync(this.backupDir)
-        .filter((file) => file.startsWith('vanblog-backup-') && file.endsWith('.json'))
+        .filter(
+          (file) =>
+            file.startsWith('vanblog-backup-') &&
+            (file.endsWith('.vbe') || file.endsWith('.json')),
+        )
         .map((file) => {
           const filePath = path.join(this.backupDir, file);
           const stats = fs.statSync(filePath);

@@ -192,6 +192,8 @@ function createComposeEnv(httpPort, httpsPort) {
     VANBLOG_HTTP_PORT: String(httpPort),
     VANBLOG_HTTPS_PORT: String(httpsPort),
     EMAIL: 'test@example.com',
+    POSTGRES_PASSWORD: 'test-postgres-password-32-characters',
+    REDIS_PASSWORD: 'test-redis-password-32-characters',
     ...dirs,
   };
 }
@@ -309,7 +311,6 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     runCommand(['-f', 'docker-compose.yml', 'up', '-d', '--build'], {
       env: composeEnv,
       timeoutMs: 12 * 60 * 1000,
-      allowFailure: true,
     });
 
     await waitForHealthyStack(composeEnv, { requireCaddy: false });
@@ -319,19 +320,69 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     });
     await waitForHealthyStack(composeEnv);
 
+    for (const service of ['server', 'website', 'waline']) {
+      const uidResult = runCommand(
+        [
+          '-f',
+          'docker-compose.yml',
+          'exec',
+          '-T',
+          service,
+          'sh',
+          '-c',
+          `for status in /proc/[0-9]*/status; do
+            uid="$(awk '$1 == "Uid:" { print $2 }' "$status" 2>/dev/null || true)"
+            ppid="$(awk '$1 == "PPid:" { print $2 }' "$status" 2>/dev/null || true)"
+            if [ "$uid" = "10001" ] && [ "$ppid" = "1" ]; then
+              echo 10001
+              exit 0
+            fi
+          done
+          exit 1`,
+        ],
+        { env: composeEnv },
+      );
+      assert.equal(
+        uidResult.stdout.trim(),
+        '10001',
+        `${service} application process should run as UID 10001 below the init process`,
+      );
+    }
+
+    const walineDependencyCheck = runCommand(
+      [
+        '-f',
+        'docker-compose.yml',
+        'exec',
+        '-T',
+        'waline',
+        'node',
+        '-e',
+        `for (const name of ['@cloudbase/node-sdk', 'leancloud-storage', 'akismet']) {
+          try {
+            require.resolve(name);
+            console.error('unexpected dependency:', name);
+            process.exitCode = 1;
+          } catch {}
+        }`,
+      ],
+      { env: composeEnv },
+    );
+    assert.equal(walineDependencyCheck.status, 0);
+
     const swagger = await waitFor(async () => {
       try {
         const response = await fetchText(`${baseUrl}/swagger`);
-        return response.status === 200 ? response : false;
+        return response.status === 404 ? response : false;
       } catch {
         return false;
       }
     }, {
       timeoutMs: 90 * 1000,
       intervalMs: 3000,
-      label: 'swagger ui to be reachable at the public entrypoint',
+      label: 'swagger ui to stay blocked at the public entrypoint',
     });
-    assert.equal(swagger.status, 200);
+    assert.equal(swagger.status, 404);
 
     const walineAdmin = await waitFor(async () => {
       try {

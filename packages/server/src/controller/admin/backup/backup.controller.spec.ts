@@ -1,7 +1,23 @@
 import * as fs from 'fs';
+import { tmpdir } from 'os';
 import { BackupController } from './backup.controller';
+import { parseBackupBuffer } from 'src/utils/backupCrypto';
 
 describe('BackupController import mode', () => {
+  const previousBackupKey = process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+
+  beforeAll(() => {
+    process.env.VANBLOG_BACKUP_ENCRYPTION_KEY = 'backup-controller-test-key-32-bytes';
+  });
+
+  afterAll(() => {
+    if (previousBackupKey === undefined) {
+      delete process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+    } else {
+      process.env.VANBLOG_BACKUP_ENCRYPTION_KEY = previousBackupKey;
+    }
+  });
+
   const createController = (overrides: Record<string, any> = {}) => {
     const articleModel = Object.assign(
       jest.fn(() => ({
@@ -344,7 +360,9 @@ describe('BackupController import mode', () => {
     await controller.getAll({ download } as any);
 
     const exportedPath = download.mock.calls[0][0] as string;
-    const exportedJson = JSON.parse(fs.readFileSync(exportedPath, 'utf-8'));
+    const encryptedBackup = fs.readFileSync(exportedPath);
+    expect(encryptedBackup.toString('utf8')).not.toContain('api-token');
+    const exportedJson = parseBackupBuffer(encryptedBackup);
 
     expect(categoryProvider.getAllCategories).toHaveBeenCalledWith(true);
     expect(tagProvider.getAllTagRecords).toHaveBeenCalled();
@@ -365,8 +383,9 @@ describe('BackupController import mode', () => {
     );
     expect(exportedJson.backupInfo.credentialWarnings).toEqual({
       tokensExcluded: true,
+      encrypted: true,
       message:
-        '为避免凭证泄露，JSON 备份不会导出登录会话 Token 或 API Token；恢复后需重新登录并重新创建 API Token。',
+        '备份已使用 AES-256-GCM 加密；登录会话 Token 和 API Token 仍不会导出，恢复后需重新登录并重新创建 API Token。',
     });
     expect(exportedJson.backupInfo.artifactWarnings).toEqual({
       embedded: false,
@@ -376,11 +395,50 @@ describe('BackupController import mode', () => {
         '当前 JSON 备份不会内嵌本地静态文件和 folder 型自定义页面的实际文件内容；恢复时只会导入数据库记录。',
     });
     expect(download).toHaveBeenCalledWith(
-      expect.stringMatching(/^vanblog-backup-\d{4}-\d{2}-\d{2}-\d{6}\.json$/),
+      expect.stringMatching(
+        /\/vanblog-backup-\d{4}-\d{2}-\d{2}-\d{6}\.vbe$/,
+      ),
       expect.any(Function),
     );
     downloadCallback?.();
     expect(fs.existsSync(exportedPath)).toBe(false);
+  });
+
+  it('removes the private export directory when backup creation fails', async () => {
+    const listTemporaryBackups = () =>
+      fs
+        .readdirSync(tmpdir())
+        .filter((name) => name.startsWith('vanblog-backup-'))
+        .sort();
+    const before = listTemporaryBackups();
+    const currentBackupKey = process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+    const previousWalineToken = process.env.WALINE_JWT_TOKEN;
+    const previousGlobalSecret = (global as any).jwtSecret;
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+
+    try {
+      delete process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+      delete process.env.WALINE_JWT_TOKEN;
+      delete (global as any).jwtSecret;
+      const { controller } = createController();
+      await controller.getAll({ status } as any);
+
+      expect(status).toHaveBeenCalledWith(500);
+      expect(json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('备份加密密钥'),
+        }),
+      );
+      expect(listTemporaryBackups()).toEqual(before);
+    } finally {
+      if (currentBackupKey === undefined) delete process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+      else process.env.VANBLOG_BACKUP_ENCRYPTION_KEY = currentBackupKey;
+      if (previousWalineToken === undefined) delete process.env.WALINE_JWT_TOKEN;
+      else process.env.WALINE_JWT_TOKEN = previousWalineToken;
+      if (previousGlobalSecret === undefined) delete (global as any).jwtSecret;
+      else (global as any).jwtSecret = previousGlobalSecret;
+    }
   });
 
   it('restores users and site info when importing into a fresh instance', async () => {

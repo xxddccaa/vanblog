@@ -5,8 +5,15 @@ import { usePathname } from 'next/navigation';
 import { GlobalContext, GlobalState } from '../utils/globalContext';
 import { getPageview, recordPageview } from '../api/pageview';
 import { createReloadViewer } from '../utils/pageviewLifecycle';
+import { CspNonceContext } from '../utils/cspNonceContext';
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({
+  children,
+  nonce,
+}: {
+  children: React.ReactNode;
+  nonce: string;
+}) {
   const pathname = usePathname();
   const { current } = useRef({ hasInit: false });
   const [globalState, setGlobalState] = useState<GlobalState>({
@@ -30,8 +37,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, [current, pathname]);
 
   return (
-    <GlobalContext.Provider value={{ state: globalState, setState: setGlobalState }}>
-      {children}
-    </GlobalContext.Provider>
+    <CspNonceContext.Provider value={nonce}>
+      <GlobalContext.Provider value={{ state: globalState, setState: setGlobalState }}>
+        {children}
+      </GlobalContext.Provider>
+    </CspNonceContext.Provider>
   );
 }

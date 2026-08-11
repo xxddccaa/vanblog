@@ -1,4 +1,9 @@
 **
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!patches/
+!patches/**
 !docker/
 !docker/shared/
 !docker/shared/ensure-waline-jwt.cjs
@@ -8,6 +13,7 @@
 !docker/waline/control-auth.cjs
 !scripts/
 !scripts/fix-waline-dashboard.js
+!scripts/fix-waline-adapter.js
 !packages/
 !packages/waline/
 !packages/waline/package.json

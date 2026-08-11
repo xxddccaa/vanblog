@@ -8,7 +8,7 @@ log() {
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 POSTGRES_DB="${POSTGRES_DB:-vanblog}"
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
 POSTGRES_DATA_DIR="${PGDATA:-/var/lib/postgresql/data}"
 POSTGRES_SOCKET_DIR="/var/run/postgresql"
 POSTGRES_SHARED_BUFFERS="${POSTGRES_SHARED_BUFFERS:-}"
@@ -26,9 +26,10 @@ REDIS_APPENDONLY="$(printf '%s' "${REDIS_APPENDONLY:-yes}" | tr '[:upper:]' '[:l
 REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-}"
 REDIS_MAXMEMORY_POLICY="${REDIS_MAXMEMORY_POLICY:-}"
 REDIS_LOGLEVEL="${REDIS_LOGLEVEL:-warning}"
+REDIS_PASSWORD="${REDIS_PASSWORD:-}"
 WALINE_DB="${VAN_BLOG_WALINE_DB:-waline}"
 WALINE_USER="${POSTGRES_USER:-postgres}"
-WALINE_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
+WALINE_PASSWORD="${PG_PASSWORD:-}"
 WEBSITE_CONTROL_PORT="${WEBSITE_CONTROL_PORT:-3011}"
 WALINE_CONTROL_PORT="${WALINE_CONTROL_PORT:-8361}"
 WALINE_PORT="${WALINE_PORT:-8360}"
@@ -73,10 +74,46 @@ ensure_directories() {
     /var/log \
     /var/log/nginx \
     /var/lib/nginx/logs \
-    /root/.config/aliyunpan \
+    /home/vanblog/.config/aliyunpan \
     /root/.config/caddy \
-    /root/.local/share/caddy
+    /root/.local/share/caddy \
+    /var/log/vanblog-secrets
   chown -R postgres:postgres /var/lib/postgresql "${POSTGRES_SOCKET_DIR}" "${POSTGRES_DATA_DIR}"
+  chown -R vanblog:vanblog /app/static /var/log /home/vanblog
+  chmod 700 /var/log/vanblog-secrets
+}
+
+ensure_runtime_secret() {
+  local supplied="$1"
+  local secret_file="$2"
+  local weak_value="${3:-}"
+
+  if [[ -n "${supplied}" && "${supplied}" != "${weak_value}" && "${#supplied}" -ge 16 ]]; then
+    printf '%s' "${supplied}"
+    return
+  fi
+  if [[ -f "${secret_file}" ]]; then
+    tr -d '\r\n' < "${secret_file}"
+    return
+  fi
+
+  local generated
+  generated="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+  (umask 077 && printf '%s\n' "${generated}" > "${secret_file}")
+  printf '%s' "${generated}"
+}
+
+initialize_runtime_secrets() {
+  POSTGRES_PASSWORD="$(
+    ensure_runtime_secret "${POSTGRES_PASSWORD}" \
+      /var/log/vanblog-secrets/postgres.password postgres
+  )"
+  REDIS_PASSWORD="$(
+    ensure_runtime_secret "${REDIS_PASSWORD}" \
+      /var/log/vanblog-secrets/redis.password ""
+  )"
+  WALINE_PASSWORD="${WALINE_PASSWORD:-${POSTGRES_PASSWORD}}"
+  export POSTGRES_PASSWORD REDIS_PASSWORD WALINE_PASSWORD
 }
 
 write_postgres_runtime_config() {
@@ -134,6 +171,7 @@ port ${REDIS_PORT}
 dir ${REDIS_DATA_DIR}
 appendonly ${REDIS_APPENDONLY}
 loglevel ${REDIS_LOGLEVEL}
+requirepass ${REDIS_PASSWORD}
 CFG
 
   if [[ -z "${REDIS_SAVE_POLICY}" ]]; then
@@ -198,6 +236,18 @@ start_postgres() {
   wait_for_command "PostgreSQL" pg_isready -h 127.0.0.1 -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d postgres
 }
 
+ensure_postgres_password() {
+  su-exec postgres psql \
+    -U "${POSTGRES_USER}" \
+    -d postgres \
+    -v ON_ERROR_STOP=1 \
+    -v role_name="${POSTGRES_USER}" \
+    -v role_password="${POSTGRES_PASSWORD}" <<'SQL'
+SELECT format('ALTER ROLE %I WITH PASSWORD %L', :'role_name', :'role_password')
+\gexec
+SQL
+}
+
 ensure_postgres_database() {
   local db_name="$1"
   su-exec postgres psql -U "${POSTGRES_USER}" -d postgres -v ON_ERROR_STOP=1 <<SQL
@@ -212,15 +262,27 @@ start_redis() {
   write_redis_runtime_config
   redis-server "${REDIS_CONFIG_FILE}" &
   redis_pid=$!
-  wait_for_command "Redis" redis-cli -h 127.0.0.1 -p "${REDIS_PORT}" ping
+  wait_for_command "Redis" env REDISCLI_AUTH="${REDIS_PASSWORD}" redis-cli -h 127.0.0.1 -p "${REDIS_PORT}" ping
 }
 
 start_apps() {
+  local postgres_password_url
+  local redis_password_url
+  local waline_password_url
+  postgres_password_url="$(
+    node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "${POSTGRES_PASSWORD}"
+  )"
+  redis_password_url="$(
+    node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "${REDIS_PASSWORD}"
+  )"
+  waline_password_url="$(
+    node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "${WALINE_PASSWORD}"
+  )"
   export NODE_ENV="${NODE_ENV:-production}"
-  export VAN_BLOG_DATABASE_URL="${VAN_BLOG_DATABASE_URL:-postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}}"
-  export VAN_BLOG_REDIS_URL="${VAN_BLOG_REDIS_URL:-redis://127.0.0.1:${REDIS_PORT}}"
+  export VAN_BLOG_DATABASE_URL="${VAN_BLOG_DATABASE_URL:-postgresql://${POSTGRES_USER}:${postgres_password_url}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}}"
+  export VAN_BLOG_REDIS_URL="${VAN_BLOG_REDIS_URL:-redis://:${redis_password_url}@127.0.0.1:${REDIS_PORT}}"
   export VAN_BLOG_WALINE_DB="${WALINE_DB}"
-  export VAN_BLOG_WALINE_DATABASE_URL="${VAN_BLOG_WALINE_DATABASE_URL:-postgresql://${WALINE_USER}:${WALINE_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/${WALINE_DB}}"
+  export VAN_BLOG_WALINE_DATABASE_URL="${VAN_BLOG_WALINE_DATABASE_URL:-postgresql://${WALINE_USER}:${waline_password_url}@127.0.0.1:${POSTGRES_PORT}/${WALINE_DB}}"
   # all-in-one 单容器内 Waline 跑在 127.0.0.1，必须覆盖多容器默认的 http://waline:8360，
   # 否则 server 取评论数会 ENOTFOUND、评论数恒为 0 并每次访问刷 WARN 日志。
   export VAN_BLOG_WALINE_API_URL="${VAN_BLOG_WALINE_API_URL:-http://127.0.0.1:${WALINE_PORT}}"
@@ -260,7 +322,7 @@ start_apps() {
   nginx -g 'daemon off;' &
   admin_pid=$!
 
-  wait_for_http "server" "http://127.0.0.1:3000/swagger"
+  wait_for_http "server" "http://127.0.0.1:3000/"
   wait_for_http "website" "http://127.0.0.1:${WEBSITE_CONTROL_PORT}/health"
   wait_for_http "Waline" "http://127.0.0.1:${WALINE_CONTROL_PORT}/health"
   wait_for_http "admin" "http://127.0.0.1:3002/admin/"
@@ -292,9 +354,11 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 ensure_directories
+initialize_runtime_secrets
 init_postgres
 write_postgres_runtime_config
 start_postgres
+ensure_postgres_password
 ensure_postgres_database "${POSTGRES_DB}"
 ensure_postgres_database "${WALINE_DB}"
 start_redis

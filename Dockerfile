@@ -1,4 +1,4 @@
-FROM node:24.14.1-alpine AS base
+FROM node:22.22.2-alpine AS base
 ENV NODE_OPTIONS="--max_old_space_size=7168"
 WORKDIR /app
 
@@ -58,7 +58,7 @@ ENV EEE=production
 RUN pnpm build
 
 # Final runtime image
-FROM node:24.14.1-alpine AS runner
+FROM node:22.22.2-alpine AS runner
 WORKDIR /app
 
 # Install ONLY runtime dependencies (no build tools)

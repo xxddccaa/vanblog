@@ -13,7 +13,7 @@
 | 目标 | 推荐文件 | 适用情况 |
 | --- | --- | --- |
 | 本地开发 / 改代码 | `docker-compose.yml` | 从源码构建，适合调试与联调 |
-| latest 快速部署 | `docker-compose.latest.yml` | 不想维护 `.env`，直接拉取 `latest` 主栈 |
+| latest 快速部署 | `docker-compose.latest.yml` + `.env` | 拉取 `latest` 主栈并显式配置数据库随机密码 |
 | 锁定某个正式版本 | `docker-compose.image.yml` + `.env.release.example` | 需要精确回滚、审计、复现线上版本 |
 | latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像 |
 | 锁版单镜像 | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚 |
@@ -67,11 +67,17 @@ cp .env.release.example .env
 - `VANBLOG_DOCKER_REPO`
 - `VANBLOG_RELEASE_SUFFIX`
 - `POSTGRES_PASSWORD`
-- `VAN_BLOG_WALINE_DATABASE_URL`
+- `REDIS_PASSWORD`
 - `WALINE_JWT_TOKEN`
 - 目录挂载项
 
 如果 `WALINE_JWT_TOKEN` 留空，镜像运行时会在首次启动时自动生成一份共享密钥，并写入日志目录中的 `waline.jwt` 文件，后续重启会继续复用这份密钥。
+
+备份加密使用独立的 `VANBLOG_BACKUP_ENCRYPTION_KEY`。留空时 server
+镜像会生成并保存到独立的 `VANBLOG_SECRET_DIR` 下的
+`backup-encryption.key`，不会复用数据库 JWT 或 Waline
+JWT。使用异机/异地备份前，请把该密钥另存到独立的密码管理器或密钥系统；
+只有 `.vbe` 文件而没有该密钥时无法恢复。
 
 可选但常用的配置：
 
@@ -83,6 +89,8 @@ cp .env.release.example .env
 ### 4.1 latest 快速部署：主栈
 
 ```bash
+printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
+  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
 docker compose -f docker-compose.latest.yml pull
 docker compose -f docker-compose.latest.yml up -d
 ```
@@ -91,7 +99,7 @@ docker compose -f docker-compose.latest.yml up -d
 
 - 直接写死 `kevinchina/deeplearning:vanblog-*-latest`
 - 继续使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
-- 不需要额外准备 `.env`
+- 必须用 `.env` 提供随机的 PostgreSQL 与 Redis 密码
 
 ### 4.2 锁版部署：版本化镜像
 
@@ -170,7 +178,7 @@ docker run -d \
   -v "$(pwd)/log:/var/log" \
   -v "$(pwd)/caddy/config:/root/.config/caddy" \
   -v "$(pwd)/caddy/data:/root/.local/share/caddy" \
-  -v "$(pwd)/aliyunpan/config:/root/.config/aliyunpan" \
+  -v "$(pwd)/aliyunpan/config:/home/vanblog/.config/aliyunpan" \
   -v "$(pwd)/data/postgres:/var/lib/postgresql/data" \
   -v "$(pwd)/data/redis:/data/redis" \
   kevinchina/deeplearning:vanblog-all-in-one-latest
@@ -178,11 +186,11 @@ docker run -d \
 
 说明：
 
-- 从当前代码基线开始，`kevinchina/deeplearning:vanblog-all-in-one-latest` 镜像本身已经内置了和 `docker-compose.all-in-one.latest.yml` 一致的默认环境变量，包括 PostgreSQL / Redis 的那组默认性能参数
+- 从当前代码基线开始，`kevinchina/deeplearning:vanblog-all-in-one-latest` 镜像会在未提供密码时生成随机 PostgreSQL / Redis 密码，并持久化到 `log/vanblog-secrets/`
 - 也就是说，不传这些环境变量时，镜像会默认按下面这组值启动：
   - `POSTGRES_DB=vanblog`
   - `POSTGRES_USER=postgres`
-  - `POSTGRES_PASSWORD=postgres`
+  - `POSTGRES_PASSWORD`：自动生成，不再使用固定默认值
   - `POSTGRES_SHARED_BUFFERS=8GB`
   - `POSTGRES_WORK_MEM=32MB`
   - `POSTGRES_MAINTENANCE_WORK_MEM=1GB`
@@ -212,7 +220,7 @@ docker run -d \
   -v "$(pwd)/log:/var/log" \
   -v "$(pwd)/caddy/config:/root/.config/caddy" \
   -v "$(pwd)/caddy/data:/root/.local/share/caddy" \
-  -v "$(pwd)/aliyunpan/config:/root/.config/aliyunpan" \
+  -v "$(pwd)/aliyunpan/config:/home/vanblog/.config/aliyunpan" \
   -v "$(pwd)/data/postgres:/var/lib/postgresql/data" \
   -v "$(pwd)/data/redis:/data/redis" \
   kevinchina/deeplearning:vanblog-all-in-one-latest

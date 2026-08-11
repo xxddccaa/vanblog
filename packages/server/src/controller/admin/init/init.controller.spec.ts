@@ -40,7 +40,12 @@ describe('InitController', () => {
 
   it('rejects public initialization requests before the site is initialized', async () => {
     const { controller, initProvider, isrProvider } = createController();
-    getNetIp.mockResolvedValue({ ip: '8.8.8.8', address: 'public' });
+    getNetIp.mockResolvedValue({
+      ip: '8.8.8.8',
+      address: 'public',
+      valid: true,
+      isPrivate: false,
+    });
 
     await expect(controller.initSystem({} as any, { user: {}, siteInfo: {} } as any)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -63,7 +68,12 @@ describe('InitController', () => {
 
   it('allows private initialization requests and triggers the full ISR warmup', async () => {
     const { controller, initProvider, isrProvider } = createController();
-    getNetIp.mockResolvedValue({ ip: '', address: 'private' });
+    getNetIp.mockResolvedValue({
+      ip: '192.168.1.10',
+      address: 'private',
+      valid: true,
+      isPrivate: true,
+    });
 
     const result = await controller.initSystem({} as any, { user: {}, siteInfo: {} } as any);
 
@@ -77,11 +87,31 @@ describe('InitController', () => {
 
   it('rejects public initialization uploads before any file is written', async () => {
     const { controller, staticProvider } = createController();
-    getNetIp.mockResolvedValue({ ip: '1.1.1.1', address: 'public' });
+    getNetIp.mockResolvedValue({
+      ip: '1.1.1.1',
+      address: 'public',
+      valid: true,
+      isPrivate: false,
+    });
 
     await expect(
       controller.uploadImg({} as any, { originalname: 'favicon.png', buffer: Buffer.from('a') } as any, 'true'),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(staticProvider.upload).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the client address cannot be parsed', async () => {
+    const { controller, initProvider } = createController();
+    getNetIp.mockResolvedValue({
+      ip: '',
+      address: 'failed',
+      valid: false,
+      isPrivate: false,
+    });
+
+    await expect(
+      controller.initSystem({} as any, { user: {}, siteInfo: {} } as any),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(initProvider.init).not.toHaveBeenCalled();
   });
 });

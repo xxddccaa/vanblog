@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Logger, Param, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { SortOrder } from 'src/types/sort';
@@ -18,6 +30,8 @@ import { CacheProvider } from 'src/provider/cache/cache.provider';
 import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 import { WalineProvider } from 'src/provider/waline/waline.provider';
 import { normalizeCustomPageRoutePath } from 'src/utils/customPagePath';
+import { getRequestIp } from 'src/provider/log/utils';
+import { createHash } from 'node:crypto';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -345,8 +359,23 @@ export class PublicController {
   async getArticleByIdOrPathnameWithPassword(
     @Param('id') id: number | string,
     @Body() body: { password: string },
+    @Req() req?: Request,
   ) {
+    const retryIdentity = createHash('sha256')
+      .update(`${getRequestIp(req) || 'unknown'}\0${String(id)}`)
+      .digest('hex')
+      .slice(0, 32);
+    const retryKey = `article-unlock:${retryIdentity}`;
+    // Count before password verification so concurrent guesses cannot all
+    // pass a check-then-set window.
+    const attempt = await this.cacheProvider.incrementWithTtl(retryKey, 60);
+    if (attempt > 5) {
+      throw new HttpException('尝试次数过多，请稍后再试', HttpStatus.TOO_MANY_REQUESTS);
+    }
     const data = await this.articleProvider.getByIdWithPassword(id, body?.password);
+    if (data) {
+      await this.cacheProvider.del(retryKey);
+    }
     return {
       statusCode: 200,
       data: data,
@@ -424,8 +453,8 @@ export class PublicController {
   }
   @Post('/viewer')
   async addViewer(
-    @Query('isNew') isNew: boolean,
-    @Query('isNewByPath') isNewByPath: boolean,
+    @Query('isNew') isNew: boolean | string,
+    @Query('isNewByPath') isNewByPath: boolean | string,
     @Req() req: Request,
   ) {
     const refer = Array.isArray(req.headers.referer) ? req.headers.referer[0] : req.headers.referer;
@@ -438,7 +467,13 @@ export class PublicController {
     }
     let pathname = '/';
     try {
-      pathname = decodeURIComponent(new URL(refer).pathname || '/');
+      const refererUrl = new URL(refer);
+      const requestHost = req.get('host');
+      if (!requestHost || refererUrl.host !== requestHost) {
+        this.logger.warn('viewer 统计 referer 非本站来源，已跳过本次记录');
+        return { statusCode: 200, data: null };
+      }
+      pathname = decodeURIComponent(refererUrl.pathname || '/');
     } catch (err) {
       this.logger.warn(`viewer 统计 referer 非法，已跳过本次记录: ${refer}`);
       return {
@@ -446,7 +481,13 @@ export class PublicController {
         data: null,
       };
     }
-    const data = await this.metaProvider.addViewer(isNew, pathname, isNewByPath);
+    const normalizeBoolean = (value: boolean | string) =>
+      value === true || String(value).toLowerCase() === 'true';
+    const data = await this.metaProvider.addViewer(
+      normalizeBoolean(isNew),
+      pathname,
+      normalizeBoolean(isNewByPath),
+    );
     return {
       statusCode: 200,
       data: data,

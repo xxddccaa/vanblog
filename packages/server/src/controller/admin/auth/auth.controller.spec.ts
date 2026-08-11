@@ -4,15 +4,23 @@ import { AuthController } from './auth.controller';
 
 jest.mock('src/provider/log/utils', () => ({
   getNetIp: jest.fn(),
+  getRequestIp: jest.fn(),
 }));
 
-const { getNetIp } = jest.requireMock('src/provider/log/utils') as {
+const { getNetIp, getRequestIp } = jest.requireMock('src/provider/log/utils') as {
   getNetIp: jest.Mock;
+  getRequestIp: jest.Mock;
 };
 
 describe('AuthController', () => {
   beforeEach(() => {
-    getNetIp.mockResolvedValue({ ip: '', address: '' });
+    getNetIp.mockResolvedValue({
+      ip: '127.0.0.1',
+      address: '',
+      valid: true,
+      isPrivate: true,
+    });
+    getRequestIp.mockReturnValue('127.0.0.1');
   });
 
   afterEach(() => {
@@ -68,7 +76,7 @@ describe('AuthController', () => {
   it('clears the IP retry counter after a successful login so valid sessions do not burn remaining attempts', async () => {
     const { controller, authProvider, logProvider, cacheProvider, pipelineProvider } =
       createController();
-    getNetIp.mockResolvedValue({ ip: '8.8.8.8', address: 'test' });
+    getRequestIp.mockReturnValue('8.8.8.8');
 
     const result = await controller.login({
       user: { id: 0, name: 'admin', type: 'admin' },
@@ -78,7 +86,9 @@ describe('AuthController', () => {
     expect(logProvider.login).toHaveBeenCalledWith(expect.anything(), true);
     expect(cacheProvider.del).toHaveBeenCalledWith('login-8.8.8.8');
     expect(authProvider.login).toHaveBeenCalledWith({ id: 0, name: 'admin', type: 'admin' });
-    expect(pipelineProvider.dispatchEvent).toHaveBeenCalledWith('login', result.data);
+    expect(pipelineProvider.dispatchEvent).toHaveBeenCalledWith('login', {
+      user: result.data.user,
+    });
     expect(result).toEqual({
       statusCode: 200,
       data: {
@@ -153,7 +163,12 @@ describe('AuthController', () => {
   it('blocks the debug token endpoint from public network clients even when the secret is correct', async () => {
     const { controller } = createController();
     (config as any).debugSuperToken = 'debug-secret';
-    getNetIp.mockResolvedValue({ ip: '8.8.8.8', address: 'public' });
+    getNetIp.mockResolvedValue({
+      ip: '8.8.8.8',
+      address: 'public',
+      valid: true,
+      isPrivate: false,
+    });
 
     await expect(
       controller.debugToken({
@@ -168,7 +183,12 @@ describe('AuthController', () => {
 
   it('blocks the restore endpoint from public network clients before applying admin credential changes', async () => {
     const { controller, cacheProvider, userProvider } = createController();
-    getNetIp.mockResolvedValue({ ip: '8.8.8.8', address: 'public' });
+    getNetIp.mockResolvedValue({
+      ip: '8.8.8.8',
+      address: 'public',
+      valid: true,
+      isPrivate: false,
+    });
     cacheProvider.get.mockResolvedValue('restore-key');
     const updateUser = jest.fn();
     (userProvider as any).updateUser = updateUser;

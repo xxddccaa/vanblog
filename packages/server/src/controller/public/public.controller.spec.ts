@@ -9,6 +9,7 @@ describe('PublicController', () => {
       toSearchResult: jest.fn().mockImplementation((items) => items),
       getPublicArticleByIdOrPathname: jest.fn(),
       getByIdOrPathname: jest.fn(),
+      getByIdWithPassword: jest.fn(),
       getArticleNavByIdOrPathname: jest.fn(),
       getByIdOrPathnameWithPreNext: jest.fn(),
       getByOption: jest.fn(),
@@ -232,6 +233,14 @@ describe('PublicController', () => {
       set: jest.fn().mockImplementation(async (key: string, value: any) => {
         cacheStore.set(key, value);
       }),
+      del: jest.fn().mockImplementation(async (key: string) => {
+        cacheStore.delete(key);
+      }),
+      incrementWithTtl: jest.fn().mockImplementation(async (key: string) => {
+        const next = Number(cacheStore.get(key) || 0) + 1;
+        cacheStore.set(key, next);
+        return next;
+      }),
     };
     const walineProvider = {
       getCommentCount: jest.fn().mockResolvedValue(6),
@@ -277,6 +286,29 @@ describe('PublicController', () => {
     },
   });
 
+  it('atomically caps concurrent private article password attempts', async () => {
+    const { controller, articleProvider } = createController();
+    articleProvider.getByIdWithPassword.mockResolvedValue(null);
+    const request = {
+      ip: '203.0.113.20',
+      socket: {},
+    } as any;
+
+    const attempts = await Promise.allSettled(
+      Array.from({ length: 6 }, () =>
+        controller.getArticleByIdOrPathnameWithPassword(
+          'locked-post',
+          { password: 'wrong' },
+          request,
+        ),
+      ),
+    );
+
+    expect(attempts.filter((attempt) => attempt.status === 'fulfilled')).toHaveLength(5);
+    expect(attempts.filter((attempt) => attempt.status === 'rejected')).toHaveLength(1);
+    expect(articleProvider.getByIdWithPassword).toHaveBeenCalledTimes(5);
+  });
+
   it('skips viewer updates when referer is missing', async () => {
     const { controller, metaProvider } = createController();
 
@@ -301,6 +333,33 @@ describe('PublicController', () => {
     } as any);
 
     expect(result).toEqual({
+      statusCode: 200,
+      data: null,
+    });
+    expect(metaProvider.addViewer).not.toHaveBeenCalled();
+  });
+
+  it('normalizes viewer boolean query strings and accepts only same-host referers', async () => {
+    const { controller, metaProvider } = createController();
+    metaProvider.addViewer.mockResolvedValue({ viewer: 1, visited: 0 });
+    const request = {
+      headers: { referer: 'https://blog.example/post/hello' },
+      get: jest.fn().mockReturnValue('blog.example'),
+    };
+
+    await controller.addViewer('true', 'false', request as any);
+
+    expect(metaProvider.addViewer).toHaveBeenCalledWith(true, '/post/hello', false);
+  });
+
+  it('skips cross-site referers used to forge viewer statistics', async () => {
+    const { controller, metaProvider } = createController();
+    const request = {
+      headers: { referer: 'https://attacker.example/post/hello' },
+      get: jest.fn().mockReturnValue('blog.example'),
+    };
+
+    await expect(controller.addViewer('true', 'true', request as any)).resolves.toEqual({
       statusCode: 200,
       data: null,
     });
@@ -380,6 +439,7 @@ describe('PublicController', () => {
       headers: {
         referer: 'https://blog.example.com/post/test%20article',
       },
+      get: jest.fn().mockReturnValue('blog.example.com'),
     } as any);
 
     expect(metaProvider.addViewer).toHaveBeenCalledWith(true, '/post/test article', false);

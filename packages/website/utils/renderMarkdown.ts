@@ -10,22 +10,7 @@ import { LinkTarget } from '../components/Markdown/linkTarget';
 import { normalizeMathDelimiters } from '../components/Markdown/normalizeMathDelimiters';
 import { extendedSyntaxPlugin } from '../components/Markdown/extendedSyntax';
 import rawHTML from '../components/Markdown/rawHTML';
-
-const sanitize = (schema: any) => {
-  schema.protocols.src.push('data');
-  schema.tagNames.push('center');
-  schema.tagNames.push('iframe');
-  schema.tagNames.push('script');
-  schema.attributes['*'].push('style');
-  schema.attributes['*'].push('src');
-  schema.attributes['*'].push('scrolling');
-  schema.attributes['*'].push('border');
-  schema.attributes['*'].push('frameborder');
-  schema.attributes['*'].push('framespacing');
-  schema.attributes['*'].push('allowfullscreen');
-  schema.strip = [];
-  return schema;
-};
+import { configureMarkdownSanitizeSchema } from '../components/Markdown/sanitize';
 
 const getServerMarkdownProcessor = (codeMaxLines = 15) =>
   getProcessor({
@@ -47,7 +32,7 @@ const getServerMarkdownProcessor = (codeMaxLines = 15) =>
       Img(),
     ],
     remarkRehype: { allowDangerousHtml: true },
-    sanitize,
+    sanitize: configureMarkdownSanitizeSchema,
   });
 
 export function renderMarkdownToHtml(content: string, codeMaxLines = 15) {

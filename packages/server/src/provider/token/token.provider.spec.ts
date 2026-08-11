@@ -1,6 +1,42 @@
 import { TokenProvider } from './token.provider';
 
 describe('TokenProvider', () => {
+  it('stores only a SHA-256 digest for newly issued API tokens and limits them to 90 days', async () => {
+    const createdRecord = {
+      toObject: jest.fn(function () {
+        return this;
+      }),
+    } as any;
+    const tokenModel = {
+      create: jest.fn(async (payload) => Object.assign(createdRecord, payload)),
+    };
+    const jwtService = {
+      sign: jest.fn().mockReturnValue('header.payload.signature'),
+    };
+    const structuredDataService = {
+      upsertToken: jest.fn(),
+    };
+    const provider = new TokenProvider(
+      tokenModel as any,
+      jwtService as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    await expect(provider.createAPIToken('deploy')).resolves.toBe(
+      'header.payload.signature',
+    );
+    expect(tokenModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expiresIn: 60 * 60 * 24 * 90,
+        token: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      }),
+    );
+    expect(tokenModel.create.mock.calls[0][0].token).not.toContain(
+      'header.payload.signature',
+    );
+  });
+
   it('keeps token import synchronized with PG incrementally instead of rebuilding all structured tokens', async () => {
     const tokenModel = {
       updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),

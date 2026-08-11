@@ -8,7 +8,7 @@ import {
 import dayjs from 'dayjs';
 import { Request } from 'express';
 import { CacheProvider } from '../cache/cache.provider';
-import { getNetIp } from '../log/utils';
+import { getRequestIp } from '../log/utils';
 import { SettingProvider } from '../setting/setting.provider';
 
 @Injectable()
@@ -32,12 +32,8 @@ export class LoginGuard implements CanActivate {
         return true;
       }
     }
-    const { ip } = await getNetIp(request);
-    if (ip.trim() == '') {
-      // 获取不到 ip 就当你🐂吧
-      return true;
-    }
-    const key = `login-${ip.trim()}`;
+    const ip = getRequestIp(request) || 'unknown';
+    const key = `login-${ip}`;
     const cacheEntry = (await this.cacheProvider.get(key)) || {};
     const { count, lastLoginTime } = cacheEntry;
 

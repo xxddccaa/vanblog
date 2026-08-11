@@ -5,6 +5,10 @@ import { ArticleProvider } from '../article/article.provider';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { UpdateCategoryDto, UpdateCategorySortDto } from 'src/types/category.dto';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import {
+  hashPasswordCredential,
+  isArgonPasswordHash,
+} from 'src/utils/crypto';
 
 @Injectable()
 export class CategoryProvider {
@@ -162,6 +166,13 @@ export class CategoryProvider {
       }
       // 使用trim后的名称
       dto.name = dto.name.trim();
+    }
+    if (dto.password) {
+      dto.password = isArgonPasswordHash(dto.password)
+        ? dto.password
+        : await hashPasswordCredential(dto.password);
+    } else if (dto.password === '') {
+      delete dto.password;
     }
 
     if (dto.name && name != dto.name) {

@@ -41,6 +41,6 @@ export const config: Config = {
   // 生产日志级别：silent(仅error) | balanced(默认, error+warn+log) | verbose(全开)
   // env: VAN_BLOG_LOG_LEVEL
   logLevel: loadConfig('logLevel', 'balanced'),
-  codeRunnerPath: loadConfig('codeRunner.path', '/app/codeRunner'),
+  codeRunnerPath: loadConfig('codeRunner.path', '/tmp/vanblog-code-runner'),
   pluginRunnerPath: loadConfig('pluginRunner.path', '/app/pluginRunner'),
 };

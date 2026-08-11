@@ -4,7 +4,10 @@ import { Model } from 'src/storage/mongoose-compat';
 import { Setting, SettingDocument } from 'src/scheme/setting.schema';
 import { ArticleProvider } from '../article/article.provider';
 import axios from 'axios';
-import { normalizeAiRequestBaseUrl } from 'src/utils/aiRequestUrl';
+import {
+  getSafeOutboundAxiosConfig,
+  normalizeAiRequestBaseUrl,
+} from 'src/utils/aiRequestUrl';
 
 @Injectable()
 export class AITaggingProvider {
@@ -59,6 +62,7 @@ export class AITaggingProvider {
         top_p: topP || 0.8,
         max_tokens: maxTokens || 150,
       }, {
+        ...getSafeOutboundAxiosConfig(normalizedBaseUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,

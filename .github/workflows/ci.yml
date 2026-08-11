@@ -23,7 +23,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24.14.1
+          node-version: 22.22.2
           cache: pnpm
 
       - name: Set up pnpm
@@ -34,8 +34,11 @@ jobs:
 
       - name: Pre-pull Node build images
         run: |
-          docker pull node:24.14.1
-          docker pull node:24.14.1-alpine
+          docker pull node:22.22.2
+          docker pull node:22.22.2-alpine
+
+      - name: Audit reachable production dependencies
+        run: pnpm audit:prod
 
       - name: Run full regression suite
         run: pnpm test:full

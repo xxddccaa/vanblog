@@ -1,0 +1,825 @@
+diff --git a/package.json b/package.json
+index 121458e0eb7a619d2db19eeaacda4ef99b614ae2..740c77437f257752c3dc55abdc010ea36781e687 100644
+--- a/package.json
++++ b/package.json
+@@ -18,7 +18,6 @@
+     "provenance": true
+   },
+   "dependencies": {
+-    "@cloudbase/node-sdk": "^3.18.3",
+     "@koa/cors": "^5.0.0",
+     "@mathjax/mathjax-tex-font": "^4.1.3",
+     "@mathjax/src": "^4.1.3",
+@@ -26,7 +25,6 @@
+     "@mdit/plugin-mathjax": "1.1.0",
+     "@mdit/plugin-sub": "1.0.2",
+     "@mdit/plugin-sup": "1.0.2",
+-    "akismet": "^2.0.7",
+     "dompurify": "3.4.12",
+     "fast-csv": "^5.0.7",
+     "form-data": "^4.0.6",
+@@ -34,7 +32,6 @@
+     "jsdom": "^29.1.1",
+     "jsonwebtoken": "^9.0.3",
+     "koa-compose": "^4.1.0",
+-    "leancloud-storage": "^4.15.2",
+     "markdown-it": "^14.3.0",
+     "markdown-it-emoji": "^3.0.0",
+     "nodemailer": "^9.0.3",
+diff --git a/src/service/akismet.js b/src/service/akismet.js
+index 5858fe8a98198ab77fbc00aa09597d711ba1e8ee..41c4d460d289262b8b554aec278a3e1d4aaa8ac4 100644
+--- a/src/service/akismet.js
++++ b/src/service/akismet.js
+@@ -1,56 +1,8 @@
+-const Akismet = require('akismet');
+-
+-const DEFAULT_KEY = '70542d86693e';
+-
++// VanBlog deploys Waline with PostgreSQL only and disables the unmaintained
++// Akismet client dependency. Keep the service contract but never make the
++// legacy outbound request.
+ module.exports = class extends think.Service {
+-  constructor(blog) {
+-    super(blog);
+-
+-    const { AKISMET_KEY, SITE_URL } = process.env;
+-    const key = AKISMET_KEY || DEFAULT_KEY;
+-
+-    if (key.toLowerCase() !== 'false') {
+-      this.akismet = Akismet.client({
+-        blog: blog || SITE_URL,
+-        apiKey: key,
+-      });
+-    }
+-  }
+-
+-  async check(comment) {
+-    const { SITE_URL } = process.env;
+-
+-    return new Promise((resolve, reject) => {
+-      if (!this.akismet) {
+-        reject(new Error('Akismet is not configured!'));
+-        return;
+-      }
+-
+-      this.akismet.verifyKey((err, verifyKey) => {
+-        if (err) {
+-          reject(err);
+-          return;
+-        } else if (!verifyKey) {
+-          reject(new Error('Akismet API_KEY verify failed!'));
+-          return;
+-        }
+-
+-        this.akismet.checkComment(
+-          {
+-            user_ip: comment.ip,
+-            permalink: SITE_URL + comment.url,
+-            comment_author: comment.nick,
+-            comment_content: comment.comment,
+-          },
+-          (err, spam) => {
+-            if (err) {
+-              reject(err);
+-              return;
+-            }
+-            resolve(spam);
+-          },
+-        );
+-      });
+-    });
++  async check() {
++    return false;
+   }
+ };
+diff --git a/src/service/storage/cloudbase.js b/src/service/storage/cloudbase.js
+index 45da8315ed34c2ec00d24f584024f5ef224db568..90fa073092d3d85514839cef2f17abfcd9c58150 100644
+--- a/src/service/storage/cloudbase.js
++++ b/src/service/storage/cloudbase.js
+@@ -1,251 +1,8 @@
+-const cloudbase = require('@cloudbase/node-sdk');
+-
+ const Base = require('./base.js');
+-const { normalizeOrder } = require('./order.js');
+-
+-const { TCB_ENV, TCB_ID, TCB_KEY } = process.env;
+-const app = cloudbase.init({
+-  env: TCB_ENV,
+-  secretId: TCB_ID,
+-  secretKey: TCB_KEY,
+-});
+-
+-const db = app.database();
+-const _ = db.command;
+-const $ = db.command.aggregate;
+-const collections = {};
+ 
+ module.exports = class extends Base {
+-  async collection(tableName) {
+-    if (collections[tableName]) {
+-      return db.collection(tableName);
+-    }
+-
+-    try {
+-      const instance = db.collection(tableName);
+-
+-      await instance.count();
+-      collections[tableName] = true;
+-
+-      return db.collection(tableName);
+-    } catch (err) {
+-      if (err.code === 'DATABASE_COLLECTION_NOT_EXIST') {
+-        await db.createCollection(tableName);
+-        collections[tableName] = true;
+-
+-        return db.collection(tableName);
+-      }
+-      throw err;
+-    }
+-  }
+-
+-  parseWhere(where) {
+-    if (think.isEmpty(where)) {
+-      return {};
+-    }
+-
+-    const filter = {};
+-    const parseKey = (k) => (k === 'objectId' ? '_id' : k);
+-
+-    for (const k in where) {
+-      if (k === '_complex') {
+-        continue;
+-      }
+-
+-      if (think.isString(where[k])) {
+-        filter[parseKey(k)] = _.eq(where[k]);
+-        continue;
+-      }
+-      if (where[k] === undefined) {
+-        filter[parseKey(k)] = _.eq(null);
+-      }
+-
+-      if (Array.isArray(where[k]) && where[k][0]) {
+-        const handler = where[k][0].toUpperCase();
+-
+-        switch (handler) {
+-          case 'IN': {
+-            filter[parseKey(k)] = _.in(where[k][1]);
+-            break;
+-          }
+-          case 'NOT IN': {
+-            filter[parseKey(k)] = _.nin(where[k][1]);
+-            break;
+-          }
+-          case 'LIKE': {
+-            const [, likePattern] = where[k];
+-            const [first] = likePattern;
+-            const last = likePattern.slice(-1);
+-            let reg;
+-
+-            if (first === '%' && last === '%') {
+-              reg = new RegExp(likePattern.slice(1, -1), 'u');
+-            } else if (first === '%') {
+-              reg = new RegExp(`${likePattern.slice(1)}$`, 'u');
+-            } else if (last === '%') {
+-              reg = new RegExp(`^${likePattern.slice(0, -1)}`, 'u');
+-            }
+-
+-            filter[parseKey(k)] = reg;
+-            break;
+-          }
+-          case '!=': {
+-            filter[parseKey(k)] = _.neq(where[k][1]);
+-            break;
+-          }
+-          case '>': {
+-            filter[parseKey(k)] = _.gt(where[k][1]);
+-            break;
+-          }
+-          default: {
+-            break;
+-          }
+-        }
+-      }
+-    }
+-
+-    return filter;
+-  }
+-
+-  where(instance, where, method = 'where') {
+-    const filter = this.parseWhere(where);
+-
+-    if (!where._complex) {
+-      return instance[method](filter);
+-    }
+-
+-    const filters = [];
+-
+-    for (const k in where._complex) {
+-      if (k === '_logic') {
+-        continue;
+-      }
+-
+-      filters.push({
+-        ...this.parseWhere({ [k]: where._complex[k] }),
+-        ...filter,
+-      });
+-    }
+-
+-    return instance[method](_[where._complex._logic](...filters));
+-  }
+-
+-  async _select(where, { desc, field, limit, offset, order } = {}) {
+-    let instance = await this.collection(this.tableName);
+-
+-    instance = this.where(instance, where);
+-    const normalizedOrder = normalizeOrder(order, desc, (orderField) =>
+-      orderField === 'objectId' ? '_id' : orderField,
+-    );
+-
+-    for (const { field: orderField, direction } of normalizedOrder) {
+-      instance = instance.orderBy(orderField, direction);
+-    }
+-
+-    if (limit) {
+-      instance = instance.limit(limit);
+-    }
+-
+-    if (offset) {
+-      instance = instance.skip(offset);
+-    }
+-
+-    if (field) {
+-      const filedObj = {};
+-
+-      field.forEach((f) => (filedObj[f] = true));
+-      instance = instance.field(filedObj);
+-    }
+-
+-    const { data } = await instance.get();
+-
+-    return data.map(({ _id, ...cmt }) => ({
+-      ...cmt,
+-      objectId: _id.toString(),
+-    }));
+-  }
+-
+-  async select(where, options = {}) {
+-    const data = [];
+-    let ret = [];
+-    const offset = options.offset ?? 0;
+-    const { limit } = options;
+-
+-    while (true) {
+-      const remaining = limit == null ? undefined : limit - data.length;
+-      const batchLimit = remaining == null ? undefined : Math.min(remaining, 100);
+-
+-      // oxlint-disable-next-line no-underscore-dangle
+-      ret = await this._select(where, {
+-        ...options,
+-        limit: batchLimit,
+-        offset: offset + data.length,
+-      });
+-      data.push(...ret);
+-
+-      if (ret.length < 100 || (limit != null && data.length >= limit)) break;
+-    }
+-
+-    return data;
+-  }
+-
+-  async count(where = {}, { group } = {}) {
+-    let instance = await this.collection(this.tableName);
+-
+-    if (!group) {
+-      instance = this.where(instance, where);
+-      const { total } = await instance.count();
+-
+-      return total;
+-    }
+-
+-    // oxlint-disable-next-line no-underscore-dangle
+-    const _id = {};
+-
+-    group.forEach((f) => {
+-      _id[f] = `$${f}`;
+-    });
+-    instance = instance.aggregate();
+-    this.where(instance, where, 'match');
+-    instance = instance.group({ _id, count: $.sum(1) });
+-    const { data } = await instance.end();
+-
+-    return data.map(({ _id, count }) => ({ ..._id, count }));
+-  }
+-
+-  async add(data) {
+-    if (data.objectId) {
+-      // oxlint-disable-next-line no-underscore-dangle
+-      data._id = data.objectId;
+-      delete data.objectId;
+-    }
+-
+-    const instance = await this.collection(this.tableName);
+-    const { id } = await instance.add(data);
+-
+-    return { ...data, objectId: id };
+-  }
+-
+-  async update(data, where) {
+-    const instance = await this.collection(this.tableName);
+-    const { data: list } = await this.where(instance, where).get();
+-
+-    return Promise.all(
+-      list.map(async (item) => {
+-        const updateData = typeof data === 'function' ? data(item) : data;
+-        const instance = await this.collection(this.tableName);
+-
+-        // oxlint-disable-next-line no-underscore-dangle
+-        await instance.doc(item._id).update(updateData);
+-
+-        return { ...item, ...updateData };
+-      }),
+-    );
+-  }
+-
+-  async delete(where) {
+-    const instance = await this.collection(this.tableName);
+-
+-    return this.where(instance, where).remove();
++  constructor(...args) {
++    super(...args);
++    throw new Error('VanBlog 的 Waline 运行时仅支持 PostgreSQL，不支持 CloudBase');
+   }
+ };
+diff --git a/src/service/storage/leancloud.js b/src/service/storage/leancloud.js
+index 9270098f421203773758e8a0f1e84860272d2865..c561cbc1b0e56a8c347550939d8a89833d08310c 100644
+--- a/src/service/storage/leancloud.js
++++ b/src/service/storage/leancloud.js
+@@ -1,464 +1,8 @@
+-const AV = require('leancloud-storage');
+-
+ const Base = require('./base.js');
+-const { normalizeOrder } = require('./order.js');
+-
+-const { LEAN_ID, LEAN_KEY, LEAN_MASTER_KEY, LEAN_SERVER } = process.env;
+ 
+-if (LEAN_ID && LEAN_KEY && LEAN_MASTER_KEY) {
+-  AV.Cloud.useMasterKey(true);
+-  AV.init({
+-    appId: LEAN_ID,
+-    appKey: LEAN_KEY,
+-    masterKey: LEAN_MASTER_KEY,
+-    // required for leancloud china
+-    serverURL: LEAN_SERVER,
+-  });
+-}
+ module.exports = class extends Base {
+-  parseWhere(className, where) {
+-    const instance = new AV.Query(className);
+-
+-    if (think.isEmpty(where)) {
+-      return instance;
+-    }
+-
+-    for (const k in where) {
+-      if (k === '_complex') {
+-        continue;
+-      }
+-
+-      if (think.isString(where[k])) {
+-        instance.equalTo(k, where[k]);
+-        continue;
+-      }
+-
+-      if (where[k] === undefined) {
+-        instance.doesNotExist(k);
+-      }
+-
+-      if (Array.isArray(where[k]) && where[k][0]) {
+-        const handler = where[k][0].toUpperCase();
+-
+-        switch (handler) {
+-          case 'IN': {
+-            instance.containedIn(k, where[k][1]);
+-            break;
+-          }
+-          case 'NOT IN': {
+-            instance.notContainedIn(k, where[k][1]);
+-            break;
+-          }
+-          case 'LIKE': {
+-            const [, likePattern] = where[k];
+-            const [first] = likePattern;
+-            const last = likePattern.slice(-1);
+-
+-            if (first === '%' && last === '%') {
+-              instance.contains(k, likePattern.slice(1, -1));
+-            } else if (first === '%') {
+-              instance.endsWith(k, likePattern.slice(1));
+-            } else if (last === '%') {
+-              instance.startsWith(k, likePattern.slice(0, -1));
+-            }
+-
+-            break;
+-          }
+-          case '!=': {
+-            instance.notEqualTo(k, where[k][1]);
+-            break;
+-          }
+-          case '>': {
+-            instance.greaterThan(k, where[k][1]);
+-            break;
+-          }
+-          default: {
+-            break;
+-          }
+-        }
+-      }
+-    }
+-
+-    return instance;
+-  }
+-
+-  where(className, where) {
+-    if (!where._complex) {
+-      return this.parseWhere(className, where);
+-    }
+-
+-    const filters = [];
+-
+-    for (const k in where._complex) {
+-      if (k === '_logic') {
+-        continue;
+-      }
+-
+-      const filter = this.parseWhere(className, {
+-        ...where,
+-        [k]: where._complex[k],
+-      });
+-
+-      filters.push(filter);
+-    }
+-
+-    return AV.Query[where._complex._logic](...filters);
+-  }
+-
+-  async _select(where, { desc, field, limit, offset, order } = {}) {
+-    const instance = this.where(this.tableName, where);
+-
+-    const normalizedOrder = normalizeOrder(order, desc);
+-
+-    normalizedOrder.forEach(({ field: orderField, direction }, index) => {
+-      const method = `${index === 0 ? '' : 'add'}${direction === 'desc' ? 'Descending' : 'Ascending'}`;
+-
+-      instance[method.charAt(0).toLowerCase() + method.slice(1)](orderField);
+-    });
+-
+-    if (limit) {
+-      instance.limit(limit);
+-    }
+-
+-    if (offset) {
+-      instance.skip(offset);
+-    }
+-
+-    if (field) {
+-      instance.select(field);
+-    }
+-
+-    const data = await instance.find().catch((err) => {
+-      if (err.code === 101) {
+-        return [];
+-      }
+-
+-      throw err;
+-    });
+-
+-    return data.map((item) => item.toJSON());
+-  }
+-
+-  async select(where, options = {}) {
+-    const data = [];
+-    let ret = [];
+-    const offset = options.offset ?? 0;
+-    const { limit } = options;
+-
+-    while (true) {
+-      const remaining = limit == null ? undefined : limit - data.length;
+-      const batchLimit = remaining == null ? undefined : Math.min(remaining, 100);
+-
+-      // oxlint-disable-next-line no-underscore-dangle
+-      ret = await this._select(where, {
+-        ...options,
+-        limit: batchLimit,
+-        offset: offset + data.length,
+-      });
+-      data.push(...ret);
+-
+-      if (ret.length < 100 || (limit != null && data.length >= limit)) break;
+-    }
+-
+-    return data;
+-  }
+-
+-  async _getCmtGroupByMailUserIdCache(key, where) {
+-    if (
+-      this.tableName !== 'Comment' ||
+-      key !== 'user_id_mail' ||
+-      !think.isArray(think.config('levels'))
+-    ) {
+-      return [];
+-    }
+-
+-    const cacheTableName = `cache_group_count_${key}`;
+-    const currentTableName = this.tableName;
+-
+-    this.tableName = cacheTableName;
+-    const cacheData = await this.select({ _complex: where._complex });
+-
+-    this.tableName = currentTableName;
+-
+-    return cacheData;
+-  }
+-
+-  async _setCmtGroupByMailUserIdCache(key, data) {
+-    if (
+-      this.tableName !== 'Comment' ||
+-      key !== 'user_id_mail' ||
+-      !think.isArray(think.config('levels'))
+-    ) {
+-      return;
+-    }
+-
+-    const cacheTableName = `cache_group_count_${key}`;
+-    const currentTableName = this.tableName;
+-
+-    this.tableName = cacheTableName;
+-
+-    await think.promiseAllQueue(
+-      data.map((item) => {
+-        if (item.user_id && !think.isString(item.user_id)) {
+-          item.user_id = item.user_id.toString();
+-        }
+-
+-        return this.add(item);
+-      }),
+-      1,
+-    );
+-    this.tableName = currentTableName;
+-  }
+-
+-  async _updateCmtGroupByMailUserIdCache(data, method) {
+-    if (this.tableName !== 'Comment' || !think.isArray(think.config('levels'))) {
+-      return;
+-    }
+-
+-    if (!data.user_id && !data.mail) {
+-      return;
+-    }
+-
+-    const cacheTableName = `cache_group_count_user_id_mail`;
+-    const cacheData = await this.select({
+-      _complex: {
+-        _logic: 'or',
+-        user_id: think.isObject(data.user_id) ? data.user_id.toString() : data.user_id,
+-        mail: data.mail,
+-      },
+-    });
+-
+-    if (think.isEmpty(data)) {
+-      return;
+-    }
+-
+-    let [{ count }] = cacheData;
+-
+-    switch (method) {
+-      case 'add': {
+-        if (data.status === 'approved') {
+-          count += 1;
+-        }
+-
+-        break;
+-      }
+-      case 'udpate_status': {
+-        if (data.status === 'approved') {
+-          count += 1;
+-        } else {
+-          count -= 1;
+-        }
+-
+-        break;
+-      }
+-      case 'delete': {
+-        count -= 1;
+-        break;
+-      }
+-      default: {
+-        break;
+-      }
+-    }
+-
+-    const currentTableName = this.tableName;
+-
+-    this.tableName = cacheTableName;
+-    await this.update({ count }, { objectId: cacheData[0].objectId }).catch((err) => {
+-      if (err.code === 101) {
+-        return;
+-      }
+-
+-      throw err;
+-    });
+-    this.tableName = currentTableName;
+-  }
+-
+-  async count(where = {}, options = {}) {
+-    const instance = this.where(this.tableName, where);
+-
+-    if (!options.group) {
+-      return instance.count(options).catch((err) => {
+-        if (err.code === 101) {
+-          return 0;
+-        }
+-
+-        throw err;
+-      });
+-    }
+-
+-    // get group count cache by group field where data
+-    // oxlint-disable-next-line no-underscore-dangle
+-    const cacheData = await this._getCmtGroupByMailUserIdCache(options.group.join('_'), where);
+-
+-    if (!where._complex) {
+-      if (cacheData.length > 0) {
+-        return cacheData;
+-      }
+-
+-      const counts = await this.select(where, { field: options.group });
+-      const countsMap = {};
+-
+-      for (const count of counts) {
+-        const key = options.group.map((item) => count[item] ?? undefined).join('_');
+-
+-        if (!countsMap[key]) {
+-          countsMap[key] = {};
+-
+-          for (const field of options.group) {
+-            countsMap[key][field] = count[field];
+-          }
+-
+-          countsMap[key].count = 0;
+-        }
+-        countsMap[key].count += 1;
+-      }
+-
+-      const ret = Object.values(countsMap);
+-
+-      // cache data
+-      // oxlint-disable-next-line no-underscore-dangle
+-      await this._setCmtGroupByMailUserIdCache(options.group.join('_'), ret);
+-
+-      return ret;
+-    }
+-
+-    const cacheDataMap = {};
+-
+-    for (const item of cacheData) {
+-      const key = options.group.map((item) => item[item] ?? undefined).join('_');
+-
+-      cacheDataMap[key] = item;
+-    }
+-
+-    const counts = [];
+-    const countsPromise = [];
+-
+-    for (let i = 0; i < options.group.length; i++) {
+-      const groupName = options.group[i];
+-
+-      if (!where._complex || !Array.isArray(where._complex[groupName])) {
+-        continue;
+-      }
+-
+-      const groupFlatValue = {};
+-
+-      options.group.slice(0, i).forEach((group) => {
+-        groupFlatValue[group] = undefined;
+-      });
+-
+-      for (const item of where._complex[groupName][1]) {
+-        const cacheKey = options.group
+-          .map(
+-            (item) =>
+-              ({
+-                ...groupFlatValue,
+-                [groupName]: item,
+-              })[item] ?? undefined,
+-          )
+-          .join('_');
+-
+-        if (cacheDataMap[cacheKey]) {
+-          continue;
+-        }
+-
+-        const groupWhere = {
+-          ...where,
+-          ...groupFlatValue,
+-          _complex: undefined,
+-          [groupName]: item,
+-        };
+-        const countPromise = this.count(groupWhere, {
+-          ...options,
+-          group: undefined,
+-        }).then((num) => {
+-          counts.push({
+-            ...groupFlatValue,
+-            [groupName]: item,
+-            count: num,
+-          });
+-        });
+-
+-        countsPromise.push(countPromise);
+-      }
+-    }
+-
+-    await think.promiseAllQueue(countsPromise, 1);
+-    // cache data
+-    // oxlint-disable-next-line no-underscore-dangle
+-    await this._setCmtGroupByMailUserIdCache(options.group.join('_'), counts);
+-
+-    return [...cacheData, ...counts];
+-  }
+-
+-  async add(data, { access: { read = true, write = true } = { read: true, write: true } } = {}) {
+-    const Table = AV.Object.extend(this.tableName);
+-    const instance = new Table();
+-
+-    const REVERSED_KEYS = new Set(['objectId', 'createdAt', 'updatedAt']);
+-
+-    for (const k in data) {
+-      if (REVERSED_KEYS.has(k)) {
+-        continue;
+-      }
+-
+-      instance.set(k, data[k]);
+-    }
+-
+-    const acl = new AV.ACL();
+-
+-    acl.setPublicReadAccess(read);
+-    acl.setPublicWriteAccess(write);
+-    instance.setACL(acl);
+-
+-    const resp = await instance.save();
+-
+-    // oxlint-disable-next-line no-underscore-dangle
+-    await this._updateCmtGroupByMailUserIdCache(data, 'add');
+-
+-    return resp.toJSON();
+-  }
+-
+-  async update(data, where) {
+-    const instance = this.where(this.tableName, where);
+-    const ret = await instance.find();
+-
+-    return Promise.all(
+-      ret.map(async (item) => {
+-        const oldStatus = item.get('status');
+-
+-        const updateData = typeof data === 'function' ? data(item.toJSON()) : data;
+-
+-        const REVERSED_KEYS = new Set(['createdAt', 'updatedAt']);
+-
+-        for (const k in updateData) {
+-          if (REVERSED_KEYS.has(k)) {
+-            continue;
+-          }
+-
+-          item.set(k, updateData[k]);
+-        }
+-
+-        const newStatus = item.get('status');
+-
+-        if (newStatus && oldStatus !== newStatus) {
+-          // oxlint-disable-next-line no-underscore-dangle
+-          await this._updateCmtGroupByMailUserIdCache(data, 'update_status');
+-        }
+-
+-        const resp = await item.save();
+-
+-        return resp.toJSON();
+-      }),
+-    );
+-  }
+-
+-  async delete(where) {
+-    const instance = this.where(this.tableName, where);
+-    const data = await instance.find();
+-
+-    // oxlint-disable-next-line no-underscore-dangle
+-    await this._updateCmtGroupByMailUserIdCache(data, 'delete');
+-
+-    return AV.Object.destroyAll(data);
++  constructor(...args) {
++    super(...args);
++    throw new Error('VanBlog 的 Waline 运行时仅支持 PostgreSQL，不支持 LeanCloud');
+   }
+ };

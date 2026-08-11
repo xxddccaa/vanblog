@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24.14.1-alpine AS base
+FROM node:22.22.2-alpine AS base
 ENV NODE_OPTIONS="--max_old_space_size=7168"
 ENV CI=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -21,6 +21,7 @@ RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALP
     && pnpm config set fetch-timeout 600000 -g
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY patches ./patches
 COPY packages/server/package.json ./packages/server/
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --filter @vanblog/server... --frozen-lockfile
@@ -29,9 +30,10 @@ FROM base AS builder
 COPY packages/server ./packages/server
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm --filter @vanblog/server build \
+    && node -e "const fs = require('node:fs'); const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8')); delete manifest.pnpm?.patchedDependencies; fs.writeFileSync('package.json', JSON.stringify(manifest, null, 2) + '\n')" \
     && pnpm deploy --legacy --filter @vanblog/server --prod /prod/server
 
-FROM base AS runner
+FROM node:22.22.2-alpine AS runner
 WORKDIR /app/server
 ARG VANBLOG_IMAGE_NAME="vanblog-server"
 ARG VANBLOG_IMAGE_VERSION="dev"
@@ -44,7 +46,10 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
 ARG INSTALL_ALIYUNPAN=false
-RUN if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
+RUN apk add --no-cache bash wget unzip libwebp-tools su-exec \
+    && addgroup -S -g 10001 vanblog \
+    && adduser -S -D -H -u 10001 -G vanblog vanblog \
+    && if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
       ARCH=$(uname -m) \
       && if [ "$ARCH" = "x86_64" ]; then ALIYUNPAN_ARCH="amd64"; elif [ "$ARCH" = "aarch64" ]; then ALIYUNPAN_ARCH="arm64"; else ALIYUNPAN_ARCH="amd64"; fi \
       && ALIYUNPAN_VERSION="v0.3.7" \
@@ -55,7 +60,9 @@ RUN if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
       && rm -rf /tmp/aliyunpan*; \
     else \
       echo "Skipping aliyunpan install; set INSTALL_ALIYUNPAN=true to enable it."; \
-    fi
+    fi \
+    && mkdir -p /app/static /var/log /home/vanblog/.config/aliyunpan \
+    && chown -R vanblog:vanblog /app/static /var/log /home/vanblog
 
 COPY --from=builder /prod/server/ ./
 COPY --from=builder /app/packages/server/dist ./dist
@@ -73,7 +80,7 @@ ENV VANBLOG_WEBSITE_ISR_BASE="http://website:3001/api/revalidate?path="
 
 VOLUME /app/static
 VOLUME /var/log
-VOLUME /root/.config/aliyunpan
+VOLUME /home/vanblog/.config/aliyunpan
 
 EXPOSE 3000
 CMD ["bash", "entrypoint.sh"]

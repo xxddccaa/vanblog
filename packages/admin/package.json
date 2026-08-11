@@ -39,7 +39,8 @@
     "last 2 versions",
     "not ie <= 10"
   ],
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
     "@ant-design/icons": "^5.6.1",
     "@ant-design/plots": "^2.6.5",
     "@ant-design/pro-card": "^2.10.0",
@@ -70,14 +71,15 @@
     "bytemd": "^1.22.0",
     "classnames": "^2.3.2",
     "copy-to-clipboard": "^3.3.3",
+    "dompurify": "^3.4.13",
     "emoji-mart": "^5.5.2",
     "front-matter": "^4.0.2",
     "highlight.js": "^11.9.0",
     "js-sha256": "^0.9.0",
     "jszip": "^3.10.1",
-    "katex": "^0.16.9",
+    "katex": "^0.18.4",
     "lodash": "^4.17.21",
-    "mermaid": "^10.9.3",
+    "mermaid": "^11.16.1",
     "moment": "^2.29.4",
     "monaco-editor": "^0.34.1",
     "monaco-editor-webpack-plugin": "^7.1.0",
@@ -94,9 +96,7 @@
     "rehype-raw": "^6.1.1",
     "remark-directive": "^2.0.1",
     "unist-util-visit": "^4.1.2",
-    "wavedrom": "^3.6.2"
-  },
-  "devDependencies": {
+    "wavedrom": "^3.6.2",
     "@playwright/test": "^1.40.0",
     "@types/express": "^4.17.21",
     "@types/history": "^4.7.11",
@@ -114,6 +114,6 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=22 <23"
   }
 }

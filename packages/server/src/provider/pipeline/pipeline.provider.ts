@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
@@ -11,6 +16,7 @@ import { writeFileSync, rmSync } from 'fs';
 import { fork } from 'child_process';
 import { LogProvider } from '../log/log.provider';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { PIPELINE_SANDBOX_PRELOAD } from './pipelineSandbox';
 
 export interface CodeResult {
   logs: string[];
@@ -23,6 +29,8 @@ export class PipelineProvider {
   logger = new Logger(PipelineProvider.name);
   runnerPath = config.codeRunnerPath;
   private readonly pipelineRunTimeoutMs = 30000;
+  private readonly pipelineMaxMessageBytes = 1024 * 1024;
+  private readonly sandboxPreloadPath = `${this.runnerPath}/sandbox-preload.cjs`;
   constructor(
     @InjectModel('Pipeline')
     private pipelineModel: Model<PipelineDocument>,
@@ -61,9 +69,34 @@ export class PipelineProvider {
   }
 
   async init() {
+    if (!this.isPipelineExecutionEnabled()) {
+      this.logger.warn(
+        '生产环境流水线执行默认关闭；如确需运行受限脚本，请显式设置 VAN_BLOG_PIPELINE_EXECUTION_ENABLED=true',
+      );
+      return;
+    }
+    await this.saveSandboxPreload();
     // 检查一遍，安装依赖
-    this.checkAllDeps();
+    await this.checkAllDeps();
     await this.saveAllScripts();
+  }
+
+  private isPipelineExecutionEnabled() {
+    const configured = String(
+      process.env.VAN_BLOG_PIPELINE_EXECUTION_ENABLED || '',
+    ).toLowerCase();
+    if (configured) {
+      return ['true', '1', 'yes', 'on'].includes(configured);
+    }
+    return process.env.NODE_ENV !== 'production';
+  }
+
+  private assertPipelineExecutionEnabled() {
+    if (!this.isPipelineExecutionEnabled()) {
+      throw new ServiceUnavailableException(
+        '生产环境流水线执行默认关闭；请在确认风险后设置 VAN_BLOG_PIPELINE_EXECUTION_ENABLED=true',
+      );
+    }
   }
 
   async getNewId() {
@@ -182,14 +215,28 @@ export class PipelineProvider {
   }
 
   async runCodeByPipelineId(id: number, data: any): Promise<CodeResult> {
+    this.assertPipelineExecutionEnabled();
     const pipeline = await this.getPipelineById(id);
     if (!pipeline || pipeline.deleted) {
       throw new NotFoundException('Pipeline not found');
     }
     const traceId = new Date().getTime();
-    this.logger.log(`[${traceId}]开始运行流水线: ${id} ${JSON.stringify(data, null, 2)}`);
+    this.logger.log(`[${traceId}]开始运行流水线: ${id}`);
     const run = new Promise<CodeResult>((resolve, reject) => {
-      const subProcess = fork(this.getPathById(id));
+      const subProcess = fork(this.getPathById(id), [], {
+        cwd: this.runnerPath,
+        execArgv: [
+          '--max-old-space-size=128',
+          '--permission',
+          `--allow-fs-read=${this.runnerPath}`,
+          `--require=${this.sandboxPreloadPath}`,
+        ],
+        env: {
+          NODE_ENV: process.env.NODE_ENV || 'production',
+          PATH: process.env.PATH,
+          TZ: process.env.TZ,
+        },
+      });
       let settled = false;
       const cleanup = () => {
         clearTimeout(timeout);
@@ -224,6 +271,22 @@ export class PipelineProvider {
       }, this.pipelineRunTimeoutMs);
 
       subProcess.on('message', (msg: CodeResult) => {
+        let messageBytes = 0;
+        try {
+          messageBytes = Buffer.byteLength(JSON.stringify(msg), 'utf8');
+        } catch {
+          messageBytes = this.pipelineMaxMessageBytes + 1;
+        }
+        if (messageBytes > this.pipelineMaxMessageBytes) {
+          finish(reject, {
+            status: 'error',
+            output: {
+              message: `流水线输出超过 ${this.pipelineMaxMessageBytes} 字节限制`,
+            },
+            logs: [],
+          });
+          return;
+        }
         if (msg.status === 'error') {
           finish(reject, msg);
         } else {
@@ -252,31 +315,48 @@ export class PipelineProvider {
     });
     try {
       const result = (await run) as CodeResult;
-      this.logger.log(`[${traceId}]运行流水线成功: ${id} ${JSON.stringify(result, null, 2)}`);
+      this.logger.log(`[${traceId}]运行流水线成功: ${id}`);
       this.logProvider.runPipeline(pipeline, data, result);
       return result;
     } catch (err) {
-      this.logger.error(`[${traceId}]运行流水线失败: ${id} ${JSON.stringify(err, null, 2)}`);
+      this.logger.error(`[${traceId}]运行流水线失败: ${id} ${err?.message || 'unknown error'}`);
       this.logProvider.runPipeline(pipeline, data, undefined, err);
       throw err;
     }
   }
 
   async addDeps(deps: string[]) {
+    if (!this.isPipelineExecutionEnabled()) {
+      return;
+    }
     for (const dep of deps) {
+      if (
+        typeof dep !== 'string' ||
+        !/^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*(?:@[a-z0-9*^~<>=|.+_-]+)?$/i.test(
+          dep,
+        )
+      ) {
+        throw new BadRequestException(`不允许安装该流水线依赖: ${String(dep)}`);
+      }
       try {
-        const r = spawnSync(`pnpm`, ['add', dep], {
+        const r = spawnSync(`pnpm`, ['add', '--ignore-scripts', dep], {
           cwd: this.runnerPath,
           shell: process.platform === 'win32',
+          timeout: 120000,
+          maxBuffer: 1024 * 1024,
           env: {
-            ...process.env,
+            HOME: process.env.HOME,
+            PATH: process.env.PATH,
+            NODE_ENV: 'production',
+            PNPM_HOME: process.env.PNPM_HOME,
           },
         });
-        console.log(r.output.toString());
+        if (r.status !== 0) {
+          throw new Error(`pnpm exited with status ${r.status}`);
+        }
       } catch (e) {
-        // console.log(e.output.map(a => a.toString()).join(''));
-        console.log(e);
-        // this.logger.error(e);
+        this.logger.error(`安装流水线依赖失败: ${dep} ${e?.message || e}`);
+        throw e;
       }
     }
   }
@@ -295,6 +375,9 @@ export class PipelineProvider {
     const scriptToSave = `
       let input = {};
       let logs = [];
+      let logBytes = 0;
+      const MAX_LOG_ENTRIES = 100;
+      const MAX_LOG_BYTES = 64 * 1024;
       const oldLog = console.log;
       console.log = (...args) => {
         const logArr = [];
@@ -305,8 +388,12 @@ export class PipelineProvider {
             logArr.push(each);
           }
         }
-        logs.push(logArr.join(" "));
-        oldLog(...args);
+        const line = logArr.join(" ");
+        const bytes = Buffer.byteLength(line, "utf8");
+        if (logs.length < MAX_LOG_ENTRIES && logBytes + bytes <= MAX_LOG_BYTES) {
+          logs.push(line);
+          logBytes += bytes;
+        }
       };
       process.on('message',async (msg) => {
         input = msg;
@@ -326,6 +413,13 @@ export class PipelineProvider {
         }
       });
     `;
-    writeFileSync(filePath, scriptToSave, { encoding: 'utf-8' });
+    writeFileSync(filePath, scriptToSave, { encoding: 'utf-8', mode: 0o600 });
+  }
+
+  private async saveSandboxPreload() {
+    writeFileSync(this.sandboxPreloadPath, PIPELINE_SANDBOX_PRELOAD, {
+      encoding: 'utf-8',
+      mode: 0o600,
+    });
   }
 }

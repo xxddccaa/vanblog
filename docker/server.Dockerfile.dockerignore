@@ -3,6 +3,8 @@
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
 !tsconfig.base.json
+!patches/
+!patches/**
 !docker/
 !docker/shared/
 !docker/shared/ensure-waline-jwt.cjs

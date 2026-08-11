@@ -60,10 +60,23 @@ describe('normalizeMathDelimiters', () => {
     expect(html).not.toContain('\\[');
   });
 
-  it('preserves inline color styles through the website markdown renderer', () => {
-    const html = renderMarkdownToHtml('<span style="color:#ff4d4f">红字</span>');
+  it('strips inline styles from raw HTML through the website markdown renderer', () => {
+    const html = renderMarkdownToHtml(
+      '<span style="background:url(https://attacker.invalid/leak)">红字</span>',
+    );
 
-    expect(html).toContain('<span style="color:#ff4d4f">红字</span>');
-    expect(html).not.toContain('&lt;span');
+    expect(html).toContain('<span>红字</span>');
+    expect(html).not.toContain('style=');
+  });
+
+  it('strips executable tags, handlers, iframes and unsafe URLs', () => {
+    const html = renderMarkdownToHtml(
+      '<script>alert(1)</script><img src="javascript:alert(2)" onerror="alert(3)"><iframe srcdoc="<script>alert(4)</script>"></iframe>',
+    );
+
+    expect(html).not.toContain('<script');
+    expect(html).not.toContain('onerror');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('<iframe');
   });
 });

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24.14.1-alpine AS builder
+FROM node:22.22.2-alpine AS builder
 ENV NODE_OPTIONS="--max_old_space_size=7168"
 ENV CI=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -29,7 +29,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     && pnpm deploy --legacy --filter @vanblog/server --prod /prod/server \
     && pnpm deploy --legacy --filter @vanblog/waline --prod /prod/waline
 
-FROM node:24.14.1-alpine AS runner
+FROM node:22.22.2-alpine AS runner
 WORKDIR /app
 ARG ALPINE_MIRROR_HOST=""
 ARG VANBLOG_IMAGE_NAME="vanblog-all-in-one"
@@ -47,8 +47,11 @@ RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALP
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
-    && mkdir -p /run/nginx /var/run/postgresql /data/redis /var/lib/postgresql/data /app/static /var/log /root/.config/aliyunpan \
-    && chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
+    && addgroup -S -g 10001 vanblog \
+    && adduser -S -D -H -u 10001 -G vanblog vanblog \
+    && mkdir -p /run/nginx /var/run/postgresql /data/redis /var/lib/postgresql/data /app/static /var/log /home/vanblog/.config/aliyunpan \
+    && chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql \
+    && chown -R vanblog:vanblog /app/static /var/log /home/vanblog
 
 COPY --from=builder /prod/server/ /app/server/
 COPY --from=builder /app/packages/server/dist /app/server/dist
@@ -81,13 +84,14 @@ RUN chmod +x \
       /usr/local/bin/vanblog-all-in-one-entrypoint \
       /usr/local/bin/vanblog-all-in-one-healthcheck \
     && node /app/scripts/fix-waline-dashboard.js \
-    && node /app/scripts/fix-waline-adapter.js
+    && node /app/scripts/fix-waline-adapter.js \
+    && chown -R vanblog:vanblog /app/server /app/website /app/waline /app/ensure-waline-jwt.cjs
 
 ENV NODE_ENV=production
 ENV POSTGRES_PORT=5432
 ENV POSTGRES_DB=vanblog
 ENV POSTGRES_USER=postgres
-ENV POSTGRES_PASSWORD=postgres
+ENV POSTGRES_PASSWORD=""
 ENV POSTGRES_SHARED_BUFFERS=8GB
 ENV POSTGRES_WORK_MEM=32MB
 ENV POSTGRES_MAINTENANCE_WORK_MEM=1GB
@@ -99,6 +103,7 @@ ENV PGDATA=/var/lib/postgresql/data
 ENV VANBLOG_REDIS_DIR=/data/redis
 ENV REDIS_SAVE_POLICY="900 1 300 10 60 10000"
 ENV REDIS_APPENDONLY=yes
+ENV REDIS_PASSWORD=""
 ENV REDIS_MAXMEMORY=4gb
 ENV REDIS_MAXMEMORY_POLICY=allkeys-lru
 ENV VAN_BLOG_WALINE_DB=waline
@@ -117,12 +122,13 @@ ENV VAN_BLOG_ALLOW_DOMAINS="pic.mereith.com"
 ENV PORT=3001
 ENV WEBSITE_CONTROL_PORT=3011
 ENV WALINE_CONTROL_PORT=8361
+ENV AKISMET_KEY=false
 ENV WALINE_JWT_TOKEN=""
 ENV EMAIL="someone@example.com"
 
 VOLUME /app/static
 VOLUME /var/log
-VOLUME /root/.config/aliyunpan
+VOLUME /home/vanblog/.config/aliyunpan
 VOLUME /root/.config/caddy
 VOLUME /root/.local/share/caddy
 VOLUME /var/lib/postgresql/data

@@ -14,8 +14,6 @@ import { ArticleProvider } from '../article/article.provider';
 import { SettingProvider } from '../setting/setting.provider';
 import { MetaProvider } from '../meta/meta.provider';
 import { LocalProvider } from './local.provider';
-import { PicgoProvider } from './picgo.provider';
-import { imageSize } from 'image-size';
 import { ImgMeta } from 'src/types/img';
 import { formatBytes } from 'src/utils/size';
 import axios from 'axios';
@@ -28,13 +26,17 @@ import { config } from 'src/config';
 import { StoragePath } from 'src/types/setting.dto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { normalizeSafeOutboundHttpUrl } from 'src/utils/aiRequestUrl';
+import {
+  getSafeOutboundAxiosConfig,
+  normalizeSafeOutboundHttpUrl,
+} from 'src/utils/aiRequestUrl';
 import {
   sanitizeStorageFileStem,
   splitSafeUploadFileName,
 } from 'src/utils/uploadFileName';
+import { safeImageSize, SAFE_IMAGE_TYPES } from 'src/utils/safeImageSize';
 
-const ALLOWED_IMAGE_TYPES = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico', 'avif']);
+const ALLOWED_IMAGE_TYPES = SAFE_IMAGE_TYPES;
 
 @Injectable()
 export class StaticProvider {
@@ -46,7 +48,6 @@ export class StaticProvider {
     private readonly localProvider: LocalProvider,
     private readonly articleProvder: ArticleProvider,
     @Optional()
-    private readonly picgoProvider?: PicgoProvider,
     private readonly structuredDataService?: StructuredDataService,
   ) {}
   publicView = {
@@ -81,12 +82,20 @@ export class StaticProvider {
   }
 
   private getAllowedImageMeta(buffer: Buffer) {
-    const meta = imageSize(buffer);
+    let meta;
+    try {
+      meta = safeImageSize(buffer);
+    } catch {
+      throw new HttpException(
+        '不支持的图片格式，仅支持 PNG、JPG、JPEG、WEBP、GIF、BMP、ICO',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const detectedType = String(meta?.type || '').toLowerCase();
 
     if (!detectedType || !ALLOWED_IMAGE_TYPES.has(detectedType)) {
       throw new HttpException(
-        '不支持的图片格式，仅支持 PNG、JPG、JPEG、WEBP、GIF、BMP、ICO、AVIF',
+        '不支持的图片格式，仅支持 PNG、JPG、JPEG、WEBP、GIF、BMP、ICO',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -244,6 +253,7 @@ export class StaticProvider {
         method: 'GET',
         url: encodeURI(safeLink),
         responseType: 'arraybuffer',
+        ...getSafeOutboundAxiosConfig(safeLink),
       });
 
       return res.data;
@@ -257,7 +267,7 @@ export class StaticProvider {
     if (!buffer) {
       return null;
     }
-    const result = imageSize(buffer);
+    const result = safeImageSize(buffer);
     const meta: ImgMeta = { ...result, size: formatBytes(buffer.byteLength) };
     const filename = link.split('/').pop();
     const fileType = filename?.split('.')?.pop() || '';
@@ -348,21 +358,7 @@ export class StaticProvider {
         }
         return realPath;
       case 'picgo':
-        // PicGo 可能被禁用
-        if (!this.picgoProvider || typeof this.picgoProvider.saveFile !== 'function') {
-          throw new NotImplementedException('PicGo 未启用或未配置');
-        }
-        const picgoRes = await this.picgoProvider.saveFile(fileName, buffer, type);
-        await this.createInDB({
-          fileType: picgoRes.meta?.type || fileType,
-          staticType: type,
-          storageType: storageType,
-          sign,
-          name: fileName,
-          realPath: picgoRes.realPath,
-          meta: picgoRes.meta,
-        });
-        return picgoRes.realPath;
+        throw new NotImplementedException('PicGo 已停用，请将存储方式切换为本地存储');
     }
   }
   async createInDB(dto: Partial<Static>) {

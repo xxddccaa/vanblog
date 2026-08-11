@@ -8,7 +8,7 @@ let dashboardPath = null;
 
 try {
   // 查找文件
-  const findResult = execSync('find /app/waline -name "dashboard.js" -path "*/middleware/*" 2>/dev/null').toString().trim();
+  const findResult = execSync('find -L /app/waline -name "dashboard.js" -path "*/middleware/*" 2>/dev/null').toString().trim();
   const paths = findResult.split('\n').filter(p => p.trim());
   
   // 选择源文件而不是编译后的dist文件

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 仓库定位
 
-VanBlog 的定制分支，pnpm monorepo，Node 24 / pnpm 10。基线版本在根 `package.json#version` 与 `RELEASE.md` 维护。默认部署形态是 **Docker Compose 多容器**，由 Caddy 统一路由；同时保留可选的“非 AI 单镜像 all-in-one”入口。
+VanBlog 的定制分支，pnpm monorepo，Node 22 / pnpm 10。基线版本在根 `package.json#version` 与 `RELEASE.md` 维护。默认部署形态是 **Docker Compose 多容器**，由 Caddy 统一路由；同时保留可选的“非 AI 单镜像 all-in-one”入口。
 
 四个长期约定：
 

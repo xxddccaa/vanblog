@@ -1,4 +1,4 @@
-FROM node:24.14.1 as BUILD_IMAGE
+FROM node:22.22.2 as BUILD_IMAGE
 ENV NODE_OPTIONS=--max_old_space_size=4096
 WORKDIR /app
 RUN yarn config set registry https://registry.npm.taobao.org
@@ -6,7 +6,7 @@ COPY . .
 RUN yarn
 RUN yarn build
 
-FROM node:24.14.1
+FROM node:22.22.2
 WORKDIR /usr/src/app
 RUN /bin/cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' >/etc/timezone && \
   yarn config set registry https://registry.npm.taobao.org

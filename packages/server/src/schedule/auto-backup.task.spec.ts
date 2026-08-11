@@ -4,16 +4,23 @@ jest.mock('src/config', () => ({
   },
 }));
 
-jest.mock('picgo', () => ({
-  PicGo: class PicGo {},
+jest.mock('src/utils/watermark', () => ({
+  addWaterMarkToIMG: jest.fn(),
+}));
+
+const writeEncryptedBackupFileMock = jest.fn().mockResolvedValue(undefined);
+jest.mock('src/utils/backupCrypto', () => ({
+  writeEncryptedBackupFile: (...args: any[]) => writeEncryptedBackupFileMock(...args),
 }));
 
 jest.mock('fs', () => ({
   existsSync: jest.fn(() => false),
   mkdirSync: jest.fn(),
+  chmodSync: jest.fn(),
   readdirSync: jest.fn(() => []),
   statSync: jest.fn(),
   writeFileSync: jest.fn(),
+  renameSync: jest.fn(),
   unlinkSync: jest.fn(),
 }));
 
@@ -82,11 +89,19 @@ describe('AutoBackupTask', () => {
     const task = createTask();
 
     expect((task as any).backupDir).toBe('/var/log/backups');
-    expect(fs.mkdirSync).toHaveBeenCalledWith('/var/log/backups', { recursive: true });
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/var/log/backups', {
+      recursive: true,
+      mode: 0o700,
+    });
+    expect(fs.chmodSync).toHaveBeenCalledWith('/var/log/backups', 0o700);
   });
 
   it('lists backup files from the non-public backup directory only', () => {
-    (fs.readdirSync as jest.Mock).mockReturnValueOnce(['vanblog-backup-a.json', 'note.txt']);
+    (fs.readdirSync as jest.Mock).mockReturnValueOnce([
+      'vanblog-backup-a.vbe',
+      'vanblog-backup-legacy.json',
+      'note.txt',
+    ]);
     (fs.statSync as jest.Mock).mockReturnValue({
       size: 123,
       birthtime: new Date('2026-04-13T10:00:00.000Z'),
@@ -97,11 +112,11 @@ describe('AutoBackupTask', () => {
     const files = task.getBackupFiles();
 
     expect(fs.readdirSync).toHaveBeenLastCalledWith('/var/log/backups');
-    expect(fs.statSync).toHaveBeenCalledWith('/var/log/backups/vanblog-backup-a.json');
-    expect(files).toHaveLength(1);
+    expect(fs.statSync).toHaveBeenCalledWith('/var/log/backups/vanblog-backup-a.vbe');
+    expect(files).toHaveLength(2);
     expect(files[0]).toEqual(
       expect.objectContaining({
-        name: 'vanblog-backup-a.json',
+        name: 'vanblog-backup-a.vbe',
         size: 123,
       }),
     );
@@ -128,11 +143,13 @@ describe('AutoBackupTask', () => {
 
     await task.executeBackup();
 
-    const writeCalls = (fs.writeFileSync as jest.Mock).mock.calls;
-    const backupJsonCall = writeCalls.find((call) => String(call[0]).includes('/var/log/backups/'));
-
-    expect(backupJsonCall).toBeTruthy();
-    const payload = JSON.parse(String(backupJsonCall![1]));
+    expect(writeEncryptedBackupFileMock).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^\/var\/log\/backups\/vanblog-backup-\d{4}-\d{2}-\d{2}-\d{6}\.vbe$/,
+      ),
+      expect.any(Object),
+    );
+    const payload = writeEncryptedBackupFileMock.mock.calls[0][1];
 
     expect(payload.tokens).toEqual([]);
     expect(payload.rawCollections).toEqual({
@@ -144,8 +161,9 @@ describe('AutoBackupTask', () => {
     expect(payload.backupInfo.rawCollectionCounts.tokens).toBe(0);
     expect(payload.backupInfo.credentialWarnings).toEqual({
       tokensExcluded: true,
+      encrypted: true,
       message:
-        '为避免凭证泄露，自动 JSON 备份不会导出登录会话 Token 或 API Token；恢复后需重新登录并重新创建 API Token。',
+        '备份已使用 AES-256-GCM 加密；登录会话 Token 和 API Token 仍不会导出，恢复后需重新登录并重新创建 API Token。',
     });
   });
 });

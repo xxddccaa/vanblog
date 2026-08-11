@@ -10,7 +10,13 @@ import { Model } from 'src/storage/mongoose-compat';
 import { UpdateUserDto } from 'src/types/user.dto';
 import { User, UserDocument } from 'src/scheme/user.schema';
 import { Collaborator } from 'src/types/collaborator';
-import { encryptPassword, makeSalt, washPassword } from 'src/utils/crypto';
+import {
+  encryptPassword,
+  hashPasswordCredential,
+  makeSalt,
+  verifyPasswordCredential,
+  washPassword,
+} from 'src/utils/crypto';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 
 @Injectable()
@@ -99,11 +105,12 @@ export class UserProvider {
       return null;
     } else {
       const encryptedPassword = encryptPassword(name, password, user.salt);
-      const result = user.password === encryptedPassword
-        ? user
-        : !this.structuredDataService.isInitialized()
-          ? await this.userModel.findOne({ name, password: encryptedPassword }).exec()
-          : null;
+      const valid = await verifyPasswordCredential(
+        user.password,
+        password,
+        encryptedPassword,
+      );
+      const result = valid ? user : null;
       if (result) {
         try {
           await this.updateSalt(result, password);
@@ -117,7 +124,7 @@ export class UserProvider {
 
   async updateSalt(user: User, passwordInput: string) {
     const newSalt = makeSalt();
-    const password = encryptPassword(user.name, passwordInput, newSalt);
+    const password = await hashPasswordCredential(passwordInput);
     await this.userModel.updateOne(
       { id: user.id },
       {
@@ -150,7 +157,7 @@ export class UserProvider {
     if (!currUser) {
       throw new NotFoundException();
     } else {
-      const password = encryptPassword(updateUserDto.name, updateUserDto.password, currUser.salt);
+      const password = await hashPasswordCredential(updateUserDto.password);
       const result = await this.userModel
         .updateOne(
           { id: currUser.id },
@@ -227,7 +234,7 @@ export class UserProvider {
       id: await this.getNewId(),
       type: 'collaborator',
       ...collaboratorDto,
-      password: encryptPassword(collaboratorDto.name, collaboratorDto.password, salt),
+      password: await hashPasswordCredential(collaboratorDto.password),
       salt,
     });
     await this.structuredDataService.upsertUser(created.toObject());
@@ -240,7 +247,7 @@ export class UserProvider {
       throw new ForbiddenException('没有此协作者！无法更新！');
     }
     const salt = makeSalt();
-    const password = encryptPassword(collaboratorDto.name, collaboratorDto.password, salt);
+    const password = await hashPasswordCredential(collaboratorDto.password);
     const result = await this.userModel.updateOne(
       {
         id: oldData.id,

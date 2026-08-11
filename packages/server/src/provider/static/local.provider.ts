@@ -3,17 +3,16 @@ import { StaticType, StoragePath } from 'src/types/setting.dto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { config } from 'src/config';
-import { imageSize } from 'image-size';
 import { formatBytes } from 'src/utils/size';
 import { ImgMeta } from 'src/types/img';
 import { isProd } from 'src/utils/isProd';
-import compressing from 'compressing';
 import dayjs from 'dayjs';
 import { checkOrCreate, checkOrCreateByFilePath } from 'src/utils/checkFolder';
 import { rmDir } from 'src/utils/deleteFolder';
 import { readDirs } from 'src/utils/readFileList';
 import { checkOrCreateFile } from 'src/utils/checkFile';
 import { getSafeUploadFileName } from 'src/utils/uploadFileName';
+import { safeImageSize } from 'src/utils/safeImageSize';
 @Injectable()
 export class LocalProvider {
   private getCustomPageRoot() {
@@ -130,7 +129,7 @@ export class LocalProvider {
         realPath = `/${safeFileName}`;
       }
     }
-    const result = imageSize(buffer);
+    const result = safeImageSize(buffer);
     const byteLength = buffer.byteLength;
 
     fs.writeFileSync(srcPath, buffer);
@@ -159,6 +158,7 @@ export class LocalProvider {
     }
   }
   async exportAllImg() {
+    const compressing = require('compressing');
     const src = path.join(config.staticPath, 'img');
     const dst = path.join(
       config.staticPath,

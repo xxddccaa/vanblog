@@ -7,7 +7,7 @@ import { UserDocument } from 'src/scheme/user.schema';
 import { WalineProvider } from '../waline/waline.provider';
 import { SettingProvider } from '../setting/setting.provider';
 import { version } from '../../utils/loadConfig';
-import { encryptPassword, makeSalt } from 'src/utils/crypto';
+import { hashPasswordCredential, makeSalt } from 'src/utils/crypto';
 import { defaultMenu } from 'src/types/menu.dto';
 import { CacheProvider } from '../cache/cache.provider';
 import fs from 'fs';
@@ -83,7 +83,7 @@ export class InitProvider {
     const payload = {
       id: 0,
       name: user.username,
-      password: encryptPassword(user.username, user.password, salt),
+      password: await hashPasswordCredential(user.password),
       nickname: user?.nickname || user.username,
       type: 'admin' as const,
       salt,

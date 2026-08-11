@@ -40,6 +40,16 @@ services:
         INSTALL_ALIYUNPAN: ${INSTALL_ALIYUNPAN:-false}
     restart: always
     init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    pids_limit: 256
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,14 +58,15 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
-      VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-vanblog}}
-      VAN_BLOG_REDIS_URL: ${VAN_BLOG_REDIS_URL:-redis://redis:6379}
+      VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-vanblog}}
+      VAN_BLOG_REDIS_URL: ${VAN_BLOG_REDIS_URL:-redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379}
       VAN_BLOG_WALINE_DB: ${VAN_BLOG_WALINE_DB:-waline}
-      VAN_BLOG_WALINE_DATABASE_URL: ${VAN_BLOG_WALINE_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${VAN_BLOG_WALINE_DB:-waline}}
+      VAN_BLOG_WALINE_DATABASE_URL: ${VAN_BLOG_WALINE_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${VAN_BLOG_WALINE_DB:-waline}}
       VAN_BLOG_CADDY_MANAGE_HTTPS: ${VAN_BLOG_CADDY_MANAGE_HTTPS:-false}
       VAN_BLOG_DEBUG_SUPER_TOKEN: ${VAN_BLOG_DEBUG_SUPER_TOKEN:-}
       VAN_BLOG_CLOUDFLARE_API_TOKEN: ${VAN_BLOG_CLOUDFLARE_API_TOKEN:-}
       VAN_BLOG_CLOUDFLARE_ZONE_ID: ${VAN_BLOG_CLOUDFLARE_ZONE_ID:-}
+      VAN_BLOG_PIPELINE_EXECUTION_ENABLED: ${VAN_BLOG_PIPELINE_EXECUTION_ENABLED:-false}
       VANBLOG_ISR_TOKEN: ${VANBLOG_ISR_TOKEN:-}
       VANBLOG_CADDY_API_URL: http://caddy:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
@@ -63,14 +74,16 @@ services:
       VANBLOG_KROKI_URL: http://kroki:8000
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
       WALINE_JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
+      VANBLOG_BACKUP_ENCRYPTION_KEY: ${VANBLOG_BACKUP_ENCRYPTION_KEY:-}
     volumes:
       - ${VANBLOG_STATIC_DIR:-./data/static}:/app/static
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
-      - ${VANBLOG_ALIYUNPAN_CONFIG_DIR:-./aliyunpan/config}:/root/.config/aliyunpan
+      - ${VANBLOG_SECRET_DIR:-./secrets}:/run/secrets/vanblog
+      - ${VANBLOG_ALIYUNPAN_CONFIG_DIR:-./aliyunpan/config}:/home/vanblog/.config/aliyunpan
     expose:
       - '3000'
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/swagger || exit 1']
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -87,6 +100,16 @@ services:
         VAN_BLOG_VERSIONS: ${VAN_BLOG_VERSION:-v1.0.0}
     restart: always
     init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    pids_limit: 256
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
@@ -133,6 +156,16 @@ services:
         ALPINE_MIRROR_HOST: ${ALPINE_MIRROR_HOST:-}
     restart: always
     init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    pids_limit: 256
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,7 +178,7 @@ services:
       PG_PORT: 5432
       PG_DB: ${VAN_BLOG_WALINE_DB:-waline}
       PG_USER: ${POSTGRES_USER:-postgres}
-      PG_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PG_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JWT_TOKEN: ${WALINE_JWT_TOKEN:-}
     expose:
       - '8360'
@@ -167,7 +200,7 @@ services:
       TZ: ${TZ:-Asia/Shanghai}
       POSTGRES_DB: ${POSTGRES_DB:-vanblog}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     volumes:
       - ${VANBLOG_POSTGRES_DIR:-./data/postgres}:/var/lib/postgresql/data
     healthcheck:
@@ -181,11 +214,18 @@ services:
     logging: *default-logging
     image: redis:7-alpine
     restart: always
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
     volumes:
       - ${VANBLOG_REDIS_DIR:-./data/redis}:/data
-    command: ['redis-server', '--appendonly', 'yes', '--loglevel', 'warning']
+    command:
+      [
+        'sh',
+        '-c',
+        'exec redis-server --appendonly yes --loglevel warning --requirepass "$$REDIS_PASSWORD"',
+      ]
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -198,7 +238,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8000/health']
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:8000/health']
       interval: 30s
       timeout: 10s
       retries: 5

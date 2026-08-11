@@ -113,12 +113,16 @@ async function bootstrap() {
   enableStdioLogMirror(path.join(globalConfig.log, 'vanblog-stdio.log'));
   const jwtSecret = await initJwt();
   global.jwtSecret = jwtSecret;
+  // Pipeline providers initialize during Nest application creation.
+  checkOrCreate(globalConfig.codeRunnerPath);
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: [...resolveNestLogLevels(globalConfig.logLevel)],
   });
+  app.disable('x-powered-by');
   app.set('trust proxy', ['loopback', 'linklocal', 'uniquelocal']);
 
-  app.use(json({ limit: '50mb' }));
+  // JSON APIs should not accept backup-sized payloads; file imports use multipart limits.
+  app.use(json({ limit: '1mb' }));
 
   app.useStaticAssets(globalConfig.staticPath, {
     prefix: '/static/',
@@ -126,7 +130,6 @@ async function bootstrap() {
   });
 
   // 查看文件夹是否存在 并创建.
-  checkOrCreate(globalConfig.codeRunnerPath);
   checkOrCreate(globalConfig.staticPath);
   checkOrCreate(path.join(globalConfig.staticPath, 'img'));
   checkOrCreate(path.join(globalConfig.staticPath, 'tmp'));
@@ -154,8 +157,10 @@ async function bootstrap() {
     .setDescription('API Token 请在后台设置页面获取，请添加到请求头的 token 字段中进行鉴权。')
     .setVersion('1.0')
     .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('swagger', app, document);
+  if (process.env.NODE_ENV !== 'production') {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('swagger', app, document);
+  }
   await app.listen(3000);
 
   const caddyProvider = app.get(CaddyProvider);

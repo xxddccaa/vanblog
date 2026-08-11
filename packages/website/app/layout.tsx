@@ -35,6 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     frontCardBackgroundColorDark: layoutProps.frontCardBackgroundColorDark,
   });
   const requestHeaders = await headers();
+  const nonce = requestHeaders.get('x-nonce') || '';
   const initialTheme = getThemeSnapshot({
     defaultTheme,
     lightBackground: frontCardSurfaces.lightDeep,
@@ -72,6 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <head>
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: getThemeBootstrapScript(defaultTheme, {
               lightBackground: frontCardSurfaces.lightDeep,
@@ -85,7 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className={initialTheme.bodyClassName}
         data-theme={initialTheme.bodyDataTheme}
       >
-        <Providers>{children}</Providers>
+        <Providers nonce={nonce}>{children}</Providers>
       </body>
     </html>
   );

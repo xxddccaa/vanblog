@@ -1,83 +1,91 @@
 import axios from 'axios';
+import { isIP } from 'node:net';
 
-function normalizeIp(ip: string) {
-  const normalized = String(ip || '').trim();
-  if (!normalized) {
-    return '';
-  }
-  return normalized.includes(':') ? normalized.slice(normalized.lastIndexOf(':') + 1) : normalized;
+export function normalizeClientIp(input: unknown): string | null {
+  let value = String(input || '').trim();
+  if (!value) return null;
+
+  const bracketed = value.match(/^\[([^\]]+)](?::\d+)?$/);
+  if (bracketed) value = bracketed[1];
+  const zoneIndex = value.indexOf('%');
+  if (zoneIndex >= 0) value = value.slice(0, zoneIndex);
+
+  const ipv4WithPort = value.match(/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/);
+  if (ipv4WithPort) value = ipv4WithPort[1];
+
+  const mapped = value.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i);
+  if (mapped && isIP(mapped[1]) === 4) return mapped[1];
+  return isIP(value) ? value.toLowerCase() : null;
 }
 
-function isPrivateIp(ip: string) {
-  if (!ip) {
-    return true;
+function ipv4IsPrivate(ip: string) {
+  const [a, b] = ip.split('.').map(Number);
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    a >= 224
+  );
+}
+
+export function isPrivateClientIp(ip: string) {
+  const normalized = normalizeClientIp(ip);
+  if (!normalized) return false;
+  if (isIP(normalized) === 4) return ipv4IsPrivate(normalized);
+
+  const compact = normalized.toLowerCase();
+  return (
+    compact === '::' ||
+    compact === '::1' ||
+    compact.startsWith('fc') ||
+    compact.startsWith('fd') ||
+    /^fe[89ab]/.test(compact)
+  );
+}
+
+export function getRequestIp(req: any): string | null {
+  const trustProxy = Boolean(req?.app?.get?.('trust proxy'));
+  const candidates = [
+    ...(trustProxy ? [req?.ip, ...(req?.ips || [])] : []),
+    req?.socket?.remoteAddress,
+  ];
+  for (const candidate of candidates) {
+    const normalized = normalizeClientIp(candidate);
+    if (normalized) return normalized;
   }
-  if (ip === '::1' || ip === '1') {
-    return true;
-  }
-  if (ip.startsWith('127.') || ip.startsWith('10.') || ip.startsWith('192.168.')) {
-    return true;
-  }
-  const segments = ip.split('.');
-  if (segments.length === 4 && segments[0] === '172') {
-    const second = Number(segments[1]);
-    if (!Number.isNaN(second) && second >= 16 && second <= 31) {
-      return true;
-    }
-  }
-  return false;
+  return null;
 }
 
 export async function getNetIp(req: any) {
-  const trustProxy = Boolean(req?.app?.get?.('trust proxy'));
-  const ipArray = [
-    ...new Set(
-      [
-        trustProxy ? req.ip : undefined,
-        ...(trustProxy ? req.ips || [] : []),
-        req?.socket?.remoteAddress,
-      ]
-        .filter(Boolean)
-        .map((item) => String(item).trim()),
-    ),
-  ];
-  let ip = ipArray[0];
-
-  if (ipArray.length > 1) {
-    for (let i = 0; i < ipArray.length; i++) {
-      const candidate = normalizeIp(ipArray[i]);
-      if (isPrivateIp(candidate)) {
-        continue;
-      }
-      ip = candidate;
-      break;
-    }
-  }
-  ip = normalizeIp(ip);
-  if (isPrivateIp(ip)) {
-    ip = '';
-  }
+  const ip = getRequestIp(req);
   if (!ip) {
-    return { address: `获取失败`, ip: '' };
+    return { address: '获取失败', ip: '', isPrivate: false, valid: false };
   }
-  try {
-    const { data } = await axios.get(`https://cip.cc/${ip}`);
-    // const ipApi = got.got
-    //   .get(`https://whois.pconline.com.cn/ipJson.jsp?ip=${ip}&json=true`)
-    //   .buffer();
+  const isPrivate = isPrivateClientIp(ip);
+  if (isPrivate) {
+    return { address: '私有网络', ip, isPrivate: true, valid: true };
+  }
 
-    const ipRegx = /.*IP	:(.*)\n/;
-    const addrRegx = /.*数据二	:(.*)\n/;
+  try {
+    const { data } = await axios.get(`https://cip.cc/${encodeURIComponent(ip)}`, {
+      timeout: 1500,
+      maxContentLength: 64 * 1024,
+      maxRedirects: 0,
+    });
+    const ipRegx = /.*IP\t:(.*)\n/;
+    const addrRegx = /.*数据二\t:(.*)\n/;
     if (data && ipRegx.test(data) && addrRegx.test(data)) {
-      const ip = String(data.match(ipRegx)[1] || '').trim();
-      const addr = String(data.match(addrRegx)[1] || '').trim();
-      return { address: addr, ip };
-    } else {
-      return { address: `获取失败`, ip };
+      const address = String(data.match(addrRegx)[1] || '').trim();
+      return { address, ip, isPrivate: false, valid: true };
     }
-  } catch (error) {
-    return { address: `获取失败`, ip };
+  } catch {
+    // Geolocation is best-effort and never participates in access decisions.
   }
+  return { address: '获取失败', ip, isPrivate: false, valid: true };
 }
 
 export function getPlatform(userAgent: string): 'mobile' | 'desktop' {

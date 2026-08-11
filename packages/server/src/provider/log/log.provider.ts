@@ -11,6 +11,27 @@ import { Pipeline } from 'src/scheme/pipeline.schema';
 import { CodeResult } from '../pipeline/pipeline.provider';
 import readline from 'node:readline';
 
+const SENSITIVE_LOG_KEYS = /^(token|authorization|cookie|password|secret|api[-_]?key)$/i;
+
+export function redactLogValue(value: any, depth = 0): any {
+  if (depth > 5) return '[TRUNCATED]';
+  if (typeof value === 'string') {
+    return value.length > 4096 ? `${value.slice(0, 4096)}…[TRUNCATED]` : value;
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, 100).map((item) => redactLogValue(item, depth + 1));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        SENSITIVE_LOG_KEYS.test(key) ? '[REDACTED]' : redactLogValue(item, depth + 1),
+      ]),
+    );
+  }
+  return value;
+}
+
 @Injectable()
 export class LogProvider {
   logger = null;
@@ -51,10 +72,10 @@ export class LogProvider {
       pipelineName: pipeline.name,
       eventName: pipeline.eventName,
       success: result?.status == 'success' ? true : false,
-      logs: result?.logs || [],
-      output: result?.output || [],
+      logs: redactLogValue(result?.logs || []),
+      output: redactLogValue(result?.output || []),
       serverError: error?.message || '',
-      input,
+      input: redactLogValue(input),
     });
   }
   async login(req: Request, success: boolean) {

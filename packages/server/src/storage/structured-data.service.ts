@@ -3309,6 +3309,22 @@ export class StructuredDataService implements OnModuleInit {
     return this.mapArticleRow(result.rows[0]);
   }
 
+  async incrementArticleViewer(id: number, isNewVisitor: boolean) {
+    const result = await this.store.query(
+      `
+        UPDATE vanblog_articles
+        SET
+          viewer = COALESCE(viewer, 0) + 1,
+          visited = COALESCE(visited, 0) + $2,
+          last_visited_time = NOW()
+        WHERE id = $1 AND deleted = FALSE
+        RETURNING id
+      `,
+      [id, isNewVisitor ? 1 : 0],
+    );
+    return (result.rowCount || 0) > 0;
+  }
+
   async getAdjacentArticle(
     article: { id: number; createdAt: Date | string },
     direction: 'prev' | 'next',
@@ -4858,6 +4874,22 @@ export class StructuredDataService implements OnModuleInit {
         WHERE singleton_key = 'default'
         LIMIT 1
       `,
+    );
+    return this.mapMetaRow(result.rows[0]);
+  }
+
+  async incrementMetaViewer(isNewVisitor: boolean) {
+    const result = await this.store.query(
+      `
+        UPDATE vanblog_meta
+        SET
+          viewer = COALESCE(viewer, 0) + 1,
+          visited = COALESCE(visited, 0) + $1,
+          updated_at = NOW()
+        WHERE singleton_key = 'default'
+        RETURNING *
+      `,
+      [isNewVisitor ? 1 : 0],
     );
     return this.mapMetaRow(result.rows[0]);
   }

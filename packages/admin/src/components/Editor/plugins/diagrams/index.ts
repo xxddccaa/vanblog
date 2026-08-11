@@ -1,6 +1,7 @@
 import type { BytemdPlugin } from 'bytemd';
 import type { DiagramThemeMode } from './types';
 import { ALL_DIAGRAM_LANGUAGES, KROKI_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
+import { sanitizeDiagramSvg } from '../../sanitize';
 
 export function diagramPlugin(themeMode: DiagramThemeMode): BytemdPlugin {
   return {
@@ -49,7 +50,7 @@ async function renderDiagramBlocks(
       wrapper.setAttribute('data-diagram-type', language);
       wrapper.setAttribute('data-diagram-source', source);
       wrapper.setAttribute('data-vb-diagram-rendered', themeMode);
-      wrapper.innerHTML = svg;
+      wrapper.innerHTML = sanitizeDiagramSvg(svg);
       preEl.replaceWith(wrapper);
     } catch (error) {
       const errDiv = document.createElement('div');

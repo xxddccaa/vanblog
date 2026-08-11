@@ -80,17 +80,10 @@ export class BackupImportJobProvider {
     stages: Array<{ key: string; label: string; total?: number }>,
     summary?: Record<string, any>,
   ) {
-    const existing = await this.getActiveJob();
-    if (existing && (existing.status === 'queued' || existing.status === 'running')) {
-      return {
-        created: false,
-        job: existing,
-      };
-    }
-
+    const jobId = randomUUID();
     const now = new Date().toISOString();
     const job: BackupImportJob = {
-      id: randomUUID(),
+      id: jobId,
       status: 'queued',
       progress: 0,
       message: '备份文件已接收，等待开始导入',
@@ -99,8 +92,25 @@ export class BackupImportJobProvider {
       stages: this.normalizeStages(stages),
       summary,
     };
-    await this.cacheProvider.set(ACTIVE_JOB_KEY, job.id, JOB_TTL_SECONDS);
-    await this.saveJob(job);
+    try {
+      await this.saveJob(job);
+      const lockAcquired = await this.cacheProvider.setIfAbsent(
+        ACTIVE_JOB_KEY,
+        jobId,
+        JOB_TTL_SECONDS,
+      );
+      if (!lockAcquired) {
+        await this.cacheProvider.del(this.getJobKey(jobId));
+        return {
+          created: false,
+          job: await this.getActiveJob(),
+        };
+      }
+    } catch (error) {
+      await this.cacheProvider.delIfValue(ACTIVE_JOB_KEY, job.id);
+      await this.cacheProvider.del(this.getJobKey(job.id));
+      throw error;
+    }
     return {
       created: true,
       job,
@@ -121,7 +131,7 @@ export class BackupImportJobProvider {
     }
     const job = await this.getJob(activeJobId);
     if (!job || (job.status !== 'queued' && job.status !== 'running')) {
-      await this.cacheProvider.del(ACTIVE_JOB_KEY);
+      await this.cacheProvider.delIfValue(ACTIVE_JOB_KEY, activeJobId);
       return null;
     }
     return job;
@@ -222,7 +232,7 @@ export class BackupImportJobProvider {
         completed: stage.status === 'pending' ? stage.total : Math.max(stage.completed, stage.total),
       }));
     });
-    await this.cacheProvider.del(ACTIVE_JOB_KEY);
+    await this.cacheProvider.delIfValue(ACTIVE_JOB_KEY, jobId);
     return job;
   }
 
@@ -236,7 +246,7 @@ export class BackupImportJobProvider {
       current.error = error;
       current.finishedAt = new Date().toISOString();
     });
-    await this.cacheProvider.del(ACTIVE_JOB_KEY);
+    await this.cacheProvider.delIfValue(ACTIVE_JOB_KEY, jobId);
     return job;
   }
 }

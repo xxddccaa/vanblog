@@ -40,7 +40,6 @@ describe('StaticProvider', () => {
       {} as any,
       {} as any,
       {} as any,
-      undefined,
       structuredDataService as any,
     );
 
@@ -81,7 +80,6 @@ describe('StaticProvider', () => {
       {} as any,
       localProvider as any,
       {} as any,
-      undefined,
       structuredDataService as any,
     );
 
@@ -99,7 +97,6 @@ describe('StaticProvider', () => {
       {} as any,
       {} as any,
       {} as any,
-      undefined,
       {} as any,
     );
 
@@ -114,7 +111,6 @@ describe('StaticProvider', () => {
       {} as any,
       {} as any,
       {} as any,
-      undefined,
       {} as any,
     );
     const saveFileSpy = jest.spyOn(provider, 'saveFile').mockResolvedValue('/static/img/blocked.svg');
@@ -139,7 +135,6 @@ describe('StaticProvider', () => {
       {} as any,
       {} as any,
       {} as any,
-      undefined,
       {} as any,
     );
     jest.spyOn(provider, 'getOneBySign').mockResolvedValue(null);

@@ -6,6 +6,13 @@ import { Model } from 'src/storage/mongoose-compat';
 import { JwtService } from '@nestjs/jwt';
 import { SettingProvider } from '../setting/setting.provider';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { createHash } from 'node:crypto';
+
+const API_TOKEN_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 90;
+
+function getStoredToken(token: string) {
+  return `sha256:${createHash('sha256').update(token).digest('hex')}`;
+}
 
 @Injectable()
 export class TokenProvider {
@@ -22,9 +29,13 @@ export class TokenProvider {
     this.logger.log(`获取所有 API Token`);
     const tokens = await this.structuredDataService.listTokens({ userId: 666666, disabled: false });
     if (tokens.length || this.structuredDataService.isInitialized()) {
-      return tokens as any;
+      return tokens.map(({ token: _token, ...item }) => item) as any;
     }
-    return await this.tokenModel.find({ userId: 666666, disabled: false }).exec();
+    const mongoTokens = await this.tokenModel
+      .find({ userId: 666666, disabled: false })
+      .lean()
+      .exec();
+    return mongoTokens.map(({ token: _token, ...item }) => item);
   }
   async getAllTokens() {
     const tokens = await this.structuredDataService.listTokens();
@@ -49,7 +60,12 @@ export class TokenProvider {
   }
 
   async disableAPIToken(token: string) {
-    const result = await this.tokenModel.updateOne({ token }, { disabled: true });
+    const storedToken = getStoredToken(token);
+    const result = await this.tokenModel.updateOne(
+      { token: { $in: [storedToken, token] } },
+      { disabled: true },
+    );
+    await this.structuredDataService.updateTokenDisabledByToken(storedToken, true);
     await this.structuredDataService.updateTokenDisabledByToken(token, true);
     return result;
   }
@@ -66,8 +82,7 @@ export class TokenProvider {
 
   async createAPIToken(name: string) {
     this.logger.log(`创建 API Token`);
-    // 100年过期
-    const expiresIn = 3600 * 24 * 365 * 100;
+    const expiresIn = API_TOKEN_EXPIRES_IN_SECONDS;
     const token = this.jwtService.sign(
       {
         sub: 0,
@@ -79,7 +94,13 @@ export class TokenProvider {
       },
     );
     // 默认666666是 api token
-    const created = await this.tokenModel.create({ userId: 666666, name, token, expiresIn });
+    const storedToken = getStoredToken(token);
+    const created = await this.tokenModel.create({
+      userId: 666666,
+      name,
+      token: storedToken,
+      expiresIn,
+    });
     await this.structuredDataService.upsertToken(created.toObject ? created.toObject() : created);
     return token;
   }
@@ -91,12 +112,21 @@ export class TokenProvider {
     const token = this.jwtService.sign(payload, {
       expiresIn,
     });
-    const created = await this.tokenModel.create({ userId: payload.sub, token, expiresIn });
+    const created = await this.tokenModel.create({
+      userId: payload.sub,
+      token: getStoredToken(token),
+      expiresIn,
+    });
     await this.structuredDataService.upsertToken(created.toObject ? created.toObject() : created);
     return token;
   }
   async disableToken(token: string) {
-    const result = await this.tokenModel.updateOne({ token }, { disabled: true });
+    const storedToken = getStoredToken(token);
+    const result = await this.tokenModel.updateOne(
+      { token: { $in: [storedToken, token] } },
+      { disabled: true },
+    );
+    await this.structuredDataService.updateTokenDisabledByToken(storedToken, true);
     await this.structuredDataService.updateTokenDisabledByToken(token, true);
     return result;
   }
@@ -138,7 +168,10 @@ export class TokenProvider {
       return null;
     }
 
-    const pgToken = await this.structuredDataService.getTokenByToken(token);
+    const storedToken = getStoredToken(token);
+    const pgToken =
+      (await this.structuredDataService.getTokenByToken(storedToken)) ||
+      (await this.structuredDataService.getTokenByToken(token));
     if (pgToken || this.structuredDataService.isInitialized()) {
       if (!pgToken || pgToken.disabled) {
         return null;
@@ -150,7 +183,10 @@ export class TokenProvider {
       }
     }
 
-    const result = await this.tokenModel.findOne({ token, disabled: false });
+    const result = await this.tokenModel.findOne({
+      token: { $in: [storedToken, token] },
+      disabled: false,
+    });
     if (!result?.token) {
       return null;
     }
@@ -166,7 +202,10 @@ export class TokenProvider {
   }
 
   private async getActiveTokenRecord(token: string) {
-    const pgToken = await this.structuredDataService.getTokenByToken(token);
+    const storedToken = getStoredToken(token);
+    const pgToken =
+      (await this.structuredDataService.getTokenByToken(storedToken)) ||
+      (await this.structuredDataService.getTokenByToken(token));
     if (pgToken || this.structuredDataService.isInitialized()) {
       if (!pgToken || pgToken.disabled) {
         return null;
@@ -174,7 +213,10 @@ export class TokenProvider {
       return pgToken as any;
     }
 
-    const result = await this.tokenModel.findOne({ token, disabled: false }).lean().exec();
+    const result = await this.tokenModel
+      .findOne({ token: { $in: [storedToken, token] }, disabled: false })
+      .lean()
+      .exec();
     return result || null;
   }
 

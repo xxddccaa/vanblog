@@ -11,6 +11,16 @@ describe('BackupImportJobProvider', () => {
       del: jest.fn(async (key: string) => {
         store.delete(key);
       }),
+      setIfAbsent: jest.fn(async (key: string, value: any) => {
+        if (store.has(key)) return false;
+        store.set(key, value);
+        return true;
+      }),
+      delIfValue: jest.fn(async (key: string, value: any) => {
+        if (store.get(key) !== value) return false;
+        store.delete(key);
+        return true;
+      }),
     };
 
     return {
@@ -70,6 +80,17 @@ describe('BackupImportJobProvider', () => {
     const third = await provider.createJob([{ key: 'meta', label: '恢复站点信息', total: 1 }]);
     expect(third.created).toBe(true);
     expect(third.job.id).not.toBe(first.job.id);
+  });
+
+  it('uses an atomic cache lock so concurrent creates cannot both start', async () => {
+    const { provider } = createProvider();
+    const [first, second] = await Promise.all([
+      provider.createJob([{ key: 'meta', label: '恢复站点信息', total: 1 }]),
+      provider.createJob([{ key: 'meta', label: '恢复站点信息', total: 1 }]),
+    ]);
+
+    expect([first.created, second.created].filter(Boolean)).toHaveLength(1);
+    expect([first.created, second.created].filter((value) => !value)).toHaveLength(1);
   });
 
   it('keeps terminal jobs immutable so later duplicate updates cannot overwrite the final state', async () => {

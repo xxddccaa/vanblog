@@ -1,16 +1,67 @@
 import { decode } from "js-base64";
 import Script from "next/script";
-import { createElement } from "react";
+import { createElement, useContext } from "react";
 
 import { type HeadTag } from "../../utils/getLayoutProps";
+import { CspNonceContext } from "../../utils/cspNonceContext";
+
+const stripSection = (source: string, startMarker: string, endMarker: string) => {
+  const start = source.indexOf(startMarker);
+  if (start === -1) return source;
+  const end = source.indexOf(endMarker, start);
+  if (end === -1) return source;
+  return `${source.slice(0, start)}\n${source.slice(end + endMarker.length)}`;
+};
+
+const stripMotionClassSection = (
+  source: string,
+  className: string,
+  endMarker: string,
+) => {
+  const anchor = source.indexOf(className);
+  if (anchor === -1) return source;
+  const helperStart = source.lastIndexOf(
+    "const shouldDisableVanblogMotionEffects = () => {",
+    anchor,
+  );
+  const start = helperStart === -1 ? anchor : helperStart;
+  const end = source.indexOf(endMarker, anchor);
+  if (end === -1) return source;
+  return `${source.slice(0, start)}\n${source.slice(end + endMarker.length)}`;
+};
+
+const stripMobileHeavyEffects = (source: string) => {
+  let nextSource = source;
+  nextSource = stripSection(
+    nextSource,
+    "// Canvas-nest.js 粒子连线动画 - 修复版本",
+    "window.CANVAS_NEST_CLEANUP = cleanup;\n})();",
+  );
+  nextSource = stripSection(
+    nextSource,
+    "// 心形点击爆炸效果系统 - 增强版粒子爆炸",
+    "})(window, document);",
+  );
+  nextSource = stripMotionClassSection(
+    nextSource,
+    "class SnowflakeSystem {",
+    "document.addEventListener('visibilitychange', () => {\n    if (snowSystem) {\n      document.hidden ? snowSystem.stop() : snowSystem.start();\n    }\n  });\n}",
+  );
+  return stripMotionClassSection(
+    nextSource,
+    "class MouseDragSystem {",
+    "window.mouseDragSystem = new MouseDragSystem();\n  });\n  }",
+  );
+};
+
+const escapeScriptClosingTags = (source: string) =>
+  source.replace(/<\/script/gi, "<\\/script");
 
 const buildResponsiveCustomScript = (script: string) => {
-  const serializedScript = JSON.stringify(script);
-
+  const fullScript = escapeScriptClosingTags(script);
+  const reducedScript = escapeScriptClosingTags(stripMobileHeavyEffects(script));
   return `
 (() => {
-  const rawScript = ${serializedScript};
-
   const shouldReduceHeavyEffects = () => {
     try {
       const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
@@ -35,73 +86,10 @@ const buildResponsiveCustomScript = (script: string) => {
     }
   };
 
-  const stripSection = (source, startMarker, endMarker) => {
-    const start = source.indexOf(startMarker);
-    if (start === -1) {
-      return source;
-    }
-
-    const end = source.indexOf(endMarker, start);
-    if (end === -1) {
-      return source;
-    }
-
-    return source.slice(0, start) + '\\n' + source.slice(end + endMarker.length);
-  };
-
-  const stripMotionClassSection = (source, className, endMarker) => {
-    const anchor = source.indexOf(className);
-    if (anchor === -1) {
-      return source;
-    }
-
-    const helperStart = source.lastIndexOf(
-      'const shouldDisableVanblogMotionEffects = () => {',
-      anchor
-    );
-    const start = helperStart === -1 ? anchor : helperStart;
-    const end = source.indexOf(endMarker, anchor);
-
-    if (end === -1) {
-      return source;
-    }
-
-    return source.slice(0, start) + '\\n' + source.slice(end + endMarker.length);
-  };
-
-  const stripMobileHeavyEffects = (source) => {
-    let nextSource = source;
-
-    nextSource = stripSection(
-      nextSource,
-      '// Canvas-nest.js 粒子连线动画 - 修复版本',
-      'window.CANVAS_NEST_CLEANUP = cleanup;\\n})();'
-    );
-    nextSource = stripSection(
-      nextSource,
-      '// 心形点击爆炸效果系统 - 增强版粒子爆炸',
-      '})(window, document);'
-    );
-    nextSource = stripMotionClassSection(
-      nextSource,
-      'class SnowflakeSystem {',
-      "document.addEventListener('visibilitychange', () => {\\n    if (snowSystem) {\\n      document.hidden ? snowSystem.stop() : snowSystem.start();\\n    }\\n  });\\n}"
-    );
-    nextSource = stripMotionClassSection(
-      nextSource,
-      'class MouseDragSystem {',
-      "window.mouseDragSystem = new MouseDragSystem();\\n  });\\n  }"
-    );
-
-    return nextSource;
-  };
-
-  const executableScript = shouldReduceHeavyEffects()
-    ? stripMobileHeavyEffects(rawScript)
-    : rawScript;
-
-  if (executableScript.trim()) {
-    (0, eval)(executableScript);
+  if (shouldReduceHeavyEffects()) {
+    ${reducedScript}
+  } else {
+    ${fullScript}
   }
 })();
 `;
@@ -113,6 +101,7 @@ export default function (props: {
   customScript?: string;
   customHead?: HeadTag[];
 }) {
+  const nonce = useContext(CspNonceContext);
   const renderHeadTags = () => {
     if (props.customHead?.length) {
       return (
@@ -142,7 +131,7 @@ export default function (props: {
         ></div>
       ) : null}
       {props.customScript ? (
-        <Script strategy="beforeInteractive">
+        <Script strategy="beforeInteractive" nonce={nonce}>
           {buildResponsiveCustomScript(decode(props.customScript))}
         </Script>
       ) : null}

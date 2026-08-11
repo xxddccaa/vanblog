@@ -6,6 +6,7 @@ import {
   Put,
   UseGuards,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
@@ -55,6 +56,7 @@ export class AutoBackupController {
       };
     }
 
+    this.validateSetting(dto);
     try {
       await this.settingProvider.updateAutoBackupSetting(dto);
       
@@ -77,6 +79,25 @@ export class AutoBackupController {
         statusCode: 500,
         message: '更新设置失败：' + error.message,
       };
+    }
+  }
+
+  private validateSetting(dto: AutoBackupSetting) {
+    const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+    if (
+      !dto ||
+      typeof dto.enabled !== 'boolean' ||
+      !timePattern.test(dto.backupTime) ||
+      !Number.isInteger(dto.retentionCount) ||
+      dto.retentionCount < 1 ||
+      dto.retentionCount > 365 ||
+      !dto.aliyunpan ||
+      typeof dto.aliyunpan.enabled !== 'boolean' ||
+      !timePattern.test(dto.aliyunpan.syncTime) ||
+      typeof dto.aliyunpan.localPath !== 'string' ||
+      typeof dto.aliyunpan.panPath !== 'string'
+    ) {
+      throw new BadRequestException('自动备份设置格式不合法');
     }
   }
 
@@ -296,4 +317,4 @@ export class AutoBackupController {
       };
     }
   }
-} 
+}

@@ -1,4 +1,4 @@
-FROM node:24.14.1-alpine AS runner
+FROM node:22.22.2-alpine AS runner
 WORKDIR /app/website
 ARG ALPINE_MIRROR_HOST=""
 ARG VANBLOG_IMAGE_NAME="vanblog-website"
@@ -12,10 +12,14 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
 RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi \
-    && apk add --no-cache --update tzdata curl \
+    && apk add --no-cache --update tzdata curl su-exec \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
-    && apk del tzdata
+    && apk del tzdata \
+    && addgroup -S -g 10001 vanblog \
+    && adduser -S -D -H -u 10001 -G vanblog vanblog \
+    && mkdir -p /var/log /home/vanblog \
+    && chown -R vanblog:vanblog /var/log /home/vanblog
 
 COPY packages/website/.next/standalone/ ./
 COPY packages/website/next.config.js ./packages/website/next.config.js
@@ -26,7 +30,8 @@ COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
 COPY docker/website/control-auth.cjs ./control-auth.cjs
 COPY docker/website/runner.cjs ./runner.cjs
 COPY docker/website/entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh \
+    && chown -R vanblog:vanblog /app/website /app/ensure-waline-jwt.cjs
 
 ENV NODE_ENV=production
 ENV PORT=3001

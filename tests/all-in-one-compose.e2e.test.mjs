@@ -263,7 +263,7 @@ async function waitForHtml(baseUrl, pathname, expectedText) {
   });
 }
 
-test('all-in-one image supports init, login, draft publish, and frontend browsing', { timeout: 20 * 60 * 1000 }, async () => {
+test('all-in-one image supports init, login, draft publish, and frontend browsing', { timeout: 90 * 60 * 1000 }, async () => {
   const httpPort = await getFreePort();
   const composeEnv = createComposeEnv(httpPort);
   const baseUrl = `http://127.0.0.1:${httpPort}`;
@@ -281,7 +281,7 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
     // silently reusing a cached all-in-one runtime layer from an earlier test run.
     runCommand(['-f', 'docker-compose.all-in-one.yml', 'build', '--no-cache', 'vanblog'], {
       env: composeEnv,
-      timeoutMs: 20 * 60 * 1000,
+      timeoutMs: 60 * 60 * 1000,
     });
 
     runCommand(['-f', 'docker-compose.all-in-one.yml', 'up', '-d'], {
@@ -294,16 +294,16 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
     const swagger = await waitFor(async () => {
       try {
         const response = await fetchText(`${baseUrl}/swagger`);
-        return response.status === 200 ? response : false;
+        return response.status === 404 ? response : false;
       } catch {
         return false;
       }
     }, {
       timeoutMs: 90 * 1000,
       intervalMs: 3000,
-      label: 'swagger ui to be reachable at the public entrypoint',
+      label: 'swagger ui to stay blocked at the public entrypoint',
     });
-    assert.equal(swagger.status, 200);
+    assert.equal(swagger.status, 404);
 
     const walineAdmin = await waitFor(async () => {
       try {

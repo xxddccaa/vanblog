@@ -18,22 +18,7 @@ import { Heading } from "./heading";
 import { Img } from "./img";
 import { ThemeContext } from "../../utils/themeContext";
 import { normalizeMathDelimiters } from "./normalizeMathDelimiters";
-
-const sanitize = (schema) => {
-  schema.protocols.src.push('data');
-  schema.tagNames.push("center");
-  schema.tagNames.push("iframe");
-  schema.tagNames.push("script");
-  schema.attributes["*"].push("style");
-  schema.attributes["*"].push("src");
-  schema.attributes["*"].push("scrolling");
-  schema.attributes["*"].push("border");
-  schema.attributes["*"].push("frameborder");
-  schema.attributes["*"].push("framespacing");
-  schema.attributes["*"].push("allowfullscreen");
-  schema.strip = [];
-  return schema;
-};
+import { configureMarkdownSanitizeSchema } from "./sanitize";
 
 export default function ({ content, codeMaxLines = 15 }: { content: string; codeMaxLines?: number }) {
   const { theme } = useContext(ThemeContext);
@@ -73,7 +58,7 @@ export default function ({ content, codeMaxLines = 15 }: { content: string; code
         value={normalizedContent}
         plugins={plugins}
         remarkRehype={{ allowDangerousHtml: true }}
-        sanitize={sanitize}
+        sanitize={configureMarkdownSanitizeSchema}
       />
     </div>
   );

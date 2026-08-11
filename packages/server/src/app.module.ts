@@ -52,7 +52,6 @@ import { StaticProvider } from './provider/static/static.provider';
 import { ImgController } from './controller/admin/img/img.controller';
 import { LocalProvider } from './provider/static/local.provider';
 import { SettingController } from './controller/admin/setting/setting.controller';
-// import { PicgoProvider } from './provider/static/picgo.provider'; // 临时禁用 PicGo
 import { ViewerTask } from './schedule/viewer.task';
 import { CaddyController } from './controller/admin/caddy/caddy.controller';
 import { CaddyProvider } from './provider/caddy/caddy.provider';
@@ -216,7 +215,6 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     CategoryProvider,
     MetaProvider,
     DraftProvider,
-    // PicgoProvider, // 临时禁用 PicGo
     VisitProvider,
     TagProvider,
     UserProvider,

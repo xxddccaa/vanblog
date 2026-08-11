@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { isIP } from 'node:net';
+import { lookup } from 'node:dns';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
 
 function isPrivateIpv4(hostname: string) {
   if (hostname === '0.0.0.0') {
@@ -29,12 +32,55 @@ function isPrivateIpv4(hostname: string) {
 
 function isPrivateIpv6(hostname: string) {
   const normalized = hostname.toLowerCase();
+  const mapped = normalized.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/);
   return (
     normalized === '::1' ||
+    normalized === '::' ||
+    (mapped ? isPrivateIpv4(mapped[1]) : false) ||
     normalized.startsWith('fc') ||
     normalized.startsWith('fd') ||
-    normalized.startsWith('fe80:')
+    /^fe[89ab]/.test(normalized)
   );
+}
+
+export function isPublicOutboundIp(address: string) {
+  const type = isIP(address);
+  if (type === 4) return !isPrivateIpv4(address);
+  if (type === 6) return !isPrivateIpv6(address);
+  return false;
+}
+
+function createValidatedLookup(expectedHostname: string) {
+  return (hostname: string, _options: any, callback: any) => {
+    if (hostname.toLowerCase() !== expectedHostname.toLowerCase()) {
+      callback(new Error('outbound hostname changed unexpectedly'));
+      return;
+    }
+    lookup(hostname, { all: true, verbatim: true }, (error, addresses) => {
+      if (error) {
+        callback(error);
+        return;
+      }
+      if (!addresses.length || addresses.some(({ address }) => !isPublicOutboundIp(address))) {
+        callback(new Error('outbound hostname resolves to a non-public address'));
+        return;
+      }
+      callback(null, addresses[0].address, addresses[0].family);
+    });
+  };
+}
+
+export function getSafeOutboundAxiosConfig(url: string) {
+  const parsed = new URL(url);
+  const safeLookup = createValidatedLookup(parsed.hostname);
+  return {
+    timeout: 10_000,
+    maxRedirects: 0,
+    maxContentLength: 10 * 1024 * 1024,
+    maxBodyLength: 1024 * 1024,
+    httpAgent: new HttpAgent({ lookup: safeLookup }),
+    httpsAgent: new HttpsAgent({ lookup: safeLookup }),
+  };
 }
 
 export function normalizeSafeOutboundHttpUrl(input: string, label = '请求地址') {

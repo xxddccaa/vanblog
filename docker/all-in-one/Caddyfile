@@ -12,6 +12,14 @@
 
 http:// {
   encode zstd gzip
+  header {
+    -Server
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "SAMEORIGIN"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    ?Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; media-src 'self' blob: https:; worker-src 'self' blob:; frame-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+  }
   log {
     output file /var/log/vanblog-access.log {
       roll_size 5MiB
@@ -90,7 +98,7 @@ http:// {
     reverse_proxy 127.0.0.1:3000
   }
   handle /swagger* {
-    reverse_proxy 127.0.0.1:3000
+    respond "Not Found" 404
   }
   handle /api/user* {
     uri strip_prefix /api

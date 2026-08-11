@@ -150,4 +150,15 @@ describe('AccessGuard', () => {
     ).resolves.toBe(true);
     await expect(guard.validateRequest(createRequest('get-/api/admin/meta', []))).resolves.toBe(true);
   });
+
+  it('fails closed for malformed permission data and malformed route metadata', async () => {
+    const guard = new AccessGuard();
+    const malformedPermissions = createRequest('get-/api/admin/article', undefined);
+    malformedPermissions.user.permissions = 'all' as any;
+
+    await expect(guard.validateRequest(malformedPermissions)).resolves.toBe(false);
+    await expect(
+      guard.validateRequest({ user: { id: 1, permissions: ['all'] } }),
+    ).resolves.toBe(false);
+  });
 });

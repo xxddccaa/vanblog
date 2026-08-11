@@ -9,7 +9,7 @@ let adapterPath = null;
 
 try {
   const findResult = execSync(
-    `find ${JSON.stringify(walineRoot)} -name "adapter.js" -path "*/@waline/vercel/src/config/*" 2>/dev/null`,
+    `find -L ${JSON.stringify(walineRoot)} -name "adapter.js" -path "*/@waline/vercel/src/config/*" 2>/dev/null`,
   )
     .toString()
     .trim();

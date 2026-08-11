@@ -14,6 +14,7 @@ export class CacheProvider {
   private redis: Redis | null = null;
   private redisReady = false;
   private redisFailed = false;
+  private redisConnectPromise: Promise<void> | null = null;
 
   private async getRedis() {
     if (this.redisFailed || !config.redisUrl) {
@@ -26,13 +27,19 @@ export class CacheProvider {
       });
     }
     if (!this.redisReady) {
+      if (!this.redisConnectPromise) {
+        this.redisConnectPromise = this.redis.connect().then(() => {
+          this.redisReady = true;
+        });
+      }
       try {
-        await this.redis.connect();
-        this.redisReady = true;
+        await this.redisConnectPromise;
       } catch (error) {
         this.redisFailed = true;
         this.logger.warn(`Redis 不可用，回退到内存缓存: ${error?.message || error}`);
         return null;
+      } finally {
+        this.redisConnectPromise = null;
       }
     }
     return this.redis;
@@ -81,6 +88,66 @@ export class CacheProvider {
       return;
     }
     await redis.set(key, payload);
+  }
+
+  async setIfAbsent(key: string, value: any, ttlSeconds?: number) {
+    const redis = await this.getRedis();
+    const payload = JSON.stringify(value);
+    if (redis) {
+      const result = ttlSeconds
+        ? await redis.set(key, payload, 'EX', ttlSeconds, 'NX')
+        : await redis.set(key, payload, 'NX');
+      if (result !== 'OK') return false;
+      this.storeInMemory(key, value, ttlSeconds);
+      return true;
+    }
+    if (this.readFromMemory(key) !== null) return false;
+    this.storeInMemory(key, value, ttlSeconds);
+    return true;
+  }
+
+  async incrementWithTtl(key: string, ttlSeconds: number) {
+    const redis = await this.getRedis();
+    if (redis) {
+      return Number(
+        await redis.eval(
+          `
+            local current = redis.call('INCR', KEYS[1])
+            if current == 1 then
+              redis.call('EXPIRE', KEYS[1], ARGV[1])
+            end
+            return current
+          `,
+          1,
+          key,
+          String(ttlSeconds),
+        ),
+      );
+    }
+
+    // There is no await between the read and write, so this fallback is
+    // atomic within one Node.js process when Redis is unavailable.
+    const current = Number(this.readFromMemory(key) || 0) + 1;
+    this.storeInMemory(key, current, ttlSeconds);
+    return current;
+  }
+
+  async delIfValue(key: string, expectedValue: any) {
+    const redis = await this.getRedis();
+    let deleted = false;
+    if (redis) {
+      const result = await redis.eval(
+        'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end',
+        1,
+        key,
+        JSON.stringify(expectedValue),
+      );
+      deleted = Number(result) > 0;
+    } else if (this.readFromMemory(key) === expectedValue) {
+      deleted = true;
+    }
+    if (deleted) this.memory.delete(key);
+    return deleted;
   }
 
   async del(key: string) {
