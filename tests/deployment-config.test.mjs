@@ -466,9 +466,9 @@ test('Next.js config still supports the expected asset and image behavior', () =
 });
 
 test('package version and release env example stay consistent', () => {
-  assert.equal(packageJson.version, '1.8.0');
+  assert.equal(packageJson.version, '1.8.1');
   assert.match(releaseEnv, /VANBLOG_DOCKER_REPO=kevinchina\/deeplearning/);
-  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.8\.0-replace-with-gitsha8/);
+  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.8\.1-replace-with-gitsha8/);
   assert.doesNotMatch(releaseEnv, /FASTGPT_ROOT_PASSWORD/);
 });
 
