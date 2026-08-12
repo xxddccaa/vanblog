@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Head from "next/head";
 import BackToTopBtn from "../BackToTop";
 import NavBar from "../NavBar";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import BaiduAnalysis from "../BaiduAnalysis";
 import GaAnalysis from "../gaAnalysis";
 import { LayoutProps } from "../../utils/getLayoutProps";
@@ -21,9 +21,10 @@ import { checkLoginAsync } from "../../utils/auth";
 import { resolveFrontCardSurfaceColors } from "../../utils/frontCardSurface";
 import {
   getMarkdownThemeId,
-  MARKDOWN_THEME_HOTFIX_URL,
-  withMarkdownThemeAssetVersion,
 } from "../../utils/markdownTheme";
+import MarkdownThemeResources, {
+  syncMarkdownThemeResourceState,
+} from "./MarkdownThemeResources";
 
 const NavBarMobile = dynamic(() => import("../NavBarMobile"), {
   ssr: false,
@@ -35,8 +36,6 @@ const MusicPlayer = dynamic(() => import("../MusicPlayer"), {
 const MANAGED_DESCRIPTION_META = "meta[name='description'][data-vanblog-managed='true']";
 const MANAGED_ROBOTS_META = "meta[name='robots'][data-vanblog-managed='true']";
 const MANAGED_ICON_LINK = "link[rel='icon'][data-vanblog-managed='true']";
-const MANAGED_THEME_LINK = 'link[data-vanblog-theme-link]';
-const MANAGED_THEME_HOTFIX_LINK = "link[data-vanblog-theme-hotfix='true']";
 
 const upsertHeadMeta = (selector: string, name: string, content: string) => {
   let element = document.head.querySelector(selector) as HTMLMetaElement | null;
@@ -66,73 +65,6 @@ const upsertHeadLink = (
   Object.entries(extraAttributes).forEach(([key, value]) => {
     element?.setAttribute(key, value);
   });
-};
-
-const syncThemeStylesheet = (theme: "light" | "dark", href: string) => {
-  const selector = `${MANAGED_THEME_LINK}[data-theme-for='${theme}']`;
-  const existing = document.head.querySelector(selector) as HTMLLinkElement | null;
-
-  // In App Router builds the markdown theme links are rendered on the server
-  // in `app/layout.tsx`. Avoid late-injected links that cause a visible style swap.
-  const appRouterHeadLink = document.head.querySelector(
-    `link[rel='stylesheet'][data-theme-for='${theme}']:not([data-vanblog-managed='true']):not([data-vanblog-theme-link])`,
-  ) as HTMLLinkElement | null;
-
-  if (!href) {
-    existing?.remove();
-    return;
-  }
-
-  const versionedHref = withMarkdownThemeAssetVersion(href);
-
-  if (existing) {
-    existing.setAttribute("href", versionedHref);
-    return;
-  }
-
-  if (appRouterHeadLink) {
-    appRouterHeadLink.setAttribute("href", versionedHref);
-    appRouterHeadLink.setAttribute("data-vanblog-theme-link", "true");
-    return;
-  }
-
-  // In the App Router build we render these links in `app/layout.tsx`.
-  // Keep this as a compatibility fallback (e.g. tests or legacy entrypoints).
-  const link = document.createElement("link");
-  link.setAttribute("rel", "stylesheet");
-  link.setAttribute("href", versionedHref);
-  link.setAttribute("data-theme-for", theme);
-  link.setAttribute("data-vanblog-theme-link", "true");
-  document.head.appendChild(link);
-};
-
-const syncThemeHotfixStylesheet = () => {
-  const existing = document.head.querySelector(
-    MANAGED_THEME_HOTFIX_LINK,
-  ) as HTMLLinkElement | null;
-
-  const appRouterHotfixLink = document.head.querySelector(
-    "link[rel='stylesheet'][data-vanblog-theme-hotfix='true']:not([data-vanblog-managed='true'])",
-  ) as HTMLLinkElement | null;
-
-  if (existing) {
-    existing.setAttribute("href", withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
-    return;
-  }
-
-  if (appRouterHotfixLink) {
-    appRouterHotfixLink.setAttribute(
-      "href",
-      withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL),
-    );
-    return;
-  }
-
-  const link = document.createElement("link");
-  link.setAttribute("rel", "stylesheet");
-  link.setAttribute("href", withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
-  link.setAttribute("data-vanblog-theme-hotfix", "true");
-  document.head.appendChild(link);
 };
 
 export default function (props: {
@@ -244,25 +176,31 @@ export default function (props: {
         : "none",
     );
 
-    if (props.includeMarkdownThemeHead) {
-      syncThemeStylesheet("light", props.option.markdownLightThemeUrl || "");
-      syncThemeStylesheet("dark", props.option.markdownDarkThemeUrl || "");
-      syncThemeHotfixStylesheet();
-    } else {
-      document.head
-        .querySelectorAll(`${MANAGED_THEME_LINK}, ${MANAGED_THEME_HOTFIX_LINK}`)
-        .forEach((element) => element.remove());
-    }
   }, [
-    props.includeMarkdownThemeHead,
     props.option.backgroundImage,
     props.option.backgroundImageDark,
     props.option.description,
     props.option.favicon,
-    props.option.markdownDarkThemeUrl,
-    props.option.markdownLightThemeUrl,
     props.option.siteDesc,
     props.title,
+  ]);
+
+  useLayoutEffect(() => {
+    syncMarkdownThemeResourceState(document, {
+      enabled: props.includeMarkdownThemeHead,
+      lightThemeUrl: props.option.markdownLightThemeUrl,
+      darkThemeUrl: props.option.markdownDarkThemeUrl,
+    });
+
+    return () => {
+      syncMarkdownThemeResourceState(document, {
+        enabled: false,
+      });
+    };
+  }, [
+    props.includeMarkdownThemeHead,
+    props.option.markdownDarkThemeUrl,
+    props.option.markdownLightThemeUrl,
   ]);
 
   useEffect(() => {
@@ -310,34 +248,16 @@ export default function (props: {
 
   return (
     <>
+      <MarkdownThemeResources
+        enabled={props.includeMarkdownThemeHead}
+        lightThemeUrl={props.option.markdownLightThemeUrl}
+        darkThemeUrl={props.option.markdownDarkThemeUrl}
+      />
       <Head>
         <title>{props.title}</title>
         <link rel="icon" href={props.option.favicon}></link>
         <meta name="description" content={props.option.description}></meta>
         <meta name="robots" content="index, follow"></meta>
-        {props.includeMarkdownThemeHead && props.option.markdownLightThemeUrl ? (
-          <link
-            rel="stylesheet"
-            href={withMarkdownThemeAssetVersion(props.option.markdownLightThemeUrl)}
-            data-theme-for="light"
-            data-vanblog-theme-link="true"
-          />
-        ) : null}
-        {props.includeMarkdownThemeHead && props.option.markdownDarkThemeUrl ? (
-          <link
-            rel="stylesheet"
-            href={withMarkdownThemeAssetVersion(props.option.markdownDarkThemeUrl)}
-            data-theme-for="dark"
-            data-vanblog-theme-link="true"
-          />
-        ) : null}
-        {props.includeMarkdownThemeHead ? (
-          <link
-            rel="stylesheet"
-            href={withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL)}
-            data-vanblog-theme-hotfix="true"
-          />
-        ) : null}
         <style>{`
           :root {
             --bg-image: url('${props.option.backgroundImage || ''}');

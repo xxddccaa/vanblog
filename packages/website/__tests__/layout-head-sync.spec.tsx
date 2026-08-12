@@ -7,12 +7,12 @@ import {
   MARKDOWN_THEME_HOTFIX_URL,
   withMarkdownThemeAssetVersion,
 } from "../utils/markdownTheme";
+import { syncMarkdownThemeResourceState } from "../components/Layout/MarkdownThemeResources";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("next/head", () => ({
-  default: ({ children }: { children: React.ReactNode }) =>
-    React.createElement(React.Fragment, null, children),
+  default: () => null,
 }));
 
 vi.mock("next/router", () => ({
@@ -65,6 +65,52 @@ vi.mock("../components/ImageBox", () => ({
 vi.mock("../components/RunningTime", () => ({
   default: () => React.createElement("div", null, "running-time"),
 }));
+
+const createLayoutOption = (overrides: Record<string, unknown> = {}) => ({
+  description: "Dong blog",
+  ipcNumber: "",
+  since: "2020-01-01T00:00:00.000Z",
+  ipcHref: "",
+  gaBeianNumber: "",
+  gaBeianUrl: "",
+  gaBeianLogoUrl: "",
+  copyrightAggreement: "CC BY-NC-SA 4.0",
+  logo: "/logo.svg",
+  categories: [],
+  favicon: "/favicon.ico",
+  siteName: "Dong",
+  siteDesc: "Dong blog",
+  baiduAnalysisID: "",
+  gaAnalysisID: "",
+  logoDark: "/logo-dark.svg",
+  version: "1.0.0",
+  menus: [],
+  showSubMenu: "false",
+  showAdminButton: "false",
+  showFriends: "false",
+  headerLeftContent: "siteName",
+  enableComment: "false",
+  defaultTheme: "dark",
+  enableCustomizing: "false",
+  showDonateButton: "false",
+  showCopyRight: "true",
+  showRSS: "false",
+  showExpirationReminder: "false",
+  openArticleLinksInNewWindow: "false",
+  showEditButton: "false",
+  subMenuOffset: 0,
+  homePageSize: 5,
+  privateSite: "false",
+  codeMaxLines: 12,
+  showRunningTime: "false",
+  backgroundImage: "",
+  backgroundImageDark: "",
+  frontCardBackgroundColor: "#f5fbff",
+  frontCardBackgroundColorDark: "#15314d",
+  markdownLightThemeUrl: "/markdown-themes/light.css",
+  markdownDarkThemeUrl: "/markdown-themes/dark.css",
+  ...overrides,
+});
 
 describe("layout head sync", () => {
   afterEach(() => {
@@ -163,6 +209,35 @@ describe("layout head sync", () => {
       document.head.querySelector("link[data-vanblog-theme-hotfix='true']")?.getAttribute("href"),
     ).toBe(withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL));
     expect(
+      document.head
+        .querySelector("link[data-vanblog-theme-link='true'][data-theme-for='light']")
+        ?.getAttribute("data-precedence"),
+    ).toBe("vanblog-markdown-theme");
+    expect(
+      document.head
+        .querySelector("link[data-vanblog-theme-link='true'][data-theme-for='dark']")
+        ?.getAttribute("data-precedence"),
+    ).toBe("vanblog-markdown-theme");
+    expect(
+      document.head
+        .querySelector("link[data-vanblog-theme-hotfix='true']")
+        ?.getAttribute("data-precedence"),
+    ).toBe("vanblog-markdown-hotfix");
+    const managedResources = Array.from(
+      document.head.querySelectorAll<HTMLLinkElement>(
+        "link[data-vanblog-theme-link='true'], link[data-vanblog-theme-hotfix='true']",
+      ),
+    );
+    expect(
+      managedResources.findIndex(
+        (link) => link.dataset.themeFor === "dark",
+      ),
+    ).toBeLessThan(
+      managedResources.findIndex(
+        (link) => link.dataset.vanblogThemeHotfix === "true",
+      ),
+    );
+    expect(
       document.querySelector("[data-vb-markdown-light-theme-id='light'][data-vb-markdown-dark-theme-id='dark']"),
     ).toBeTruthy();
     expect(
@@ -187,6 +262,13 @@ describe("layout head sync", () => {
     await act(async () => {
       root.unmount();
     });
+    expect(
+      Array.from(
+        document.head.querySelectorAll<HTMLLinkElement>(
+          "link[data-vanblog-theme-link='true'], link[data-vanblog-theme-hotfix='true']",
+        ),
+      ).every((link) => link.disabled),
+    ).toBe(true);
   });
 
   it("does not inject markdown theme stylesheets for non-rich pages", async () => {
@@ -254,6 +336,156 @@ describe("layout head sync", () => {
 
     expect(document.head.querySelector("link[data-vanblog-theme-link='true']")).toBeNull();
     expect(document.head.querySelector("link[data-vanblog-theme-hotfix='true']")).toBeNull();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("enables only the current retained theme resources", () => {
+    const appendStylesheet = (
+      href: string,
+      attributes: Record<string, string>,
+    ) => {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = withMarkdownThemeAssetVersion(href);
+      Object.entries(attributes).forEach(([name, value]) =>
+        link.setAttribute(name, value),
+      );
+      document.head.appendChild(link);
+      return link;
+    };
+    const lightA = appendStylesheet("/markdown-themes/light-a.css", {
+      "data-theme-for": "light",
+      "data-vanblog-theme-link": "true",
+    });
+    const darkA = appendStylesheet("/markdown-themes/dark-a.css", {
+      "data-theme-for": "dark",
+      "data-vanblog-theme-link": "true",
+    });
+    const lightB = appendStylesheet("/markdown-themes/light-b.css", {
+      "data-theme-for": "light",
+      "data-vanblog-theme-link": "true",
+    });
+    const darkB = appendStylesheet("/markdown-themes/dark-b.css", {
+      "data-theme-for": "dark",
+      "data-vanblog-theme-link": "true",
+    });
+    const hotfix = appendStylesheet(MARKDOWN_THEME_HOTFIX_URL, {
+      "data-vanblog-theme-hotfix": "true",
+    });
+
+    syncMarkdownThemeResourceState(document, {
+      enabled: true,
+      lightThemeUrl: "/markdown-themes/light-b.css",
+      darkThemeUrl: "/markdown-themes/dark-b.css",
+    });
+    expect(lightA.disabled).toBe(true);
+    expect(darkA.disabled).toBe(true);
+    expect(lightB.disabled).toBe(false);
+    expect(darkB.disabled).toBe(false);
+    expect(hotfix.disabled).toBe(false);
+
+    syncMarkdownThemeResourceState(document, {
+      enabled: false,
+      lightThemeUrl: "/markdown-themes/light-b.css",
+      darkThemeUrl: "/markdown-themes/dark-b.css",
+    });
+    expect(lightA.disabled).toBe(true);
+    expect(darkA.disabled).toBe(true);
+    expect(lightB.disabled).toBe(true);
+    expect(darkB.disabled).toBe(true);
+    expect(hotfix.disabled).toBe(true);
+
+    syncMarkdownThemeResourceState(document, {
+      enabled: true,
+      lightThemeUrl: "/markdown-themes/light-a.css",
+      darkThemeUrl: "/markdown-themes/dark-a.css",
+    });
+    expect(lightA.disabled).toBe(false);
+    expect(darkA.disabled).toBe(false);
+    expect(lightB.disabled).toBe(true);
+    expect(darkB.disabled).toBe(true);
+    expect(hotfix.disabled).toBe(false);
+  });
+
+  it("disables retained resources across rich/plain navigation and A-B-A theme changes", async () => {
+    const { default: Layout } = await import("../components/Layout");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const lightA = "/markdown-themes/light-a.css";
+    const darkA = "/markdown-themes/dark-a.css";
+    const lightB = "/markdown-themes/light-b.css";
+    const darkB = "/markdown-themes/dark-b.css";
+
+    const renderLayout = async ({
+      includeMarkdownThemeHead,
+      lightThemeUrl,
+      darkThemeUrl,
+    }: {
+      includeMarkdownThemeHead?: boolean;
+      lightThemeUrl: string;
+      darkThemeUrl: string;
+    }) => {
+      await act(async () => {
+        root.render(
+          React.createElement(
+            Layout,
+            {
+              title: "Dong",
+              sideBar: React.createElement("aside", null, "side-bar"),
+              includeMarkdownThemeHead,
+              option: createLayoutOption({
+                markdownLightThemeUrl: lightThemeUrl,
+                markdownDarkThemeUrl: darkThemeUrl,
+              }),
+            } as any,
+            React.createElement("main", null, "page-shell"),
+          ),
+        );
+      });
+    };
+
+    const getThemeLink = (href: string) =>
+      document.head.querySelector(
+        `link[href='${withMarkdownThemeAssetVersion(href)}']`,
+      ) as HTMLLinkElement | null;
+    await renderLayout({
+      includeMarkdownThemeHead: true,
+      lightThemeUrl: lightA,
+      darkThemeUrl: darkA,
+    });
+    expect(getThemeLink(lightA)?.disabled).toBe(false);
+    expect(getThemeLink(darkA)?.disabled).toBe(false);
+
+    await renderLayout({
+      lightThemeUrl: lightA,
+      darkThemeUrl: darkA,
+    });
+    expect(getThemeLink(lightA)?.disabled).toBe(true);
+    expect(getThemeLink(darkA)?.disabled).toBe(true);
+
+    await renderLayout({
+      includeMarkdownThemeHead: true,
+      lightThemeUrl: lightB,
+      darkThemeUrl: darkB,
+    });
+    expect(getThemeLink(lightA)?.disabled).toBe(true);
+    expect(getThemeLink(darkA)?.disabled).toBe(true);
+    expect(getThemeLink(lightB)?.disabled).toBe(false);
+    expect(getThemeLink(darkB)?.disabled).toBe(false);
+
+    await renderLayout({
+      includeMarkdownThemeHead: true,
+      lightThemeUrl: lightA,
+      darkThemeUrl: darkA,
+    });
+    expect(getThemeLink(lightA)?.disabled).toBe(false);
+    expect(getThemeLink(darkA)?.disabled).toBe(false);
+    expect(getThemeLink(lightB)?.disabled).toBe(true);
+    expect(getThemeLink(darkB)?.disabled).toBe(true);
 
     await act(async () => {
       root.unmount();
