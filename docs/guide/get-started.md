@@ -21,7 +21,7 @@ order: 1
 | --- | --- | --- |
 | 源码部署 | `docker-compose.yml` | 本地调试、二次开发、需要从当前代码直接构建 |
 | latest 快速部署 | `docker-compose.latest.yml` | 不想准备 `.env`，希望先快速把主栈跑起来 |
-| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像 |
+| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像（生产推荐，详见 [单镜像 all-in-one 部署](/guide/all-in-one.md)） |
 | 锁版镜像部署 | `docker-compose.image.yml` + `.env.release.example` | 正式上线、精确回滚、审计线上版本 |
 
 ## 方式一：源码部署
@@ -45,6 +45,8 @@ docker compose -f docker-compose.latest.yml up -d
 docker compose -f docker-compose.all-in-one.latest.yml pull
 docker compose -f docker-compose.all-in-one.latest.yml up -d
 ```
+
+> 生产用法（独立目录 + `.env` 钉端口 + 密码自动生成 + 多实例隔离 + 升级步骤）详见 [单镜像 all-in-one 部署](/guide/all-in-one.md)。
 
 适合：
 
