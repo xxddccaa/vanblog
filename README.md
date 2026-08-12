@@ -1,6 +1,6 @@
 # VanBlog
 
-这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线定为 `v1.6.1`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
+这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线为 `v1.8.0`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
 
 当前项目有三个明确约定：
 
@@ -14,7 +14,7 @@
 
 ## 当前基线
 
-- 当前代码版本：`v1.6.1`
+- 当前代码版本：`v1.8.0`
 - 默认维护分支：`master`
 - 后台入口：`/admin`
 
@@ -26,7 +26,7 @@
 | --- | --- | --- |
 | 源码开发 / 本地调试 | `docker-compose.yml` | 直接从当前仓库构建，适合联调与改代码 |
 | latest 快速部署 | `docker-compose.latest.yml` + `.env` | 使用最新主栈镜像，并显式提供数据库随机密码 |
-| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像和一份 compose |
+| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 单机生产推荐：只维护一个镜像和一份 compose（本人线上用法，见 2.1） |
 | 锁定正式版本 | `docker-compose.image.yml` + `.env.release.example` | 需要精确回滚、审计、记录线上版本 |
 | 锁定正式版本（单镜像） | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚 |
 
@@ -84,18 +84,65 @@ docker compose -f docker-compose.latest.yml up -d
 - 默认使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
 - 首次启动时会自动生成 Waline 共享 JWT，并写入 `log/waline.jwt`
 
-### 2.1 使用单镜像 latest 快速部署
+### 2.1 单镜像 all-in-one 部署（生产推荐，本人线上用法）
+
+`all-in-one` 把 `caddy + server + website + admin + waline + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是我线上博客实际使用的方式。
+
+**约定：一个博客实例 = 一个独立目录**。目录名就是 compose 项目名，容器、网络、数据卷都按它自动隔离，所以同一台机器可以并存多个互不干扰的实例。
 
 ```bash
+# 1) 为这个实例建一个独立目录
+mkdir -p /srv/vanblog && cd /srv/vanblog
+
+# 2) 取来 all-in-one compose（用仓库里的版本，不要用别处的旧副本）
+curl -fsSL -o docker-compose.all-in-one.latest.yml \
+  https://raw.githubusercontent.com/xxddccaa/vanblog/master/docker-compose.all-in-one.latest.yml
+
+# 3) 写 .env：至少钉死对外端口；密码留空即可
+cat > .env <<'ENV'
+VANBLOG_HTTP_PORT=8019
+ENV
+
+# 4) 拉取并启动
 docker compose -f docker-compose.all-in-one.latest.yml pull
 docker compose -f docker-compose.all-in-one.latest.yml up -d
 ```
 
-这个方式适合只想维护一个镜像的场景：
+首次启动约 40–60 秒内变为 `healthy`，随后：
 
-- 对外仍然只暴露一个 HTTP 入口
-- `postgres` / `redis` 会随容器一起启动，但数据目录仍沿用 `./data/postgres`、`./data/redis`
-- 未显式提供密码时，容器会生成随机 PostgreSQL/Redis 密码并保存在 `log/vanblog-secrets/`
+```bash
+docker compose -f docker-compose.all-in-one.latest.yml ps      # 等到 healthy
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8019/ # 期望 200
+```
+
+然后浏览器打开 `http://<你的 IP 或域名>:8019/admin/` 完成首次初始化（建管理员账号）。
+
+要点说明：
+
+- **端口**：compose 默认对外 `80`；线上一般放在反向代理 / Cloudflare 之后，用 `.env` 里的 `VANBLOG_HTTP_PORT` 钉死一个内部端口（例如 `8019`）。
+- **密码自动生成（v1.8.0 安全整改）**：`POSTGRES_PASSWORD` / `REDIS_PASSWORD` 留空时，容器首次启动会生成随机强口令并持久化到 `./log/vanblog-secrets/`（及 `./secrets/`），server 自动使用同一份。**不要**在 `.env` 里把它设成弱口令 `postgres`——入口脚本会拒绝弱口令并改用随机值，若同时又硬编码了旧式 `VAN_BLOG_DATABASE_URL=...postgres:postgres...` 会导致连库失败。仓库版 compose 已把这些默认留空，直接用即可。
+- **数据落盘**：全部挂在实例目录下（`./data/postgres`、`./data/redis`、`./data/static`、`./log`、`./caddy`、`./secrets` 等），备份 / 迁移整目录即可。
+- **多实例**：想再开一个站点，就换一个目录 + 换一个 `VANBLOG_HTTP_PORT`，重复上面步骤；两个实例的容器与数据天然隔离。
+
+#### 升级到新版本
+
+`all-in-one-latest` 标签每次发版都会同步到最新正式版，因此升级只需在实例目录里重新拉取：
+
+```bash
+cd /srv/vanblog
+# 升级前建议先备份（compose + 逻辑导出）
+cp docker-compose.all-in-one.latest.yml docker-compose.all-in-one.latest.yml.bak
+docker exec "$(docker compose ps -q vanblog)" sh -c 'su-exec postgres pg_dumpall' > pg_dumpall.$(date +%Y%m%d).sql
+
+# 如从旧版本升级，务必把 compose 换成仓库最新版（旧副本可能仍硬编码弱口令，见上）
+curl -fsSL -o docker-compose.all-in-one.latest.yml \
+  https://raw.githubusercontent.com/xxddccaa/vanblog/master/docker-compose.all-in-one.latest.yml
+
+docker compose -f docker-compose.all-in-one.latest.yml pull
+docker compose -f docker-compose.all-in-one.latest.yml up -d
+```
+
+数据目录 `./data` 会被复用，博客内容不受影响；从旧版首次升到 v1.8.0 时，PostgreSQL 密码会被轮换为随机强口令，属预期行为，可自愈。
 
 ### 3. 锁定到某个正式发布版本
 
@@ -176,11 +223,19 @@ kevinchina/deeplearning
 标签示例：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v1.6.1-<image-id>
-kevinchina/deeplearning:vanblog-server-v1.6.1-<image-id>
-kevinchina/deeplearning:vanblog-website-v1.6.1-<image-id>
-kevinchina/deeplearning:vanblog-admin-v1.6.1-<image-id>
-kevinchina/deeplearning:vanblog-waline-v1.6.1-<image-id>
+kevinchina/deeplearning:vanblog-caddy-v1.8.0-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.8.0-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.8.0-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.8.0-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.8.0-<image-id>
+```
+
+单镜像 all-in-one 入口则额外发布下面这组标签（每次发版会同步 `-latest`）：
+
+```text
+kevinchina/deeplearning:vanblog-all-in-one-v1.8.0-<image-id>
+kevinchina/deeplearning:vanblog-all-in-one-v1.8.0
+kevinchina/deeplearning:vanblog-all-in-one-latest
 ```
 
 ## 相关文档
