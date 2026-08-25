@@ -2,7 +2,9 @@ import { buildArticleMarkdownPreview, buildArticlePreview } from './articlePrevi
 
 describe('buildArticlePreview (纯文本，供搜索索引使用)', () => {
   it('剥离 Markdown，输出纯文本', () => {
-    const preview = buildArticlePreview('# 标题\n\n这是 **粗体** 和 [链接](https://a.com) 与 `code`。');
+    const preview = buildArticlePreview(
+      '# 标题\n\n这是 **粗体** 和 [链接](https://a.com) 与 `code`。',
+    );
     expect(preview).toBe('标题 这是 粗体 和 链接 与 code。');
     expect(preview).not.toContain('**');
     expect(preview).not.toContain('[');
@@ -67,8 +69,49 @@ describe('buildArticleMarkdownPreview (保留 Markdown，供首页卡片渲染)'
     const preview = buildArticleMarkdownPreview(content, 30);
     // 保留的每个链接都应完整（成对的 ]( 与 ) ）
     const openParens = (preview.match(/\]\(/g) || []).length;
-    const links = (preview.match(/\[某链接\]\(https:\/\/example\.com\/very\/long\/path\)/g) || []).length;
+    const links = (preview.match(/\[某链接\]\(https:\/\/example\.com\/very\/long\/path\)/g) || [])
+      .length;
     expect(links).toBe(openParens);
     expect(preview.endsWith('...')).toBe(true);
+  });
+
+  it('移除顶层列表共同的少量前导空格并保留嵌套层级', () => {
+    const content = [
+      '  - 核心对象：Pod、Deployment、Service',
+      '  - 调度与资源：亲和性、污点/容忍度',
+      '    - 嵌套说明',
+      '  - 网络：CNI、Service、网络策略',
+    ].join('\n');
+
+    expect(buildArticleMarkdownPreview(content)).toBe(
+      [
+        '- 核心对象：Pod、Deployment、Service',
+        '- 调度与资源：亲和性、污点/容忍度',
+        '  - 嵌套说明',
+        '- 网络：CNI、Service、网络策略',
+      ].join('\n'),
+    );
+  });
+
+  it('不修改代码围栏、缩进代码和引用块中的列表文本', () => {
+    const content = [
+      '```md',
+      '  - 围栏中的示例',
+      '```',
+      '',
+      '    - 缩进代码',
+      '',
+      '>  - 引用中的列表',
+    ].join('\n');
+
+    expect(buildArticleMarkdownPreview(content)).toBe(content);
+  });
+
+  it('在 more 标记之前也规范化顶层列表缩进', () => {
+    const content = ['   1. 第一项', '   2. 第二项', '', '<!-- more -->', '', '后续正文'].join(
+      '\n',
+    );
+
+    expect(buildArticleMarkdownPreview(content)).toBe('1. 第一项\n2. 第二项');
   });
 });

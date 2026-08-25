@@ -479,6 +479,12 @@
   [data-vb-markdown-dark-theme-id].dark,
   .dark [data-vb-markdown-dark-theme-id]:not(.light)
 ) .markdown-body table {
+  display: block !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin-right: auto !important;
+  margin-left: auto !important;
+  overflow-x: auto !important;
   border: 1px solid var(--vb-md-border) !important;
   background: color-mix(in srgb, var(--vb-md-surface-1) 78%, transparent) !important;
   box-shadow: none !important;

@@ -1,6 +1,6 @@
 # VanBlog
 
-这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线为 `v1.8.1`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
+这个仓库最初源于 VanBlog，现在已经作为我独立维护的博客项目持续迭代。当前代码基线为 `v1.8.2`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
 
 当前项目有三个明确约定：
 
@@ -14,7 +14,7 @@
 
 ## 当前基线
 
-- 当前代码版本：`v1.8.1`
+- 当前代码版本：`v1.8.2`
 - 默认维护分支：`master`
 - 后台入口：`/admin`
 
@@ -223,18 +223,18 @@ kevinchina/deeplearning
 标签示例：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v1.8.1-<image-id>
-kevinchina/deeplearning:vanblog-server-v1.8.1-<image-id>
-kevinchina/deeplearning:vanblog-website-v1.8.1-<image-id>
-kevinchina/deeplearning:vanblog-admin-v1.8.1-<image-id>
-kevinchina/deeplearning:vanblog-waline-v1.8.1-<image-id>
+kevinchina/deeplearning:vanblog-caddy-v1.8.2-<image-id>
+kevinchina/deeplearning:vanblog-server-v1.8.2-<image-id>
+kevinchina/deeplearning:vanblog-website-v1.8.2-<image-id>
+kevinchina/deeplearning:vanblog-admin-v1.8.2-<image-id>
+kevinchina/deeplearning:vanblog-waline-v1.8.2-<image-id>
 ```
 
 单镜像 all-in-one 入口则额外发布下面这组标签（每次发版会同步 `-latest`）：
 
 ```text
-kevinchina/deeplearning:vanblog-all-in-one-v1.8.1-<image-id>
-kevinchina/deeplearning:vanblog-all-in-one-v1.8.1
+kevinchina/deeplearning:vanblog-all-in-one-v1.8.2-<image-id>
+kevinchina/deeplearning:vanblog-all-in-one-v1.8.2
 kevinchina/deeplearning:vanblog-all-in-one-latest
 ```
 

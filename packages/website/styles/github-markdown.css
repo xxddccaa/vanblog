@@ -323,9 +323,11 @@
   border-spacing: 0;
   border-collapse: collapse;
   display: block;
-  /* width: max-content; */
+  width: fit-content;
   max-width: 100%;
-  overflow: auto;
+  margin-right: auto;
+  margin-left: auto;
+  overflow-x: auto;
 }
 
 .markdown-body td,
@@ -1614,4 +1616,3 @@ html.dark .markdown-body .hljs *,
 .dark .markdown-body abbr {
   text-decoration-color: #64748b;
 }
-

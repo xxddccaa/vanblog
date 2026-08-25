@@ -10,11 +10,12 @@ index: true
 
 - 默认维护分支：`master`
 - tag 保持独立管理，不受分支切换影响
-- 当前公开文档基线：`v1.8.1`
+- 当前公开文档基线：`v1.8.2`
 - AI 工作台自 `v1.4.0` 起成为正式能力，但依然保持为可选部署
 
 ## 关键版本
 
+- [`v1.8.2`](./v1.8.2.md)：修复首页 Markdown 列表预览首行与后续行缩进不一致，并让窄表格按内容宽度居中、宽表格继续安全横向滚动
 - [`v1.8.1`](./v1.8.1.md)：修复慢速网络下 Markdown 主题 CSS 晚于首屏内容加载造成的闪屏，并补齐 React 19 持久 stylesheet 在普通页、主题切换与 Layout 卸载时的禁用生命周期
 - [`v1.8.0`](./v1.8.0.md)：安全整改专版——Markdown/SVG XSS 清洗与逐请求 CSP nonce、图表接口限流与资源上限、IPv6 边界规范化、出站 SSRF 校验、Argon2id 密码、备份 AES-256-GCM 加密、Token 摘要化、容器降权与 `/swagger` 关闭；同步 Node 22 / Next 16 / 依赖大版本升级版本
 - [`v1.7.6`](./v1.7.6.md)：修复暗色模式下首页/动态/友链页 Markdown 卡片文字偏淡（缺少 markdown 主题 CSS 注入），补齐 `includeMarkdownThemeHead`，首屏即为正常亮色版本

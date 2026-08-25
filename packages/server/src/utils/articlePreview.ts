@@ -31,6 +31,62 @@ export function buildArticlePreview(content = '', maxLength = DEFAULT_PREVIEW_LE
 
 const MARKDOWN_PREVIEW_LENGTH = 300;
 const CODE_FENCE = /^\s*(?:```|~~~)/;
+const LIST_MARKER = /^(\s*)(?:[-+*]|\d+[.)])\s+/;
+
+/**
+ * Markdown editors commonly persist a small amount of indentation before every
+ * top-level list marker. That indentation is significant to Markdown parsers
+ * and can make a preview look like a nested list. Remove only the common
+ * indentation shared by list markers, preserving relative indentation for
+ * nested items and leaving fenced code untouched.
+ */
+function normalizePreviewListIndentation(content: string) {
+  const lines = content.split('\n');
+  const listLines: Array<{ index: number; indent: number }> = [];
+  let inFence = false;
+
+  lines.forEach((line, index) => {
+    if (CODE_FENCE.test(line)) {
+      inFence = !inFence;
+      return;
+    }
+    if (inFence) {
+      return;
+    }
+    const match = line.match(LIST_MARKER);
+    if (match) {
+      listLines.push({ index, indent: match[1].length });
+    }
+  });
+
+  if (listLines.length === 0) {
+    return content;
+  }
+
+  const groups: Array<Array<{ index: number; indent: number }>> = [];
+  listLines.forEach((item) => {
+    const current = groups[groups.length - 1];
+    if (!current || item.index > current[current.length - 1].index + 1) {
+      groups.push([item]);
+    } else {
+      current.push(item);
+    }
+  });
+
+  for (const group of groups) {
+    const commonIndent = Math.min(...group.map(({ indent }) => indent));
+    // CommonMark permits up to three spaces before a top-level block marker.
+    // Four or more spaces can be an indented code block and must be preserved.
+    if (commonIndent <= 0 || commonIndent > 3) {
+      continue;
+    }
+    group.forEach(({ index }) => {
+      lines[index] = lines[index].slice(commonIndent);
+    });
+  }
+
+  return lines.join('\n');
+}
 
 /**
  * 生成“保留 Markdown 语法”的预览片段，用于首页卡片按 Markdown 渲染。
@@ -39,11 +95,11 @@ const CODE_FENCE = /^\s*(?:```|~~~)/;
  * - 否则按行边界截断，并感知代码围栏，避免把 ``` 代码块 / 行内链接图片切坏。
  */
 export function buildArticleMarkdownPreview(content = '', maxLength = MARKDOWN_PREVIEW_LENGTH) {
+  const source = content.includes(MORE_TAG) ? content.split(MORE_TAG)[0] : content;
+  const trimmed = normalizePreviewListIndentation(source).trim();
   if (content.includes(MORE_TAG)) {
-    return content.split(MORE_TAG)[0].trim();
+    return trimmed;
   }
-
-  const trimmed = content.trim();
   if (trimmed.length <= maxLength) {
     return trimmed;
   }
