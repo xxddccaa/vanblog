@@ -7,7 +7,7 @@ import { customCodeBlock } from '../components/Markdown/codeBlock';
 import { Heading } from '../components/Markdown/heading';
 import { Img } from '../components/Markdown/img';
 import { LinkTarget } from '../components/Markdown/linkTarget';
-import { normalizeMathDelimiters } from '../components/Markdown/normalizeMathDelimiters';
+import { bracketMathPlugin } from '../components/Markdown/bracketMath';
 import { extendedSyntaxPlugin } from '../components/Markdown/extendedSyntax';
 import rawHTML from '../components/Markdown/rawHTML';
 import { configureMarkdownSanitizeSchema } from '../components/Markdown/sanitize';
@@ -24,6 +24,7 @@ const getServerMarkdownProcessor = (codeMaxLines = 15) =>
           throwOnError: false,
         },
       }),
+      bracketMathPlugin(),
       extendedSyntaxPlugin(),
       customContainer(),
       customCodeBlock(codeMaxLines),
@@ -36,6 +37,5 @@ const getServerMarkdownProcessor = (codeMaxLines = 15) =>
   });
 
 export function renderMarkdownToHtml(content: string, codeMaxLines = 15) {
-  const normalizedContent = normalizeMathDelimiters(content || '');
-  return String(getServerMarkdownProcessor(codeMaxLines).processSync(normalizedContent));
+  return String(getServerMarkdownProcessor(codeMaxLines).processSync(content || ''));
 }

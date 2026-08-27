@@ -21,6 +21,8 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       EMAIL: ${EMAIL:-someone@example.com}
+      NO_PROXY: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
+      no_proxy: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
     volumes:
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
       - ${VANBLOG_CADDY_CONFIG_DIR:-./caddy/config}:/root/.config/caddy
@@ -51,6 +53,8 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
+      NO_PROXY: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
+      no_proxy: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
       VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-vanblog}}
       VAN_BLOG_REDIS_URL: ${VAN_BLOG_REDIS_URL:-redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379}
       VAN_BLOG_WALINE_DB: ${VAN_BLOG_WALINE_DB:-waline}
@@ -75,7 +79,7 @@ services:
     expose:
       - '3000'
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1']
+      test: ['CMD-SHELL', 'wget -Y off -q -O /dev/null http://127.0.0.1:3000/ || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -99,6 +103,8 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
+      NO_PROXY: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
+      no_proxy: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
       PORT: 3001
       WEBSITE_CONTROL_PORT: 3011
       VAN_BLOG_SERVER_URL: http://server:3000
@@ -112,7 +118,7 @@ services:
     volumes:
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1']
+      test: ['CMD-SHELL', 'wget -Y off -q -O - http://127.0.0.1:3011/health >/dev/null || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -125,7 +131,7 @@ services:
     expose:
       - '3002'
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1']
+      test: ['CMD-SHELL', 'wget -Y off -q -O /dev/null http://127.0.0.1:3002/admin/ || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -152,6 +158,8 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
+      NO_PROXY: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
+      no_proxy: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
       PORT: 8360
       WALINE_CONTROL_PORT: 8361
       PG_HOST: postgres
@@ -166,7 +174,7 @@ services:
     volumes:
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
     healthcheck:
-      test: ['CMD-SHELL', 'wget -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1']
+      test: ['CMD-SHELL', 'wget -Y off -q -O - http://127.0.0.1:8361/health >/dev/null || exit 1']
       interval: 15s
       timeout: 10s
       retries: 10
@@ -218,7 +226,7 @@ services:
     expose:
       - "8000"
     healthcheck:
-      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:8000/health']
+      test: ['CMD', 'wget', '-Y', 'off', '-q', '-O', '/dev/null', 'http://localhost:8000/health']
       interval: 30s
       timeout: 10s
       retries: 5

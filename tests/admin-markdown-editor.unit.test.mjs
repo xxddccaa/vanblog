@@ -16,10 +16,10 @@ import {
   consumeMarkdownUpdate,
   shouldSyncExternalMarkdown,
 } from '../packages/admin/src/components/MarkdownEditor/sync.ts';
-import { normalizeMathDelimiters } from '../packages/admin/src/components/Editor/plugins/normalizeMathDelimiters.ts';
+import { remarkBracketMath } from '../packages/admin/src/components/Editor/plugins/bracketMath.ts';
 
 test('markdown editor snippet builders keep expected markdown syntax', () => {
-  assert.equal(resolveEditorEngine(null), 'milkdown');
+  assert.equal(resolveEditorEngine(null), 'bytemd');
   assert.equal(resolveEditorEngine('bytemd'), 'bytemd');
   assert.equal(buildMoreSnippet(), '<!-- more -->\n');
   assert.equal(
@@ -73,29 +73,49 @@ test('markdown editor sync helpers avoid controlled update loops', () => {
   });
 });
 
-test('normalizeMathDelimiters preserves non-math markdown while converting formulas', () => {
-  const source = [
-    '正文 \\(E=mc^2\\)',
-    '',
-    '<iframe src="https://example.com/embed"></iframe>',
-    '',
-    '```mermaid',
-    'graph TD',
-    'A-->B',
-    '```',
-  ].join('\n');
+// mdast 的 text.value 里转义已经被消解，所以插件必须回原文取公式。
+// 这里手搭一棵与 remark-parse 产物一致的树，避免在这个用例里拉起整套 bytemd。
+function paragraphTree(text, position) {
+  return {
+    type: 'root',
+    children: [{ type: 'paragraph', children: [{ type: 'text', value: text, position }] }],
+  };
+}
 
-  assert.equal(
-    normalizeMathDelimiters(source),
-    [
-      '正文 $E=mc^2$',
-      '',
-      '<iframe src="https://example.com/embed"></iframe>',
-      '',
-      '```mermaid',
-      'graph TD',
-      'A-->B',
-      '```',
-    ].join('\n'),
+test('bracketMath lifts \\[...\\] out of the paragraph as display math', () => {
+  const source = ['\\[', 'Q,\\quad R', '\\]'].join('\n');
+  const tree = paragraphTree('[\nQ,\\quad R\n]', {
+    start: { line: 1, column: 1, offset: 0 },
+    end: { line: 3, column: 3, offset: source.length },
+  });
+
+  remarkBracketMath()(tree, source);
+
+  assert.equal(tree.children.length, 1);
+  const [math] = tree.children;
+  assert.equal(math.type, 'math');
+  // 关键：`\quad` 的反斜杠必须是原文里的那一个
+  assert.equal(math.value, 'Q,\\quad R');
+  assert.equal(math.data.hName, 'div');
+  assert.deepEqual(math.data.hProperties.className, ['math', 'math-display']);
+});
+
+test('bracketMath keeps \\(...\\) inline and leaves surrounding text intact', () => {
+  const source = '前 \\(a+b\\) 后';
+  const tree = paragraphTree('前 (a+b) 后', {
+    start: { line: 1, column: 1, offset: 0 },
+    end: { line: 1, column: 12, offset: source.length },
+  });
+
+  remarkBracketMath()(tree, source);
+
+  const { children } = tree.children[0];
+  assert.deepEqual(
+    children.map((node) => node.type),
+    ['text', 'inlineMath', 'text'],
   );
+  assert.equal(children[0].value, '前 ');
+  assert.equal(children[1].value, 'a+b');
+  assert.equal(children[1].data.hName, 'span');
+  assert.equal(children[2].value, ' 后');
 });

@@ -10,7 +10,7 @@ import sub from 'markdown-it-sub';
 import sup from 'markdown-it-sup';
 import abbr from 'markdown-it-abbr';
 import multimdTable from 'markdown-it-multimd-table';
-import { normalizeMathDelimiters } from './normalizeMathDelimiters';
+import { bracketMath } from './bracketMath';
 
 const DIAGRAM_LANGUAGES = new Set([
   'plantuml', 'puml', 'graphviz', 'dot', 'viz', 'd2',
@@ -147,6 +147,8 @@ export class MarkdownProvider {
         strict: false,
         throwOnError: false,
       })
+      // 必须在 katex 插件之后，复用它注册的 math_block / math_inline 渲染器
+      .use(bracketMath)
       .use(footnote)
       .use(mark)
       .use(sub)
@@ -159,9 +161,7 @@ export class MarkdownProvider {
       });
   }
   renderMarkdown(content: string) {
-    return sanitizeMarkdownHtml(
-      this.md.render(normalizeMathDelimiters(content)),
-    );
+    return sanitizeMarkdownHtml(this.md.render(content));
   }
 
   async renderMarkdownWithDiagrams(content: string): Promise<string> {

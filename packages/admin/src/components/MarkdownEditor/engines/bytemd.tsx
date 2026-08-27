@@ -15,6 +15,7 @@ import { insertMore } from '../../Editor/insertMore';
 import { textColor } from '../../Editor/textColor';
 import { cn } from '../../Editor/locales';
 import { customContainer } from '../../Editor/plugins/customContainer';
+import { bracketMathPlugin } from '../../Editor/plugins/bracketMath';
 import { customCodeBlock } from '../../Editor/plugins/codeBlock';
 import { Heading } from '../../Editor/plugins/heading';
 import { LinkTarget } from '../../Editor/plugins/linkTarget';
@@ -68,6 +69,9 @@ export default function BytemdEngine(props: MarkdownEditorProps) {
 
   const plugins = useMemo(() => {
     const list = [
+      // 必须排在 customContainer / extendedSyntax 这些会改写 text 节点的插件之前，
+      // 否则公式原文的 offset 会被切断
+      bracketMathPlugin(),
       customContainer(),
       gfm({ locale: cn }),
       highlight(),

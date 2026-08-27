@@ -22,7 +22,7 @@ import '../../style/custom-container.css';
 import { getMarkdownThemeId, useAdminMarkdownTheme } from '@/utils/markdownTheme';
 import { resolveDocumentViewerLayout } from './layout';
 import './index.less';
-import { normalizeMathDelimiters } from '../Editor/plugins/normalizeMathDelimiters';
+import { bracketMathPlugin } from '../Editor/plugins/bracketMath';
 
 const sanitize = (schema) => {
   schema.protocols.src.push('data');
@@ -50,11 +50,12 @@ export default function DocumentViewer(props) {
   const resolvedThemeConfig = useAdminMarkdownTheme(themeConfig);
   const lightThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownLightThemeUrl);
   const darkThemeId = getMarkdownThemeId(resolvedThemeConfig.markdownDarkThemeUrl);
-  const normalizedValue = useMemo(() => normalizeMathDelimiters(value || ''), [value]);
   const layout = useMemo(() => resolveDocumentViewerLayout(scrollContainer), [scrollContainer]);
 
   const plugins = useMemo(() => {
     return [
+      // 必须排在 customContainer 之前，否则公式原文的 offset 会被切断
+      bracketMathPlugin(),
       customContainer(),
       gfm({ locale: cn }),
       highlight(),
@@ -132,7 +133,7 @@ export default function DocumentViewer(props) {
     >
       <Viewer
         key={`document-viewer-${mermaidThemeMode}`}
-        value={normalizedValue}
+        value={value || ''}
         plugins={plugins}
         sanitize={sanitize}
       />

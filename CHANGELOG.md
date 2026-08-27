@@ -1,4 +1,13 @@
 # Changelog
+### [1.8.3](https://github.com/xxddccaa/vanblog/compare/v1.8.2...v1.8.3) (2026-08-27)
+
+
+### 🐛 Bug Fixes | Bug 修复
+
+* **markdown:** 统一支持 `\(...\)` / `\[...\]` 数学公式并保留公式后正文
+* **deploy:** 修复 Docker 代理环境下健康检查和容器内部通信失败
+* **docs:** 补充独立 all-in-one 测试环境的宿主机产物快速验证流程
+
 ### [1.8.2](https://github.com/xxddccaa/vanblog/compare/v1.8.1...v1.8.2) (2026-08-25)
 
 

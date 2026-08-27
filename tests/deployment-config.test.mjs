@@ -282,7 +282,7 @@ test('docker compose wires cross-container control endpoints', () => {
   ]) {
     assert.match(
       file,
-      /wget['",\s-]+q['",\s-]+O['",\s/]+dev\/null['",\s]+http:\/\/localhost:8000\/health/,
+      /wget[^\n]+-Y['",\s]+off[^\n]+-q[^\n]+-O[^\n]+dev\/null[^\n]+http:\/\/localhost:8000\/health/,
     );
     assert.doesNotMatch(file, /wget['",\s-]+spider[^\\n]*localhost:8000\/health/);
   }
@@ -466,9 +466,9 @@ test('Next.js config still supports the expected asset and image behavior', () =
 });
 
 test('package version and release env example stay consistent', () => {
-  assert.equal(packageJson.version, '1.8.2');
+  assert.equal(packageJson.version, '1.8.3');
   assert.match(releaseEnv, /VANBLOG_DOCKER_REPO=kevinchina\/deeplearning/);
-  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.8\.2-replace-with-gitsha8/);
+  assert.match(releaseEnv, /VANBLOG_RELEASE_SUFFIX=v1\.8\.3-replace-with-gitsha8/);
   assert.doesNotMatch(releaseEnv, /FASTGPT_ROOT_PASSWORD/);
 });
 
@@ -505,6 +505,37 @@ test('all-in-one overrides waline api url to localhost (fixes ENOTFOUND + commen
     assert.match(file, /VAN_BLOG_WALINE_API_URL:\s*\$\{VAN_BLOG_WALINE_API_URL:-http:\/\/127\.0\.0\.1:8360\}/);
   }
   assert.match(allInOneEntrypoint, /VAN_BLOG_WALINE_API_URL/);
+});
+
+test('split services bypass injected proxies for internal traffic', () => {
+  const internalServices = 'localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki';
+  for (const [file, minimumMatches] of [
+    [compose, 1],
+    [composeImage, 4],
+    [composeLatest, 4],
+  ]) {
+    const upperMatches = file.match(new RegExp(`NO_PROXY: ${internalServices}`, 'g')) || [];
+    const lowerMatches = file.match(new RegExp(`no_proxy: ${internalServices}`, 'g')) || [];
+    assert.ok(upperMatches.length >= minimumMatches);
+    assert.ok(lowerMatches.length >= minimumMatches);
+  }
+});
+
+test('compose healthchecks bypass injected HTTP proxies', () => {
+  for (const file of [
+    compose,
+    composeImage,
+    composeLatest,
+    composeAllInOne,
+    composeAllInOneImage,
+    composeAllInOneLatest,
+  ]) {
+    const localhostHealthchecks = file.match(/wget[^\n]+(?:127\.0\.0\.1|localhost)[^\n]+/g) || [];
+    assert.ok(localhostHealthchecks.length >= 1);
+    for (const healthcheck of localhostHealthchecks) {
+      assert.match(healthcheck, /(?:wget -Y off |wget['"], ['"]-Y['"], ['"]off['"])/);
+    }
+  }
 });
 
 test('caddy access logs skip internal healthchecks and roll', () => {

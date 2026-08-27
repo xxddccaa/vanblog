@@ -2,6 +2,7 @@ import { getProcessor } from 'bytemd';
 import gfm from '@bytemd/plugin-gfm';
 import highlight from '@bytemd/plugin-highlight-ssr';
 import math from '@bytemd/plugin-math-ssr';
+import { bracketMathPlugin } from '../Editor/plugins/bracketMath';
 import { extendedSyntaxPlugin } from '../Editor/plugins/extendedSyntax';
 
 const sanitize = (schema: any) => {
@@ -24,6 +25,7 @@ export function renderMarkdownForExport(content: string): string {
       math({
         katexOptions: { strict: false, throwOnError: false },
       }),
+      bracketMathPlugin(),
       extendedSyntaxPlugin(),
     ],
     remarkRehype: { allowDangerousHtml: true },
