@@ -299,7 +299,250 @@ docker run -d \
 
 如果你想把它进一步收敛成“一行命令”，建议额外提供一个官方 `scripts/docker-run-all-in-one.sh` 包装脚本，而不是指望裸 `docker run -d 镜像` 自动补齐宿主机参数。
 
-## 7. 上线后建议检查
+## 7. 发版前检查与故障处理
+
+正式的版本、tag 与镜像发布规范仍以 `RELEASE.md` 为准。本节记录本机实际发布 `v1.8.3` 时遇到的问题和已经验证过的处理方法，供后续发版直接复用。
+
+### 7.1 推荐的完整发版顺序
+
+发版前先确认工作区、版本号和远端状态：
+
+```bash
+cd /root/vanblog/github_repo/vanblog
+
+git status --short
+node -p "require('./package.json').version"
+git rev-parse --short=8 HEAD
+git log -5 --oneline
+```
+
+推荐顺序：
+
+1. 整理本次发布范围，排除本机技能、内部台账、临时日志和无关生成物。
+2. 更新 `package.json`、`.env.release.example`、`CHANGELOG.md`、`README.md`、`RELEASE.md`、`DEPLOY.md`、`docs/releases/README.md` 和本次 `docs/releases/vX.Y.Z.md`。
+3. 执行最终门禁：
+
+   ```bash
+   pnpm test:full
+   ```
+
+4. 精确暂存本次文件并检查：
+
+   ```bash
+   git diff --cached --name-status
+   git diff --cached --check
+   git diff --cached --stat
+   ```
+
+5. 创建发布提交和 annotated tag，并取得镜像 id：
+
+   ```bash
+   git commit -m "chore(release): X.Y.Z"
+   git tag -a vX.Y.Z -m "chore(release): X.Y.Z"
+   IMAGE_ID="$(git rev-parse --short=8 HEAD)"
+   ```
+
+6. 推送 Git 后发布 5 个核心镜像，再发布 all-in-one：
+
+   ```bash
+   git push origin master
+   git push origin vX.Y.Z
+
+   bash scripts/release-publish.sh \
+     --version vX.Y.Z \
+     --image-id "$IMAGE_ID" \
+     --skip-tests
+
+   bash scripts/release-all-in-one-publish.sh \
+     --version vX.Y.Z \
+     --image-id "$IMAGE_ID" \
+     --skip-tests
+   ```
+
+只有在**同一份发布内容**已经通过 `pnpm test:full` 时，镜像发布命令才使用 `--skip-tests`，避免重复运行 Compose E2E；脚本仍会预构建 website/admin 所需产物。未跑完整门禁时不要跳过测试。
+
+> `git commit`、`git tag`、`git push` 和镜像推送都是对外发布动作。人工操作前必须再次核对版本、目标仓库和发布范围；AI 代理必须先取得明确批准。
+
+### 7.2 发版前必须处理脏工作区
+
+发布脚本遇到未提交改动会提示：
+
+```text
+Warning: git worktree is not clean. Releasing from a dirty tree may reduce traceability.
+```
+
+这个警告不能默认忽略。Docker 构建上下文读取的是当前文件系统，不只读取 Git 提交；未提交或未跟踪文件即使没有进入发布提交，也可能影响 website/admin/mind-map 构建产物，导致镜像标签写着某个 Git SHA，实际内容却不完全对应这个提交。
+
+推荐做法：
+
+- 发布前让工作区保持干净；确需保留的无关改动先由维护者明确处理。
+- 不要把 `.claude/`、内部审计台账、测试日志、临时数据目录和无关生成物加入发布提交。
+- 提交后再次执行 `git status --short`；如果仍有改动，先确认它们不会进入任何 Docker 构建输入，再继续镜像发布。
+- 不要为了消除警告直接使用 `git reset --hard`、`git clean` 或删除不属于本次任务的文件。
+
+### 7.3 Docker 代理导致健康检查 unhealthy
+
+#### 症状
+
+容器内服务进程和端口都正常，但 website、admin 或 Waline 一直显示 `unhealthy`，健康日志类似：
+
+```text
+wget: can't connect to remote host (127.0.0.1): Connection refused
+```
+
+检查容器环境后会发现 Docker daemon 自动注入了代理：
+
+```bash
+docker exec <container> sh -lc 'env | sort | grep -i proxy'
+```
+
+Alpine BusyBox `wget` 可能不会按预期遵守 `NO_PROXY`，把 `127.0.0.1` 健康请求发往容器内并不存在的代理端口。
+
+#### 已采用的修复
+
+所有 Compose 本地 HTTP 健康检查都使用：
+
+```text
+wget -Y off ...
+```
+
+修改 Compose 健康检查时不得去掉 `-Y off`。静态回归由 `tests/deployment-config.test.mjs` 约束。
+
+### 7.4 Docker 代理导致 Caddy 502 或初始化超时
+
+#### 症状
+
+- Caddy 已启动，但 `/api/ui/` 返回 `502`。
+- Caddy 错误日志出现：
+
+  ```text
+  proxyconnect tcp: dial tcp 127.0.0.1:10826: connect: connection refused
+  ```
+
+- 初始化数据已经写入，`/api/admin/init/check` 返回 `initialized:true`，但原始 `POST /api/admin/init` 仍在等待并最终超时。
+
+#### 根因
+
+Docker daemon 把 `HTTP_PROXY` / `HTTPS_PROXY` 注入容器，但原来的 `NO_PROXY` 只有 `localhost,127.0.0.1`：
+
+- Caddy → `server` / `website` / `admin` / `waline` 会错误走代理，返回 502。
+- server 初始化后同步调用 `website:3011` 和 `waline:8361`，Axios 自动读取代理变量，导致初始化请求等待外部控制调用超时。
+
+#### 已采用的修复
+
+拆分 Compose 的 Caddy、server、website、Waline 均显式配置大小写两组代理例外：
+
+```yaml
+NO_PROXY: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
+no_proxy: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
+```
+
+排查时使用：
+
+```bash
+# 查看 Caddy 是否错误连接代理
+docker exec <caddy-container> sh -lc 'tail -50 /var/log/caddy.log'
+
+# 从 Caddy 容器直连 Waline
+docker exec <caddy-container> \
+  wget -Y off -S -O - http://waline:8360/ui/
+
+# 查看 server / Caddy 的代理变量
+docker exec <container> sh -lc 'env | sort | grep -i proxy'
+```
+
+修改服务名或新增内部服务时，必须同步更新 `NO_PROXY` / `no_proxy` 和部署测试。
+
+### 7.5 all-in-one 构建出现 `cannot allocate memory`
+
+#### 症状
+
+5 个核心镜像发布成功，但 all-in-one 在镜像内执行 `pnpm build:website` 时失败：
+
+```text
+ResourceExhausted: ... cannot allocate memory
+```
+
+宿主机看起来仍有空闲内存，但当前 BuildKit builder 可能被单独限制为 2 GiB。检查方式：
+
+```bash
+free -h
+docker stats --no-stream
+docker buildx inspect vanblog-release --bootstrap
+docker inspect buildx_buildkit_vanblog-release0 \
+  --format 'memory={{.HostConfig.Memory}} swap={{.HostConfig.MemorySwap}}'
+```
+
+`memory=2147483648` 表示 builder 只有 2 GiB，无法满足 all-in-one 的 server + Next.js + admin 镜像内连续构建。
+
+#### 本机已验证的处理方法
+
+在不停止三套运行栈的情况下，创建一个 6 GiB、7 GiB memory+swap 上限的专用 builder：
+
+```bash
+docker buildx create \
+  --name vanblog-all-in-one-release \
+  --driver docker-container \
+  --driver-opt network=host \
+  --driver-opt env.http_proxy=http://127.0.0.1:10826 \
+  --driver-opt env.https_proxy=http://127.0.0.1:10826 \
+  --driver-opt memory=6g \
+  --driver-opt memory-swap=7g \
+  --use \
+  --bootstrap
+
+docker buildx inspect vanblog-all-in-one-release
+```
+
+然后原命令直接重试：
+
+```bash
+bash scripts/release-all-in-one-publish.sh \
+  --version vX.Y.Z \
+  --image-id <image-id> \
+  --skip-tests
+```
+
+注意：
+
+- 创建前先用 `free -h` 确认宿主机可用内存；不要通过停止生产容器给构建让路。
+- 当前本机代理端口是 `127.0.0.1:10826`；代理配置变化时同步修改 builder driver options。
+- `docker buildx` 发布脚本使用当前选中的 builder，可用 `docker buildx ls` 确认名称后再运行。
+- 构建失败发生在推送前时，可以安全重试相同版本和 image id；脚本会复用可用缓存并在结束时验证标签。
+
+### 7.6 发布后必须独立验证 Git 和镜像标签
+
+不要只依据脚本退出码。至少验证远端 Git 指针、版本标签与 `latest` 标签中的镜像 labels：
+
+```bash
+IMAGE_REPO=kevinchina/deeplearning
+VERSION=vX.Y.Z
+IMAGE_ID=<image-id>
+
+for service in caddy server website admin waline all-in-one; do
+  for tag in \
+    "$IMAGE_REPO:vanblog-$service-$VERSION" \
+    "$IMAGE_REPO:vanblog-$service-latest"; do
+    docker pull "$tag"
+    docker image inspect "$tag" --format \
+      'version={{index .Config.Labels "org.opencontainers.image.version"}} id={{index .Config.Labels "io.vanblog.image.id"}}'
+  done
+done
+
+git ls-remote origin refs/heads/master
+git ls-remote origin refs/tags/$VERSION^{}
+```
+
+所有镜像的 `version` 都应等于本次 `vX.Y.Z`，`id` 都应等于本次 8 位 Git SHA；远端 `master` 与 annotated tag 解引用后的提交也应指向同一个完整 SHA。
+
+生产锁版参数最终记录为：
+
+```bash
+VANBLOG_DOCKER_REPO=kevinchina/deeplearning
+VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>
+```
+
+## 8. 上线后建议检查
 
 - `http://<你的域名>/admin` 是否正常打开
 - `http://<你的域名>/admin/init` 是否只在未初始化时出现
@@ -307,7 +550,7 @@ docker run -d \
 - 评论、图片、RSS 是否仍可访问
 - `docker compose logs -f caddy server website admin waline postgres redis` 是否有明显报错
 
-## 8. 最小结论
+## 9. 最小结论
 
 如果你只是想稳定上线博客主栈：
 
