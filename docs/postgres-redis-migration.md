@@ -1,5 +1,7 @@
 # PostgreSQL / Redis Migration Plan
 
+> **Historical design record:** this document records the staged MongoDB → PostgreSQL / Redis migration plan used during the architecture transition. The current `v1.8.3` runtime already uses PostgreSQL 16 as the primary database and Redis 7 for cache/coordination; MongoDB is not part of the default Compose topology. Do not execute the dual-read/dual-write phases below as current deployment instructions. For current deployment and upgrade steps, use `DEPLOY.md`, `docs/guide/get-started.md`, and `docs/guide/update.md`.
+
 ## Recommendation
 
 For this blog system, the best long-term data stack is:

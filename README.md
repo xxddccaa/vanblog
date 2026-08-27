@@ -10,8 +10,8 @@
 
 当前项目有三个明确约定：
 
-- **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续只负责 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis`
-- **可选提供非 AI 单镜像入口**：`docker-compose.all-in-one*.yml` 会把主栈和 `postgres` / `redis` 收进一个容器，方便只维护一个镜像，但它不是默认推荐路径
+- **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续负责 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis`，并配套 `kroki` 图表渲染服务
+- **可选提供非 AI 单镜像入口**：`docker-compose.all-in-one*.yml` 会把主栈和 `postgres` / `redis` 收进一个容器，适合单机部署和减少运维对象；标准生产锁版、细粒度运维和审计仍优先使用拆分多镜像
 - **镜像仓库固定使用 `kevinchina/deeplearning`**：这是当前长期保留、可回滚、可审计的备份仓库，发布与部署文档统一以它为准
 
 我的博客地址：<https://www.dong-blog.fun/>
@@ -32,13 +32,13 @@
 | --- | --- | --- |
 | 源码开发 / 本地调试 | `docker-compose.yml` | 直接从当前仓库构建，适合联调与改代码 |
 | latest 快速部署 | `docker-compose.latest.yml` + `.env` | 使用最新主栈镜像，并显式提供数据库随机密码 |
-| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 单机生产推荐：只维护一个镜像和一份 compose（本人线上用法，见 2.1） |
+| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 单机快速部署：只维护一个主镜像和一份 compose；本机两套生产实例采用锁定的 all-in-one 标签 |
 | 锁定正式版本 | `docker-compose.image.yml` + `.env.release.example` | 需要精确回滚、审计、记录线上版本 |
 | 锁定正式版本（单镜像） | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚 |
 
 ## 核心拓扑
 
-默认公开拓扑保持下面 7 个核心服务：
+默认公开拓扑包含下面 7 个核心博客服务，并配套 1 个仅内网访问的 Kroki 图表渲染服务：
 
 | 服务       | 端口        | 说明                                                 |
 | ---------- | ----------- | ---------------------------------------------------- |
@@ -49,6 +49,7 @@
 | `waline`   | 8360 / 8361 | 评论服务与控制端点                                   |
 | `postgres` | 5432        | 主业务数据库，仅在 compose 内部网络访问              |
 | `redis`    | 6379        | 缓存与队列数据库，仅在 compose 内部网络访问          |
+| `kroki`    | 8000        | Mermaid / PlantUML 等图表渲染，仅在内部网络访问      |
 
 ## 快速开始
 
@@ -90,7 +91,7 @@ docker compose -f docker-compose.latest.yml up -d
 - 默认使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
 - 首次启动时会自动生成 Waline 共享 JWT，并写入 `log/waline.jwt`
 
-### 2.1 单镜像 all-in-one 部署（生产推荐，本人线上用法）
+### 2.1 单镜像 all-in-one 部署（单机少运维对象，本机生产用法）
 
 `all-in-one` 把 `caddy + server + website + admin + waline + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是我线上博客实际使用的方式。
 
@@ -229,18 +230,18 @@ kevinchina/deeplearning
 标签示例：
 
 ```text
-kevinchina/deeplearning:vanblog-caddy-v1.8.2-<image-id>
-kevinchina/deeplearning:vanblog-server-v1.8.2-<image-id>
-kevinchina/deeplearning:vanblog-website-v1.8.2-<image-id>
-kevinchina/deeplearning:vanblog-admin-v1.8.2-<image-id>
-kevinchina/deeplearning:vanblog-waline-v1.8.2-<image-id>
+kevinchina/deeplearning:vanblog-caddy-vX.Y.Z-<image-id>
+kevinchina/deeplearning:vanblog-server-vX.Y.Z-<image-id>
+kevinchina/deeplearning:vanblog-website-vX.Y.Z-<image-id>
+kevinchina/deeplearning:vanblog-admin-vX.Y.Z-<image-id>
+kevinchina/deeplearning:vanblog-waline-vX.Y.Z-<image-id>
 ```
 
 单镜像 all-in-one 入口则额外发布下面这组标签（每次发版会同步 `-latest`）：
 
 ```text
-kevinchina/deeplearning:vanblog-all-in-one-v1.8.2-<image-id>
-kevinchina/deeplearning:vanblog-all-in-one-v1.8.2
+kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id>
+kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z
 kevinchina/deeplearning:vanblog-all-in-one-latest
 ```
 

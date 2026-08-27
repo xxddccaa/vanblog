@@ -10,10 +10,10 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 | --- | --- | --- | --- |
 | `EMAIL` | `caddy` | 使用内置 Caddy HTTPS 时申请证书的邮箱 | `someone@example.com` |
 | `VANBLOG_DOCKER_REPO` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的镜像仓库 | `kevinchina/deeplearning` |
-| `VANBLOG_RELEASE_SUFFIX` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的标签后缀，如 `v1.4.1-<image-id>` | 无 |
-| `VAN_BLOG_DATABASE_URL` | `server` | PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/vanblog` |
+| `VANBLOG_RELEASE_SUFFIX` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的标签后缀，如 `vX.Y.Z-<image-id>` | 无 |
+| `VAN_BLOG_DATABASE_URL` | `server` | PostgreSQL 连接串 | `postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/vanblog` |
 | `VAN_BLOG_WALINE_DB` | `server` / `waline` / `postgres` | 评论系统独立数据库名 | `waline` |
-| `VAN_BLOG_WALINE_DATABASE_URL` | `server` | Waline 独立 PostgreSQL 连接串 | `postgresql://postgres:postgres@postgres:5432/waline` |
+| `VAN_BLOG_WALINE_DATABASE_URL` | `server` | Waline 独立 PostgreSQL 连接串 | `postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/waline` |
 | `VANBLOG_WALINE_CONTROL_URL` | `server` | Waline 控制端点 | `http://waline:8361` |
 | `VAN_BLOG_ALLOW_DOMAINS` | `website` | Next.js 允许加载的外部图片域名，多个用逗号分隔 | `pic.mereith.com` |
 | `WALINE_JWT_TOKEN` | `server` / `website` / `waline` | Waline 与内部控制面共用的 JWT 密钥；留空时镜像运行时会自动生成并落盘到日志目录中的 `waline.jwt`，也可手动指定覆盖 | 可留空自动生成 |
@@ -33,6 +33,7 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 - 修改 compose 文件后，重新执行 `docker compose up -d`
 - 如果是 latest 镜像部署，则使用 `docker compose -f docker-compose.latest.yml up -d`
 - 如果是锁版镜像部署，则使用 `docker compose -f docker-compose.image.yml up -d`
+- 修改 `.env` 后需要 recreate 相关容器；单纯 `docker compose restart` 不会重新读取环境变量
 - 某些前台资源相关配置（例如 `VAN_BLOG_ALLOW_DOMAINS`）通常至少需要重启 `website` 服务
 
 ## 注意事项

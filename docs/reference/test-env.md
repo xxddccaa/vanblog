@@ -6,7 +6,7 @@ title: 本机测试环境
 
 这台机器上有一套**独立的 all-in-one 测试环境**，用 all-in-one 镜像 + 挂载宿主机预编译产物的方式，供 AI 或人工在不影响两套生产栈的前提下，快速验证还没发版的源码改动（`/admin`、`/api`、主题、登录态、markdown 渲染等联调）。
 
-> 本文档只描述**这台机器当前实际在用的**测试环境。仓库里其它文档（如 `docs/quick-debug.md`）若指向 `/data/xiedong/test-vanblog`，在本机已失效，以本文档为准。
+> 本文档只描述**这台机器当前实际在用的**测试环境。`docs/quick-debug.md` 是同一套 8020 路径 A 的简化操作版；`docs/host-debug.md` 则描述独立的 18080 开发调试入口。
 
 ## 位置
 
@@ -148,9 +148,10 @@ docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
 ```bash
 # 约 40-60s 变为 healthy（首次 postgres init + server 启动）
 docker inspect test-env-vanblog-vanblog-1 --format '{{.State.Health.Status}}'   # -> healthy
-curl -s -o /dev/null -w "front %{http_code}\n"  http://127.0.0.1:8020/          # -> 200
-curl -s -o /dev/null -w "admin %{http_code}\n"  http://127.0.0.1:8020/admin/    # -> 200
-curl -s http://127.0.0.1:8020/api/public/init                                   # 233 未初始化 = 全新，去 /admin/ 初始化
+curl --noproxy '*' -sS -o /dev/null -w "front %{http_code}\n" http://127.0.0.1:8020/       # -> 200
+curl --noproxy '*' -sS -o /dev/null -w "admin %{http_code}\n" http://127.0.0.1:8020/admin/ # -> 200
+curl --noproxy '*' -sS http://127.0.0.1:8020/api/admin/init/check
+# -> 200；JSON 中 initialized=true 表示已初始化，false 表示需去 /admin/ 初始化
 ```
 
 前台长时间 `502` 就查日志：`docker logs test-env-vanblog-vanblog-1 --tail 30`（启动期一次性的 `ISRProvider ... ECONNRESET` 是无害的启动竞争）。
@@ -166,10 +167,11 @@ curl -s http://127.0.0.1:8020/api/public/init                                   
    echo 'VAN_BLOG_DEBUG_SUPER_TOKEN=换成你自己的随机值' >> .env
    ```
 
-2. 重启使环境变量进容器：
+2. recreate 测试容器，使新的环境变量进入容器（`restart` 不会重新读取 `.env`）：
 
    ```bash
-   docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
+   docker compose -f docker-compose.all-in-one.latest.yml \
+     up -d --force-recreate --no-deps vanblog
    ```
 
 3. 确认已进入容器：
@@ -181,7 +183,7 @@ curl -s http://127.0.0.1:8020/api/public/init                                   
 4. 用请求头 `x-debug-super-token` 取值（不能放 query string）：
 
    ```bash
-   curl -s -H 'x-debug-super-token: 你的随机值' http://127.0.0.1:8020/api/admin/auth/debug-token
+   curl --noproxy '*' -sS -H 'x-debug-super-token: 你的随机值' http://127.0.0.1:8020/api/admin/auth/debug-token
    ```
 
    返回 `200` 即成功；`debug token disabled` 说明容器没读到密钥；`debug token invalid` 说明请求头与容器内密钥不一致。
@@ -198,7 +200,7 @@ cd /root/vanblog/github_repo/vanblog
 cd /root/vanblog/test-env-vanblog
 docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
 # 4. 等 healthy 后验证
-curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8020/
+curl --noproxy '*' -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8020/
 ```
 
 ## 适用范围与坑

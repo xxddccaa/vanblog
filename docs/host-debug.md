@@ -8,8 +8,10 @@
 如果这台机器联网需要代理，先导出：
 
 ```bash
-export http_proxy=http://127.0.0.1:10829
-export https_proxy=http://127.0.0.1:10829
+export http_proxy=http://127.0.0.1:10826
+export https_proxy=http://127.0.0.1:10826
+export HTTP_PROXY="$http_proxy"
+export HTTPS_PROXY="$https_proxy"
 ```
 
 ## 先看结论

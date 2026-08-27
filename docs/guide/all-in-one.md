@@ -124,15 +124,15 @@ docker compose -f docker-compose.all-in-one.latest.yml up -d
 
 - `./data` 会被复用，博客内容不受影响。
 - 从旧版首次升到 v1.8.0 时，PostgreSQL 密码会被轮换为随机强口令，属预期行为，可自愈。
-- 回滚：把 `docker-compose.all-in-one.latest.yml.bak` 覆盖回去，或把 `image:` 指到某个具体版本标签（如 `kevinchina/deeplearning:vanblog-all-in-one-v1.8.0`），再 `up -d`。
+- 回滚：把 `docker-compose.all-in-one.latest.yml.bak` 覆盖回去，或把 `image:` 指到某个具体版本标签（如 `kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id>`），再 `up -d`。
 
 ## 锁定具体版本
 
 生产上想精确锁版 / 便于回滚，可把 compose 里的 `image:` 从 `-latest` 改成带版本的不可变标签：
 
 ```text
-kevinchina/deeplearning:vanblog-all-in-one-v1.8.0            # 版本别名
-kevinchina/deeplearning:vanblog-all-in-one-v1.8.0-<image-id> # 不可变标签
+kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z            # 版本别名
+kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id> # 不可变标签
 ```
 
 ## HTTPS

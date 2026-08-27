@@ -1,110 +1,142 @@
-# 快速调试工作流（Volume 挂载热更新）
+# 快速调试工作流（all-in-one 产物挂载）
 
-本文档说明如何在不重建 Docker 镜像的情况下快速迭代 VanBlog 后端代码。
+本文档是 `docs/reference/test-env.md` 的简化操作版，说明如何用当前机器的独立测试环境快速验证还未发布的 server、website 和 admin 源码改动。
+
+## 当前环境
+
+- 源码：`/root/vanblog/github_repo/vanblog`
+- 测试目录：`/root/vanblog/test-env-vanblog`
+- Compose：`/root/vanblog/test-env-vanblog/docker-compose.all-in-one.latest.yml`
+- Compose project：`test-env-vanblog`
+- 入口：`http://127.0.0.1:8020`
+- 容器：`test-env-vanblog-vanblog-1` + `test-env-vanblog-kroki-1`
+
+生产栈使用 `8019` 和 `13080`。测试环境必须保留独立目录、端口和 Compose project，不要操作两个生产目录。
 
 ## 原理
 
-测试目录 `/data/xiedong/test-vanblog/docker-compose.debug.yml` 将本地编译好的 server dist 目录通过 volume 挂载进 all-in-one 容器，覆盖镜像内置的编译产物。改代码后只需本地编译 + 重启容器，无需重建镜像。
-
-```
-本地源码修改 → pnpm build:server（3秒）→ docker restart（2秒）→ 等待 healthy（~40秒）
-总计 ~45 秒，对比 Docker 全量重建 8-12 分钟，提速约 12 倍。
-```
-
-## 使用步骤
-
-### 1. 启动调试环境
-
-```bash
-cd /data/xiedong/test-vanblog
-docker compose -f docker-compose.debug.yml up -d
-```
-
-入口：`http://127.0.0.1:18083`
-
-### 2. 修改代码 → 快速生效
-
-```bash
-# 1. 修改 packages/server/src/ 下的代码
-# 2. 本地编译（增量编译约 3 秒）
-pnpm --filter @vanblog/server build
-
-# 3. 重启容器（volume 自动加载新 dist）
-cd /data/xiedong/test-vanblog
-docker compose -f docker-compose.debug.yml restart vanblog
-
-# 4. 等待 ~40 秒后 healthy，即可测试
-```
-
-### 3. 停止调试环境
-
-```bash
-cd /data/xiedong/test-vanblog
-docker compose -f docker-compose.debug.yml down
-```
-
-## 挂载说明
-
-`docker-compose.debug.yml` 相比 `docker-compose.all-in-one.image.yml` 的关键区别：
+测试目录的 compose 是本机专用副本，在发布的 all-in-one 镜像上额外挂载宿主机预编译产物：
 
 ```yaml
 volumes:
-  # 本地 server dist 直接挂载，覆盖镜像内的编译产物
-  - /data/xiedong/vanblog/packages/server/dist:/app/server/dist
+  - /root/vanblog/github_repo/vanblog/packages/server/dist:/app/server/dist
+  - /root/vanblog/github_repo/vanblog/packages/website/.next/standalone/packages/website/.next:/app/website/packages/website/.next
+  - /root/vanblog/github_repo/vanblog/packages/admin/dist:/usr/share/nginx/html/admin:ro
 ```
 
-### 为什么改完代码必须 restart（dist 挂载失效原理）
+因此普通代码修改无需重建 all-in-one 镜像，只需在宿主机编译对应产物，再重启测试容器。
 
-`nest build` 会**删除并重建** `dist` 目录，导致目录 inode 变化。而 bind mount 绑定的是旧 inode，容器内看到的 `/app/server/dist` 会变成空目录（`ls` 无输出），但容器不会报错——server 继续跑着旧代码。`docker compose restart` 会重新解析挂载路径绑定到新 inode。**症状识别**：如果改了代码却"不生效"，先在容器里 `ls /app/server/dist/`，空的就说明挂载失效了，restart 即可。
+> 不要用仓库原版 `docker-compose.all-in-one.latest.yml` 覆盖测试目录里的文件。仓库原版没有上述三项调试挂载，覆盖后路径 A 会失效。
 
-## website / admin 热更新（docker cp 方案）
-
-⚠️ **不要**把 website 的 `.next` 或 standalone 目录做成 volume 挂载——挂载会覆盖容器内的 `entrypoint.sh` 等文件导致容器起不来（踩过坑）。用 `docker cp` 热补丁：
+## 推荐：多处改动一次编译、一次重启
 
 ```bash
-# website：本地构建后 cp 进容器，需要 restart（node 进程要重新加载 server chunks）
-pnpm --filter @vanblog/theme-default build
-docker cp packages/website/.next/. test-vanblog-vanblog-1:/app/website/packages/website/.next/
+cd /root/vanblog/github_repo/vanblog
 
-# admin：静态文件由 nginx 直接服务，cp 后立即生效（restart 顺带做了也无妨）
-pnpm --filter @vanblog/admin build
-docker cp packages/admin/dist/. test-vanblog-vanblog-1:/usr/share/nginx/html/admin/
+pnpm build:server
+pnpm build:website
+# Next.js 不会自动把 static 放进 standalone；先删除旧目录，避免 static/static。
+rm -rf packages/website/.next/standalone/packages/website/.next/static
+cp -a packages/website/.next/static \
+  packages/website/.next/standalone/packages/website/.next/static
+pnpm build:admin
 
-# 统一 restart（同时解决 server dist 挂载失效）
-cd /data/xiedong/test-vanblog
-docker compose -f docker-compose.debug.yml restart vanblog
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
 ```
 
-容器内路径速查（all-in-one 镜像）：
+等待健康状态：
 
-| 组件 | 容器内路径 | 服务方式 |
-|------|-----------|----------|
-| server dist | `/app/server/dist`（volume 挂载） | node 进程 |
-| website .next | `/app/website/packages/website/.next` | Next.js standalone |
-| admin 静态产物 | `/usr/share/nginx/html/admin/` | nginx :3002 |
-| Caddyfile | `/etc/caddy/Caddyfile` | caddy |
+```bash
+until [ "$(docker inspect test-env-vanblog-vanblog-1 \
+  --format '{{.State.Health.Status}}')" = 'healthy' ]; do
+  sleep 5
+done
+
+curl --noproxy '*' -sS -o /dev/null -w 'front %{http_code}\n' \
+  http://127.0.0.1:8020/
+curl --noproxy '*' -sS -o /dev/null -w 'admin %{http_code}\n' \
+  http://127.0.0.1:8020/admin/
+curl --noproxy '*' -sS \
+  http://127.0.0.1:8020/api/admin/init/check
+```
+
+初始化状态接口应返回 `200`，JSON 中 `initialized` 为 `true` 或 `false`。
+
+## 只改一个组件
+
+### server
+
+```bash
+cd /root/vanblog/github_repo/vanblog
+pnpm build:server
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
+```
+
+`pnpm build:server` 会删除并重建 `dist`，使 bind mount 指向的 inode 变化，所以必须 restart。若修改不生效，先检查：
+
+```bash
+docker exec test-env-vanblog-vanblog-1 ls /app/server/dist/
+```
+
+容器内目录为空通常说明需要重新 restart 以绑定新的 inode。
+
+### website
+
+```bash
+cd /root/vanblog/github_repo/vanblog
+pnpm build:website
+rm -rf packages/website/.next/standalone/packages/website/.next/static
+cp -a packages/website/.next/static \
+  packages/website/.next/standalone/packages/website/.next/static
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
+```
+
+website 的 Node 进程需要重启才能加载新的 server chunks。
+
+### admin
+
+```bash
+cd /root/vanblog/github_repo/vanblog
+pnpm build:admin
+```
+
+admin 静态产物以只读 bind mount 提供给 nginx，构建完成后通常立即生效；与其他组件一起验收时统一 restart 一次也可以。
+
+## 修改 `.env` 时不能只 restart
+
+`docker compose restart` 不会重新解析 `.env`。修改测试环境变量后应 recreate 测试容器：
+
+```bash
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.all-in-one.latest.yml \
+  up -d --force-recreate --no-deps vanblog
+```
+
+该操作只重建测试容器，测试数据仍由目录挂载保留。
 
 ## 适用范围
 
-| 改动类型 | 是否适用 | 说明 |
-|----------|----------|------|
-| `packages/server` 代码 | ✅ 适用 | 本地编译 + restart |
-| `packages/website` 代码 | ✅ 适用 | 本地构建 + `docker cp` + restart（见上） |
-| `packages/admin` 代码 | ✅ 适用 | 本地构建 + `docker cp`，无需 restart（见上） |
-| Docker/Caddy 配置 | ❌ 不适用 | 需重建镜像 |
-| 新增 npm 依赖 | ❌ 不适用 | 需重建镜像（node_modules 在镜像内） |
+| 改动类型 | 是否适用 | 处理方式 |
+| --- | --- | --- |
+| `packages/server` 普通代码 | 是 | build server + restart |
+| `packages/website` 普通代码 | 是 | build website + 同步 static + restart |
+| `packages/admin` 普通代码 | 是 | build admin；通常无需 restart |
+| 新增或升级 npm 依赖 | 否 | 重建 all-in-one 镜像 |
+| Dockerfile / Caddy / entrypoint | 否 | 重建 all-in-one 镜像 |
+| 数据库结构或容器拓扑 | 否 | 按完整测试/迁移流程处理 |
 
-## 与其他调试方式的对比
+Kroki 容器不受 server、website、admin 重编影响，无需重启。
 
-| 方式 | 速度 | 覆盖面 | 适合场景 |
-|------|------|--------|----------|
-| **Volume 挂载**（本文） | ~45 秒 | server 代码 | 后端 API/逻辑快速迭代 |
-| **host-debug**（`pnpm host:dev:up`） | 即时热重载 | server + website + admin | 日常开发，最快 |
-| **Docker 全量重建** | 8-12 分钟 | 全部 | 发版前验证、Dockerfile 变更 |
-| **docker cp** 热补丁 | ~5 秒 | 单个文件 | 紧急修一个文件验证 |
+## 与其他调试方式对比
 
-## 注意事项
+| 方式 | 入口 | 适合场景 |
+| --- | --- | --- |
+| host-debug | `18080` | 日常开发，server/website/admin 热更新最快 |
+| 本文路径 A | `8020` | 用 all-in-one 运行形态快速验证宿主机产物 |
+| split Docker 源码构建 | `18080` 或自定义端口 | Caddy、依赖、Dockerfile、拆分服务链路验收 |
+| 完整 all-in-one 重建 | 自定义端口 | 发版前验证 all-in-one Dockerfile 和依赖图 |
 
-- 容器重启时 PostgreSQL 数据保持不变（数据挂载在 `./data/postgres`）
-- 如果容器启动失败，先检查本地 dist 是否编译成功：`ls packages/server/dist/src/`
-- Kroki 和 PlantUML 容器不受影响，无需重启
+完整说明、debug-token 配置和首次搭建注意事项见 `docs/reference/test-env.md`。

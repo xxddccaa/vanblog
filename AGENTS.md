@@ -10,7 +10,7 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `packages/waline`: Waline-related wrapper/runtime code used by the comment integration and release artifacts.
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
-- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires `caddy`, `server`, `website`, `admin`, `waline`, `postgres`, and `redis`.
+- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires the 7 core blog services (`caddy`, `server`, `website`, `admin`, `waline`, `postgres`, `redis`) plus the internal `kroki` diagram renderer.
 - `docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology.
 - `docker-compose.all-in-one.yml`: optional source-build single-container entrypoint for the non-AI main stack.
 - `docker-compose.all-in-one.latest.yml`: optional latest-tag single-container quick-start for the non-AI main stack.

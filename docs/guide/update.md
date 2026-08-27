@@ -48,7 +48,8 @@ docker compose -f docker-compose.all-in-one.latest.yml up -d
 1. 修改 `.env` 中的版本变量，例如：
 
 ```env
-VANBLOG_RELEASE_SUFFIX=v1.6.3-<image-id>
+VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>
+# 例如当前 v1.8.3：VANBLOG_RELEASE_SUFFIX=v1.8.3-7405283e
 ```
 
 2. 拉取并启动新版本：
@@ -89,7 +90,8 @@ docker compose up -d --build
 - `http://<你的域名>/admin` 是否正常打开
 - `http://<你的域名>/admin/init` 是否不会误出现
 - 前台首页、文章页、分类页、标签页是否正常访问
-- 评论、图片、RSS、Swagger 是否仍可访问
+- 评论、图片、RSS 是否仍可访问
+- 公网 `/swagger` 是否继续返回 `404`；需要 API 文档时只通过主机本地或容器内的 server 入口访问
 - `docker compose logs -f caddy server website admin waline postgres redis` 是否有明显报错
 
 ## 常见问题

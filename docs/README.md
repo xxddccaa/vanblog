@@ -21,7 +21,7 @@ actions:
 features:
   - title: 多容器架构
     icon: cubes
-    details: 默认拆分为 caddy、server、website、admin、waline、postgres、redis 七个服务，部署与排障更清晰
+    details: 默认拆分为 caddy、server、website、admin、waline、postgres、redis 七个核心博客服务，并配套 Kroki 图表渲染服务
 
   - title: 前后台一体
     icon: window-maximize
@@ -29,7 +29,7 @@ features:
 
   - title: 可维护性
     icon: wrench
-    details: 提供 latest 与锁版双轨部署文档、部署测试、博客流程测试、多镜像发布规范与回滚说明
+    details: 提供 latest 与锁版双轨部署文档、部署测试、博客流程测试、多镜像与 all-in-one 发布规范及回滚说明
 
   - title: HTTPS 与代理
     icon: lock

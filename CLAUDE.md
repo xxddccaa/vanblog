@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 仓库定位
 
-VanBlog 的定制分支，pnpm monorepo，Node 22 / pnpm 10。基线版本在根 `package.json#version` 与 `RELEASE.md` 维护。默认部署形态是 **Docker Compose 多容器**，由 Caddy 统一路由；同时保留可选的“非 AI 单镜像 all-in-one”入口。
+VanBlog 的独立维护仓库（源自 `Mereithhh/vanblog`），pnpm monorepo，Node 22 / pnpm 10。基线版本在根 `package.json#version` 与 `RELEASE.md` 维护。默认部署形态是 **Docker Compose 多容器**，由 Caddy 统一路由；同时保留可选的“非 AI 单镜像 all-in-one”入口。
 
-四个长期约定：
+三个长期约定：
 
-- 核心博客栈默认不变：`docker-compose.yml` / `docker-compose.image.yml` 只编排 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis`。
+- 核心博客栈默认不变：`docker-compose.yml` / `docker-compose.image.yml` 编排 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis`，并配套 `kroki` 图表渲染服务。
 - 镜像仓库固定使用 `kevinchina/deeplearning`，所有发布/回滚文档都基于它。
 - “单镜像”指的是新的 `docker-compose.all-in-one*.yml` + `vanblog-all-in-one-*` 标签，不要回退到历史遗留的 `vanblog-latest` 单镜像方案。
 
@@ -25,8 +25,9 @@ VanBlog 的定制分支，pnpm monorepo，Node 22 / pnpm 10。基线版本在根
 | `waline` | `packages/waline` | 8360 / 8361 | 评论服务 + 控制端点 |
 | `postgres` | — | 5432(仅内网) | 主业务数据库 |
 | `redis` | — | 6379(仅内网) | 缓存/队列 |
+| `kroki` | — | 8000(仅内网) | Mermaid / PlantUML 等图表渲染 |
 
-默认入口：前台 `/`、后台 `/admin`（自动 308 到 `/admin/`）、API 文档 `/swagger`、评论 `/comment/`。
+默认入口：前台 `/`、后台 `/admin`（自动 308 到 `/admin/`）、评论 `/comment/`。公网 `/swagger` 统一返回 404；API 文档只通过主机本地或容器内的 `server:3000/swagger` 查看。
 
 `postgres` / `redis` / Caddy admin API `2019` 不允许暴露到 `0.0.0.0`；改 compose 时这是硬约束。
 
@@ -35,11 +36,12 @@ VanBlog 的定制分支，pnpm monorepo，Node 22 / pnpm 10。基线版本在根
 `docker/caddy/Caddyfile` 当前生效的核心规则：
 
 ```text
-/api/*、/static/*、/swagger*、/rss/*、/sitemap/*  -> server:3000
-/admin                                            -> 308 -> /admin/
-/admin*                                           -> admin:3002
-/api/comment*、/comment*、/ui*                    -> waline:8360
-其他                                               -> website:3001
+/api/*、/static/*、/rss/*、/sitemap/*             -> server:3000
+/swagger*                                                -> 404
+/admin                                                   -> 308 -> /admin/
+/admin*                                                  -> admin:3002
+/api/comment*、/api/ui*、/comment*、/ui*                 -> waline:8360
+其他                                                     -> website:3001
 ```
 
 涉及 `/admin` 的改动必须考虑：静态资源、favicon、manifest、内部跳转都要兼容子路径。
@@ -105,20 +107,32 @@ pnpm release:all-in-one:latest --version vX.Y.Z --image-id <id>
 
 机器上有两套 `18080` 调试入口，详情见 `docs/host-debug.md`，另有专用 `docs/reference/test-env.md`。Claude 进入快速迭代时**优先用 host-debug**。
 
-### Volume 挂载快速调试（18083）
+### all-in-one 产物挂载快速验证（8020）
 
-详情见 `docs/quick-debug.md`。适合后端 API 代码快速迭代，比 Docker 全量重建快 12 倍。
+详情见 `docs/reference/test-env.md` 和 `docs/quick-debug.md`。当前机器使用独立测试目录 `/root/vanblog/test-env-vanblog`，入口为 `http://127.0.0.1:8020`。
+
+测试目录的 `docker-compose.all-in-one.latest.yml` 是本机专用副本，额外挂载：
+
+- `packages/server/dist` → `/app/server/dist`
+- website standalone 内的 `.next` → `/app/website/packages/website/.next`
+- `packages/admin/dist` → `/usr/share/nginx/html/admin:ro`
+
+典型流程：
 
 ```bash
-cd /data/xiedong/test-vanblog
-docker compose -f docker-compose.debug.yml up -d       # 首次启动
+cd /root/vanblog/github_repo/vanblog
+pnpm build:server
+pnpm build:website
+rm -rf packages/website/.next/standalone/packages/website/.next/static
+cp -a packages/website/.next/static \
+  packages/website/.next/standalone/packages/website/.next/static
+pnpm build:admin
 
-# 改 server 代码后：
-pnpm --filter @vanblog/server build                     # ~3 秒增量编译
-docker compose -f docker-compose.debug.yml restart vanblog  # ~45 秒 ready
+cd /root/vanblog/test-env-vanblog
+docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
 ```
 
-核心原理：本地 `packages/server/dist` 通过 volume 挂载到容器 `/app/server/dist`，编译后重启容器即可生效，无需重建镜像。website/admin 用 `docker cp` 热补丁（路径与坑见 `docs/quick-debug.md`，不要 volume 挂 `.next`）。不适用于新增 npm 依赖或 Dockerfile 改动。
+`pnpm build:server` 会重建 `dist` 并改变 inode，因此改 server 后必须 restart。普通源码改动适用该流程；新增 npm 依赖、Dockerfile、Caddy 或 entrypoint 改动必须重建镜像。不要用仓库原版 compose 覆盖测试目录的专用副本，否则三项挂载会丢失。
 
 ### host-debug 模式（18080）
 
