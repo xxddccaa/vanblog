@@ -46,7 +46,7 @@ const PRESET_THEMES = {
     {
       value: MARKDOWN_THEME_PLAIN_PRESET,
       label: 'Vanblog Plain（朴素/经典）',
-      description: '不加载额外主题，只用系统自带 GitHub 风格（推荐给喜欢朴素的人）',
+      description: '经典 Markdown 排版：清晰标题、引用和表格，低装饰且亮暗模式均保持高对比',
     },
     {
       value: '/markdown-themes/vanblog-minimal-light-only.css',
@@ -168,7 +168,7 @@ const PRESET_THEMES = {
     {
       value: MARKDOWN_THEME_PLAIN_PRESET,
       label: 'Vanblog Plain（朴素/经典）',
-      description: '不加载额外主题，只用系统自带 GitHub 风格（推荐给喜欢朴素的人）',
+      description: '经典 Markdown 排版：清晰标题、引用和表格，低装饰且亮暗模式均保持高对比',
     },
     {
       value: '/markdown-themes/vanblog-minimal-dark-only.css',

@@ -1,4 +1,11 @@
 # Changelog
+### [1.8.4](https://github.com/xxddccaa/vanblog/compare/v1.8.3...v1.8.4) (2026-08-31)
+
+
+### 🐛 Bug Fixes | Bug 修复
+
+* **markdown:** 新增 AgentObservatory 风格 Vanblog Plain 主题，修复暗色预览文字颜色、主题装饰残留和卡片底部空白
+
 ### [1.8.3](https://github.com/xxddccaa/vanblog/compare/v1.8.2...v1.8.3) (2026-08-27)
 
 

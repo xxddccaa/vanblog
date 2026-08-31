@@ -100,7 +100,7 @@ describe('markdown theme resolution', () => {
     expect(layoutProps.markdownDarkThemeUrl).toBe(MARKDOWN_THEME_DEFAULTS.dark);
   });
 
-  it('keeps the plain preset unthemed', () => {
+  it('resolves the plain preset to the classic light/dark assets', () => {
     const layoutProps = getLayoutProps(
       createPublicMeta({
         markdownLightThemePreset: MARKDOWN_THEME_PLAIN_PRESET,
@@ -108,8 +108,8 @@ describe('markdown theme resolution', () => {
       }),
     );
 
-    expect(layoutProps.markdownLightThemeUrl).toBe('');
-    expect(layoutProps.markdownDarkThemeUrl).toBe('');
+    expect(layoutProps.markdownLightThemeUrl).toBe('/markdown-themes/vanblog-plain-light-only.css');
+    expect(layoutProps.markdownDarkThemeUrl).toBe('/markdown-themes/vanblog-plain-dark-only.css');
   });
 
   it('prefers custom theme urls over presets', () => {

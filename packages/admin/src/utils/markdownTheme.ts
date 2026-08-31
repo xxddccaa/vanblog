@@ -59,7 +59,9 @@ export const resolveMarkdownThemeUrl = (theme: MarkdownThemeMode, config?: Markd
   }
 
   if (preset === MARKDOWN_THEME_PLAIN_PRESET) {
-    return '';
+    return theme === 'light'
+      ? '/markdown-themes/vanblog-plain-light-only.css'
+      : '/markdown-themes/vanblog-plain-dark-only.css';
   }
 
   if (preset) {
@@ -152,7 +154,15 @@ export const useAdminMarkdownTheme = (config?: MarkdownThemeConfig) => {
   useEffect(() => {
     syncThemeStylesheet('light', resolvedThemeConfig.markdownLightThemeUrl);
     syncThemeStylesheet('dark', resolvedThemeConfig.markdownDarkThemeUrl);
-    syncThemeHotfixStylesheet();
+    const usesPlainTheme = [
+      resolvedThemeConfig.markdownLightThemeUrl,
+      resolvedThemeConfig.markdownDarkThemeUrl,
+    ].some((href) => href?.includes('/vanblog-plain-'));
+    if (usesPlainTheme) {
+      document.head.querySelector(MANAGED_THEME_HOTFIX_SELECTOR)?.remove();
+    } else {
+      syncThemeHotfixStylesheet();
+    }
   }, [resolvedThemeConfig.markdownDarkThemeUrl, resolvedThemeConfig.markdownLightThemeUrl]);
 
   return resolvedThemeConfig;

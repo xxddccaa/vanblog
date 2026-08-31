@@ -59,7 +59,9 @@ export const resolveMarkdownThemeUrl = (
   }
 
   if (preset === MARKDOWN_THEME_PLAIN_PRESET) {
-    return '';
+    return theme === 'light'
+      ? '/markdown-themes/vanblog-plain-light-only.css'
+      : '/markdown-themes/vanblog-plain-dark-only.css';
   }
 
   if (preset) {

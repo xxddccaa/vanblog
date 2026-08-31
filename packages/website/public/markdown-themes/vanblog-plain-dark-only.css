@@ -1,0 +1,73 @@
+/* Vanblog Plain — AgentObservatory dark palette */
+html.dark .markdown-body {
+  --vb-body-text: #f1f3ef;
+  --vb-body-strong: #f1f3ef;
+  --vb-body-muted: #98a19a;
+  --vb-link: #6e9ff8;
+  --vb-link-hover: #8bb3ff;
+  --vb-panel-bg: #151816;
+  --vb-panel-bg-2: #1b1f1c;
+  --vb-hover-bg: #222723;
+  --vb-border: #2a302c;
+  --vb-mark-bg: rgba(110, 159, 248, 0.12);
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 30px 30px 100px;
+  color: #f1f3ef !important;
+  background: #0d0f0e;
+  font: 14px/1.5 Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+html.dark .markdown-body :is(p, li, dd, td, th, summary, figcaption, label) { color: #f1f3ef !important; }
+html.dark .markdown-body :is(strong, b) { color: #f1f3ef !important; }
+html.dark .markdown-body :is(h1, h2, h3, h4, h5, h6) {
+  position: relative;
+  margin: 1rem 0;
+  font-weight: bold;
+  line-height: 1.4;
+  color: #f1f3ef !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transform: none !important;
+}
+html.dark .markdown-body h1 { font-size: 2.25em; line-height: 1.2; margin-bottom: 1em; padding: 0.75em 0; border-bottom: 2px solid #2a302c !important; }
+html.dark .markdown-body h2 { font-size: 1.75em; line-height: 1.225; margin: 0.75em 0; padding: 0.5em 0; }
+html.dark .markdown-body h3 { font-size: 1.5em; line-height: 1.43; }
+html.dark .markdown-body h4 { font-size: 1.25em; }
+html.dark .markdown-body h5,
+html.dark .markdown-body h6 { font-size: 1em; }
+html.dark .markdown-body :is(p, blockquote, ul, ol, dl, table) { margin: 0.8em 0; }
+html.dark .markdown-body :is(ul, ol) { padding-left: 30px; }
+html.dark .markdown-body blockquote {
+  padding: 0.2em 15px;
+  color: #98a19a !important;
+  background: #1b1f1c !important;
+  border-left: 4px solid #3a433d !important;
+  transform: none !important;
+}
+html.dark .markdown-body a { color: #6e9ff8 !important; text-decoration: none !important; border: 0 !important; }
+html.dark .markdown-body a:hover { color: #8bb3ff !important; text-decoration: underline !important; background: transparent !important; }
+html.dark .markdown-body hr { height: 2px; margin: 16px 0; background: #2a302c; border: 0; }
+html.dark .markdown-body table { display: block; width: max-content; max-width: 100%; overflow: auto; background: #0d0f0e !important; border: 0 !important; }
+html.dark .markdown-body table tr { border: 1px solid #3a433d; }
+html.dark .markdown-body table tr:nth-child(2n),
+html.dark .markdown-body table thead { background: #1b1f1c; }
+html.dark .markdown-body table :is(th, td) { padding: 6px 13px; border: 1px solid #3a433d !important; }
+html.dark .markdown-body table tbody :is(tr:hover td, td:hover) { background: #222723 !important; color: #f1f3ef !important; }
+html.dark .markdown-body :is(code, tt) { color: #f1f3ef; background: #1b1f1c; border: 1px solid #2a302c; border-radius: 4px; }
+html.dark .markdown-body :is(h1, h2, h3, h4, h5, h6)::before,
+html.dark .markdown-body :is(h1, h2, h3, h4, h5, h6)::after { content: none !important; display: none !important; }
+html.dark .markdown-body ::selection { background: rgba(110, 159, 248, 0.28); color: #f1f3ef; }
+@media only screen and (min-width: 1400px) { html.dark .markdown-body { max-width: 1024px; } }
+@media only screen and (min-width: 1800px) { html.dark .markdown-body { max-width: 1200px; } }
+
+/* 首页摘要卡片没有独立的文档画布，不能继承编辑器的底部留白。 */
+html.dark .post-card .markdown-body {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}

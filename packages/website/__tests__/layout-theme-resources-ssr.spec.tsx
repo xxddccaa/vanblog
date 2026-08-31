@@ -49,6 +49,21 @@ describe("layout markdown theme SSR resources", () => {
     );
   });
 
+  it("omits the shared hotfix for the self-contained plain theme", () => {
+    const html = renderToStaticMarkup(
+      <MarkdownThemeResources
+        enabled
+        lightThemeUrl="/markdown-themes/vanblog-plain-light-only.css"
+        darkThemeUrl="/markdown-themes/vanblog-plain-dark-only.css"
+      />,
+    );
+
+    expect(html).toContain("vanblog-plain-light-only.css");
+    expect(html).toContain("vanblog-plain-dark-only.css");
+    expect(html).not.toContain(MARKDOWN_THEME_HOTFIX_URL);
+    expect(html).not.toContain("data-vanblog-theme-hotfix");
+  });
+
   it("does not emit theme resources for non-rich pages", () => {
     const html = renderToStaticMarkup(
       <html>

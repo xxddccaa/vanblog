@@ -1,0 +1,36 @@
+/* Vanblog Plain — AgentObservatory neutral light counterpart */
+html:not(.dark) .markdown-body {
+  --vb-body-text: #24292f;
+  --vb-body-strong: #1f2328;
+  --vb-body-muted: #57606a;
+  --vb-link: #0969da;
+  --vb-link-hover: #0550ae;
+  --vb-panel-bg: #f6f8fa;
+  --vb-panel-bg-2: #ffffff;
+  --vb-hover-bg: #f6f8fa;
+  --vb-border: #d0d7de;
+  --vb-mark-bg: #fff8c5;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 30px 30px 100px;
+  color: #24292f !important;
+  line-height: 1.6;
+}
+html:not(.dark) .markdown-body :is(p, li, dd, td, th, summary, figcaption, label) { color: #24292f !important; }
+html:not(.dark) .markdown-body :is(h1, h2, h3, h4, h5, h6) { color: #1f2328 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; text-shadow: none !important; transform: none !important; }
+html:not(.dark) .markdown-body h1 { font-size: 2.25em; padding: 0.75em 0; border-bottom: 2px solid #d0d7de !important; }
+html:not(.dark) .markdown-body h2 { font-size: 1.75em; padding: 0.5em 0; }
+html:not(.dark) .markdown-body h3 { font-size: 1.5em; }
+html:not(.dark) .markdown-body blockquote { padding: 0.2em 15px; color: #57606a !important; background: #f6f8fa !important; border-left: 4px solid #d0d7de !important; }
+html:not(.dark) .markdown-body a { color: #0969da !important; border: 0 !important; }
+html:not(.dark) .markdown-body a:hover { color: #0550ae !important; text-decoration: underline !important; background: transparent !important; }
+html:not(.dark) .markdown-body :is(h1, h2, h3, h4, h5, h6)::before,
+html:not(.dark) .markdown-body :is(h1, h2, h3, h4, h5, h6)::after { content: none !important; display: none !important; }
+html:not(.dark) .markdown-body ::selection { background: rgba(110, 159, 248, 0.28); color: #24292f; }
+
+html:not(.dark) .post-card .markdown-body {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}

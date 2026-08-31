@@ -68,7 +68,10 @@ export const syncMarkdownThemeResourceState = (
           withMarkdownThemeAssetVersion(darkThemeUrl),
         )
       : null;
-  const hotfixHref = enabled
+  const usesPlainTheme = [lightThemeUrl, darkThemeUrl].some((href) =>
+    href?.includes("/vanblog-plain-")
+  );
+  const hotfixHref = enabled && !usesPlainTheme
     ? getAbsoluteHref(
         document,
         withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL),
@@ -121,12 +124,14 @@ export default function MarkdownThemeResources({
           data-vanblog-theme-link="true"
         />
       ) : null}
-      <link
-        rel="stylesheet"
-        href={withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL)}
-        precedence={MARKDOWN_THEME_HOTFIX_PRECEDENCE}
-        data-vanblog-theme-hotfix="true"
-      />
+      {[lightThemeUrl, darkThemeUrl].some((href) => href?.includes("/vanblog-plain-")) ? null : (
+        <link
+          rel="stylesheet"
+          href={withMarkdownThemeAssetVersion(MARKDOWN_THEME_HOTFIX_URL)}
+          precedence={MARKDOWN_THEME_HOTFIX_PRECEDENCE}
+          data-vanblog-theme-hotfix="true"
+        />
+      )}
     </>
   );
 }

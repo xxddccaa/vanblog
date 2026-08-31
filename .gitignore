@@ -171,3 +171,6 @@ tests/manual-v*/runtime/
 /output/
 .playwright-mcp/
 .serena/
+
+# Local agent configuration
+.claude/
