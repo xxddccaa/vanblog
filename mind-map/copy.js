@@ -1,16 +1,21 @@
-const fs = require('fs')
-const path = require('path')
+const fs = require('fs');
+const path = require('path');
 
-const src = path.resolve(__dirname, './dist/index.html') 
-const dest = path.resolve(__dirname, './index.html') 
+const copyBuiltIndex = ({ src, dest }) => {
+  if (!fs.existsSync(src)) {
+    return false;
+  }
 
-if (fs.existsSync(dest)) {
-    fs.unlinkSync(dest)
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
+  fs.copyFileSync(src, dest);
+  fs.unlinkSync(src);
+  return true;
+};
+
+if (require.main === module) {
+  const src = path.resolve(__dirname, './dist/index.html');
+  const dest = process.env.MIND_MAP_INDEX_DEST || path.resolve(__dirname, './index.html');
+  copyBuiltIndex({ src, dest });
 }
 
-if (fs.existsSync(src)) {
-    fs.copyFileSync(src, dest)
-    fs.unlinkSync(src)
-}
-
-// console.warn('请检查付费插件是否启用！！！')
+module.exports = { copyBuiltIndex };

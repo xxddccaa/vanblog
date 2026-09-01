@@ -69,6 +69,8 @@
     "test:current-stack:api": "node --test tests/current-stack.api.test.mjs",
     "test:current-stack:admin": "pnpm --filter @vanblog/admin test:current-stack",
     "test:deploy": "node --test tests/deployment-config.test.mjs",
+    "test:mindmap-build": "node --test tests/mindmap-build-assets.test.mjs",
+    "test:all-in-one-build-cache": "node --test tests/all-in-one-build-cache.test.mjs",
     "test:blog-flow": "pnpm build:website && pnpm build:admin && node --test tests/deployment-config.test.mjs && node --test tests/blog-compose.e2e.test.mjs",
     "test:blog-flow:all-in-one": "node --test tests/deployment-config.test.mjs && node --test --test-force-exit tests/all-in-one-compose.e2e.test.mjs",
     "test:full": "pnpm --filter @vanblog/server test && pnpm --filter @vanblog/theme-default exec vitest run && pnpm --filter @vanblog/admin tsc && pnpm build:website && pnpm build:admin && pnpm test:deploy && node --test tests/blog-compose.e2e.test.mjs",

@@ -1,12 +1,15 @@
 import {
   cpSync,
   existsSync,
+  mkdtempSync,
   mkdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +18,6 @@ const repoRoot = path.resolve(scriptDir, '..');
 const simpleMindMapDir = path.join(repoRoot, 'mind-map', 'simple-mind-map');
 const mindMapWebDir = path.join(repoRoot, 'mind-map', 'web');
 const mindMapDistDir = path.join(repoRoot, 'mind-map', 'dist');
-const mindMapIndexPath = path.join(repoRoot, 'mind-map', 'index.html');
 const adminMindMapDir = path.join(repoRoot, 'packages', 'admin', 'dist', 'mindmap');
 
 const run = (command, args, cwd, extraEnv = {}) => {
@@ -46,13 +48,22 @@ const buildMindMapAssets = () => {
 
   const nodeOptions = process.env.NODE_OPTIONS || '';
   const nextNodeOptions = `${nodeOptions} --openssl-legacy-provider`.trim();
-  run('npm', ['run', 'build'], mindMapWebDir, {
-    NODE_OPTIONS: nextNodeOptions,
-  });
+  const buildIndexDir = mkdtempSync(path.join(os.tmpdir(), 'vanblog-mindmap-'));
+  const buildIndexPath = path.join(buildIndexDir, 'index.html');
+  try {
+    run('npm', ['run', 'build'], mindMapWebDir, {
+      NODE_OPTIONS: nextNodeOptions,
+      MIND_MAP_INDEX_DEST: buildIndexPath,
+    });
+    return { buildIndexDir, buildIndexPath };
+  } catch (error) {
+    rmSync(buildIndexDir, { recursive: true, force: true });
+    throw error;
+  }
 };
 
-const hardenMindMapScriptsForCsp = () => {
-  let html = readFileSync(mindMapIndexPath, 'utf8');
+const hardenMindMapScriptsForCsp = (indexPath) => {
+  let html = readFileSync(indexPath, 'utf8');
   // Do not ship the upstream analytics loader inside the authenticated admin
   // origin. It is unrelated to VanBlog and cannot be safely allowlisted.
   html = html.replace(
@@ -62,35 +73,37 @@ const hardenMindMapScriptsForCsp = () => {
 
   const scriptDir = path.join(mindMapDistDir, 'js');
   mkdirSync(scriptDir, { recursive: true });
-  let inlineIndex = 0;
-  html = html.replace(
-    /<script([^>]*)>([\s\S]*?)<\/script>/gi,
-    (fullMatch, attributes, source) => {
-      if (/\bsrc\s*=/i.test(attributes) || !source.trim()) {
-        return fullMatch;
-      }
-      const fileName = `vanblog-inline-${inlineIndex++}.js`;
-      writeFileSync(path.join(scriptDir, fileName), `${source.trim()}\n`, {
-        mode: 0o644,
-      });
-      return `<script${attributes} src="dist/js/${fileName}"></script>`;
-    },
-  );
-  writeFileSync(mindMapIndexPath, html);
+  html = html.replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi, (fullMatch, attributes, source) => {
+    if (/\bsrc\s*=/i.test(attributes) || !source.trim()) {
+      return fullMatch;
+    }
+    const sourceText = `${source.trim()}\n`;
+    const digest = createHash('sha256').update(sourceText).digest('hex').slice(0, 16);
+    const fileName = `vanblog-inline-${digest}.js`;
+    writeFileSync(path.join(scriptDir, fileName), sourceText, {
+      mode: 0o644,
+    });
+    return `<script${attributes} src="dist/js/${fileName}"></script>`;
+  });
+  writeFileSync(indexPath, html);
 };
 
-const syncMindMapAssetsToAdmin = () => {
-  if (!existsSync(mindMapDistDir) || !existsSync(mindMapIndexPath)) {
+const syncMindMapAssetsToAdmin = (indexPath) => {
+  if (!existsSync(mindMapDistDir) || !existsSync(indexPath)) {
     throw new Error('Mindmap build output is missing after build step');
   }
 
   rmSync(adminMindMapDir, { recursive: true, force: true });
   mkdirSync(adminMindMapDir, { recursive: true });
   cpSync(mindMapDistDir, path.join(adminMindMapDir, 'dist'), { recursive: true });
-  cpSync(mindMapIndexPath, path.join(adminMindMapDir, 'index.html'));
+  cpSync(indexPath, path.join(adminMindMapDir, 'index.html'));
 };
 
-buildMindMapAssets();
-hardenMindMapScriptsForCsp();
-syncMindMapAssetsToAdmin();
+const { buildIndexDir, buildIndexPath } = buildMindMapAssets();
+try {
+  hardenMindMapScriptsForCsp(buildIndexPath);
+  syncMindMapAssetsToAdmin(buildIndexPath);
+} finally {
+  rmSync(buildIndexDir, { recursive: true, force: true });
+}
 console.log('[build-mindmap-assets] synced mindmap assets into packages/admin/dist/mindmap');

@@ -253,6 +253,45 @@ test('all-in-one runtime uses localhost fan-out and no AI terminal flags', () =>
   assert.match(allInOneHealthcheck, /http:\/\/127\.0\.0\.1:3002\/admin\//);
 });
 
+test('all-in-one image keeps dependency installation ahead of source copies', () => {
+  const installIndex = allInOneDockerfile.indexOf('pnpm install --frozen-lockfile');
+  const sourceCopyIndex = allInOneDockerfile.indexOf('COPY . ./');
+  const buildIndex = allInOneDockerfile.indexOf('pnpm --filter @vanblog/server build');
+
+  assert.ok(installIndex >= 0, 'all-in-one image should install frozen dependencies');
+  assert.ok(sourceCopyIndex > installIndex, 'source files should be copied after dependency install');
+  assert.ok(buildIndex > sourceCopyIndex, 'application builds should run after the source copy');
+
+  const dependencySection = allInOneDockerfile.slice(0, installIndex);
+  for (const manifest of [
+    'package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json',
+    'patches ./patches',
+    'packages/server/package.json ./packages/server/',
+    'packages/website/package.json ./packages/website/',
+    'packages/admin/package.json ./packages/admin/',
+    'packages/waline/package.json ./packages/waline/',
+    'packages/cli/package.json ./packages/cli/',
+  ]) {
+    assert.match(
+      dependencySection,
+      new RegExp(`COPY ${manifest.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+      `${manifest} should be copied before dependency installation`,
+    );
+  }
+
+  assert.doesNotMatch(
+    dependencySection,
+    /COPY \. \.\//,
+    'application source should not invalidate the dependency layer',
+  );
+  assert.match(allInOneDockerfile, /FROM dependencies AS source\s+COPY \. \.\//);
+  assert.match(allInOneDockerfile, /FROM source AS builder/);
+  assert.match(
+    allInOneDockerfile,
+    /RUN --mount=type=cache,id=pnpm-store,target=\/root\/\.local\/share\/pnpm\/store\s+\\\s+pnpm install --frozen-lockfile/,
+  );
+});
+
 test('docker compose wires cross-container control endpoints', () => {
   assert.match(compose, /VANBLOG_CADDY_API_URL:\s+http:\/\/caddy:2019/);
   assert.match(compose, /VANBLOG_WEBSITE_CONTROL_URL:\s+http:\/\/website:3011/);

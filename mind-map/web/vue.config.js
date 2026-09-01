@@ -1,6 +1,5 @@
 const path = require('path')
 const isDev = process.env.NODE_ENV === 'development'
-const isLibrary = process.env.NODE_ENV === 'library'
 
 const WebpackDynamicPublicPathPlugin = require('webpack-dynamic-public-path')
 
@@ -9,7 +8,7 @@ module.exports = {
   outputDir: '../dist',
   lintOnSave: false,
   productionSourceMap: false,
-  filenameHashing: false,
+  filenameHashing: true,
   transpileDependencies: ['yjs', 'lib0', 'quill'],
   chainWebpack: config => {
     // 移除 preload 插件
@@ -23,13 +22,6 @@ module.exports = {
         .use(WebpackDynamicPublicPathPlugin, [
           { externalPublicPath: 'window.externalPublicPath' }
         ])
-    }
-    // 给插入html页面内的js和css添加hash参数
-    if (!isLibrary) {
-      config.plugin('html').tap(args => {
-        args[0].hash = true
-        return args
-      })
     }
   },
   configureWebpack: {

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:22.22.2-alpine AS builder
+FROM node:22.22.2-alpine AS dependencies
 ENV NODE_OPTIONS="--max_old_space_size=7168"
 ENV CI=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -20,10 +20,22 @@ RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALP
     && pnpm config set fetch-retries 20 -g \
     && pnpm config set fetch-timeout 600000 -g
 
-COPY . ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY patches ./patches
+COPY packages/server/package.json ./packages/server/
+COPY packages/website/package.json ./packages/website/
+COPY packages/admin/package.json ./packages/admin/
+COPY packages/waline/package.json ./packages/waline/
+COPY packages/cli/package.json ./packages/cli/
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile \
-    && pnpm --filter @vanblog/server build \
+    pnpm install --frozen-lockfile
+
+FROM dependencies AS source
+COPY . ./
+
+FROM source AS builder
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm --filter @vanblog/server build \
     && pnpm build:website \
     && pnpm build:admin \
     && pnpm deploy --legacy --filter @vanblog/server --prod /prod/server \

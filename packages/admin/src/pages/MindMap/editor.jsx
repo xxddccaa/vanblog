@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PageContainer } from '@ant-design/pro-layout';
 import { Card, Button, Space, message, Spin, Input, Modal } from 'antd';
 import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
@@ -26,9 +26,6 @@ export default function MindMapEditor() {
   const mindMapContentRef = useRef(null); // 使用 ref 存储思维导图内容
   const saveHandlerRef = useRef(null); // 用于在 iframe 中引用保存函数
 
-  // 使用稳定的缓存破坏参数，只在组件挂载时生成一次
-  const iframeCacheBuster = useMemo(() => Date.now(), []);
-  
   // 从URL获取ID
   const getMindMapId = () => {
     const params = new URLSearchParams(location.search);
@@ -508,7 +505,7 @@ export default function MindMapEditor() {
             <iframe
               key={currentMindMapId}  // 添加 key，当 ID 变化时强制重建 iframe
               ref={iframeRef}
-              src={`/admin/mindmap/index.html?v=${iframeCacheBuster}`}  // 使用稳定的缓存破坏参数
+              src="/admin/mindmap/index.html"
               style={{
                 width: '100%',
                 height: '100%',
