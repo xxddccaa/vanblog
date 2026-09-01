@@ -36,6 +36,9 @@ Options:
   --latest-only          Alias of sync-latest mode.
   --help                 Show this message.
 
+Environment passthrough:
+  IMAGE_REPO, PLATFORMS, ALPINE_MIRROR_HOST, CLEAR_BUILD_PROXIES
+
 Validation strategy:
   The script verifies that the immutable tag, version alias, and latest alias all resolve to
   an image whose labels match the expected release version and image id.

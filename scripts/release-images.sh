@@ -13,6 +13,7 @@ RUN_BUILDS=true
 PLATFORMS="${PLATFORMS:-linux/amd64}"
 INSTALL_ALIYUNPAN="${INSTALL_ALIYUNPAN:-false}"
 ALPINE_MIRROR_HOST="${ALPINE_MIRROR_HOST:-}"
+CLEAR_BUILD_PROXIES="${CLEAR_BUILD_PROXIES:-false}"
 SERVICES=(caddy server website admin waline)
 
 usage() {
@@ -136,6 +137,17 @@ build_service() {
     --build-arg "VANBLOG_IMAGE_ID=${IMAGE_ID}"
   )
 
+  if [[ "$CLEAR_BUILD_PROXIES" == "true" ]]; then
+    args+=(
+      --build-arg "HTTP_PROXY="
+      --build-arg "HTTPS_PROXY="
+      --build-arg "ALL_PROXY="
+      --build-arg "http_proxy="
+      --build-arg "https_proxy="
+      --build-arg "all_proxy="
+    )
+  fi
+
   if [[ -n "$ALPINE_MIRROR_HOST" && "$service" =~ ^(server|website|waline)$ ]]; then
     args+=(--build-arg "ALPINE_MIRROR_HOST=${ALPINE_MIRROR_HOST}")
   fi
@@ -179,6 +191,7 @@ echo "Push enabled       : ${PUSH}"
 if [[ -n "$ALPINE_MIRROR_HOST" ]]; then
   echo "Alpine mirror host : ${ALPINE_MIRROR_HOST}"
 fi
+echo "Clear build proxies : ${CLEAR_BUILD_PROXIES}"
 
 for service in "${SERVICES[@]}"; do
   build_service "$service"

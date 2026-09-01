@@ -12,6 +12,7 @@ RUN_TESTS=true
 RUN_BUILDS=true
 PLATFORMS="${PLATFORMS:-linux/amd64}"
 ALPINE_MIRROR_HOST="${ALPINE_MIRROR_HOST:-}"
+CLEAR_BUILD_PROXIES="${CLEAR_BUILD_PROXIES:-false}"
 IMAGE_NAME="vanblog-all-in-one"
 
 usage() {
@@ -131,6 +132,7 @@ echo "Push enabled       : ${PUSH}"
 if [[ -n "$ALPINE_MIRROR_HOST" ]]; then
   echo "Alpine mirror host : ${ALPINE_MIRROR_HOST}"
 fi
+echo "Clear build proxies : ${CLEAR_BUILD_PROXIES}"
 
 echo
 echo ">>> Building all-in-one image"
@@ -143,6 +145,17 @@ build_args=(
   --build-arg "VANBLOG_IMAGE_VERSION=${VERSION}"
   --build-arg "VANBLOG_IMAGE_ID=${IMAGE_ID}"
 )
+
+if [[ "$CLEAR_BUILD_PROXIES" == "true" ]]; then
+  build_args+=(
+    --build-arg "HTTP_PROXY="
+    --build-arg "HTTPS_PROXY="
+    --build-arg "ALL_PROXY="
+    --build-arg "http_proxy="
+    --build-arg "https_proxy="
+    --build-arg "all_proxy="
+  )
+fi
 
 if [[ -n "$ALPINE_MIRROR_HOST" ]]; then
   build_args+=(--build-arg "ALPINE_MIRROR_HOST=${ALPINE_MIRROR_HOST}")

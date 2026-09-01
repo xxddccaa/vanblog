@@ -189,3 +189,19 @@ kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id>
 kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z
 kevinchina/deeplearning:vanblog-all-in-one-latest
 ```
+
+## 7. Docker 代理与构建容器
+
+如果本机 Docker CLI 需要通过宿主机代理访问 Docker Hub，但 `~/.docker/config.json`
+中的 `127.0.0.1` 代理被自动传进 BuildKit 构建容器，容器内的 `pnpm` / `apk`
+会把这个地址解释成容器自身并连接失败。
+
+这种机器上发布时保留 Docker CLI 的代理与登录配置，同时设置：
+
+```bash
+CLEAR_BUILD_PROXIES=true pnpm release:publish -- --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+CLEAR_BUILD_PROXIES=true pnpm release:all-in-one:publish -- --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+```
+
+该变量只清空镜像构建阶段的标准代理 build args，不修改宿主机 Docker daemon、
+Docker Hub 登录凭据或全局代理配置。

@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
+import os from 'node:os';
+import nodePath from 'node:path';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 const exists = (path) => fs.existsSync(path);
@@ -28,7 +31,6 @@ const walineEntrypoint = read('docker/waline/entrypoint.sh');
 const allInOneDockerfile = read('docker/all-in-one.Dockerfile');
 const allInOneEntrypoint = read('docker/all-in-one/entrypoint.sh');
 const allInOneHealthcheck = read('docker/all-in-one/healthcheck.sh');
-
 const readmeDoc = read('README.md');
 const deployDoc = read('DEPLOY.md');
 const releaseDoc = read('RELEASE.md');
@@ -60,6 +62,32 @@ const adminMarkdownTheme = read('packages/admin/src/utils/markdownTheme.ts');
 
 const require = createRequire(import.meta.url);
 const nextConfig = require('../packages/website/next.config.js');
+const proxyBuildArgs = [
+  'HTTP_PROXY=',
+  'HTTPS_PROXY=',
+  'ALL_PROXY=',
+  'http_proxy=',
+  'https_proxy=',
+  'all_proxy=',
+];
+
+const writeExecutable = (file, content) => {
+  fs.writeFileSync(file, content, { mode: 0o755 });
+};
+
+const runReleaseScript = (script, args, env) => {
+  const result = spawnSync('/bin/bash', [script, ...args], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+  });
+
+  assert.equal(
+    result.status,
+    0,
+    `${script} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+  );
+};
 
 test('host, CI, packages, and Docker builds stay on Node 22', () => {
   assert.equal(read('.nvmrc').trim(), '22.22.2');
@@ -290,6 +318,152 @@ test('all-in-one image keeps dependency installation ahead of source copies', ()
     allInOneDockerfile,
     /RUN --mount=type=cache,id=pnpm-store,target=\/root\/\.local\/share\/pnpm\/store\s+\\\s+pnpm install --frozen-lockfile/,
   );
+});
+
+test('release builds only clear proxy build args when explicitly enabled', () => {
+  const tempDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'vanblog-release-build-'));
+  const dockerLog = nodePath.join(tempDir, 'docker.log');
+  writeExecutable(
+    nodePath.join(tempDir, 'docker'),
+    `#!/bin/bash
+printf '%s' "$1" >> "$DOCKER_LOG"
+for arg in "\${@:2}"; do
+  printf '\\t%s' "$arg" >> "$DOCKER_LOG"
+done
+printf '\\n' >> "$DOCKER_LOG"
+`,
+  );
+
+  const variants = [
+    {
+      script: 'scripts/release-images.sh',
+      clear: true,
+      push: false,
+      expectedCalls: 5,
+      commandPrefix: 'build\t',
+    },
+    {
+      script: 'scripts/release-images.sh',
+      clear: false,
+      push: true,
+      expectedCalls: 5,
+      commandPrefix: 'buildx\tbuild\t',
+    },
+    {
+      script: 'scripts/release-all-in-one.sh',
+      clear: false,
+      push: false,
+      expectedCalls: 1,
+      commandPrefix: 'build\t',
+    },
+    {
+      script: 'scripts/release-all-in-one.sh',
+      clear: true,
+      push: true,
+      expectedCalls: 1,
+      commandPrefix: 'buildx\tbuild\t',
+    },
+  ];
+
+  try {
+    for (const variant of variants) {
+      fs.writeFileSync(dockerLog, '');
+      runReleaseScript(
+        variant.script,
+        [
+          '--version',
+          'v9.9.9',
+          '--image-id',
+          'deadbeef',
+          '--repo',
+          'example/vanblog',
+          '--skip-tests',
+          '--skip-builds',
+          ...(variant.push ? ['--push'] : []),
+        ],
+        {
+          PATH: `${tempDir}:${process.env.PATH}`,
+          DOCKER_LOG: dockerLog,
+          CLEAR_BUILD_PROXIES: String(variant.clear),
+        },
+      );
+
+      const calls = read(dockerLog).trim().split('\n');
+      assert.equal(calls.length, variant.expectedCalls);
+      for (const call of calls) {
+        assert.ok(call.startsWith(variant.commandPrefix), call);
+        for (const proxyArg of proxyBuildArgs) {
+          const expected = `\t--build-arg\t${proxyArg}`;
+          if (variant.clear) {
+            assert.ok(call.includes(expected), `${call} should include ${proxyArg}`);
+          } else {
+            assert.ok(!call.includes(expected), `${call} should not include ${proxyArg}`);
+          }
+        }
+      }
+    }
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('publish wrappers preserve the proxy-clearing environment for build scripts', () => {
+  const tempDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'vanblog-release-publish-'));
+  const wrapperLog = nodePath.join(tempDir, 'wrapper.log');
+  writeExecutable(
+    nodePath.join(tempDir, 'bash'),
+    `#!/bin/bash
+printf '%s\\t%s\\n' "\${CLEAR_BUILD_PROXIES-unset}" "$*" >> "$WRAPPER_LOG"
+`,
+  );
+  writeExecutable(
+    nodePath.join(tempDir, 'docker'),
+    `#!/bin/bash
+if [[ "$1" == "image" && "$2" == "inspect" ]]; then
+  if [[ "$*" == *org.opencontainers.image.version* ]]; then
+    printf 'v9.9.9\\n'
+  elif [[ "$*" == *io.vanblog.image.id* ]]; then
+    printf 'deadbeef\\n'
+  fi
+fi
+`,
+  );
+
+  try {
+    for (const [wrapper, child] of [
+      ['scripts/release-publish.sh', 'scripts/release-images.sh'],
+      ['scripts/release-all-in-one-publish.sh', 'scripts/release-all-in-one.sh'],
+    ]) {
+      fs.writeFileSync(wrapperLog, '');
+      runReleaseScript(
+        wrapper,
+        [
+          '--version',
+          'v9.9.9',
+          '--image-id',
+          'deadbeef',
+          '--repo',
+          'example/vanblog',
+          '--skip-tests',
+          '--skip-builds',
+        ],
+        {
+          PATH: `${tempDir}:${process.env.PATH}`,
+          WRAPPER_LOG: wrapperLog,
+          CLEAR_BUILD_PROXIES: 'true',
+        },
+      );
+
+      const invocation = read(wrapperLog).trim();
+      assert.match(invocation, /^true\t/);
+      assert.ok(invocation.includes(child), invocation);
+      assert.ok(invocation.includes('--push'), invocation);
+    }
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+
+  assert.match(releaseDoc, /CLEAR_BUILD_PROXIES=true/);
 });
 
 test('docker compose wires cross-container control endpoints', () => {

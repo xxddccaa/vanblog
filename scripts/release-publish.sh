@@ -38,7 +38,7 @@ Options:
   --help                 Show this message.
 
 Environment passthrough:
-  IMAGE_REPO, PLATFORMS, INSTALL_ALIYUNPAN, ALPINE_MIRROR_HOST
+  IMAGE_REPO, PLATFORMS, INSTALL_ALIYUNPAN, ALPINE_MIRROR_HOST, CLEAR_BUILD_PROXIES
 
 Validation strategy:
   For each service, the script verifies that the immutable tag, version alias, and latest alias

@@ -14,6 +14,7 @@
 * **auth:** 登录失败限制正确使用自定义次数、窗口和 TTL
 * **storage:** 修复兼容查询不安全 OR 回退的 PostgreSQL 参数错位
 * **admin:** 修复文章查询中特殊字符污染 URL 参数
+* **release:** Docker Hub 继续使用宿主机代理时可清空构建容器代理，避免 loopback 代理导致包管理器断连
 
 ### [1.8.4](https://github.com/xxddccaa/vanblog/compare/v1.8.3...v1.8.4) (2026-08-31)
 
