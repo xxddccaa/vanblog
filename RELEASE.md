@@ -199,9 +199,34 @@ kevinchina/deeplearning:vanblog-all-in-one-latest
 这种机器上发布时保留 Docker CLI 的代理与登录配置，同时设置：
 
 ```bash
-CLEAR_BUILD_PROXIES=true pnpm release:publish -- --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
-CLEAR_BUILD_PROXIES=true pnpm release:all-in-one:publish -- --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+CLEAR_BUILD_PROXIES=true pnpm release:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+CLEAR_BUILD_PROXIES=true pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
 ```
 
 该变量只清空镜像构建阶段的标准代理 build args，不修改宿主机 Docker daemon、
 Docker Hub 登录凭据或全局代理配置。
+
+### 7.1 Alpine 源选择
+
+`2026-09-01` 发布 `v1.8.5` 时，all-in-one 构建使用官方
+`dl-cdn.alpinelinux.org`，运行时 `apk add` 在安装 Caddy 后持续超过 15 分钟
+没有继续推进。确认构建容器仍连接官方 CDN、并排除 BuildKit 死锁后，中止该次
+构建并改用 `mirrors.aliyun.com`；同一运行时系统包层约 48 秒完成，随后镜像
+成功发布并通过标签校验。
+
+在这台发布机器上，正式发布建议直接同时设置 Alpine 镜像源和构建代理开关：
+
+```bash
+ALPINE_MIRROR_HOST=mirrors.aliyun.com \
+CLEAR_BUILD_PROXIES=true \
+pnpm release:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+
+ALPINE_MIRROR_HOST=mirrors.aliyun.com \
+CLEAR_BUILD_PROXIES=true \
+pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+```
+
+`ALPINE_MIRROR_HOST` 会传给使用 Alpine 包管理器的拆分镜像和 all-in-one 镜像，
+仅替换镜像构建阶段的 Alpine 仓库主机，不影响 Docker Hub 推送目标。若发布机器
+不在中国大陆或该镜像不可达，应改成当前网络可稳定访问的 Alpine 镜像；不要为了
+恢复 `apk` 下载而重新向构建容器注入宿主机 `127.0.0.1` 代理。

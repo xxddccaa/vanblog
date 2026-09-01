@@ -464,6 +464,10 @@ fi
   }
 
   assert.match(releaseDoc, /CLEAR_BUILD_PROXIES=true/);
+  assert.match(releaseDoc, /ALPINE_MIRROR_HOST=mirrors\.aliyun\.com/);
+  assert.match(releaseDoc, /pnpm release:publish --version vX\.Y\.Z/);
+  assert.match(releaseDoc, /pnpm release:all-in-one:publish --version vX\.Y\.Z/);
+  assert.doesNotMatch(releaseDoc, /pnpm release:[^\n]+ -- --version/);
 });
 
 test('docker compose wires cross-container control endpoints', () => {
