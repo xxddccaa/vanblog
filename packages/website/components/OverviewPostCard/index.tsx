@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { encodeQuerystring } from '../../utils/encode';
 import { getTarget } from '../Link/tools';
 import TopPinIcon from '../TopPinIcon';
-import Markdown from '../Markdown';
+import RenderedMarkdown from '../RenderedMarkdown';
+import { renderMarkdownToHtml } from '../../utils/renderMarkdown';
 
 export default function OverviewPostCard(props: {
   id: number | string;
@@ -24,6 +25,9 @@ export default function OverviewPostCard(props: {
 }) {
   // 服务端已把正文截断成“保留 Markdown 的预览片段”，这里直接按 Markdown 渲染。
   const summary = props.private ? '' : (props.content || '').trim();
+  const renderedSummary = summary
+    ? renderMarkdownToHtml(summary, props.codeMaxLines)
+    : '';
   const categories =
     Array.isArray(props.categories) && props.categories.length
       ? props.categories
@@ -81,7 +85,11 @@ export default function OverviewPostCard(props: {
               该文章已加密，点击 `阅读全文` 并输入密码后方可查看。
             </p>
           ) : summary ? (
-            <Markdown content={summary} codeMaxLines={props.codeMaxLines} />
+            <RenderedMarkdown
+              html={renderedSummary}
+              content={summary}
+              codeMaxLines={props.codeMaxLines}
+            />
           ) : null}
         </div>
 

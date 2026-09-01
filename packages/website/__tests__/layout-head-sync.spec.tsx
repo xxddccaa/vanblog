@@ -8,6 +8,7 @@ import {
   withMarkdownThemeAssetVersion,
 } from "../utils/markdownTheme";
 import { syncMarkdownThemeResourceState } from "../components/Layout/MarkdownThemeResources";
+import { ThemeContext } from "../utils/themeContext";
 
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -26,7 +27,21 @@ vi.mock("../components/BackToTop", () => ({
 }));
 
 vi.mock("../components/NavBar", () => ({
-  default: () => React.createElement("div", null, "nav-bar"),
+  default: ({
+    isOpen,
+    setOpen,
+  }: {
+    isOpen: boolean;
+    setOpen: (open: boolean) => void;
+  }) =>
+    React.createElement(
+      "button",
+      {
+        "data-testid": "toggle-nav",
+        onClick: () => setOpen(!isOpen),
+      },
+      "nav-bar",
+    ),
 }));
 
 vi.mock("../components/MusicPlayer", () => ({
@@ -118,6 +133,9 @@ describe("layout head sync", () => {
     document.body.innerHTML = "";
     document.documentElement.style.removeProperty("--bg-image");
     document.documentElement.style.removeProperty("--bg-image-dark");
+    document.documentElement.style.removeProperty("--vb-front-card-bg-light");
+    document.documentElement.style.removeProperty("--vb-front-card-bg-dark");
+    document.documentElement.style.removeProperty("--vb-front-page-bg-dark");
   });
 
   it("syncs the favicon, title, description, and background CSS variables after hydration", async () => {
@@ -125,6 +143,22 @@ describe("layout head sync", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const root = createRoot(container);
+    document.documentElement.style.setProperty(
+      "--vb-front-card-bg-light",
+      "#f5fbff",
+    );
+    document.documentElement.style.setProperty(
+      "--vb-front-card-bg-dark",
+      "#15314d",
+    );
+    document.documentElement.style.setProperty(
+      "--vb-front-page-bg-dark",
+      "#13273c",
+    );
+    const setPropertySpy = vi.spyOn(
+      document.documentElement.style,
+      "setProperty",
+    );
 
     await act(async () => {
       root.render(
@@ -241,23 +275,16 @@ describe("layout head sync", () => {
       document.querySelector("[data-vb-markdown-light-theme-id='light'][data-vb-markdown-dark-theme-id='dark']"),
     ).toBeTruthy();
     expect(
-      (
-        document.querySelector(
-          "[data-vb-front-surface-scope='true']",
-        ) as HTMLElement | null
-      )?.style.getPropertyValue("--vb-front-card-bg-light"),
-    ).toBe("#f5fbff");
-    expect(
-      (
-        document.querySelector(
-          "[data-vb-front-surface-scope='true']",
-        ) as HTMLElement | null
-      )?.style.getPropertyValue("--vb-front-card-bg-dark"),
-    ).toBe("#15314d");
+      document.querySelector("[data-vb-front-surface-scope='true']"),
+    ).toBeNull();
     expect(document.documentElement.style.getPropertyValue("--vb-front-page-bg-dark")).toBe(
       "#13273c",
     );
-    expect(document.documentElement.style.backgroundColor).toBe("rgb(19, 39, 60)");
+    expect(
+      setPropertySpy.mock.calls.filter(([name]) =>
+        String(name).startsWith("--vb-front-"),
+      ),
+    ).toHaveLength(0);
 
     await act(async () => {
       root.unmount();
@@ -269,6 +296,50 @@ describe("layout head sync", () => {
         ),
       ).every((link) => link.disabled),
     ).toBe(true);
+  });
+
+  it("does not broadcast an unchanged theme when menu state changes", async () => {
+    const { default: Layout } = await import("../components/Layout");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    let themeConsumerRenders = 0;
+    const ThemeConsumer = React.memo(() => {
+      React.useContext(ThemeContext);
+      themeConsumerRenders += 1;
+      return React.createElement("div", null, "theme-consumer");
+    });
+    const child = React.createElement(ThemeConsumer);
+
+    await act(async () => {
+      root.render(
+        React.createElement(
+          Layout,
+          {
+            title: "Home",
+            sideBar: null,
+            option: createLayoutOption(),
+          } as any,
+          child,
+        ),
+      );
+    });
+
+    expect(themeConsumerRenders).toBe(1);
+
+    await act(async () => {
+      (
+        container.querySelector(
+          "[data-testid='toggle-nav']",
+        ) as HTMLButtonElement
+      ).click();
+    });
+
+    expect(themeConsumerRenders).toBe(1);
+
+    await act(async () => {
+      root.unmount();
+    });
   });
 
   it("does not inject markdown theme stylesheets for non-rich pages", async () => {

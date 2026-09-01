@@ -10,8 +10,9 @@ export const dynamicParams = true;
 export async function generateStaticParams() {
   const data = await getArticlesByOption({
     page: 1,
-    pageSize: -1,
+    pageSize: 100,
     toListView: true,
+    sortCreatedAt: 'desc',
   });
   return data.articles.map((article) => ({ id: String(getArticlePath(article)) }));
 }

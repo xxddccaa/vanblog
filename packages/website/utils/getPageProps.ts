@@ -22,7 +22,7 @@ import {
   getTagArchiveSummary,
   getTimelineSummary,
 } from "../api/getArticles";
-import { LinkPageProps } from "../page-modules/link";
+import type { LinkPageDataProps } from "../page-components/link";
 import { getServerBaseUrl, getServerFetchOptions } from "./loadConfig";
 import { ArchivePageProps } from "../page-modules/archive";
 import { ArchiveYearPageProps } from "../page-modules/archive/[year]";
@@ -85,8 +85,10 @@ export async function getIndexPageProps(): Promise<IndexPageProps> {
 }
 
 export async function getArchivePageProps(): Promise<ArchivePageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summary = await getArchiveSummary();
+  const [{ layoutProps, authorCardProps }, summary] = await Promise.all([
+    getCommonLayoutPayload(),
+    getArchiveSummary(),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -95,8 +97,10 @@ export async function getArchivePageProps(): Promise<ArchivePageProps> {
 }
 
 export async function getArchiveYearPageProps(year: string): Promise<ArchiveYearPageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summary = await getArchiveSummary();
+  const [{ layoutProps, authorCardProps }, summary] = await Promise.all([
+    getCommonLayoutPayload(),
+    getArchiveSummary(),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -109,8 +113,10 @@ export async function getArchiveMonthPageProps(
   year: string,
   month: string
 ): Promise<ArchiveMonthRouteProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const articles = await getArchiveMonthArticles(year, month);
+  const [{ layoutProps, authorCardProps }, articles] = await Promise.all([
+    getCommonLayoutPayload(),
+    getArchiveMonthArticles(year, month),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -121,8 +127,10 @@ export async function getArchiveMonthPageProps(
 }
 
 export async function getTimeLinePageProps(): Promise<TimeLinePageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summaries = await getTimelineSummary();
+  const [{ layoutProps, authorCardProps }, summaries] = await Promise.all([
+    getCommonLayoutPayload(),
+    getTimelineSummary(),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -140,8 +148,10 @@ export async function getTagPageProps(): Promise<TagPageProps> {
 }
 
 export async function getCategoryPageProps(): Promise<CategoryPageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summaries = await getCategorySummary();
+  const [{ layoutProps, authorCardProps }, summaries] = await Promise.all([
+    getCommonLayoutPayload(),
+    getCategorySummary(),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -149,12 +159,13 @@ export async function getCategoryPageProps(): Promise<CategoryPageProps> {
   };
 }
 
-export async function getLinkPageProps(): Promise<LinkPageProps> {
+export async function getLinkPageProps(): Promise<LinkPageDataProps> {
   const { data, layoutProps, authorCardProps } = await getCommonLayoutPayload();
   return {
     layoutProps,
     authorCardProps,
     links: data.meta.links,
+    siteUrl: data.meta.siteInfo.baseUrl || "",
   };
 }
 
@@ -192,7 +203,10 @@ export async function getAboutPageProps(): Promise<AboutPageProps> {
 }
 
 export async function getPostPagesProps(curId: string): Promise<PostPagesProps> {
-  const { data, layoutProps } = await getCommonLayoutPayload();
+  const [{ data, layoutProps }, currArticleProps] = await Promise.all([
+    getCommonLayoutPayload(),
+    getArticleByIdOrPathname(curId),
+  ]);
   const payProps = {
     pay: [data.meta.siteInfo?.payAliPay || "", data.meta.siteInfo?.payWechat || ""],
     payDark: [
@@ -200,7 +214,6 @@ export async function getPostPagesProps(curId: string): Promise<PostPagesProps> 
       data.meta.siteInfo?.payWechatDark || "",
     ],
   };
-  const currArticleProps = await getArticleByIdOrPathname(curId);
   const rawArticle = currArticleProps.article;
   const hasValidArticle = Boolean(rawArticle?.id && rawArticle?.title);
   const article = hasValidArticle ? toStableArticleShell(rawArticle) : null;
@@ -217,8 +230,10 @@ export async function getPostPagesProps(curId: string): Promise<PostPagesProps> 
 export async function getCategoryArchivePageProps(
   category: string
 ): Promise<CategoryArchivePageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summary = await getCategoryArchiveSummary(category);
+  const [{ layoutProps, authorCardProps }, summary] = await Promise.all([
+    getCommonLayoutPayload(),
+    getCategoryArchiveSummary(category),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -231,8 +246,10 @@ export async function getCategoryArchiveYearPageProps(
   category: string,
   year: string
 ): Promise<CategoryArchiveYearPageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summary = await getCategoryArchiveSummary(category);
+  const [{ layoutProps, authorCardProps }, summary] = await Promise.all([
+    getCommonLayoutPayload(),
+    getCategoryArchiveSummary(category),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -247,8 +264,10 @@ export async function getCategoryArchiveMonthPageProps(
   year: string,
   month: string
 ): Promise<CategoryArchiveMonthPageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const articles = await getCategoryArchiveMonthArticles(category, year, month);
+  const [{ layoutProps, authorCardProps }, articles] = await Promise.all([
+    getCommonLayoutPayload(),
+    getCategoryArchiveMonthArticles(category, year, month),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -260,8 +279,10 @@ export async function getCategoryArchiveMonthPageProps(
 }
 
 export async function getTagArchivePageProps(tag: string): Promise<TagArchivePageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summary = await getTagArchiveSummary(tag);
+  const [{ layoutProps, authorCardProps }, summary] = await Promise.all([
+    getCommonLayoutPayload(),
+    getTagArchiveSummary(tag),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -274,8 +295,10 @@ export async function getTagArchiveYearPageProps(
   tag: string,
   year: string
 ): Promise<TagArchiveYearPageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const summary = await getTagArchiveSummary(tag);
+  const [{ layoutProps, authorCardProps }, summary] = await Promise.all([
+    getCommonLayoutPayload(),
+    getTagArchiveSummary(tag),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -290,8 +313,10 @@ export async function getTagArchiveMonthPageProps(
   year: string,
   month: string
 ): Promise<TagArchiveMonthPageProps> {
-  const { layoutProps, authorCardProps } = await getCommonLayoutPayload();
-  const articles = await getTagArchiveMonthArticles(tag, year, month);
+  const [{ layoutProps, authorCardProps }, articles] = await Promise.all([
+    getCommonLayoutPayload(),
+    getTagArchiveMonthArticles(tag, year, month),
+  ]);
   return {
     layoutProps,
     authorCardProps,
@@ -304,20 +329,25 @@ export async function getTagArchiveMonthPageProps(
 
 export async function getMomentPageProps(): Promise<MomentPageProps> {
   try {
-    const data = await getPublicMeta();
+    const [data, momentData] = await Promise.all([
+      getPublicMeta(),
+      getMoments({
+        page: 1,
+        pageSize: 10,
+        sortCreatedAt: "desc",
+      }).catch((error) => {
+        console.error("Failed to fetch moments during build:", error);
+        return null;
+      }),
+    ]);
     const layoutProps = getLayoutProps(data);
     const authorCardProps = getAuthorCardShellProps(data);
-    const momentData = await getMoments({
-      page: 1,
-      pageSize: 10,
-      sortCreatedAt: "desc",
-    });
 
     return {
       ...layoutProps,
       authorCardProps,
-      initialMoments: momentData.moments || [],
-      initialTotal: momentData.total || 0,
+      initialMoments: momentData?.moments || [],
+      initialTotal: momentData?.total || 0,
     };
   } catch (error) {
     console.error("Error in getMomentPageProps:", error);
@@ -343,20 +373,22 @@ export async function getMomentPageProps(): Promise<MomentPageProps> {
 }
 
 export async function getNavPageProps(): Promise<NavPageProps> {
-  const data = await getPublicMeta();
+  const [data, initialNavData] = await Promise.all([
+    getPublicMeta(),
+    fetch(`${getServerBaseUrl()}api/public/nav/data`, getServerFetchOptions())
+      .then(async (navResponse) => {
+        const navResult = await navResponse.json();
+        return navResult.statusCode === 200
+          ? navResult.data
+          : { categories: [], tools: [] };
+      })
+      .catch((error) => {
+        console.error("Failed to fetch nav data during build:", error);
+        return { categories: [], tools: [] };
+      }),
+  ]);
   const layoutProps = getLayoutProps(data);
   const authorCardProps = getAuthorCardShellProps(data);
-  let initialNavData = { categories: [], tools: [] };
-
-  try {
-    const navResponse = await fetch(`${getServerBaseUrl()}api/public/nav/data`, getServerFetchOptions());
-    const navResult = await navResponse.json();
-    if (navResult.statusCode === 200) {
-      initialNavData = navResult.data;
-    }
-  } catch (error) {
-    console.error("Failed to fetch nav data during build:", error);
-  }
 
   return {
     layoutProps,

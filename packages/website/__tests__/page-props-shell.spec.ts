@@ -60,6 +60,7 @@ describe("page props cache shells", () => {
         siteInfo: {
           homePageSize: 5,
           author: "xxddccaa",
+          baseUrl: "https://blog.example.com",
         },
       },
     });

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -9,17 +10,22 @@ import Layout from '../components/Layout';
 import { LayoutProps } from '../utils/getLayoutProps';
 import { getMoments, createMoment } from '../api/getMoments';
 import AuthorCard from '../components/AuthorCard';
-import Markdown from '../components/Markdown';
+import RenderedMarkdown from '../components/RenderedMarkdown';
 import ImageUpload from '../components/ImageUpload';
+
+const MarkdownClient = dynamic(() => import('../components/Markdown'), {
+  ssr: false,
+});
 
 dayjs.extend(relativeTime);
 dayjs.locale(zhCN);
 
-interface Moment {
+export interface Moment {
   id: number;
   content: string;
   createdAt: string;
   updatedAt: string;
+  initialRenderedHtml?: string;
 }
 
 export interface MomentPageProps extends LayoutProps {
@@ -189,7 +195,14 @@ export default function MomentPage({ initialMoments, initialTotal, authorCardPro
           {moments.map((moment, index) => (
             <div key={moment.id} className="vb-surface-card rounded-lg shadow-md p-6">
               <div className="prose dark:prose-invert max-w-none">
-                <Markdown content={moment.content} />
+                {moment.initialRenderedHtml ? (
+                  <RenderedMarkdown
+                    html={moment.initialRenderedHtml}
+                    content={moment.content}
+                  />
+                ) : (
+                  <MarkdownClient content={moment.content} />
+                )}
               </div>
               <div className="mt-4 flex items-center justify-between text-sm text-gray-500 dark:text-dark-light">
                 <span>{formatTime(moment.createdAt)}</span>

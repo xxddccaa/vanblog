@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import Headroom from "headroom.js";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import ThemeButton from "../ThemeButton";
 import KeyCard from "../KeyCard";
 import { MenuItem } from "../../api/getAllData";
@@ -36,7 +36,7 @@ export default function (props: {
   openArticleLinksInNewWindow: boolean;
 }) {
   const [showSearch, setShowSearch] = useState(false);
-  const [headroom, setHeadroom] = useState<Headroom>();
+  const headroomRef = useRef<Headroom | null>(null);
   const { theme } = useContext(ThemeContext);
   const pathname = usePathname();
 
@@ -73,31 +73,21 @@ export default function (props: {
   }, [theme, props]);
   useEffect(() => {
     const el = document.querySelector("#nav");
-    if (el && !headroom) {
-      const newHeadroom = new Headroom(el);
-      newHeadroom.init();
-      setHeadroom(newHeadroom);
+    if (!el) {
+      return;
     }
+
+    const headroom = new Headroom(el);
+    headroom.init();
+    headroomRef.current = headroom;
+
     return () => {
-      if (headroom) {
-        headroom.destroy();
-        setHeadroom(undefined);
+      headroom.destroy();
+      if (headroomRef.current === headroom) {
+        headroomRef.current = null;
       }
     };
   }, []);
-  
-  // Ensure headroom is properly reinitialized when component updates
-  useEffect(() => {
-    if (headroom) {
-      headroom.destroy();
-      const el = document.querySelector("#nav");
-      if (el) {
-        const newHeadroom = new Headroom(el);
-        newHeadroom.init();
-        setHeadroom(newHeadroom);
-      }
-    }
-  }, [props.isOpen]);
 
   useEffect(() => {
     const onKeyDown = (ev: KeyboardEvent) => {
@@ -143,7 +133,7 @@ export default function (props: {
               onClick={() => {
                 if (!props.isOpen) {
                   // 要打开
-                  headroom?.pin();
+                  headroomRef.current?.pin();
                 }
                 props.setOpen(!props.isOpen);
               }}

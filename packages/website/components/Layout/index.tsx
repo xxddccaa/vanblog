@@ -5,7 +5,13 @@ import dynamic from "next/dynamic";
 import Head from "next/head";
 import BackToTopBtn from "../BackToTop";
 import NavBar from "../NavBar";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import BaiduAnalysis from "../BaiduAnalysis";
 import GaAnalysis from "../gaAnalysis";
 import { LayoutProps } from "../../utils/getLayoutProps";
@@ -18,7 +24,6 @@ import { Toaster } from "react-hot-toast";
 import Footer from "../Footer";
 import LayoutBody from "../LayoutBody";
 import { checkLoginAsync } from "../../utils/auth";
-import { resolveFrontCardSurfaceColors } from "../../utils/frontCardSurface";
 import {
   getMarkdownThemeId,
 } from "../../utils/markdownTheme";
@@ -83,30 +88,13 @@ export default function (props: {
   const [theme, setTheme] = useState<RealThemeType>(getTheme(props.option.defaultTheme));
   const lightThemeId = getMarkdownThemeId(props.option.markdownLightThemeUrl);
   const darkThemeId = getMarkdownThemeId(props.option.markdownDarkThemeUrl);
-  const frontCardSurfaces = resolveFrontCardSurfaceColors({
-    frontCardBackgroundColor: props.option.frontCardBackgroundColor,
-    frontCardBackgroundColorDark: props.option.frontCardBackgroundColorDark,
-  });
-  const frontSurfaceVars = {
-    ["--vb-front-card-bg-light" as string]: frontCardSurfaces.light,
-    ["--vb-front-card-bg-light-soft" as string]: frontCardSurfaces.lightSoft,
-    ["--vb-front-card-bg-light-deep" as string]: frontCardSurfaces.lightDeep,
-    ["--vb-front-card-bg-dark" as string]: frontCardSurfaces.dark,
-    ["--vb-front-card-bg-dark-soft" as string]: frontCardSurfaces.darkSoft,
-    ["--vb-front-card-bg-dark-deep" as string]: frontCardSurfaces.darkDeep,
-    ["--vb-front-page-bg-light" as string]: frontCardSurfaces.lightDeep,
-    ["--vb-front-page-bg-dark" as string]: frontCardSurfaces.darkPage,
-    ["--vb-front-dark-hover" as string]: frontCardSurfaces.darkHover,
-    ["--vb-front-dark-hover-soft" as string]: frontCardSurfaces.darkHoverSoft,
-    ["--vb-front-dark-border" as string]: frontCardSurfaces.darkBorder,
-    ["--vb-front-dark-border-strong" as string]: frontCardSurfaces.darkBorderStrong,
-    ["--vb-front-dark-text" as string]: frontCardSurfaces.darkText,
-    ["--vb-front-dark-text-muted" as string]: frontCardSurfaces.darkTextMuted,
-    ["--vb-front-dark-text-soft" as string]: frontCardSurfaces.darkTextSoft,
-    ["--vb-front-dark-text-strong" as string]: frontCardSurfaces.darkTextStrong,
-    ["--vb-front-dark-text-on-accent" as string]: frontCardSurfaces.darkTextOnAccent,
-    ["--vb-front-dark-fill" as string]: frontCardSurfaces.darkFill,
-  } as React.CSSProperties;
+  const themeContextValue = useMemo(
+    () => ({
+      setTheme,
+      theme,
+    }),
+    [theme],
+  );
   const handleClose = () => {
     console.log("关闭或刷新页面");
     localStorage.removeItem("saidHello");
@@ -203,49 +191,6 @@ export default function (props: {
     props.option.markdownLightThemeUrl,
   ]);
 
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty("--vb-front-card-bg-light", frontCardSurfaces.light);
-    root.style.setProperty("--vb-front-card-bg-light-soft", frontCardSurfaces.lightSoft);
-    root.style.setProperty("--vb-front-card-bg-light-deep", frontCardSurfaces.lightDeep);
-    root.style.setProperty("--vb-front-card-bg-dark", frontCardSurfaces.dark);
-    root.style.setProperty("--vb-front-card-bg-dark-soft", frontCardSurfaces.darkSoft);
-    root.style.setProperty("--vb-front-card-bg-dark-deep", frontCardSurfaces.darkDeep);
-    root.style.setProperty("--vb-front-page-bg-light", frontCardSurfaces.lightDeep);
-    root.style.setProperty("--vb-front-page-bg-dark", frontCardSurfaces.darkPage);
-    root.style.setProperty("--vb-front-dark-hover", frontCardSurfaces.darkHover);
-    root.style.setProperty("--vb-front-dark-hover-soft", frontCardSurfaces.darkHoverSoft);
-    root.style.setProperty("--vb-front-dark-border", frontCardSurfaces.darkBorder);
-    root.style.setProperty("--vb-front-dark-border-strong", frontCardSurfaces.darkBorderStrong);
-    root.style.setProperty("--vb-front-dark-text", frontCardSurfaces.darkText);
-    root.style.setProperty("--vb-front-dark-text-muted", frontCardSurfaces.darkTextMuted);
-    root.style.setProperty("--vb-front-dark-text-soft", frontCardSurfaces.darkTextSoft);
-    root.style.setProperty("--vb-front-dark-text-strong", frontCardSurfaces.darkTextStrong);
-    root.style.setProperty("--vb-front-dark-text-on-accent", frontCardSurfaces.darkTextOnAccent);
-    root.style.setProperty("--vb-front-dark-fill", frontCardSurfaces.darkFill);
-    root.style.backgroundColor =
-      theme === "dark" ? frontCardSurfaces.darkPage : frontCardSurfaces.lightDeep;
-  }, [
-    frontCardSurfaces.dark,
-    frontCardSurfaces.darkDeep,
-    frontCardSurfaces.darkFill,
-    frontCardSurfaces.darkPage,
-    frontCardSurfaces.darkBorder,
-    frontCardSurfaces.darkBorderStrong,
-    frontCardSurfaces.darkSoft,
-    frontCardSurfaces.darkHover,
-    frontCardSurfaces.darkHoverSoft,
-    frontCardSurfaces.darkText,
-    frontCardSurfaces.darkTextMuted,
-    frontCardSurfaces.darkTextSoft,
-    frontCardSurfaces.darkTextStrong,
-    frontCardSurfaces.darkTextOnAccent,
-    frontCardSurfaces.light,
-    frontCardSurfaces.lightDeep,
-    frontCardSurfaces.lightSoft,
-    theme,
-  ]);
-
   return (
     <>
       <MarkdownThemeResources
@@ -282,13 +227,8 @@ export default function (props: {
         process.env.NODE_ENV != "development" && (
           <GaAnalysis id={props.option.gaAnalysisID}></GaAnalysis>
         )}
-      <ThemeContext.Provider
-        value={{
-          setTheme,
-          theme,
-        }}
-      >
-        <div data-vb-front-surface-scope="true" style={frontSurfaceVars}>
+      <ThemeContext.Provider value={themeContextValue}>
+        <>
           <Toaster />
           {/* <ImageProvider> */}
             <NavBar
@@ -340,7 +280,7 @@ export default function (props: {
               />
             </div>
           {/* </ImageProvider> */}
-        </div>
+        </>
       </ThemeContext.Provider>
       {/* 字体设置恒生效，不受 enableCustomizing 门控（字体是核心设置） */}
       <FontStyle font={props.option.font} />

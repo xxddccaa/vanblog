@@ -5,48 +5,35 @@ import { LinkItem } from '../api/getAllData';
 import AuthorCard, { AuthorCardProps } from '../components/AuthorCard';
 import Layout from '../components/Layout';
 import LinkCard from '../components/LinkCard';
-import Markdown from '../components/Markdown';
+import RenderedMarkdown from '../components/RenderedMarkdown';
 import WaLine from '../components/WaLine';
 import { LayoutProps } from '../utils/getLayoutProps';
+import { resolveLinkRequirementHtml } from '../utils/linkRequirement';
 
-export interface LinkPageProps {
+export interface LinkPageDataProps {
   layoutProps: LayoutProps;
   authorCardProps: AuthorCardProps;
   links: LinkItem[];
+  siteUrl: string;
+}
+
+export interface LinkPageProps extends LinkPageDataProps {
+  initialRenderedHtml: string;
 }
 
 export default function LinkPage(props: LinkPageProps) {
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(props.siteUrl || '');
 
   useEffect(() => {
-    setUrl(window.location.origin);
-  }, []);
-
-  const logo = useMemo(() => {
-    let nextLogo = props.layoutProps.logo;
-    if (props.layoutProps.logo == '') {
-      nextLogo = props.authorCardProps.logo || '';
+    if (!props.siteUrl) {
+      setUrl(window.location.origin);
     }
-    if (nextLogo == '') {
-      nextLogo = `${url}/logo.svg`;
-    }
-    return nextLogo;
-  }, [props.authorCardProps.logo, props.layoutProps.logo, url]);
+  }, [props.siteUrl]);
 
-  const requireContent = `
-**[申领要求]**
-- [x] 请先添加本站为友链后再申请友链，并通过留言或邮件告知
-- [x] 不和剽窃、侵权、无诚信的网站交换，优先和具有原创作品的全站 HTTPS 站点交换
-- [x] 原则上要求您的博客主页被百度或者 Google 等搜索引擎收录
-- [x] 由于访问安全性问题，请**务必**提供 HTTPS 链接的头像地址（或留言时备注暂无以便本站主动保存）
-- [x] 不接受视频站、资源站等非博客类站点交换，原则上只与技术/日志类博客交换友链
-
-**[本站信息]**
-> 名称： ${props.layoutProps.siteName}<br/>
-> 简介： ${props.layoutProps.description}<br/>
-> 网址： [${url}](${url})<br/>
-> 头像： [${logo}](${logo})
-`;
+  const requirementHtml = useMemo(
+    () => resolveLinkRequirementHtml(props.initialRenderedHtml, url),
+    [props.initialRenderedHtml, url],
+  );
 
   return (
     <Layout
@@ -72,7 +59,7 @@ export default function LinkPage(props: LinkPageProps) {
           </div>
           <hr className="mt-8 dark:border-hr-dark" />
           <div className="mt-4 text-sm md:text-base ">
-            <Markdown content={requireContent} />
+            <RenderedMarkdown html={requirementHtml} content="" />
           </div>
           <div>
             <blockquote>

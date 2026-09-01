@@ -36,8 +36,8 @@ const getRevalidateSeconds = () => {
   if (process.env.VAN_BLOG_REVALIDATE !== "true") {
     return false;
   }
-  const parsed = Number.parseInt(process.env.VAN_BLOG_REVALIDATE_TIME || "10", 10);
-  return Number.isNaN(parsed) ? 10 : parsed;
+  const parsed = Number.parseInt(process.env.VAN_BLOG_REVALIDATE_TIME || "60", 10);
+  return Number.isNaN(parsed) || parsed <= 0 ? 60 : parsed;
 };
 
 // 从环境变量中读取.
@@ -53,9 +53,16 @@ export const getServerFetchOptions = (
     return init;
   }
 
+  if (init.cache || init.next?.revalidate !== undefined) {
+    return init;
+  }
+
   const revalidate = getRevalidateSeconds();
   if (revalidate === false) {
-    return init;
+    return {
+      ...init,
+      cache: "force-cache",
+    };
   }
 
   return {
