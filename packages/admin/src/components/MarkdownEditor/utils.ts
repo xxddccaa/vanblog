@@ -47,7 +47,7 @@ export const COMMON_CODE_LANGUAGES = [
 ] as const;
 
 export function resolveEditorEngine(rawValue?: string | null): EditorEngine {
-  return rawValue === 'bytemd' ? 'bytemd' : DEFAULT_EDITOR_ENGINE;
+  return rawValue === 'bytemd' || rawValue === 'milkdown' ? rawValue : DEFAULT_EDITOR_ENGINE;
 }
 
 export function getEditorEngine(): EditorEngine {
@@ -85,7 +85,8 @@ export function buildCustomContainerSnippet(type: CustomContainerType) {
 }
 
 export function buildCodeBlockSnippet(language = getLastCodeLanguage()) {
-  const safeLanguage = (language || DEFAULT_CODE_LANGUAGE).trim().toLowerCase() || DEFAULT_CODE_LANGUAGE;
+  const safeLanguage =
+    (language || DEFAULT_CODE_LANGUAGE).trim().toLowerCase() || DEFAULT_CODE_LANGUAGE;
   return `\`\`\`${safeLanguage}\n\n\`\`\``;
 }
 
@@ -128,7 +129,10 @@ export function normalizeTextColor(value?: string | null): string {
   return DEFAULT_TEXT_COLOR;
 }
 
-export function buildTextColorSnippet(text = TEXT_COLOR_PLACEHOLDER, color: string = DEFAULT_TEXT_COLOR) {
+export function buildTextColorSnippet(
+  text = TEXT_COLOR_PLACEHOLDER,
+  color: string = DEFAULT_TEXT_COLOR,
+) {
   return `<span style="color:${normalizeTextColor(color)}">${text}</span>`;
 }
 

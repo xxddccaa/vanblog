@@ -270,6 +270,19 @@ export async function getLog(type, page, pageSize = 10) {
     method: 'GET',
   });
 }
+export async function getSystemLogTail(cursor, limit = 1000) {
+  const query = new URLSearchParams({
+    event: 'system',
+    tail: 'true',
+    limit: String(limit),
+  });
+  if (cursor) {
+    query.set('cursor', cursor);
+  }
+  return request(`/api/admin/log?${query.toString()}`, {
+    method: 'GET',
+  });
+}
 export async function updateSiteInfo(body) {
   return request(`/api/admin/meta/site`, {
     method: 'PUT',
@@ -480,16 +493,12 @@ export async function getPublicSiteInfo() {
   });
 }
 export async function getArticlesByOption(option) {
-  const newQuery = {};
+  const searchParams = new URLSearchParams();
   for (const [k, v] of Object.entries(option)) {
-    newQuery[k] = v;
+    searchParams.set(k, String(v));
   }
-  let queryString = '';
-  for (const [k, v] of Object.entries(newQuery)) {
-    queryString += `${k}=${v}&`;
-  }
-  queryString = queryString.substring(0, queryString.length - 1);
-  return request(`/api/admin/article?${queryString}&toListView=true`, {
+  searchParams.set('toListView', 'true');
+  return request(`/api/admin/article?${searchParams.toString()}`, {
     method: 'GET',
   });
 }

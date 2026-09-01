@@ -18,13 +18,12 @@ describe('MarkdownEditor utils', () => {
     expect(resolveEditorEngine(null)).toBe('bytemd');
     expect(resolveEditorEngine('invalid')).toBe('bytemd');
     expect(resolveEditorEngine('bytemd')).toBe('bytemd');
+    expect(resolveEditorEngine('milkdown')).toBe('milkdown');
   });
 
   it('builds toolbar insertion snippets for more, container, code block and emoji insertion', () => {
     expect(buildMoreSnippet()).toBe('<!-- more -->\n');
-    expect(buildCustomContainerSnippet('info')).toBe(
-      ':::info{title="相关信息"}\n相关信息\n:::',
-    );
+    expect(buildCustomContainerSnippet('info')).toBe(':::info{title="相关信息"}\n相关信息\n:::');
     expect(buildCodeBlockSnippet('mermaid')).toBe('```mermaid\n\n```');
     expect(buildTaskListSnippet()).toBe('- [ ] 待办事项');
   });

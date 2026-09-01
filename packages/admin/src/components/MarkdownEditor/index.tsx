@@ -1,23 +1,80 @@
-import { useEffect, useState } from 'react';
+import { Component, lazy, Suspense, useMemo, useState } from 'react';
+import { Button, Spin } from 'antd';
 
-import type { EditorEngine, MarkdownEditorProps } from './types';
+import type { MarkdownEditorProps } from './types';
+import type { ComponentType, ReactNode } from 'react';
 
-import BytemdEngine from './engines/bytemd';
-import MilkdownEngine from './engines/milkdown';
-import { DEFAULT_EDITOR_ENGINE, getEditorEngine } from './utils';
+import { getEditorEngine } from './utils';
 
-export default function MarkdownEditor(props: MarkdownEditorProps) {
-  const [engine, setEngine] = useState<EditorEngine>(DEFAULT_EDITOR_ENGINE);
+type EngineComponent = ComponentType<MarkdownEditorProps>;
+type Loader = () => Promise<{ default: EngineComponent }>;
+type EngineLoaders = {
+  bytemd: Loader;
+  milkdown: Loader;
+};
 
-  useEffect(() => {
-    setEngine(getEditorEngine());
-  }, []);
+const loadBytemd = () => import('./engines/bytemd');
+const loadMilkdown = () => import('./engines/milkdown');
+const defaultEngineLoaders: EngineLoaders = {
+  bytemd: loadBytemd,
+  milkdown: loadMilkdown,
+};
 
-  if (engine === 'bytemd') {
-    return <BytemdEngine {...props} />;
+class EditorEngineErrorBoundary extends Component<
+  { children: ReactNode; onRetry: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
   }
 
-  return <MilkdownEngine {...props} />;
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div role="alert" data-testid="markdown-editor-error">
+          <p>Markdown 编辑器加载失败</p>
+          <Button type="primary" onClick={this.props.onRetry}>
+            重试
+          </Button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default function MarkdownEditor({
+  engineLoaders = defaultEngineLoaders,
+  ...props
+}: MarkdownEditorProps & { engineLoaders?: EngineLoaders }) {
+  const [engine] = useState(getEditorEngine);
+  const [attempt, setAttempt] = useState(0);
+  const loader = engineLoaders[engine];
+  const ActiveEngine = useMemo(() => lazy(loader), [attempt, loader]);
+
+  return (
+    <EditorEngineErrorBoundary
+      key={`${engine}-${attempt}`}
+      onRetry={() => setAttempt((current) => current + 1)}
+    >
+      <Suspense
+        fallback={
+          <div
+            data-testid="markdown-editor-loading"
+            style={{ minHeight: 320, display: 'grid', placeItems: 'center' }}
+          >
+            <Spin />
+          </div>
+        }
+      >
+        <ActiveEngine {...props} />
+      </Suspense>
+    </EditorEngineErrorBoundary>
+  );
 }
 
 export type { MarkdownEditorProps } from './types';
+export { EditorEngineErrorBoundary };

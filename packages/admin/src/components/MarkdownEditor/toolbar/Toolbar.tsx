@@ -1,8 +1,5 @@
 import type { CustomContainerType } from '../types';
 
-import data from '@emoji-mart/data';
-import i18n from '@emoji-mart/data/i18n/zh.json';
-import Picker from '@emoji-mart/react';
 import {
   BoldOutlined,
   BgColorsOutlined,
@@ -18,9 +15,10 @@ import {
   UndoOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown, Popover, Space } from 'antd';
-import { useMemo, useState } from 'react';
+import { Component, lazy, Suspense, useMemo, useState } from 'react';
 
 import type { MenuProps } from 'antd';
+import type { ReactNode } from 'react';
 
 import TextColorControls from '../TextColorControls';
 import {
@@ -29,6 +27,26 @@ import {
   DEFAULT_TEXT_COLOR,
   normalizeTextColor,
 } from '../utils';
+
+const EmojiPicker = lazy(() => import('./EmojiPicker'));
+
+export class EmojiPickerErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <span role="alert">Emoji 加载失败</span>;
+    }
+    return this.props.children;
+  }
+}
 
 type ToolbarProps = {
   loading: boolean;
@@ -91,6 +109,7 @@ export default function Toolbar(props: ToolbarProps) {
   } = props;
   const [textColorOpen, setTextColorOpen] = useState(false);
   const [textColorValue, setTextColorValue] = useState<string>(DEFAULT_TEXT_COLOR);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const containerItems = useMemo<MenuProps['items']>(
     () =>
@@ -250,18 +269,18 @@ export default function Toolbar(props: ToolbarProps) {
 
         <Popover
           trigger="click"
+          open={emojiOpen}
+          onOpenChange={setEmojiOpen}
           placement="bottomLeft"
           overlayClassName="vb-milkdown-emoji-popover"
           content={
-            <Picker
-              i18n={i18n}
-              data={data}
-              onEmojiSelect={(item: { native?: string }) => {
-                if (item?.native) {
-                  onInsertEmoji(item.native);
-                }
-              }}
-            />
+            emojiOpen ? (
+              <EmojiPickerErrorBoundary>
+                <Suspense fallback={<span role="status">Emoji 加载中...</span>}>
+                  <EmojiPicker onEmojiSelect={onInsertEmoji} />
+                </Suspense>
+              </EmojiPickerErrorBoundary>
+            ) : null
           }
         >
           <Button disabled={loading}>Emoji</Button>

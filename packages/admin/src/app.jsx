@@ -24,7 +24,7 @@ import {
   FolderOutlined,
 } from '@ant-design/icons';
 import { Menu, message, Modal, notification } from 'antd';
-import moment from 'moment';
+import dayjs from 'dayjs';
 import { history, Link } from '@umijs/max';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import defaultSettings from '../config/defaultSettings';
@@ -660,7 +660,7 @@ export async function getInitialState() {
               <p style={{ marginBottom: 4 }}>有新版本！</p>
               <p style={{ marginBottom: 4 }}>{`当前版本:\t${version}`}</p>
               <p style={{ marginBottom: 4 }}>{`最新版本:\t${latestVersion}`}</p>
-              <p style={{ marginBottom: 4 }}>{`更新时间:\t${moment(updatedAt).format(
+              <p style={{ marginBottom: 4 }}>{`更新时间:\t${dayjs(updatedAt).format(
                 'YYYY-MM-DD HH:mm:ss',
               )}`}</p>
               <p style={{ marginBottom: 4 }}>

@@ -4,12 +4,39 @@ import {
   DotChartOutlined,
   FundProjectionScreenOutlined,
 } from '@ant-design/icons';
-import { Grid } from 'antd';
+import { Button, Grid, Spin } from 'antd';
 import { PageContainer } from '@ant-design/pro-layout';
+import React, { Component, lazy, Suspense, useMemo, useState } from 'react';
 import style from './index.less';
-import Article from './tabs/article';
-import OverView from './tabs/overview';
-import Viewer from './tabs/viewer';
+
+const defaultTabLoaders = {
+  overview: () => import('./tabs/overview'),
+  viewer: () => import('./tabs/viewer'),
+  article: () => import('./tabs/article'),
+};
+
+export class WelcomeTabErrorBoundary extends Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div role="alert" data-testid="welcome-tab-error">
+          <p>统计标签加载失败</p>
+          <Button type="primary" onClick={this.props.onRetry}>
+            重试
+          </Button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const tabs = [
   {
@@ -32,18 +59,23 @@ const tabs = [
   },
 ];
 
-const Welcome = () => {
+const Welcome = ({ tabLoaders = defaultTabLoaders }) => {
   const tabKeys = tabs.map((item) => item.key);
   const [tab, setTab] = useTab('overview', 'tab', tabKeys);
+  const [attempt, setAttempt] = useState(0);
   const screens = Grid.useBreakpoint();
   const compact = !screens.md;
   const mobile = Boolean(screens.xs) && !screens.sm;
 
-  const tabMap = {
-    overview: <OverView compact={compact} mobile={mobile} />,
-    viewer: <Viewer compact={compact} mobile={mobile} />,
-    article: <Article compact={compact} mobile={mobile} />,
-  };
+  const tabComponentMap = useMemo(
+    () => ({
+      overview: lazy(tabLoaders.overview),
+      viewer: lazy(tabLoaders.viewer),
+      article: lazy(tabLoaders.article),
+    }),
+    [attempt, tabLoaders],
+  );
+  const ActiveTab = tabComponentMap[tab] || tabComponentMap.overview;
 
   return (
     <div className={style['modern-welcome']}>
@@ -89,7 +121,20 @@ const Welcome = () => {
               })}
             </div>
           ) : null}
-          {tabMap[tab]}
+          <WelcomeTabErrorBoundary
+            key={`${tab}-${attempt}`}
+            onRetry={() => setAttempt((current) => current + 1)}
+          >
+            <Suspense
+              fallback={
+                <div style={{ padding: '48px 0', textAlign: 'center' }}>
+                  <Spin />
+                </div>
+              }
+            >
+              <ActiveTab compact={compact} mobile={mobile} />
+            </Suspense>
+          </WelcomeTabErrorBoundary>
         </div>
       </PageContainer>
     </div>
