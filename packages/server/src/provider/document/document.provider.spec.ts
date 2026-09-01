@@ -236,4 +236,191 @@ describe('DocumentProvider', () => {
     expect(result).toEqual([]);
     expect(documentModel.find).not.toHaveBeenCalled();
   });
+
+  it('builds and sorts a document tree without mutating the source documents', async () => {
+    const source = [
+      {
+        id: 1,
+        title: 'Library',
+        type: 'library',
+        sort_order: 0,
+        createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      },
+      {
+        id: 2,
+        title: 'Later child',
+        type: 'document',
+        library_id: 1,
+        sort_order: 2,
+        createdAt: new Date('2024-03-01T00:00:00.000Z'),
+      },
+      {
+        id: 3,
+        title: 'First child',
+        type: 'document',
+        library_id: 1,
+        sort_order: 1,
+        createdAt: new Date('2024-02-01T00:00:00.000Z'),
+      },
+      {
+        id: 4,
+        title: 'Grandchild',
+        type: 'document',
+        library_id: 1,
+        parent_id: 3,
+        sort_order: 0,
+        createdAt: new Date('2024-04-01T00:00:00.000Z'),
+      },
+      {
+        id: 5,
+        title: 'Orphan',
+        type: 'document',
+        library_id: 99,
+        sort_order: 0,
+        createdAt: new Date('2024-05-01T00:00:00.000Z'),
+      },
+    ];
+    const structuredDataService = {
+      listDocuments: jest.fn().mockResolvedValue(source),
+      isInitialized: jest.fn().mockReturnValue(true),
+    };
+    const provider = new DocumentProvider(
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.getDocumentTree();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 1, title: 'Library' });
+    expect((result[0] as any).children.map((item: any) => item.id)).toEqual([3, 2]);
+    expect((result[0] as any).children[0].children).toEqual([
+      expect.objectContaining({ id: 4 }),
+    ]);
+    expect((result[0] as any).createdAt).toBeInstanceOf(Date);
+    expect(source.every((item) => !Object.prototype.hasOwnProperty.call(item, 'children'))).toBe(
+      true,
+    );
+  });
+
+  it('marks structured search matches and ancestors without JSON roundtrip cloning', async () => {
+    const createdAt = new Date('2024-06-01T00:00:00.000Z');
+    const structuredDataService = {
+      searchDocuments: jest.fn().mockResolvedValue([
+        {
+          id: 3,
+          title: 'Matched',
+          library_id: 1,
+          parent_id: 2,
+          path: [1, 2],
+        },
+      ]),
+      getDocumentsByIds: jest.fn().mockResolvedValue([
+        { id: 1, title: 'Library', type: 'library', createdAt },
+        { id: 2, title: 'Parent', type: 'document', library_id: 1, createdAt },
+        { id: 3, title: 'Matched', type: 'document', library_id: 1, parent_id: 2, createdAt },
+      ]),
+      isInitialized: jest.fn().mockReturnValue(true),
+    };
+    const provider = new DocumentProvider(
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.searchByString('matched');
+
+    expect(result.map((item: any) => [item.id, item.isSearchResult])).toEqual([
+      [1, false],
+      [2, false],
+      [3, true],
+    ]);
+    expect((result[0] as any).createdAt).toBe(createdAt);
+    expect(JSON.parse(JSON.stringify(result))[0].createdAt).toBe(
+      '2024-06-01T00:00:00.000Z',
+    );
+  });
+
+  it('marks fallback search matches while preserving model document values', async () => {
+    const createdAt = new Date('2024-07-01T00:00:00.000Z');
+    const matchesQuery = {
+      sort: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([
+        { id: 3, title: 'Matched', library_id: 1, parent_id: 2, path: [1, 2] },
+      ]),
+    };
+    const relatedQuery = {
+      sort: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([
+        { id: 1, title: 'Library', type: 'library', createdAt },
+        { id: 2, title: 'Parent', type: 'document', createdAt },
+        { id: 3, title: 'Matched', type: 'document', createdAt },
+      ]),
+    };
+    const documentModel = {
+      find: jest
+        .fn()
+        .mockReturnValueOnce(matchesQuery)
+        .mockReturnValueOnce(relatedQuery),
+    };
+    const provider = new DocumentProvider(
+      documentModel as any,
+      {} as any,
+      {
+        searchDocuments: jest.fn().mockResolvedValue([]),
+        isInitialized: jest.fn().mockReturnValue(false),
+      } as any,
+    );
+
+    const result = await provider.searchByString('matched');
+
+    expect(result.map((item: any) => [item.id, item.isSearchResult])).toEqual([
+      [1, false],
+      [2, false],
+      [3, true],
+    ]);
+    expect((result[2] as any).createdAt).toBe(createdAt);
+    expect(matchesQuery.lean).toHaveBeenCalledTimes(1);
+    expect(relatedQuery.lean).toHaveBeenCalledTimes(1);
+  });
+
+  it('projects document fields without reading the compatibility _doc getter', async () => {
+    const document: any = {
+      id: 1,
+      title: 'Library',
+      type: 'library',
+      path: [9],
+      createdAt: new Date('2024-08-01T00:00:00.000Z'),
+    };
+    Object.defineProperty(document, '_doc', {
+      enumerable: true,
+      get: jest.fn(() => {
+        throw new Error('_doc getter must not be read');
+      }),
+    });
+    const provider = new DocumentProvider(
+      {} as any,
+      {} as any,
+      {
+        listDocuments: jest.fn().mockResolvedValue([document]),
+        isInitialized: jest.fn().mockReturnValue(true),
+      } as any,
+    );
+
+    const result = await provider.getDocumentTree();
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 1,
+        title: 'Library',
+        path: [9],
+        children: [],
+      }),
+    ]);
+    expect(Object.getOwnPropertyDescriptor(document, '_doc')?.get).not.toHaveBeenCalled();
+    expect((result[0] as any).path).not.toBe(document.path);
+  });
 });

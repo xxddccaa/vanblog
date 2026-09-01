@@ -81,11 +81,32 @@ export class DocumentProvider {
     if (!document) {
       return document;
     }
-    const payload = { ...(document?._doc || document) };
+    const payload = this.toPlainDocument(document);
     if (view === 'list') {
       delete payload.content;
     }
     return payload;
+  }
+
+  private toPlainDocument(document: any) {
+    if (!document) {
+      return {};
+    }
+    return {
+      _id: document._id,
+      id: document.id,
+      title: document.title,
+      content: document.content,
+      author: document.author,
+      parent_id: document.parent_id,
+      library_id: document.library_id,
+      type: document.type,
+      path: Array.isArray(document.path) ? [...document.path] : document.path,
+      sort_order: document.sort_order,
+      deleted: document.deleted,
+      createdAt: document.createdAt,
+      updatedAt: document.updatedAt,
+    };
   }
 
   private isPathPrefixed(path: number[] = [], prefix: number[] = []) {
@@ -377,6 +398,7 @@ export class DocumentProvider {
       const fallbackDocuments = await this.documentModel
         .find(query, this.listView)
         .sort({ sort_order: 1, createdAt: -1 })
+        .lean()
         .exec();
       return this.buildTree(fallbackDocuments);
     }
@@ -504,13 +526,13 @@ export class DocumentProvider {
 
     // 创建映射
     documents.forEach(doc => {
-      const plainDoc = JSON.parse(JSON.stringify(doc));
+      const plainDoc = this.toPlainDocument(doc);
       map.set(plainDoc.id, { ...plainDoc, children: [] });
     });
 
     // 构建树形结构
     documents.forEach(doc => {
-      const plainDoc = JSON.parse(JSON.stringify(doc));
+      const plainDoc = this.toPlainDocument(doc);
       const node = map.get(plainDoc.id);
       
       if (plainDoc.type === 'library') {
@@ -602,10 +624,13 @@ export class DocumentProvider {
       });
       const allRelatedDocs = await this.structuredDataService.getDocumentsByIds(Array.from(relatedIds));
       const searchResultIds = new Set(pgDocuments.map((doc: any) => doc.id));
-      return allRelatedDocs.map((doc: any) => ({
-        ...JSON.parse(JSON.stringify(doc)),
-        isSearchResult: searchResultIds.has(doc.id),
-      })) as any;
+      return allRelatedDocs.map((doc: any) => {
+        const plainDoc = this.toPlainDocument(doc);
+        return {
+          ...plainDoc,
+          isSearchResult: searchResultIds.has(plainDoc.id),
+        };
+      }) as any;
     }
     const safePattern = escapeRegExp(normalizedSearch);
     const $and: any = [
@@ -632,6 +657,7 @@ export class DocumentProvider {
         $and,
       }, this.adminView)
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
 
     // 获取所有相关的文档ID，包括父级路径
@@ -657,13 +683,17 @@ export class DocumentProvider {
         ],
       }, this.adminView)
       .sort({ sort_order: 1, createdAt: -1 })
+      .lean()
       .exec();
 
     // 标记哪些是搜索结果
     const searchResultIds = new Set(documents.map(doc => doc.id));
-    return allRelatedDocs.map(doc => ({
-      ...JSON.parse(JSON.stringify(doc)),
-      isSearchResult: searchResultIds.has(doc.id),
-    }));
+    return allRelatedDocs.map(doc => {
+      const plainDoc = this.toPlainDocument(doc);
+      return {
+        ...plainDoc,
+        isSearchResult: searchResultIds.has(plainDoc.id),
+      };
+    });
   }
 } 

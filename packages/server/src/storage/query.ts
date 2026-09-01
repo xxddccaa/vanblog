@@ -1,4 +1,8 @@
-import { PostgresStoreService } from './postgres-store.service';
+import {
+  compileStorageQueryPlan,
+  compileStorageSortPlan,
+  PostgresStoreService,
+} from './postgres-store.service';
 import { applyProjection, applySort, matchesQuery } from './query-engine';
 import { deepClone } from './storage.utils';
 
@@ -46,19 +50,54 @@ export class StorageQuery<T = any> implements PromiseLike<any> {
   }
 
   async exec(): Promise<any> {
-    const raw = await this.store.getAll(this.collectionName);
+    const queryPlan = compileStorageQueryPlan(this.query);
+    if (this.mode === 'count' && queryPlan.exact) {
+      return await this.store.countRecords(this.collectionName, queryPlan);
+    }
+
+    const sortPlan = compileStorageSortPlan(
+      this.sortValue,
+      1 + queryPlan.params.length,
+    );
+    const hasWindow =
+      this.mode === 'one' ||
+      this.skipValue > 0 ||
+      typeof this.limitValue === 'number';
+    const canPushWindow =
+      queryPlan.exact &&
+      sortPlan.exact &&
+      (this.limitValue === undefined || this.limitValue >= 0);
+    const shouldUseCandidates =
+      queryPlan.hasCandidate ||
+      (queryPlan.exact && (hasWindow || Boolean(sortPlan.orderBySql)));
+    const records = shouldUseCandidates
+      ? await this.store.getRecords(this.collectionName, queryPlan, {
+          sortPlan: sortPlan.exact ? sortPlan : undefined,
+          skip: canPushWindow ? this.skipValue : undefined,
+          limit: canPushWindow
+            ? this.mode === 'one'
+              ? Math.min(this.limitValue ?? 1, 1)
+              : this.limitValue
+            : undefined,
+        })
+      : null;
+    const raw = records
+      ? records.map((record) => record.payload)
+      : await this.store.getAll(this.collectionName);
     let results = raw.filter((item) => matchesQuery(item, this.query));
 
     if (this.mode === 'count') {
       return results.length;
     }
 
-    results = applySort(results, this.sortValue as any);
-    if (this.skipValue > 0) {
-      results = results.slice(this.skipValue);
-    }
-    if (typeof this.limitValue === 'number') {
-      results = results.slice(0, this.limitValue);
+    if (!canPushWindow) {
+      results = applySort(results, this.sortValue as any);
+      if (this.skipValue > 0) {
+        results = results.slice(this.skipValue);
+      }
+      if (typeof this.limitValue === 'number') {
+        results = results.slice(0, this.limitValue);
+      }
     }
 
     const projected = results.map((item) =>

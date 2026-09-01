@@ -197,4 +197,52 @@ describe('CategoryProvider', () => {
       expect.objectContaining({ name: 'Gamma', sort: 2 }),
     );
   });
+
+  it('groups all categories from one article snapshot and preserves empty categories', async () => {
+    const articleProvider = {
+      getAll: jest.fn().mockResolvedValue([
+        {
+          id: 1,
+          title: 'Shared',
+          categories: ['Alpha', 'Beta'],
+          createdAt: '2026-04-01T00:00:00.000Z',
+          updatedAt: '2026-04-03T00:00:00.000Z',
+        },
+        {
+          id: 2,
+          title: 'Alpha only',
+          category: 'Alpha',
+          createdAt: '2026-04-02T00:00:00.000Z',
+        },
+      ]),
+      getArticleCategories: jest.fn((article) =>
+        article.categories?.length ? article.categories : [article.category].filter(Boolean),
+      ),
+    };
+    const structuredDataService = {
+      listCategories: jest.fn().mockResolvedValue([
+        { id: 1, name: 'Alpha', sort: 0 },
+        { id: 2, name: 'Beta', sort: 1 },
+        { id: 3, name: 'Empty', sort: 2 },
+      ]),
+      isInitialized: jest.fn().mockReturnValue(true),
+    };
+    const provider = new CategoryProvider(
+      {} as any,
+      articleProvider as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.getCategoriesWithArticlePayload(false);
+
+    expect(result.data).toEqual({
+      Alpha: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
+      Beta: [expect.objectContaining({ id: 1 })],
+      Empty: [],
+    });
+    expect(result.latestTimestamp).toBe('2026-04-03T00:00:00.000Z');
+    expect(structuredDataService.listCategories).toHaveBeenCalledTimes(1);
+    expect(articleProvider.getAll).toHaveBeenCalledTimes(1);
+    expect(articleProvider.getAll).toHaveBeenCalledWith('list', false);
+  });
 });

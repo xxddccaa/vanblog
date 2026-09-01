@@ -27,6 +27,12 @@ describe('PublicController', () => {
         .mockResolvedValue([
           { year: '2026', articleCount: 1, updatedAt: '2026-04-10T00:00:00.000Z' },
         ]),
+      getTimeLineSummaryPayload: jest.fn().mockResolvedValue({
+        summary: [
+          { year: '2026', articleCount: 1, updatedAt: '2026-04-10T00:00:00.000Z' },
+        ],
+        latestTimestamp: '2026-04-10T00:00:00.000Z',
+      }),
       getTimeLineArticlesByYear: jest.fn(),
       getTimeLineInfo: jest.fn().mockResolvedValue({
         '2026': [
@@ -58,6 +64,20 @@ describe('PublicController', () => {
             updatedAt: '2026-04-11T00:00:00.000Z',
           },
         ],
+      }),
+      getCategoriesWithArticlePayload: jest.fn().mockResolvedValue({
+        data: {
+          Architecture: [
+            {
+              id: 8,
+              title: 'Category Article',
+              pathname: 'category-article',
+              createdAt: '2026-04-08T00:00:00.000Z',
+              updatedAt: '2026-04-11T00:00:00.000Z',
+            },
+          ],
+        },
+        latestTimestamp: '2026-04-11T00:00:00.000Z',
       }),
     };
     const tagProvider = {
@@ -105,6 +125,21 @@ describe('PublicController', () => {
         { name: 'Cloudflare', articleCount: 6 },
         { name: 'Caching', articleCount: 4 },
       ]),
+      getTagsWithArticlePayload: jest.fn().mockResolvedValue({
+        data: {
+          Cloudflare: [
+            {
+              id: 6,
+              title: 'Tagged Article',
+              pathname: 'tagged-article',
+              createdAt: '2026-04-09T00:00:00.000Z',
+              updatedAt: '2026-04-11T00:00:00.000Z',
+            },
+          ],
+          Caching: [],
+        },
+        latestTimestamp: '2026-04-11T00:00:00.000Z',
+      }),
     };
     const metaProvider = {
       addViewer: jest.fn().mockResolvedValue({ total: 1 }),
@@ -841,26 +876,66 @@ describe('PublicController', () => {
       statusCode: 200,
       data: [{ year: '2026', articleCount: 1, updatedAt: '2026-04-10T00:00:00.000Z' }],
     });
-    expect(articleProvider.getTimeLineSummary).toHaveBeenCalledTimes(1);
-    expect(articleProvider.getAll).toHaveBeenCalledWith('list', false, false);
+    expect(articleProvider.getTimeLineSummaryPayload).toHaveBeenCalledTimes(1);
+    expect(articleProvider.getTimeLineSummary).not.toHaveBeenCalled();
+    expect(articleProvider.getAll).not.toHaveBeenCalled();
     expect(res.headers.get('Last-Modified')).toBe('Fri, 10 Apr 2026 00:00:00 GMT');
   });
 
-  it('reuses cached timeline summary payloads while still deriving validators from visible articles', async () => {
+  it('reuses the cached timeline summary envelope and validator', async () => {
     const { controller, articleProvider } = createController();
-    const res = createRes();
+    const firstRes = createRes();
+    const secondRes = createRes();
 
-    const first = await controller.getTimeLineSummary(res as any);
-    const second = await controller.getTimeLineSummary(res as any);
+    const first = await controller.getTimeLineSummary(firstRes as any);
+    const second = await controller.getTimeLineSummary(secondRes as any);
 
     expect(first).toEqual({
       statusCode: 200,
       data: [{ year: '2026', articleCount: 1, updatedAt: '2026-04-10T00:00:00.000Z' }],
     });
     expect(second).toEqual(first);
-    expect(articleProvider.getTimeLineSummary).toHaveBeenCalledTimes(1);
-    expect(articleProvider.getAll).toHaveBeenCalledTimes(2);
-    expect(res.headers.get('Last-Modified')).toBe('Fri, 10 Apr 2026 00:00:00 GMT');
+    expect(articleProvider.getTimeLineSummaryPayload).toHaveBeenCalledTimes(1);
+    expect(articleProvider.getAll).not.toHaveBeenCalled();
+    expect(firstRes.headers.get('Last-Modified')).toBe('Fri, 10 Apr 2026 00:00:00 GMT');
+    expect(secondRes.headers.get('Last-Modified')).toBe('Fri, 10 Apr 2026 00:00:00 GMT');
+  });
+
+  it('returns an empty timeline summary without a synthetic validator', async () => {
+    const { controller, articleProvider } = createController();
+    articleProvider.getTimeLineSummaryPayload.mockResolvedValue({
+      summary: [],
+      latestTimestamp: null,
+    });
+    const res = createRes();
+
+    await expect(controller.getTimeLineSummary(res as any)).resolves.toEqual({
+      statusCode: 200,
+      data: [],
+    });
+    expect(res.headers.has('Last-Modified')).toBe(false);
+    expect(articleProvider.getAll).not.toHaveBeenCalled();
+  });
+
+  it('reloads the timeline summary after its cache key is invalidated', async () => {
+    const { controller, articleProvider, cacheProvider } = createController();
+    const firstRes = createRes();
+    const secondRes = createRes();
+
+    await controller.getTimeLineSummary(firstRes as any);
+    await cacheProvider.del('public:timeline:summary');
+    articleProvider.getTimeLineSummaryPayload.mockResolvedValue({
+      summary: [{ year: '2027', articleCount: 2 }],
+      latestTimestamp: '2026-04-12T00:00:00.000Z',
+    });
+    const second = await controller.getTimeLineSummary(secondRes as any);
+
+    expect(second).toEqual({
+      statusCode: 200,
+      data: [{ year: '2027', articleCount: 2 }],
+    });
+    expect(articleProvider.getTimeLineSummaryPayload).toHaveBeenCalledTimes(2);
+    expect(secondRes.headers.get('Last-Modified')).toBe('Sun, 12 Apr 2026 00:00:00 GMT');
   });
 
   it('sets Last-Modified for category index payloads from the newest article they expose', async () => {
@@ -883,7 +958,19 @@ describe('PublicController', () => {
         ],
       },
     });
-    expect(categoryProvider.getCategoriesWithArticle).toHaveBeenCalledWith(false);
+    expect(categoryProvider.getCategoriesWithArticlePayload).toHaveBeenCalledWith(false);
+    expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
+  });
+
+  it('reuses the cached complete category payload and validator', async () => {
+    const { controller, categoryProvider } = createController();
+    const res = createRes();
+
+    const first = await controller.getArticlesByCategory(res as any);
+    const second = await controller.getArticlesByCategory(res as any);
+
+    expect(second).toEqual(first);
+    expect(categoryProvider.getCategoriesWithArticlePayload).toHaveBeenCalledTimes(1);
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
   });
 
@@ -1080,13 +1167,32 @@ describe('PublicController', () => {
 
     expect(result).toEqual({
       statusCode: 200,
-      data: [
-        { name: 'Cloudflare', articleCount: 6 },
-        { name: 'Caching', articleCount: 4 },
-      ],
+      data: {
+        Cloudflare: [
+          {
+            id: 6,
+            title: 'Tagged Article',
+            pathname: 'tagged-article',
+            createdAt: '2026-04-09T00:00:00.000Z',
+            updatedAt: '2026-04-11T00:00:00.000Z',
+          },
+        ],
+        Caching: [],
+      },
     });
-    expect(tagProvider.getTagsWithArticle).toHaveBeenCalledWith(false);
-    expect(tagProvider.getAllTagRecords).toHaveBeenCalledTimes(1);
+    expect(tagProvider.getTagsWithArticlePayload).toHaveBeenCalledWith(false);
+    expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
+  });
+
+  it('reuses the cached complete tag payload and validator', async () => {
+    const { controller, tagProvider } = createController();
+    const res = createRes();
+
+    const first = await controller.getArticlesByTag(res as any);
+    const second = await controller.getArticlesByTag(res as any);
+
+    expect(second).toEqual(first);
+    expect(tagProvider.getTagsWithArticlePayload).toHaveBeenCalledTimes(1);
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
   });
 

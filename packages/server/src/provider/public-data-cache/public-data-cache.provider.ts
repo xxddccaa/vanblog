@@ -17,7 +17,9 @@ export class PublicDataCacheProvider {
     await Promise.all([
       this.cacheProvider.del('public:meta'),
       this.cacheProvider.del('public:site-stats'),
+      this.cacheProvider.del('public:category:all'),
       this.cacheProvider.del('public:category:summary'),
+      this.cacheProvider.del('public:tag:all'),
       this.cacheProvider.delPattern('public:timeline*'),
       this.cacheProvider.delPattern('public:article:engagement:*'),
       this.cacheProvider.delPattern('public:article:fragments:*'),
@@ -30,6 +32,7 @@ export class PublicDataCacheProvider {
     await Promise.all([
       this.cacheProvider.del('public:meta'),
       this.cacheProvider.del('public:site-stats'),
+      this.cacheProvider.del('public:tag:all'),
       this.cacheProvider.delPattern('tag:*'),
       this.cacheProvider.delPattern('analysis:*'),
     ]);

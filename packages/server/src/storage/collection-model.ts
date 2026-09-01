@@ -1,5 +1,8 @@
 import { randomUUID } from 'crypto';
-import { PostgresStoreService } from './postgres-store.service';
+import {
+  compileStorageQueryPlan,
+  PostgresStoreService,
+} from './postgres-store.service';
 import { applyUpdate, matchesQuery } from './query-engine';
 import { StorageQuery } from './query';
 import { deepClone } from './storage.utils';
@@ -92,10 +95,6 @@ export const createStorageModel = <T = any>(
       return new StorageModel(value) as any;
     }
 
-    static async __loadAll() {
-      return await this.__store.getAll(this.__collectionName);
-    }
-
     static async __saveDocument(payload: Record<string, any>) {
       const normalized = deepClone(payload);
       if (!normalized._id) {
@@ -153,94 +152,128 @@ export const createStorageModel = <T = any>(
     }
 
     static async updateOne(query: any, update: any, options: Record<string, any> = {}) {
-      const documents = await this.__loadAll();
-      const matched = documents.find((item) => matchesQuery(item, query));
-      if (!matched) {
-        if (options.upsert) {
-          const created = applyUpdate({}, update, query, { isUpsertInsert: true });
-          for (const [key, value] of Object.entries(query || {})) {
-            if (!key.startsWith('$') && !key.includes('.')) {
-              created[key] = deepClone(value);
+      const queryPlan = compileStorageQueryPlan(query);
+      return await this.__store.mutateRecords(
+        this.__collectionName,
+        queryPlan,
+        async (records, context) => {
+          const matched = records.map((record) => record.payload).find((item) =>
+            matchesQuery(item, query),
+          );
+          if (!matched) {
+            if (options.upsert) {
+              const created = this.__buildUpsertPayload(query, update);
+              await context.upsert(created);
+              return buildUpdateResult(0, 0, 1);
             }
+            return buildUpdateResult(0, 0, 0);
           }
-          await this.__saveDocument(created);
-          return buildUpdateResult(0, 0, 1);
+          const next = applyUpdate(matched, update, query);
+          await context.upsert(next);
+          return buildUpdateResult(1, 1, 0);
+        },
+        { limit: queryPlan.exact ? 1 : undefined },
+      );
+    }
+
+    static __buildUpsertPayload(query: any, update: any) {
+      const created = applyUpdate({}, update, query, { isUpsertInsert: true });
+      for (const [key, value] of Object.entries(query || {})) {
+        if (!key.startsWith('$') && !key.includes('.')) {
+          created[key] = deepClone(value);
         }
-        return buildUpdateResult(0, 0, 0);
       }
-      const next = applyUpdate(matched, update, query);
-      await this.__saveDocument(next);
-      return buildUpdateResult(1, 1, 0);
+      if (!created._id) {
+        created._id = randomUUID();
+      }
+      return created;
     }
 
     static async updateMany(query: any, update: any, options: Record<string, any> = {}) {
-      const documents = await this.__loadAll();
-      const matched = documents.filter((item) => matchesQuery(item, query));
-      if (!matched.length) {
-        if (options.upsert) {
-          await this.updateOne(query, update, options);
-          return buildUpdateResult(0, 0, 1);
-        }
-        return buildUpdateResult(0, 0, 0);
-      }
-      await Promise.all(
-        matched.map(async (item) => {
-          const next = applyUpdate(item, update, query);
-          await this.__saveDocument(next);
-        }),
+      const queryPlan = compileStorageQueryPlan(query);
+      return await this.__store.mutateRecords(
+        this.__collectionName,
+        queryPlan,
+        async (records, context) => {
+          const matched = records
+            .map((record) => record.payload)
+            .filter((item) => matchesQuery(item, query));
+          if (!matched.length) {
+            if (options.upsert) {
+              await context.upsert(this.__buildUpsertPayload(query, update));
+              return buildUpdateResult(0, 0, 1);
+            }
+            return buildUpdateResult(0, 0, 0);
+          }
+          for (const item of matched) {
+            await context.upsert(applyUpdate(item, update, query));
+          }
+          return buildUpdateResult(matched.length, matched.length, 0);
+        },
       );
-      return buildUpdateResult(matched.length, matched.length, 0);
     }
 
     static async deleteOne(query: any) {
-      const documents = await this.__loadAll();
-      const matched = documents.find((item) => matchesQuery(item, query));
-      if (!matched?._id) {
-        return { acknowledged: true, deletedCount: 0 };
-      }
-      const deletedCount = await this.__store.deleteByIds(this.__collectionName, [String(matched._id)]);
-      return { acknowledged: true, deletedCount };
+      const queryPlan = compileStorageQueryPlan(query);
+      return await this.__store.mutateRecords(
+        this.__collectionName,
+        queryPlan,
+        async (records, context) => {
+          const matched = records.find((record) => matchesQuery(record.payload, query));
+          if (!matched) {
+            return { acknowledged: true, deletedCount: 0 };
+          }
+          const deletedCount = await context.deleteByIds([matched.recordId]);
+          return { acknowledged: true, deletedCount };
+        },
+        { limit: queryPlan.exact ? 1 : undefined },
+      );
     }
 
     static async deleteMany(query: any) {
-      const documents = await this.__loadAll();
-      const matchedIds = documents
-        .filter((item) => matchesQuery(item, query))
-        .map((item) => String(item._id));
-      const deletedCount = await this.__store.deleteByIds(this.__collectionName, matchedIds);
-      return { acknowledged: true, deletedCount };
+      const queryPlan = compileStorageQueryPlan(query);
+      return await this.__store.mutateRecords(
+        this.__collectionName,
+        queryPlan,
+        async (records, context) => {
+          const matchedIds = records
+            .filter((record) => matchesQuery(record.payload, query))
+            .map((record) => record.recordId);
+          const deletedCount = await context.deleteByIds(matchedIds);
+          return { acknowledged: true, deletedCount };
+        },
+      );
     }
 
     static async findByIdAndUpdate(id: string, update: any, options: Record<string, any> = {}) {
-      const current = await this.findById(id).exec();
-      if (!current) {
-        return null;
-      }
-      const next = applyUpdate(current.toObject(), update, { _id: id });
-      await this.__saveDocument(next);
-      const result = options.new ? next : current.toObject();
-      return this.__wrapDocument(result);
+      return await this.findOneAndUpdate(
+        { _id: id },
+        update,
+        { ...options, upsert: false },
+      );
     }
 
     static async findOneAndUpdate(query: any, update: any, options: Record<string, any> = {}) {
-      const current = await this.findOne(query).exec();
-      if (!current) {
-        if (options.upsert) {
-          const created = applyUpdate({}, update, query, { isUpsertInsert: true });
-          for (const [key, value] of Object.entries(query || {})) {
-            if (!key.startsWith('$') && !key.includes('.')) {
-              created[key] = deepClone(value);
+      const queryPlan = compileStorageQueryPlan(query);
+      return await this.__store.mutateRecords(
+        this.__collectionName,
+        queryPlan,
+        async (records, context) => {
+          const current = records.find((record) => matchesQuery(record.payload, query));
+          if (!current) {
+            if (options.upsert) {
+              const saved = await context.upsert(this.__buildUpsertPayload(query, update));
+              return this.__wrapDocument(saved);
             }
+            return null;
           }
-          const saved = await this.__saveDocument(created);
-          return this.__wrapDocument(saved);
-        }
-        return null;
-      }
-      const next = applyUpdate(current.toObject(), update, query);
-      await this.__saveDocument(next);
-      const result = options.new ? next : current.toObject();
-      return this.__wrapDocument(result);
+          const previous = deepClone(current.payload);
+          const next = applyUpdate(previous, update, query);
+          await context.upsert(next);
+          return this.__wrapDocument(options.new ? next : previous);
+        },
+        { limit: queryPlan.exact ? 1 : undefined },
+      );
     }
 
     static async bulkWrite(operations: any[]) {

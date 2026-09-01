@@ -269,16 +269,55 @@ export class TagProvider {
 
   // 为了兼容现有代码，保留旧方法
   async getTagsWithArticle(includeHidden: boolean) {
-    const tags = await this.structuredDataService.listTagRecords();
-    const result = {};
+    const payload = await this.getTagsWithArticlePayload(includeHidden);
+    return payload.data;
+  }
+
+  async getTagsWithArticlePayload(includeHidden: boolean) {
+    const [tags, articleResult] = await Promise.all([
+      this.structuredDataService.listTagRecords(),
+      this.articleProvider.getByOption(
+        {
+          page: 1,
+          pageSize: -1,
+          toListView: true,
+          regMatch: false,
+        },
+        !includeHidden,
+      ),
+    ]);
+    const buckets = new Map<string, any[]>();
+    let latestTimestamp: string | Date | null = null;
+    let latestValue = Number.NEGATIVE_INFINITY;
 
     for (const tag of tags) {
-      const articles = await this.getArticlesByTag(tag.name, includeHidden);
-      if (articles.length > 0) {
-        result[tag.name] = articles;
+      const name = String(tag?.name || '').trim();
+      if (name) {
+        buckets.set(name, []);
+      }
+      const timestamp = tag?.updatedAt || tag?.createdAt;
+      const value = new Date(timestamp).getTime();
+      if (!Number.isNaN(value) && value > latestValue) {
+        latestValue = value;
+        latestTimestamp = timestamp;
       }
     }
 
-    return result;
+    for (const article of articleResult.articles || []) {
+      for (const tagName of article.tags || []) {
+        const bucket = buckets.get(tagName);
+        if (!bucket) {
+          continue;
+        }
+        bucket.push(article);
+      }
+    }
+
+    return {
+      data: Object.fromEntries(
+        Array.from(buckets.entries()).filter(([, articles]) => articles.length > 0),
+      ),
+      latestTimestamp,
+    };
   }
 }

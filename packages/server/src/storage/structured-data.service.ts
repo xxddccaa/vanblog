@@ -124,6 +124,8 @@ export class StructuredDataService implements OnModuleInit {
         content TEXT NOT NULL DEFAULT '',
         category TEXT,
         categories TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
+        categories_text TEXT NOT NULL DEFAULT '',
+        search_vector TSVECTOR NOT NULL DEFAULT ''::tsvector,
         top_value INTEGER NOT NULL DEFAULT 0,
         hidden BOOLEAN NOT NULL DEFAULT FALSE,
         private_flag BOOLEAN NOT NULL DEFAULT FALSE,
@@ -337,8 +339,35 @@ export class StructuredDataService implements OnModuleInit {
       `ALTER TABLE vanblog_articles ADD COLUMN IF NOT EXISTS categories TEXT[] NOT NULL DEFAULT ARRAY[]::text[]`,
     );
     await this.store.query(
+      `ALTER TABLE vanblog_articles ADD COLUMN IF NOT EXISTS categories_text TEXT NOT NULL DEFAULT ''`,
+    );
+    await this.store.query(
+      `ALTER TABLE vanblog_articles ADD COLUMN IF NOT EXISTS search_vector TSVECTOR NOT NULL DEFAULT ''::tsvector`,
+    );
+    await this.store.query(
       `UPDATE vanblog_articles SET categories = ARRAY[category]::text[] WHERE category IS NOT NULL AND category <> '' AND cardinality(categories) = 0`,
     );
+    await this.store.query(`
+      UPDATE vanblog_articles
+      SET
+        categories_text = array_to_string(categories, ' '),
+        search_vector = ${this.getArticleSearchVectorValueSql({
+          title: 'title',
+          categories: 'categories',
+          category: 'category',
+          author: 'author',
+          content: 'content',
+        })}
+      WHERE
+        categories_text IS DISTINCT FROM array_to_string(categories, ' ')
+        OR search_vector IS DISTINCT FROM ${this.getArticleSearchVectorValueSql({
+          title: 'title',
+          categories: 'categories',
+          category: 'category',
+          author: 'author',
+          content: 'content',
+        })}
+    `);
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_created_at ON vanblog_articles (created_at DESC)',
     );
@@ -428,6 +457,21 @@ export class StructuredDataService implements OnModuleInit {
     );
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_content_trgm ON vanblog_articles USING GIN (content gin_trgm_ops)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_search_vector ON vanblog_articles USING GIN (search_vector)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_category_trgm ON vanblog_articles USING GIN (category gin_trgm_ops)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_categories_text_trgm ON vanblog_articles USING GIN (categories_text gin_trgm_ops)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_author_trgm ON vanblog_articles USING GIN (author gin_trgm_ops)',
+    );
+    await this.store.query(
+      'CREATE INDEX IF NOT EXISTS idx_vanblog_article_tags_name_trgm ON vanblog_article_tags USING GIN (tag_name gin_trgm_ops)',
     );
     await this.store.query(
       'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_title_trgm ON vanblog_drafts USING GIN (title gin_trgm_ops)',
@@ -1069,12 +1113,22 @@ export class StructuredDataService implements OnModuleInit {
 
   private getArticleSearchVectorSql(alias = '') {
     const prefix = alias ? `${alias}.` : '';
+    return `${prefix}search_vector`;
+  }
+
+  private getArticleSearchVectorValueSql(fields: {
+    title: string;
+    categories: string;
+    category: string;
+    author: string;
+    content: string;
+  }) {
     return this.buildWeightedSearchVectorSql([
-      { expr: `${prefix}title`, weight: 'A' },
-      { expr: `array_to_string(${prefix}categories, ' ')`, weight: 'B' },
-      { expr: `${prefix}category`, weight: 'B' },
-      { expr: `${prefix}author`, weight: 'C' },
-      { expr: `${prefix}content`, weight: 'D' },
+      { expr: fields.title, weight: 'A' },
+      { expr: `array_to_string(${fields.categories}, ' ')`, weight: 'B' },
+      { expr: fields.category, weight: 'B' },
+      { expr: fields.author, weight: 'C' },
+      { expr: fields.content, weight: 'D' },
     ]);
   }
 
@@ -1453,11 +1507,20 @@ export class StructuredDataService implements OnModuleInit {
       await this.store.query(
         `
           INSERT INTO vanblog_articles (
-            id, title, content, category, categories, top_value, hidden, private_flag, deleted,
+            id, title, content, category, categories, categories_text, search_vector,
+            top_value, hidden, private_flag, deleted,
             viewer, visited, author, password, pathname, copyright,
             last_visited_time, created_at, updated_at, source_record_id
           ) VALUES (
-            $1,$2,$3,$4,$5::text[],$6,$7,$8,$9,
+            $1,$2,$3,$4,$5::text[],array_to_string($5::text[], ' '),
+            ${this.getArticleSearchVectorValueSql({
+              title: '$2',
+              categories: '$5::text[]',
+              category: '$4',
+              author: '$12',
+              content: '$3',
+            })},
+            $6,$7,$8,$9,
             $10,$11,$12,$13,$14,$15,
             $16,$17,$18,$19
           )
@@ -2395,11 +2458,20 @@ export class StructuredDataService implements OnModuleInit {
     await this.store.query(
       `
         INSERT INTO vanblog_articles (
-          id, title, content, category, categories, top_value, hidden, private_flag, deleted,
+          id, title, content, category, categories, categories_text, search_vector,
+          top_value, hidden, private_flag, deleted,
           viewer, visited, author, password, pathname, copyright,
           last_visited_time, created_at, updated_at, source_record_id
         ) VALUES (
-          $1,$2,$3,$4,$5::text[],$6,$7,$8,$9,
+          $1,$2,$3,$4,$5::text[],array_to_string($5::text[], ' '),
+          ${this.getArticleSearchVectorValueSql({
+            title: '$2',
+            categories: '$5::text[]',
+            category: '$4',
+            author: '$12',
+            content: '$3',
+          })},
+          $6,$7,$8,$9,
           $10,$11,$12,$13,$14,$15,
           $16,$17,$18,$19
         )
@@ -2408,6 +2480,8 @@ export class StructuredDataService implements OnModuleInit {
           content = EXCLUDED.content,
           category = EXCLUDED.category,
           categories = EXCLUDED.categories,
+          categories_text = EXCLUDED.categories_text,
+          search_vector = EXCLUDED.search_vector,
           top_value = EXCLUDED.top_value,
           hidden = EXCLUDED.hidden,
           private_flag = EXCLUDED.private_flag,
@@ -3325,6 +3399,56 @@ export class StructuredDataService implements OnModuleInit {
     return (result.rowCount || 0) > 0;
   }
 
+  async incrementArticleViewerByPathname(pathname: string, isNewVisitor: boolean) {
+    const result = await this.store.query(
+      `
+        WITH input AS (
+          SELECT CASE
+            WHEN $1 ~ '^[0-9]+$'
+              THEN COALESCE(NULLIF(ltrim($1, '0'), ''), '0')
+            ELSE NULL
+          END AS numeric_pathname
+        ),
+        target AS (
+          SELECT id
+          FROM vanblog_articles
+          WHERE pathname = $1 AND deleted = FALSE
+          LIMIT 1
+        ),
+        resolved AS (
+          SELECT id FROM target
+          UNION ALL
+          SELECT a.id
+          FROM vanblog_articles a
+          CROSS JOIN input
+          WHERE a.deleted = FALSE
+            AND a.id = CASE
+              WHEN input.numeric_pathname IS NOT NULL
+                AND length(input.numeric_pathname) <= 19
+                AND (
+                  length(input.numeric_pathname) < 19
+                  OR input.numeric_pathname <= '9223372036854775807'
+                )
+                THEN input.numeric_pathname::bigint
+              ELSE NULL
+            END
+            AND NOT EXISTS (SELECT 1 FROM target)
+          LIMIT 1
+        )
+        UPDATE vanblog_articles a
+        SET
+          viewer = COALESCE(a.viewer, 0) + 1,
+          visited = COALESCE(a.visited, 0) + $2,
+          last_visited_time = NOW()
+        WHERE a.id = (SELECT id FROM resolved LIMIT 1)
+          AND a.deleted = FALSE
+        RETURNING a.id
+      `,
+      [decodeURIComponent(String(pathname || '')), isNewVisitor ? 1 : 0],
+    );
+    return (result.rowCount || 0) > 0;
+  }
+
   async getAdjacentArticle(
     article: { id: number; createdAt: Date | string },
     direction: 'prev' | 'next',
@@ -3372,6 +3496,7 @@ export class StructuredDataService implements OnModuleInit {
       includeDelete?: boolean;
       limit?: number;
       orderBy?: string;
+      includeContent?: boolean;
     } = {},
   ) {
     const { params, whereSql } = this.buildArticleWhere({
@@ -3380,9 +3505,13 @@ export class StructuredDataService implements OnModuleInit {
     });
     const orderSql = options.orderBy || 'a.created_at DESC';
     const limitSql = options.limit && options.limit > 0 ? `LIMIT ${Math.trunc(options.limit)}` : '';
+    const selectSql =
+      options.includeContent === false
+        ? this.getArticleSummarySelectSql()
+        : this.getArticleSelectSql();
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
+        ${selectSql}
         ${whereSql}
         ORDER BY ${orderSql}
         ${limitSql}
@@ -3417,6 +3546,171 @@ export class StructuredDataService implements OnModuleInit {
       limit,
       orderBy: 'a.visited DESC, a.created_at DESC',
     });
+  }
+
+  async getRelatedPublicArticles(id: number, limit = 5) {
+    const safeLimit = Math.max(0, Math.trunc(limit || 0));
+    if (!Number.isFinite(id) || safeLimit === 0) {
+      return [];
+    }
+
+    const result = await this.store.query(
+      `
+        WITH current_article AS (
+          SELECT
+            a.id,
+            CASE
+              WHEN cardinality(a.categories) > 0 THEN a.categories
+              WHEN a.category IS NOT NULL AND a.category <> '' THEN ARRAY[a.category]::text[]
+              ELSE ARRAY[]::text[]
+            END AS categories,
+            COALESCE(
+              array_agg(t.tag_name ORDER BY t.tag_name) FILTER (WHERE t.tag_name IS NOT NULL),
+              ARRAY[]::text[]
+            ) AS tags
+          FROM vanblog_articles a
+          LEFT JOIN vanblog_article_tags t ON t.article_id = a.id
+          WHERE a.id = $1 AND a.deleted = FALSE
+          GROUP BY a.id, a.category, a.categories
+        ),
+        candidate_base AS (
+          SELECT
+            a.id,
+            a.title,
+            ''::text AS content,
+            a.category,
+            a.categories,
+            a.top_value,
+            a.hidden,
+            (
+              a.private_flag
+              OR EXISTS (
+                SELECT 1
+                FROM vanblog_categories category
+                WHERE category.private_flag = TRUE
+                  AND category.name = ANY(
+                    CASE
+                      WHEN cardinality(a.categories) > 0 THEN a.categories
+                      WHEN a.category IS NOT NULL AND a.category <> ''
+                        THEN ARRAY[a.category]::text[]
+                      ELSE ARRAY[]::text[]
+                    END
+                  )
+              )
+            ) AS private_flag,
+            a.deleted,
+            a.viewer,
+            a.visited,
+            a.author,
+            NULL::text AS password,
+            a.pathname,
+            a.copyright,
+            a.last_visited_time,
+            a.created_at,
+            a.updated_at,
+            a.source_record_id,
+            CASE
+              WHEN cardinality(a.categories) > 0 THEN a.categories
+              WHEN a.category IS NOT NULL AND a.category <> '' THEN ARRAY[a.category]::text[]
+              ELSE ARRAY[]::text[]
+            END AS article_categories,
+            COALESCE(
+              array_agg(t.tag_name ORDER BY t.tag_name) FILTER (WHERE t.tag_name IS NOT NULL),
+              ARRAY[]::text[]
+            ) AS tags,
+            c.categories AS current_categories,
+            c.tags AS current_tags
+          FROM vanblog_articles a
+          CROSS JOIN current_article c
+          LEFT JOIN vanblog_article_tags t ON t.article_id = a.id
+          WHERE a.deleted = FALSE
+            AND a.hidden = FALSE
+            AND a.id <> c.id
+          GROUP BY
+            a.id,
+            a.title,
+            a.category,
+            a.categories,
+            a.top_value,
+            a.hidden,
+            a.private_flag,
+            a.deleted,
+            a.viewer,
+            a.visited,
+            a.author,
+            a.pathname,
+            a.copyright,
+            a.last_visited_time,
+            a.created_at,
+            a.updated_at,
+            a.source_record_id,
+            c.categories,
+            c.tags
+        ),
+        scored AS (
+          SELECT
+            candidate_base.*,
+            (
+              CASE
+                WHEN EXISTS (
+                  SELECT 1
+                  FROM unnest(candidate_base.article_categories) AS category(name)
+                  WHERE category.name = ANY(candidate_base.current_categories)
+                ) THEN 3
+                ELSE 0
+              END
+              + (
+                SELECT COUNT(*)::numeric
+                FROM unnest(candidate_base.tags) AS tag(name)
+                WHERE tag.name = ANY(candidate_base.current_tags)
+              ) * 2
+              + LEAST(COALESCE(candidate_base.viewer, 0), 500)::numeric / 500
+            ) AS score
+          FROM candidate_base
+        ),
+        ranked AS (
+          SELECT scored.*, 0 AS bucket
+          FROM scored
+          WHERE scored.score > 0
+          UNION ALL
+          SELECT scored.*, 1 AS bucket
+          FROM scored
+          WHERE scored.score <= 0
+        )
+        SELECT
+          id,
+          title,
+          content,
+          category,
+          categories,
+          top_value,
+          hidden,
+          private_flag,
+          deleted,
+          viewer,
+          visited,
+          author,
+          password,
+          pathname,
+          copyright,
+          last_visited_time,
+          created_at,
+          updated_at,
+          source_record_id,
+          tags
+        FROM ranked
+        ORDER BY
+          bucket ASC,
+          CASE WHEN bucket = 0 THEN score END DESC NULLS LAST,
+          CASE WHEN bucket = 0 THEN created_at END DESC NULLS LAST,
+          CASE WHEN bucket = 1 AND top_value > 0 THEN 0 ELSE 1 END ASC,
+          CASE WHEN bucket = 1 AND top_value > 0 THEN top_value END DESC NULLS LAST,
+          CASE WHEN bucket = 1 THEN created_at END DESC NULLS LAST
+        LIMIT $2
+      `,
+      [id, safeLimit],
+    );
+    return result.rows.map((row) => this.mapArticleRow(row)).filter(Boolean);
   }
 
   async getAnalysisViewerSnapshot(limit: number) {
@@ -3659,7 +3953,7 @@ export class StructuredDataService implements OnModuleInit {
     return Number(result.rows[0]?.total || 0);
   }
 
-  async getTimelineSummary(includeHidden: boolean) {
+  async getTimelineSummaryPayload(includeHidden: boolean) {
     const { params, whereSql } = this.buildArticleWhere({
       includeHidden,
       includeDelete: false,
@@ -3668,7 +3962,8 @@ export class StructuredDataService implements OnModuleInit {
       `
         SELECT
           EXTRACT(YEAR FROM a.created_at)::int AS year,
-          COUNT(*)::int AS article_count
+          COUNT(*)::int AS article_count,
+          MAX(MAX(COALESCE(a.updated_at, a.created_at))) OVER () AS latest_timestamp
         FROM vanblog_articles a
         ${whereSql}
         GROUP BY EXTRACT(YEAR FROM a.created_at)
@@ -3676,10 +3971,21 @@ export class StructuredDataService implements OnModuleInit {
       `,
       params,
     );
-    return result.rows.map((row: any) => ({
-      year: String(row.year),
-      articleCount: Number(row.article_count || 0),
-    }));
+    const latestTimestamp = result.rows[0]?.latest_timestamp
+      ? new Date(result.rows[0].latest_timestamp).toISOString()
+      : null;
+    return {
+      summary: result.rows.map((row: any) => ({
+        year: String(row.year),
+        articleCount: Number(row.article_count || 0),
+      })),
+      latestTimestamp,
+    };
+  }
+
+  async getTimelineSummary(includeHidden: boolean) {
+    const { summary } = await this.getTimelineSummaryPayload(includeHidden);
+    return summary;
   }
 
   async getArchiveSummary(
@@ -4111,31 +4417,64 @@ export class StructuredDataService implements OnModuleInit {
         similarity(COALESCE(a.title, ''), $${keywordParamIndex}),
         similarity(COALESCE(a.content, ''), $${keywordParamIndex}),
         similarity(COALESCE(a.category, ''), $${keywordParamIndex}),
-        similarity(COALESCE(array_to_string(a.categories, ' '), ''), $${keywordParamIndex}),
+        similarity(COALESCE(a.categories_text, ''), $${keywordParamIndex}),
         similarity(COALESCE(a.author, ''), $${keywordParamIndex})
       )
     `;
     const queryParams = [...params, normalizedKeyword, limit];
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
-        ${whereSql ? `${whereSql} AND` : 'WHERE'}
-        (
-          ${searchVectorSql} @@ ${tsQuerySql}
-          OR a.title ILIKE '%' || $${keywordParamIndex} || '%'
-          OR a.content ILIKE '%' || $${keywordParamIndex} || '%'
-          OR COALESCE(a.category, '') ILIKE '%' || $${keywordParamIndex} || '%'
-          OR COALESCE(array_to_string(a.categories, ' '), '') ILIKE '%' || $${keywordParamIndex} || '%'
-          OR COALESCE(a.author, '') ILIKE '%' || $${keywordParamIndex} || '%'
-          OR EXISTS (
-            SELECT 1
-            FROM vanblog_article_tags t
-            WHERE t.article_id = a.id
-              AND t.tag_name ILIKE '%' || $${keywordParamIndex} || '%'
-          )
+        WITH search_query AS (
+          SELECT ${tsQuerySql} AS query
+        ),
+        candidate_ids AS MATERIALIZED (
+          SELECT a.id
+          FROM vanblog_articles a
+          CROSS JOIN search_query q
+          WHERE a.search_vector @@ q.query
+
+          UNION
+
+          SELECT a.id
+          FROM vanblog_articles a
+          WHERE a.title ILIKE '%' || $${keywordParamIndex} || '%'
+
+          UNION
+
+          SELECT a.id
+          FROM vanblog_articles a
+          WHERE a.content ILIKE '%' || $${keywordParamIndex} || '%'
+
+          UNION
+
+          SELECT a.id
+          FROM vanblog_articles a
+          WHERE a.category ILIKE '%' || $${keywordParamIndex} || '%'
+
+          UNION
+
+          SELECT a.id
+          FROM vanblog_articles a
+          WHERE a.categories_text ILIKE '%' || $${keywordParamIndex} || '%'
+
+          UNION
+
+          SELECT a.id
+          FROM vanblog_articles a
+          WHERE a.author ILIKE '%' || $${keywordParamIndex} || '%'
+
+          UNION
+
+          SELECT t.article_id AS id
+          FROM vanblog_article_tags t
+          WHERE t.tag_name ILIKE '%' || $${keywordParamIndex} || '%'
         )
+        ${this.getArticleSelectSql()}
+        INNER JOIN candidate_ids c ON c.id = a.id
+        CROSS JOIN search_query q
+        ${whereSql}
         ORDER BY
-          ts_rank_cd(${searchVectorSql}, ${tsQuerySql}) DESC,
+          ts_rank_cd(${searchVectorSql}, q.query) DESC,
           ${fuzzyScoreSql} DESC,
           a.top_value DESC,
           a.created_at DESC

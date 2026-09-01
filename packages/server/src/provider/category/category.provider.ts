@@ -34,15 +34,46 @@ export class CategoryProvider {
   }
 
   async getCategoriesWithArticle(includeHidden: boolean) {
-    const categories = await this.getAllCategories();
-    const data = {};
-    categories.forEach((c) => {
-      data[c] = [];
-    });
-    for (const category of categories) {
-      data[category] = await this.getArticlesByCategory(category, includeHidden);
+    const payload = await this.getCategoriesWithArticlePayload(includeHidden);
+    return payload.data;
+  }
+
+  async getCategoriesWithArticlePayload(includeHidden: boolean) {
+    const [categoryRecords, articles] = await Promise.all([
+      this.getAllCategories(true),
+      this.articleProvider.getAll('list', includeHidden),
+    ]);
+    const data: Record<string, any[]> = {};
+    for (const categoryRecord of categoryRecords as any[]) {
+      const name =
+        typeof categoryRecord === 'string'
+          ? categoryRecord
+          : String(categoryRecord?.name || '').trim();
+      if (name) {
+        data[name] = [];
+      }
     }
-    return data;
+
+    let latestTimestamp: string | Date | null = null;
+    let latestValue = Number.NEGATIVE_INFINITY;
+    for (const article of articles) {
+      for (const category of this.articleProvider.getArticleCategories(article)) {
+        if (Object.prototype.hasOwnProperty.call(data, category)) {
+          data[category].push(article);
+        }
+      }
+      const timestamp = article?.updatedAt || article?.createdAt;
+      const value = new Date(timestamp).getTime();
+      if (!Number.isNaN(value) && value > latestValue) {
+        latestValue = value;
+        latestTimestamp = timestamp;
+      }
+    }
+
+    return {
+      data,
+      latestTimestamp,
+    };
   }
 
   async getCategorySummaries(includeHidden: boolean) {

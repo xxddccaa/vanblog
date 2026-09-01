@@ -26,7 +26,9 @@ describe('PublicDataCacheProvider', () => {
 
     expect(cacheProvider.del).toHaveBeenCalledWith('public:meta');
     expect(cacheProvider.del).toHaveBeenCalledWith('public:site-stats');
+    expect(cacheProvider.del).toHaveBeenCalledWith('public:category:all');
     expect(cacheProvider.del).toHaveBeenCalledWith('public:category:summary');
+    expect(cacheProvider.del).toHaveBeenCalledWith('public:tag:all');
     expect(cacheProvider.delPattern).toHaveBeenCalledWith('public:timeline*');
     expect(cacheProvider.delPattern).toHaveBeenCalledWith('public:article:engagement:*');
     expect(cacheProvider.delPattern).toHaveBeenCalledWith('public:article:fragments:*');
@@ -45,6 +47,7 @@ describe('PublicDataCacheProvider', () => {
 
     expect(cacheProvider.del).toHaveBeenCalledWith('public:meta');
     expect(cacheProvider.del).toHaveBeenCalledWith('public:site-stats');
+    expect(cacheProvider.del).toHaveBeenCalledWith('public:tag:all');
     expect(cacheProvider.delPattern).toHaveBeenCalledWith('tag:*');
     expect(cacheProvider.delPattern).toHaveBeenCalledWith('analysis:*');
   });

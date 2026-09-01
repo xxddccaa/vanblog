@@ -24,7 +24,20 @@ export class LogController {
     @Query('page') page: number,
     @Query('pageSize') pageSize: number,
     @Query('event') event: EventType,
+    @Query('tail') tail?: string,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: number,
   ) {
+    if (event === EventType.SYSTEM && tail === 'true') {
+      const data = await this.logProvider.tailSystemLog(
+        cursor,
+        this.normalizePositiveInt(limit, 1000, 1000),
+      );
+      return {
+        statusCode: 200,
+        data,
+      };
+    }
     const safePage = this.normalizePositiveInt(page, 1, 100000);
     const safePageSize = this.normalizePositiveInt(pageSize, 20, 200);
     const data = await this.logProvider.searchLog(safePage, safePageSize, event);

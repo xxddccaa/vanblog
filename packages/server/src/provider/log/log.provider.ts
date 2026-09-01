@@ -10,8 +10,19 @@ import { checkOrCreate } from 'src/utils/checkFolder';
 import { Pipeline } from 'src/scheme/pipeline.schema';
 import { CodeResult } from '../pipeline/pipeline.provider';
 import readline from 'node:readline';
+import { createHash } from 'node:crypto';
 
 const SENSITIVE_LOG_KEYS = /^(token|authorization|cookie|password|secret|api[-_]?key)$/i;
+const SYSTEM_LOG_READ_CHUNK_SIZE = 64 * 1024;
+const SYSTEM_LOG_MAX_INCREMENT_BYTES = 4 * 1024 * 1024;
+
+type SystemLogCursor = {
+  dev: number;
+  ino: number;
+  offset: number;
+  anchor: string;
+  dropping?: boolean;
+};
 
 export function redactLogValue(value: any, depth = 0): any {
   if (depth > 5) return '[TRUNCATED]';
@@ -166,6 +177,268 @@ export class LogProvider {
       reader.on('error', finish);
     });
   }
+
+  private encodeSystemLogCursor(cursor: SystemLogCursor) {
+    return Buffer.from(JSON.stringify(cursor)).toString('base64url');
+  }
+
+  private decodeSystemLogCursor(value?: string): SystemLogCursor | null {
+    if (!value) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+      if (
+        !Number.isFinite(parsed?.dev) ||
+        !Number.isFinite(parsed?.ino) ||
+        !Number.isSafeInteger(parsed?.offset) ||
+        parsed.offset < 0 ||
+        typeof parsed.anchor !== 'string'
+      ) {
+        return null;
+      }
+      return {
+        dev: Number(parsed.dev),
+        ino: Number(parsed.ino),
+        offset: Number(parsed.offset),
+        anchor: parsed.anchor,
+        dropping: parsed.dropping === true,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private toSystemLogLines(buffer: Buffer, discardLeadingPartialLine: boolean) {
+    let text = buffer.toString('utf8');
+    if (discardLeadingPartialLine) {
+      const firstLineEnd = text.indexOf('\n');
+      text = firstLineEnd === -1 ? '' : text.slice(firstLineEnd + 1);
+    }
+    return text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+
+  private getAnchor(buffer: Buffer) {
+    if (!buffer.length) {
+      return '';
+    }
+    return createHash('sha256')
+      .update(buffer.subarray(Math.max(0, buffer.length - 64)))
+      .digest('hex');
+  }
+
+  private async readFileRange(
+    handle: fs.promises.FileHandle,
+    start: number,
+    end: number,
+  ) {
+    const chunks: Buffer[] = [];
+    let position = start;
+    while (position < end) {
+      const length = Math.min(SYSTEM_LOG_READ_CHUNK_SIZE, end - position);
+      const buffer = Buffer.allocUnsafe(length);
+      const { bytesRead } = await handle.read(buffer, 0, length, position);
+      if (bytesRead <= 0) {
+        break;
+      }
+      chunks.push(buffer.subarray(0, bytesRead));
+      position += bytesRead;
+    }
+    return Buffer.concat(chunks);
+  }
+
+  private async buildSystemLogCursor(
+    handle: fs.promises.FileHandle,
+    stat: fs.Stats,
+    offset: number,
+    dropping = false,
+  ) {
+    const anchorBuffer = await this.readFileRange(
+      handle,
+      Math.max(0, offset - 64),
+      offset,
+    );
+    return this.encodeSystemLogCursor({
+      dev: Number(stat.dev),
+      ino: Number(stat.ino),
+      offset,
+      anchor: this.getAnchor(anchorBuffer),
+      dropping,
+    });
+  }
+
+  private async readSystemLogTail(filePath: string, limit: number) {
+    const handle = await fs.promises.open(filePath, 'r');
+    const chunks: Buffer[] = [];
+    const stat = await handle.stat();
+    let position = stat.size;
+    let newlineCount = 0;
+    const minimumPosition = Math.max(
+      0,
+      stat.size - SYSTEM_LOG_MAX_INCREMENT_BYTES,
+    );
+
+    try {
+      while (position > minimumPosition && newlineCount <= limit) {
+        const readSize = Math.min(
+          SYSTEM_LOG_READ_CHUNK_SIZE,
+          position - minimumPosition,
+        );
+        position -= readSize;
+        const chunk = await this.readFileRange(handle, position, position + readSize);
+        if (!chunk.length) {
+          break;
+        }
+        chunks.unshift(chunk);
+        for (const byte of chunk) {
+          if (byte === 10) {
+            newlineCount += 1;
+          }
+        }
+      }
+      const buffer = Buffer.concat(chunks);
+      let startIndex = 0;
+      if (position > 0) {
+        const firstNewline = buffer.indexOf(10);
+        if (firstNewline === -1) {
+          return {
+            data: [],
+            total: 0,
+            nextCursor: await this.buildSystemLogCursor(
+              handle,
+              stat,
+              stat.size,
+              true,
+            ),
+            reset: true,
+          };
+        }
+        startIndex = firstNewline + 1;
+      }
+
+      const lastNewline = buffer.lastIndexOf(10);
+      const completeOffset =
+        lastNewline >= startIndex ? position + lastNewline + 1 : position + startIndex;
+      const complete =
+        lastNewline >= startIndex
+          ? buffer.subarray(startIndex, lastNewline + 1)
+          : Buffer.alloc(0);
+      const data = this.toSystemLogLines(complete, false).slice(-limit);
+      return {
+        data,
+        total: data.length,
+        nextCursor: await this.buildSystemLogCursor(
+          handle,
+          stat,
+          completeOffset,
+        ),
+        reset: true,
+      };
+    } finally {
+      await handle.close();
+    }
+  }
+
+  async tailSystemLog(cursorValue?: string, limit = 1000) {
+    const safeLimit = Math.max(1, Math.min(Math.trunc(limit || 1000), 1000));
+    const filePath = this.getReadableLogPath(EventType.SYSTEM);
+    if (!filePath) {
+      return {
+        data: [],
+        total: 0,
+        nextCursor: null,
+        reset: true,
+      };
+    }
+
+    const cursor = this.decodeSystemLogCursor(cursorValue);
+    if (!cursor) {
+      return await this.readSystemLogTail(filePath, safeLimit);
+    }
+    const handle = await fs.promises.open(filePath, 'r');
+    let stat: fs.Stats;
+    let buffer = Buffer.alloc(0);
+    let mustReset = false;
+    try {
+      stat = await handle.stat();
+      const fileIdentityChanged =
+        cursor.dev !== Number(stat.dev) || cursor.ino !== Number(stat.ino);
+      const invalidOffset =
+        cursor.offset > stat.size ||
+        stat.size - cursor.offset > SYSTEM_LOG_MAX_INCREMENT_BYTES;
+      if (fileIdentityChanged || invalidOffset) {
+        mustReset = true;
+      } else {
+        const anchorBuffer = await this.readFileRange(
+          handle,
+          Math.max(0, cursor.offset - 64),
+          cursor.offset,
+        );
+        if (cursor.anchor !== this.getAnchor(anchorBuffer)) {
+          mustReset = true;
+        } else {
+          buffer = await this.readFileRange(handle, cursor.offset, stat.size);
+          const finalStat = await handle.stat();
+          mustReset =
+            finalStat.dev !== stat.dev ||
+            finalStat.ino !== stat.ino ||
+            finalStat.size < stat.size ||
+            buffer.length !== stat.size - cursor.offset;
+        }
+      }
+
+      if (mustReset) {
+        return await this.readSystemLogTail(filePath, safeLimit);
+      }
+
+      let startIndex = 0;
+      if (cursor.dropping) {
+        const firstNewline = buffer.indexOf(10);
+        if (firstNewline === -1) {
+          return {
+            data: [],
+            total: 0,
+            nextCursor: await this.buildSystemLogCursor(
+              handle,
+              stat,
+              stat.size,
+              true,
+            ),
+            reset: false,
+          };
+        }
+        startIndex = firstNewline + 1;
+      }
+
+      const remaining = buffer.subarray(startIndex);
+      const lastNewline = remaining.lastIndexOf(10);
+      const nextOffset =
+        lastNewline >= 0
+          ? cursor.offset + startIndex + lastNewline + 1
+          : cursor.offset + startIndex;
+      const complete =
+        lastNewline >= 0
+          ? remaining.subarray(0, lastNewline + 1)
+          : Buffer.alloc(0);
+      const data = this.toSystemLogLines(complete, false).slice(-safeLimit);
+      return {
+        data,
+        total: data.length,
+        nextCursor: await this.buildSystemLogCursor(
+          handle,
+          stat,
+          nextOffset,
+        ),
+        reset: false,
+      };
+    } finally {
+      await handle.close();
+    }
+  }
+
   async searchLog(page: number, pageSize: number, eventType: EventType) {
     const skip = page * pageSize - pageSize;
     const all = page * pageSize;

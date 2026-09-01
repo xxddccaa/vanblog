@@ -629,22 +629,14 @@ export class PublicController {
   }
   @Get('timeline/summary')
   async getTimeLineSummary(@Res({ passthrough: true }) res?: Response) {
-    const [data, articles] = await Promise.all([
-      this.getCachedPublicPayload('public:timeline:summary', 300, async () =>
-        this.articleProvider.getTimeLineSummary(),
-      ),
-      this.articleProvider.getAll('list', false, false),
-    ]);
-    const latestArticle = (articles || []).reduce((latest: any, article: any) => {
-      if (!latest) {
-        return article;
-      }
-      return new Date(article?.updatedAt || article?.createdAt).getTime() >
-        new Date(latest?.updatedAt || latest?.createdAt).getTime()
-        ? article
-        : latest;
-    }, null);
-    this.setLastModified(res, latestArticle?.updatedAt, latestArticle?.createdAt);
+    const payload = await this.getCachedPublicPayload('public:timeline:summary', 300, async () => {
+      const summary = await this.articleProvider.getTimeLineSummaryPayload();
+      return {
+        data: summary.summary,
+        __lastModified: summary.latestTimestamp,
+      };
+    });
+    const data = this.unwrapCachedPayload(res, payload);
     return {
       statusCode: 200,
       data,
@@ -806,19 +798,18 @@ export class PublicController {
 
   @Get('category')
   async getArticlesByCategory(@Res({ passthrough: true }) res?: Response) {
-    const data = await this.categoryProvider.getCategoriesWithArticle(false);
-    const latestArticle = (Object.values(data || {}) as any[])
-      .flat()
-      .reduce((latest: any, article: any) => {
-        if (!latest) {
-          return article;
-        }
-        return new Date(article?.updatedAt || article?.createdAt).getTime() >
-          new Date(latest?.updatedAt || latest?.createdAt).getTime()
-          ? article
-          : latest;
-      }, null);
-    this.setLastModified(res, latestArticle?.updatedAt, latestArticle?.createdAt);
+    const payload = await this.getCachedPublicPayload(
+      'public:category:all',
+      300,
+      async () => {
+        const result = await this.categoryProvider.getCategoriesWithArticlePayload(false);
+        return {
+          data: result.data,
+          __lastModified: result.latestTimestamp,
+        };
+      },
+    );
+    const data = this.unwrapCachedPayload(res, payload);
     return {
       statusCode: 200,
       data,
@@ -884,20 +875,18 @@ export class PublicController {
 
   @Get('tags/all')
   async getArticlesByTag(@Res({ passthrough: true }) res?: Response) {
-    const [data, records] = await Promise.all([
-      this.tagProvider.getTagsWithArticle(false),
-      this.tagProvider.getAllTagRecords(),
-    ]);
-    const latestTag = (records || []).reduce((latest: any, tag: any) => {
-      if (!latest) {
-        return tag;
-      }
-      return new Date(tag?.updatedAt || tag?.createdAt).getTime() >
-        new Date(latest?.updatedAt || latest?.createdAt).getTime()
-        ? tag
-        : latest;
-    }, null);
-    this.setLastModified(res, latestTag?.updatedAt, latestTag?.createdAt);
+    const payload = await this.getCachedPublicPayload(
+      'public:tag:all',
+      300,
+      async () => {
+        const result = await this.tagProvider.getTagsWithArticlePayload(false);
+        return {
+          data: result.data,
+          __lastModified: result.latestTimestamp,
+        };
+      },
+    );
+    const data = this.unwrapCachedPayload(res, payload);
     return {
       statusCode: 200,
       data,

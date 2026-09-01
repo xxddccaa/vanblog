@@ -51,4 +51,71 @@ describe('TagProvider', () => {
       'new-tag',
     );
   });
+
+  it('groups all tag articles from one public article query', async () => {
+    const articleProvider = {
+      getByOption: jest.fn().mockResolvedValue({
+        articles: [
+          {
+            id: 1,
+            title: 'Shared',
+            tags: ['beta', 'alpha'],
+          },
+          {
+            id: 2,
+            title: 'Alpha only',
+            tags: ['alpha'],
+          },
+          {
+            id: 3,
+            title: 'Unknown',
+            tags: ['not-a-record'],
+          },
+        ],
+      }),
+    };
+    const structuredDataService = {
+      listTagRecords: jest.fn().mockResolvedValue([
+        {
+          name: 'alpha',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          updatedAt: '2026-04-03T00:00:00.000Z',
+        },
+        {
+          name: 'beta',
+          createdAt: '2026-04-02T00:00:00.000Z',
+        },
+        {
+          name: 'empty',
+          createdAt: '2026-04-01T00:00:00.000Z',
+        },
+      ]),
+    };
+    const provider = new TagProvider(
+      articleProvider as any,
+      {} as any,
+      { get: jest.fn(), set: jest.fn(), delPattern: jest.fn() } as any,
+      structuredDataService as any,
+    );
+
+    const result = await provider.getTagsWithArticlePayload(false);
+
+    expect(result.data).toEqual({
+      alpha: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
+      beta: [expect.objectContaining({ id: 1 })],
+    });
+    expect(Object.keys(result.data)).toEqual(['alpha', 'beta']);
+    expect(result.latestTimestamp).toBe('2026-04-03T00:00:00.000Z');
+    expect(structuredDataService.listTagRecords).toHaveBeenCalledTimes(1);
+    expect(articleProvider.getByOption).toHaveBeenCalledTimes(1);
+    expect(articleProvider.getByOption).toHaveBeenCalledWith(
+      {
+        page: 1,
+        pageSize: -1,
+        toListView: true,
+        regMatch: false,
+      },
+      true,
+    );
+  });
 });

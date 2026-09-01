@@ -1,20 +1,78 @@
 import { ArticleProvider } from './article.provider';
 
 describe('ArticleProvider', () => {
+  it('returns the structured timeline summary payload without loading article bodies', async () => {
+    const structuredDataService = {
+      getTimelineSummaryPayload: jest.fn().mockResolvedValue({
+        summary: [{ year: '2026', articleCount: 2 }],
+        latestTimestamp: '2026-04-12T00:00:00.000Z',
+      }),
+      isInitialized: jest.fn().mockReturnValue(true),
+    };
+    const provider = new ArticleProvider(
+      { find: jest.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+    jest.spyOn(provider, 'getAll');
+
+    await expect(provider.getTimeLineSummaryPayload()).resolves.toEqual({
+      summary: [{ year: '2026', articleCount: 2 }],
+      latestTimestamp: '2026-04-12T00:00:00.000Z',
+    });
+    expect(provider.getAll).not.toHaveBeenCalled();
+  });
+
+  it('computes fallback timeline years and latest timestamp from one article snapshot', async () => {
+    const structuredDataService = {
+      getTimelineSummaryPayload: jest.fn().mockResolvedValue({
+        summary: [],
+        latestTimestamp: null,
+      }),
+      isInitialized: jest.fn().mockReturnValue(false),
+    };
+    const provider = new ArticleProvider(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+    jest.spyOn(provider, 'getAll').mockResolvedValue([
+      {
+        id: 1,
+        title: 'Older',
+        createdAt: new Date('2025-02-01T00:00:00.000Z'),
+        updatedAt: new Date('2025-02-02T00:00:00.000Z'),
+      },
+      {
+        id: 2,
+        title: 'Newest',
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-04-12T00:00:00.000Z'),
+      },
+    ] as any);
+
+    await expect(provider.getTimeLineSummaryPayload()).resolves.toEqual({
+      summary: [
+        { year: '2026', articleCount: 1 },
+        { year: '2025', articleCount: 1 },
+      ],
+      latestTimestamp: '2026-04-12T00:00:00.000Z',
+    });
+    expect(provider.getAll).toHaveBeenCalledTimes(1);
+    expect(provider.getAll).toHaveBeenCalledWith('list', false);
+  });
+
   it('increments article views directly in structured storage when PG mode is active', async () => {
     const articleModel = {
       updateOne: jest.fn(),
     };
     const structuredDataService = {
-      getArticleByPathname: jest.fn().mockResolvedValue({
-        id: 12,
-        title: 'Atomic views',
-        viewer: 7,
-        visited: 3,
-      }),
       isInitialized: jest.fn().mockReturnValue(true),
-      incrementArticleViewer: jest.fn().mockResolvedValue(true),
-      upsertArticle: jest.fn(),
+      incrementArticleViewerByPathname: jest.fn().mockResolvedValue(true),
     };
     const provider = new ArticleProvider(
       articleModel as any,
@@ -26,9 +84,182 @@ describe('ArticleProvider', () => {
 
     await provider.updateViewerByPathname('atomic-views', true);
 
-    expect(structuredDataService.incrementArticleViewer).toHaveBeenCalledWith(12, true);
+    expect(structuredDataService.incrementArticleViewerByPathname).toHaveBeenCalledWith(
+      'atomic-views',
+      true,
+    );
     expect(articleModel.updateOne).not.toHaveBeenCalled();
-    expect(structuredDataService.upsertArticle).not.toHaveBeenCalled();
+  });
+
+  it('keeps the compatibility lookup path when structured storage is inactive', async () => {
+    const articleModel = {
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const structuredDataService = {
+      isInitialized: jest.fn().mockReturnValue(false),
+      upsertArticle: jest.fn().mockResolvedValue(undefined),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+    jest.spyOn(provider, 'getByPathName').mockResolvedValue({
+      id: 12,
+      title: 'Legacy views',
+      viewer: 7,
+      visited: 3,
+    } as any);
+    jest.spyOn(provider, 'getById').mockResolvedValue({
+      id: 12,
+      title: 'Legacy views',
+      viewer: 8,
+      visited: 3,
+    } as any);
+
+    await provider.updateViewerByPathname('legacy-views', false);
+
+    expect(articleModel.updateOne).toHaveBeenCalledWith(
+      { id: 12 },
+      expect.objectContaining({
+        $inc: { viewer: 1, visited: 0 },
+      }),
+    );
+    expect(structuredDataService.upsertArticle).toHaveBeenCalled();
+  });
+
+  it('uses only canonical safe integer pathnames for compatibility id fallback', async () => {
+    const structuredDataService = {
+      isInitialized: jest.fn().mockReturnValue(false),
+    };
+    const provider = new ArticleProvider(
+      { updateOne: jest.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+    jest.spyOn(provider, 'getByPathName').mockResolvedValue(null);
+    const getById = jest.spyOn(provider, 'getById').mockResolvedValue(null);
+
+    await provider.updateViewerByPathname('7.0', false);
+    await provider.updateViewerByPathname('1e2', false);
+    await provider.updateViewerByPathname('999999999999999999999999', false);
+
+    expect(getById).not.toHaveBeenCalled();
+
+    await provider.updateViewerByPathname('0007', false);
+    expect(getById).toHaveBeenCalledWith(7, 'admin');
+  });
+
+  it('uses the structured related-article query without loading the full article list', async () => {
+    const articleModel = {
+      find: jest.fn(),
+    };
+    const structuredDataService = {
+      isInitialized: jest.fn().mockReturnValue(true),
+      getRelatedPublicArticles: jest.fn().mockResolvedValue([
+        { id: 8, title: 'Related', content: '', viewer: 4 },
+      ]),
+    };
+    const provider = new ArticleProvider(
+      articleModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+    jest.spyOn(provider, 'getPublicArticleByIdOrPathname').mockResolvedValue({
+      id: 12,
+      title: 'Current',
+      tags: ['typescript'],
+      category: 'Engineering',
+    } as any);
+    jest.spyOn(provider, 'getByOption');
+
+    await expect(provider.getRelatedPublicArticles('current', 3)).resolves.toEqual([
+      expect.objectContaining({ id: 8, title: 'Related' }),
+    ]);
+
+    expect(structuredDataService.getRelatedPublicArticles).toHaveBeenCalledWith(12, 3);
+    expect(provider.getByOption).not.toHaveBeenCalled();
+    expect(articleModel.find).not.toHaveBeenCalled();
+  });
+
+  it('requests summary articles only for list views', async () => {
+    const structuredDataService = {
+      listArticles: jest.fn().mockResolvedValue([]),
+      isInitialized: jest.fn().mockReturnValue(true),
+    };
+    const provider = new ArticleProvider(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    await provider.getAll('list', false, false);
+    await provider.getAll('admin', true, false);
+    await provider.getAll('public', false, false);
+
+    expect(structuredDataService.listArticles).toHaveBeenNthCalledWith(1, {
+      includeHidden: false,
+      includeDelete: false,
+      includeContent: false,
+    });
+    expect(structuredDataService.listArticles).toHaveBeenNthCalledWith(2, {
+      includeHidden: true,
+      includeDelete: false,
+      includeContent: true,
+    });
+    expect(structuredDataService.listArticles).toHaveBeenNthCalledWith(3, {
+      includeHidden: false,
+      includeDelete: false,
+      includeContent: true,
+    });
+  });
+
+  it('keeps full content for link and image scans', async () => {
+    const structuredDataService = {
+      listArticles: jest
+        .fn()
+        .mockResolvedValueOnce([
+          { id: 1, title: 'Link', content: 'https://vanblog.io/docs' },
+        ])
+        .mockResolvedValueOnce([
+          { id: 2, title: 'Image', content: '![cover](https://img.example.com/cover.png)' },
+        ]),
+      isInitialized: jest.fn().mockReturnValue(true),
+    };
+    const provider = new ArticleProvider(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      structuredDataService as any,
+    );
+
+    await expect(provider.searchArticlesByLink('vanblog.io')).resolves.toEqual([
+      expect.objectContaining({ id: 1, title: 'Link' }),
+    ]);
+    await expect(provider.getAllImageLinks()).resolves.toEqual([
+      expect.objectContaining({
+        articleId: 2,
+        links: expect.arrayContaining(['https://img.example.com/cover.png']),
+      }),
+    ]);
+
+    expect(structuredDataService.listArticles).toHaveBeenNthCalledWith(1, {
+      includeHidden: true,
+      includeDelete: false,
+    });
+    expect(structuredDataService.listArticles).toHaveBeenNthCalledWith(2, {
+      includeHidden: true,
+      includeDelete: false,
+    });
   });
 
   it('normalizes legacy category-only article creation into categories', async () => {

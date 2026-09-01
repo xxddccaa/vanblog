@@ -352,11 +352,15 @@ export class ArticleProvider {
   }
 
   async updateViewerByPathname(pathname: string, isNew: boolean) {
+    if (this.structuredDataService.isInitialized()) {
+      await this.structuredDataService.incrementArticleViewerByPathname(pathname, isNew === true);
+      return;
+    }
+
     let article = await this.getByPathName(pathname, 'admin');
     if (!article) {
-      // 这是通过 id 的吧，检查是否为有效数字
-      const numericId = Number(pathname);
-      if (!isNaN(numericId)) {
+      const numericId = /^\d+$/.test(pathname) ? Number(pathname) : Number.NaN;
+      if (Number.isSafeInteger(numericId)) {
         article = await this.getById(numericId, 'admin');
       }
       if (!article) {
@@ -617,6 +621,7 @@ export class ArticleProvider {
     const pgArticles = await this.structuredDataService.listArticles({
       includeHidden,
       includeDelete,
+      includeContent: view !== 'list',
     });
     if (pgArticles.length || this.structuredDataService.isInitialized()) {
       return pgArticles.map((article) => this.projectArticleForView(article, view)) as any;
@@ -692,6 +697,11 @@ export class ArticleProvider {
 
   async getRelatedPublicArticles(id: string | number, limit: number = 5) {
     const current = await this.getPublicArticleByIdOrPathname(id, 'list');
+    if (this.structuredDataService.isInitialized()) {
+      const articles = await this.structuredDataService.getRelatedPublicArticles(current.id, limit);
+      return articles.map((article) => this.projectArticleForView(article, 'list')) as any;
+    }
+
     const { articles } = await this.getByOption(
       {
         page: 1,
@@ -765,24 +775,39 @@ export class ArticleProvider {
   }
 
   async getTimeLineSummary() {
-    const summary = await this.structuredDataService.getTimelineSummary(false);
-    if (summary.length || this.structuredDataService.isInitialized()) {
-      return summary;
+    return (await this.getTimeLineSummaryPayload()).summary;
+  }
+
+  async getTimeLineSummaryPayload() {
+    const payload = await this.structuredDataService.getTimelineSummaryPayload(false);
+    if (payload.summary.length || this.structuredDataService.isInitialized()) {
+      return payload;
     }
 
     const articles = await this.getAll('list', false);
     const yearMap = new Map<number, number>();
+    let latestTimestamp: string | null = null;
     articles.forEach((article) => {
       const year = article.createdAt.getFullYear();
       yearMap.set(year, (yearMap.get(year) || 0) + 1);
+      const candidate = article.updatedAt || article.createdAt;
+      if (
+        candidate &&
+        (!latestTimestamp || new Date(candidate).getTime() > new Date(latestTimestamp).getTime())
+      ) {
+        latestTimestamp = new Date(candidate).toISOString();
+      }
     });
 
-    return Array.from(yearMap.entries())
-      .map(([year, articleCount]) => ({
-        year: String(year),
-        articleCount,
-      }))
-      .sort((a, b) => parseInt(b.year, 10) - parseInt(a.year, 10));
+    return {
+      summary: Array.from(yearMap.entries())
+        .map(([year, articleCount]) => ({
+          year: String(year),
+          articleCount,
+        }))
+        .sort((a, b) => parseInt(b.year, 10) - parseInt(a.year, 10)),
+      latestTimestamp,
+    };
   }
 
   async getTimeLineArticlesByYear(year: string) {
