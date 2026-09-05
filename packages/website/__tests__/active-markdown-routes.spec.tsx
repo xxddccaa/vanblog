@@ -12,8 +12,15 @@ vi.mock("next/link", () => ({
 
 vi.mock("next/dynamic", () => ({
   default: () =>
-    ({ content }: { content: string }) =>
-      React.createElement("div", { "data-client-markdown": "true" }, content),
+    ({ content, embedded }: { content: string; embedded?: boolean }) =>
+      React.createElement(
+        "div",
+        {
+          "data-client-markdown": "true",
+          className: embedded ? "markdown-body vb-embedded-markdown" : "markdown-body",
+        },
+        content,
+      ),
 }));
 
 vi.mock("../components/Layout", () => ({
@@ -46,13 +53,16 @@ vi.mock("../components/RenderedMarkdown", () => ({
   default: ({
     html,
     content,
+    embedded,
   }: {
     html: string;
     content: string;
+    embedded?: boolean;
   }) =>
     React.createElement("div", {
       "data-rendered-markdown": "true",
       "data-content": content,
+      className: embedded ? "markdown-body vb-embedded-markdown" : "markdown-body",
       dangerouslySetInnerHTML: { __html: html },
     }),
 }));
@@ -91,6 +101,7 @@ describe("active route markdown boundaries", () => {
 
     expect(html).toContain('data-rendered-markdown="true"');
     expect(html).toContain("<strong>server rendered</strong>");
+    expect(html).toContain("vb-embedded-markdown");
     expect(html).not.toContain('data-client-markdown="true"');
   });
 
@@ -121,6 +132,7 @@ describe("active route markdown boundaries", () => {
     );
 
     expect(html).toContain("<strong>initial</strong>");
+    expect(html).toContain("vb-embedded-markdown");
     expect(html).toContain('data-client-markdown="true"');
     expect(html).toContain("**dynamic**");
   });

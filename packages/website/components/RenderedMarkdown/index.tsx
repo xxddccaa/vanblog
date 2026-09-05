@@ -92,6 +92,7 @@ export default function RenderedMarkdown(props: {
   html: string;
   content: string;
   codeMaxLines?: number;
+  embedded?: boolean;
 }) {
   const { theme } = React.useContext(ThemeContext);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -102,7 +103,7 @@ export default function RenderedMarkdown(props: {
       <div
         ref={containerRef}
         id="write"
-        className="markdown-body"
+        className={`markdown-body${props.embedded ? ' vb-embedded-markdown' : ''}`}
         data-vb-mermaid-theme={mermaidThemeMode}
         dangerouslySetInnerHTML={{ __html: props.html }}
       />

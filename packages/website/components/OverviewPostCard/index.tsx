@@ -89,6 +89,7 @@ export default function OverviewPostCard(props: {
               html={renderedSummary}
               content={summary}
               codeMaxLines={props.codeMaxLines}
+              embedded
             />
           ) : null}
         </div>

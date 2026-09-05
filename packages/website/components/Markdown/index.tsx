@@ -20,7 +20,15 @@ import { ThemeContext } from "../../utils/themeContext";
 import { bracketMathPlugin } from "./bracketMath";
 import { configureMarkdownSanitizeSchema } from "./sanitize";
 
-export default function ({ content, codeMaxLines = 15 }: { content: string; codeMaxLines?: number }) {
+export default function ({
+  content,
+  codeMaxLines = 15,
+  embedded = false,
+}: {
+  content: string;
+  codeMaxLines?: number;
+  embedded?: boolean;
+}) {
   const { theme } = useContext(ThemeContext);
   const mermaidThemeMode = normalizeMermaidThemeMode(theme);
 
@@ -52,7 +60,11 @@ export default function ({ content, codeMaxLines = 15 }: { content: string; code
   // 为了更好兼容常见编辑器（如外部 Markdown 主题通常以 #write 作为根容器），
   // 这里同时提供 id="write" 和 className="markdown-body"。
   return (
-    <div id="write" className="markdown-body" data-vb-mermaid-theme={mermaidThemeMode}>
+    <div
+      id="write"
+      className={`markdown-body${embedded ? ' vb-embedded-markdown' : ''}`}
+      data-vb-mermaid-theme={mermaidThemeMode}
+    >
       <Viewer
         key={`markdown-viewer-${mermaidThemeMode}`}
         value={content}

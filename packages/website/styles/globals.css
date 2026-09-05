@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Embedded previews and moments are content fragments, not standalone document canvases. */
+#write.vb-embedded-markdown {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
 @layer base {
   /* 背景图只挂在 body 上，绝不能挂在 html 上。html 是 canvas 元素——rubber-band
      越界滚动（触控板/部分浏览器的弹性回弹）时，上下边界外的空白由 canvas 背景绘制。

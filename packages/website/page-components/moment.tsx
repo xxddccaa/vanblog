@@ -199,9 +199,10 @@ export default function MomentPage({ initialMoments, initialTotal, authorCardPro
                   <RenderedMarkdown
                     html={moment.initialRenderedHtml}
                     content={moment.content}
+                    embedded
                   />
                 ) : (
-                  <MarkdownClient content={moment.content} />
+                  <MarkdownClient content={moment.content} embedded />
                 )}
               </div>
               <div className="mt-4 flex items-center justify-between text-sm text-gray-500 dark:text-dark-light">

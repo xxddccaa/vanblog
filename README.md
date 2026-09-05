@@ -1,6 +1,6 @@
 # VanBlog
 
-这个仓库最初源于 [Mereithhh/vanblog](https://github.com/Mereithhh/vanblog)，现已迁移为独立仓库，并作为我独立维护的博客项目持续迭代。当前代码基线为 `v1.8.5`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
+这个仓库最初源于 [Mereithhh/vanblog](https://github.com/Mereithhh/vanblog)，现已迁移为独立仓库，并作为我独立维护的博客项目持续迭代。当前代码基线为 `v1.8.6`，默认部署方式已经完全切换为 Docker Compose 多容器架构。
 
 - 当前独立仓库：<https://github.com/xxddccaa/vanblog>
 - 原始上游项目：<https://github.com/Mereithhh/vanblog>
@@ -20,7 +20,7 @@
 
 ## 当前基线
 
-- 当前代码版本：`v1.8.5`
+- 当前代码版本：`v1.8.6`
 - 默认维护分支：`master`
 - 后台入口：`/admin`
 

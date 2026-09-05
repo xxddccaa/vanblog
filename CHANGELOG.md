@@ -1,4 +1,12 @@
 # Changelog
+### [1.8.6](https://github.com/xxddccaa/vanblog/compare/v1.8.5...v1.8.6) (2026-09-05)
+
+
+### 🐛 Bug Fixes | Bug 修复
+
+* **website:** 修复动态卡片继承 Markdown 主题底部画布留白的问题，并统一首页摘要与动态卡片的嵌入式 Markdown 样式
+
+
 ### [1.8.5](https://github.com/xxddccaa/vanblog/compare/v1.8.4...v1.8.5) (2026-09-01)
 
 
