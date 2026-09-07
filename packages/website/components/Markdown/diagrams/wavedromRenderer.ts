@@ -31,8 +31,15 @@ function inlineSkinPresentation(markup: string, skinCss: string, dark: boolean) 
   const apply = (element: Element, declarations: CSSStyleDeclaration) => {
     for (let i = 0; i < declarations.length; i++) {
       const property = declarations[i];
+      const value = declarations.getPropertyValue(property);
       if (PRESENTATION_ATTRIBUTES.has(property)) {
-        element.setAttribute(property, declarations.getPropertyValue(property));
+        element.setAttribute(property, value);
+      } else if (property === 'marker-start' || property === 'marker-end') {
+        // Arrow references must resolve to a marker in this SVG, never an external URL.
+        const reference = /^url\(\s*(['"]?)#([\w:.-]+)\1\s*\)$/i.exec(value.trim());
+        if (reference && svg.getElementById(reference[2])?.localName === 'marker') {
+          element.setAttribute(property, `url(#${reference[2]})`);
+        }
       }
     }
   };

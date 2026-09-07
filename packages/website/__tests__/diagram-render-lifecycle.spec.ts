@@ -12,10 +12,12 @@ vi.mock('../components/Markdown/diagrams/krokiRenderer', () => ({
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => {
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 describe('diagram render request ownership', () => {
@@ -93,5 +95,68 @@ describe('diagram render request ownership', () => {
     pending.resolve('<svg data-theme="dark"></svg>');
     await dark;
     expect(document.querySelector('svg')?.getAttribute('data-theme')).toBe('light');
+  });
+
+  it('clears only the retried diagram error and removes errors after recovery', async () => {
+    const { renderDiagramBlocks } = await import(
+      '../components/Markdown/diagrams/renderDiagramBlocks'
+    );
+    document.body.innerHTML =
+      '<section><pre><code class="language-plantuml">first</code></pre></section>' +
+      '<section><pre><code class="language-plantuml">second</code></pre></section>';
+    renderKroki.mockRejectedValue(new Error('unavailable'));
+    await renderDiagramBlocks(document.body, 'light');
+    expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(2);
+
+    const first = document.querySelector('section')!;
+    const pending = deferred<string>();
+    renderKroki.mockReturnValueOnce(pending.promise);
+    const retry = renderDiagramBlocks(first, 'dark');
+    expect(first.querySelector('.vb-diagram-error')).toBeNull();
+    expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(1);
+    pending.resolve('<svg></svg>');
+    await retry;
+    expect(first.querySelector('svg')).toBeTruthy();
+    expect(first.querySelector('.vb-diagram-error')).toBeNull();
+
+    const second = document.querySelectorAll('section')[1];
+    await renderDiagramBlocks(second, 'dark');
+    expect(second.querySelectorAll('.vb-diagram-error')).toHaveLength(1);
+    renderKroki.mockResolvedValueOnce('<svg></svg>');
+    await renderDiagramBlocks(second, 'light');
+    expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(0);
+    expect(document.querySelectorAll('svg')).toHaveLength(2);
+  });
+
+  it('clears a failed redraw error when returning to the already rendered theme', async () => {
+    const { renderDiagramBlocks } = await import(
+      '../components/Markdown/diagrams/renderDiagramBlocks'
+    );
+    document.body.innerHTML = '<pre><code class="language-plantuml">source</code></pre>';
+    renderKroki.mockResolvedValueOnce('<svg data-theme="light"></svg>');
+    await renderDiagramBlocks(document.body, 'light');
+    renderKroki.mockRejectedValueOnce(new Error('unavailable'));
+    await renderDiagramBlocks(document.body, 'dark');
+    expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(1);
+    await renderDiagramBlocks(document.body, 'light');
+    expect(document.querySelector('.vb-diagram-error')).toBeNull();
+    expect(document.querySelector('svg')?.getAttribute('data-theme')).toBe('light');
+    expect(renderKroki).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not restore an error from an obsolete request after a newer render succeeds', async () => {
+    const { renderDiagramBlocks } = await import(
+      '../components/Markdown/diagrams/renderDiagramBlocks'
+    );
+    document.body.innerHTML = '<pre><code class="language-plantuml">source</code></pre>';
+    const pending = deferred<string>();
+    renderKroki.mockReturnValueOnce(pending.promise);
+    const old = renderDiagramBlocks(document.body, 'light');
+    renderKroki.mockResolvedValueOnce('<svg data-theme="dark"></svg>');
+    await renderDiagramBlocks(document.body, 'dark');
+    pending.reject(new Error('old failure'));
+    await old;
+    expect(document.querySelector('.vb-diagram-error')).toBeNull();
+    expect(document.querySelector('svg')?.getAttribute('data-theme')).toBe('dark');
   });
 });

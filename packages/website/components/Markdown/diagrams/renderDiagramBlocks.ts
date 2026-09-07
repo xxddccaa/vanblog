@@ -4,6 +4,7 @@ import { renderWithKroki } from './krokiRenderer';
 import { renderWaveDrom } from './wavedromRenderer';
 import { sanitizeDiagramSvg } from '../sanitize';
 
+const diagramErrors = new WeakMap<HTMLElement, HTMLElement>();
 const pendingRenders = new WeakMap<
   HTMLElement,
   {
@@ -40,6 +41,8 @@ export async function renderDiagramBlocks(
       return;
     }
     pendingRenders.delete(target);
+    diagramErrors.get(target)?.remove();
+    diagramErrors.delete(target);
     if (target.dataset.vbDiagramRendered === themeMode) return;
 
     const request = { theme: themeMode, isActive, promise: Promise.resolve() };
@@ -92,6 +95,7 @@ async function renderSingleDiagram(
     errDiv.className = 'vb-diagram-error';
     errDiv.textContent = `Diagram render error: ${(error as Error).message}`;
     preEl.after(errDiv);
+    diagramErrors.set(preEl, errDiv);
   }
 }
 

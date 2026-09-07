@@ -1,9 +1,65 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as wavedrom from 'wavedrom';
 import { renderWaveDrom } from '../components/Markdown/diagrams/wavedromRenderer';
 import { sanitizeDiagramSvg } from '../components/Markdown/sanitize';
 
 describe('real WaveDrom output', () => {
+  it('only preserves marker styles that reference a marker in the same SVG', async () => {
+    const stringify = vi.spyOn(wavedrom.onml, 'stringify').mockReturnValueOnce(`
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs><marker id="arrow"/><path id="not-marker"/></defs>
+        <path id="local" style="marker-end:url('#arrow')"/>
+        <path id="external" style="marker-end:url(https://example.com/arrow.svg#arrow)"/>
+        <path id="missing" style="marker-start:url(#missing)"/>
+        <path id="wrong-type" style="marker-end:url(#not-marker)"/>
+      </svg>
+    `);
+    try {
+      const source = JSON.stringify({ signal: [{ name: 'marker validation', wave: 'p...' }] });
+      const result = await renderWaveDrom(source, { themeMode: 'light' });
+      const svg = new DOMParser().parseFromString(sanitizeDiagramSvg(result), 'image/svg+xml');
+      expect(svg.getElementById('local')?.getAttribute('marker-end')).toBe('url(#arrow)');
+      for (const id of ['external', 'missing', 'wrong-type']) {
+        const path = svg.getElementById(id)!;
+        expect(path.hasAttribute('marker-start')).toBe(false);
+        expect(path.hasAttribute('marker-end')).toBe(false);
+      }
+      expect(svg.querySelector('style, [style]')).toBeNull();
+    } finally {
+      stringify.mockRestore();
+    }
+  });
+
+  it.each(['light', 'dark'] as const)(
+    'preserves edge arrows and endpoints in %s mode',
+    async (themeMode) => {
+      for (const [edge, start, end] of [
+        ['a->b', null, 'arrowhead'],
+        ['a<->b', 'arrowtail', 'arrowhead'],
+        ['a+b', 'tee', 'tee'],
+      ]) {
+        const source = JSON.stringify({
+          signal: [
+            { name: 'a', wave: '01..', node: '.a..' },
+            { name: 'b', wave: '0.1.', node: '..b.' },
+          ],
+          edge: [edge],
+        });
+        const result = await renderWaveDrom(source, { themeMode });
+        const svg = new DOMParser().parseFromString(sanitizeDiagramSvg(result), 'image/svg+xml');
+        const arc = svg.getElementById('gmark_a_b')!;
+        expect(arc).toBeTruthy();
+        expect(arc.getAttribute('marker-start')).toBe(start ? `url(#${start})` : null);
+        expect(arc.getAttribute('marker-end')).toBe(`url(#${end})`);
+        for (const id of [start, end].filter(Boolean)) {
+          expect(svg.getElementById(id!)?.localName).toBe('marker');
+        }
+        expect(svg.querySelector('style, [style]')).toBeNull();
+      }
+    },
+  );
+
   it('serializes valid SVG with distinct light and dark skins through sanitization', async () => {
     const source = JSON.stringify({ signal: [{ name: 'clk', wave: 'p...' }] });
     const light = await renderWaveDrom(source, { themeMode: 'light' });
