@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import Headroom from "headroom.js";
 import { SocialItem } from "../../api/getAllData";
 import { getSiteStats, SiteStatsData } from "../../api/getSiteStats";
@@ -24,6 +24,7 @@ export interface AuthorCardProps {
 }
 
 export default function (props: { option: AuthorCardProps }) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const { theme } = useContext(ThemeContext);
   const [siteStats, setSiteStats] = useState<SiteStatsData | null>(null);
 
@@ -38,7 +39,7 @@ export default function (props: { option: AuthorCardProps }) {
     return props.option.logo;
   }, [theme, props]);
   useEffect(() => {
-    const el = document.querySelector("#author-card");
+    const el = cardRef.current;
     if (el) {
       const headroom = new Headroom(el, {
         classes: {
@@ -51,6 +52,7 @@ export default function (props: { option: AuthorCardProps }) {
         },
       });
       headroom.init();
+      return () => headroom.destroy();
     }
   }, [props.option.showSubMenu]);
 
@@ -89,7 +91,7 @@ export default function (props: { option: AuthorCardProps }) {
   const tagNum = siteStats?.tagNum ?? "--";
 
   return (
-    <div id="author-card" className="sticky ">
+    <div ref={cardRef} id="author-card" className="sticky ">
       <div className="w-52 flex flex-col justify-center items-center vb-surface-card pt-6  pb-4 card-shadow ml-2 dark:card-shadow-dark">
         <div className="px-10 flex flex-col justify-center items-center">
           <ImageBox

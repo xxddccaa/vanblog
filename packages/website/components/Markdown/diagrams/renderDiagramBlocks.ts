@@ -4,35 +4,54 @@ import { renderWithKroki } from './krokiRenderer';
 import { renderWaveDrom } from './wavedromRenderer';
 import { sanitizeDiagramSvg } from '../sanitize';
 
+const pendingRenders = new WeakMap<
+  HTMLElement,
+  {
+    theme: DiagramThemeMode;
+    isActive: () => boolean;
+    promise: Promise<void>;
+  }
+>();
+
 export async function renderDiagramBlocks(
   container: HTMLElement,
   themeMode: DiagramThemeMode,
+  isActive: () => boolean = () => true,
 ): Promise<void> {
-  const selector = ALL_DIAGRAM_LANGUAGES.map(
-    (lang) => `pre > code.language-${lang}`,
-  ).join(', ');
+  const selector = ALL_DIAGRAM_LANGUAGES.map((lang) => `pre > code.language-${lang}`).join(', ');
 
-  const codeElements = container.querySelectorAll(selector);
+  const codeElements = container.querySelectorAll<HTMLElement>(
+    `${selector}, .vb-diagram-container[data-diagram-source]`,
+  );
   if (!codeElements.length) return;
 
   const renderPromises: Promise<void>[] = [];
 
   codeElements.forEach((codeEl) => {
-    const preEl = codeEl.parentElement;
-    if (!preEl || preEl.getAttribute('data-vb-diagram-rendered') === themeMode) {
+    const raw = codeEl.matches(selector);
+    const target = raw ? codeEl.parentElement : codeEl;
+    const language = raw ? extractLanguage(codeEl) : codeEl.dataset.diagramType;
+    const source = (raw ? codeEl.textContent : codeEl.dataset.diagramSource) || '';
+    if (!target || !language || !source.trim() || !isActive()) return;
+
+    const pending = pendingRenders.get(target);
+    if (pending?.theme === themeMode && pending.isActive()) {
+      renderPromises.push(pending.promise);
       return;
     }
+    pendingRenders.delete(target);
+    if (target.dataset.vbDiagramRendered === themeMode) return;
 
-    const language = extractLanguage(codeEl);
-    if (!language) return;
-
-    const source = codeEl.textContent || '';
-    if (!source.trim()) return;
-
-    preEl.setAttribute('data-vb-diagram-pending', 'true');
-
-    const promise = renderSingleDiagram(preEl, language, source, themeMode);
-    renderPromises.push(promise);
+    const request = { theme: themeMode, isActive, promise: Promise.resolve() };
+    const canCommit = () =>
+      isActive() && container.contains(target) && pendingRenders.get(target) === request;
+    pendingRenders.set(target, request);
+    request.promise = renderSingleDiagram(target, language, source, themeMode, canCommit).finally(
+      () => {
+        if (pendingRenders.get(target) === request) pendingRenders.delete(target);
+      },
+    );
+    renderPromises.push(request.promise);
   });
 
   await Promise.allSettled(renderPromises);
@@ -43,6 +62,7 @@ async function renderSingleDiagram(
   language: string,
   source: string,
   themeMode: DiagramThemeMode,
+  canCommit: () => boolean,
 ): Promise<void> {
   try {
     let svg: string;
@@ -55,6 +75,7 @@ async function renderSingleDiagram(
       return;
     }
 
+    if (!canCommit()) return;
     const wrapper = document.createElement('div');
     wrapper.className = 'vb-diagram-container';
     wrapper.setAttribute('data-diagram-type', language);
@@ -66,7 +87,7 @@ async function renderSingleDiagram(
 
     preEl.replaceWith(wrapper);
   } catch (error) {
-    preEl.removeAttribute('data-vb-diagram-pending');
+    if (!canCommit()) return;
     const errDiv = document.createElement('div');
     errDiv.className = 'vb-diagram-error';
     errDiv.textContent = `Diagram render error: ${(error as Error).message}`;
@@ -104,9 +125,7 @@ function downloadSvg(container: HTMLElement, themeMode: DiagramThemeMode): void 
   clone.setAttribute('style', `background-color: ${bg}`);
 
   const serializer = new XMLSerializer();
-  const svgStr =
-    '<?xml version="1.0" encoding="UTF-8"?>\n' +
-    serializer.serializeToString(clone);
+  const svgStr = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializer.serializeToString(clone);
 
   const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
   triggerDownload(blob, 'diagram.svg');

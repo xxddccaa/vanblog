@@ -158,11 +158,11 @@ const codeBlockPlugin = () => (tree) => {
         type: "element",
         tagName: "div",
         properties: {
-          class: "code-wrap-btn",
-          title: "自动换行",
+          class: "code-wrap-btn code-wrap-enabled",
+          title: "取消自动换行",
           role: "button",
           tabIndex: "0",
-          "aria-label": "自动换行",
+          "aria-label": "取消自动换行",
         },
         children: [createIconNode("wrap")],
       };
@@ -208,7 +208,7 @@ const codeBlockPlugin = () => (tree) => {
         type: "element",
         tagName: "div",
         properties: {
-          class: "code-content-wrapper",
+          class: "code-content-wrapper code-wrap-enabled",
         },
         children: [...oldChildren],
       };
@@ -304,7 +304,10 @@ const shouldCollapseCode = (
   );
 };
 
+const initializedCodeBlocks = new WeakMap<Element, number>();
+
 export const enhanceCodeBlocks = (markdownBody: HTMLElement, maxLines: number = 15) => {
+  const cleanups: Array<() => void> = [];
   markdownBody.querySelectorAll(".code-block-wrapper").forEach((codeBlock) => {
     const copyBtn = codeBlock.querySelector(".code-copy-btn") as HTMLElement;
     const wrapBtn = codeBlock.querySelector(".code-wrap-btn") as HTMLElement;
@@ -322,6 +325,11 @@ export const enhanceCodeBlocks = (markdownBody: HTMLElement, maxLines: number = 
 
     copyBtn?.addEventListener("click", onClickCopyCode);
     wrapBtn?.addEventListener("click", onClickToggleWrap);
+    cleanups.push(() => {
+      copyBtn?.removeEventListener("click", onClickCopyCode);
+      wrapBtn?.removeEventListener("click", onClickToggleWrap);
+      toggleBtn?.removeEventListener("click", onClickToggleCode);
+    });
 
     if (wrapBtn) {
       setWrapButtonState(
@@ -331,9 +339,15 @@ export const enhanceCodeBlocks = (markdownBody: HTMLElement, maxLines: number = 
     }
 
     if (codeElement && shouldCollapseCode(codeElement, maxLines)) {
-      codeContentWrapper?.classList.add("code-collapsed");
+      if (initializedCodeBlocks.get(codeBlock) !== maxLines) {
+        codeContentWrapper?.classList.add("code-collapsed");
+      }
       if (toggleBtn) {
-        setToggleButtonState(toggleBtn, true);
+        setToggleButtonState(
+          toggleBtn,
+          codeContentWrapper?.classList.contains("code-collapsed") ?? false
+        );
+        toggleBtn.hidden = false;
         toggleBtn.style.display = "inline-flex";
         toggleBtn.addEventListener("click", onClickToggleCode);
       }
@@ -347,16 +361,19 @@ export const enhanceCodeBlocks = (markdownBody: HTMLElement, maxLines: number = 
     } else if (toggleBtn) {
       codeContentWrapper?.classList.remove("code-collapsed");
       setToggleButtonState(toggleBtn, false);
+      toggleBtn.hidden = true;
       toggleBtn.style.display = "none";
     }
+    initializedCodeBlocks.set(codeBlock, maxLines);
   });
+  return () => cleanups.forEach((cleanup) => cleanup());
 };
 
 export function customCodeBlock(maxLines: number = 15): BytemdPlugin {
   return {
     rehype: (processor) => processor.use(codeBlockPlugin),
     viewerEffect: ({ markdownBody }) => {
-      enhanceCodeBlocks(markdownBody, maxLines);
+      return enhanceCodeBlocks(markdownBody, maxLines);
     },
   };
 }

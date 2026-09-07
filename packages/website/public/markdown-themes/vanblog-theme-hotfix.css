@@ -791,7 +791,7 @@
   html[data-theme='dark'] [data-vb-markdown-dark-theme-id]:not(.light),
   [data-vb-markdown-dark-theme-id].dark,
   .dark [data-vb-markdown-dark-theme-id]:not(.light)
-) .markdown-body :is(.code-copy-btn, .code-toggle-btn, .code-wrap-btn) {
+) .markdown-body :is(.code-copy-btn, .code-toggle-btn, .code-wrap-btn):not([hidden]) {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;

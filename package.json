@@ -1,6 +1,6 @@
 {
   "name": "root",
-  "version": "1.8.6",
+  "version": "1.8.7",
   "private": true,
   "engines": {
     "node": ">=22 <23",
@@ -47,7 +47,8 @@
       "ws@5.2.3": "5.2.7"
     },
     "patchedDependencies": {
-      "@waline/vercel@1.41.4": "patches/@waline__vercel@1.41.4.patch"
+      "@waline/vercel@1.41.4": "patches/@waline__vercel@1.41.4.patch",
+      "headroom.js@0.12.0": "patches/headroom.js@0.12.0.patch"
     }
   },
   "scripts": {

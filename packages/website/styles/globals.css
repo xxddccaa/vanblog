@@ -43,10 +43,6 @@
     background-repeat: no-repeat;
     background-attachment: fixed;
   }
-  pre,
-  code {
-    white-space: pre-wrap !important;
-  }
   ol,
   ul {
     list-style: unset;

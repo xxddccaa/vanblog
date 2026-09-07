@@ -1,3 +1,20 @@
+/* Explicit state wins over the presentation rules in markdown presets. */
+.markdown-body .code-content-wrapper:not(.code-wrap-enabled) :is(pre, code, .hljs) {
+  white-space: pre !important;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.markdown-body .code-content-wrapper.code-wrap-enabled :is(pre, code, .hljs) {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+html .markdown-body .code-block-wrapper .code-toggle-btn[hidden] {
+  display: none !important;
+}
+
 /* 强制移除代码块中所有可能的下划线效果 */
 .markdown-body pre,
 .markdown-body pre *,

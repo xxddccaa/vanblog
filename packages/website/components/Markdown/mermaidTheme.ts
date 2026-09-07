@@ -6,9 +6,18 @@ const MERMAID_FONT_FAMILY = 'Trebuchet MS, Verdana, Arial, sans-serif';
 const MERMAID_CODE_SELECTOR = 'pre > code.language-mermaid';
 
 const observerRegistry = new WeakMap<HTMLElement, MutationObserver>();
+const pendingRenders = new WeakMap<
+  HTMLElement,
+  {
+    theme: MermaidThemeMode;
+    isActive: () => boolean;
+    promise: Promise<void>;
+  }
+>();
 
 let mermaidId = 0;
 let mermaidLoader: Promise<MermaidRenderer> | null = null;
+let renderQueue: Promise<void> = Promise.resolve();
 
 type MermaidRenderer = {
   initialize: (config: Record<string, unknown>) => void;
@@ -81,56 +90,61 @@ async function loadMermaid() {
   return mermaidLoader;
 }
 
-export async function renderMermaidBlocks(markdownBody: HTMLElement, themeMode: MermaidThemeMode) {
-  const mermaidBlocks = Array.from(
-    markdownBody.querySelectorAll<HTMLElement>(MERMAID_CODE_SELECTOR),
-  ).filter((codeBlock) => {
-    const pre = codeBlock.parentElement;
-    return pre instanceof HTMLElement && pre.dataset.vbMermaidPending !== 'true';
-  });
+export async function renderMermaidBlocks(
+  markdownBody: HTMLElement,
+  themeMode: MermaidThemeMode,
+  isActive: () => boolean = () => true,
+) {
+  const blocks = markdownBody.querySelectorAll<HTMLElement>(
+    `${MERMAID_CODE_SELECTOR}, .bytemd-mermaid[data-vb-mermaid-source]`,
+  );
+  await Promise.all(
+    Array.from(blocks, (block) => {
+      const raw = block.matches(MERMAID_CODE_SELECTOR);
+      const target = raw ? block.parentElement : block;
+      const source = raw ? block.textContent?.trim() : block.dataset.vbMermaidSource;
+      if (!target || !source || !isActive()) return;
 
-  if (mermaidBlocks.length === 0) {
-    return;
-  }
+      const pending = pendingRenders.get(target);
+      if (pending?.theme === themeMode && pending.isActive()) return pending.promise;
+      // Invalidate an older request even if the existing SVG already has the desired theme.
+      pendingRenders.delete(target);
+      if (target.dataset.vbMermaidRendered === themeMode) return;
 
-  const mermaid = await loadMermaid();
-  mermaid.initialize({
-    ...getMermaidConfig(themeMode),
-    startOnLoad: false,
-  });
+      const request = { theme: themeMode, isActive, promise: Promise.resolve() };
+      const canCommit = () =>
+        isActive() && markdownBody.contains(target) && pendingRenders.get(target) === request;
+      pendingRenders.set(target, request);
 
-  for (const codeBlock of mermaidBlocks) {
-    const pre = codeBlock.parentElement;
-    if (!(pre instanceof HTMLElement)) {
-      continue;
-    }
-
-    const source = codeBlock.textContent?.trim();
-    if (!source) {
-      continue;
-    }
-
-    pre.dataset.vbMermaidPending = 'true';
-
-    try {
-      const { svg } = await mermaid.render(`vb-mermaid-${Date.now()}-${mermaidId++}`, source);
-      const container = document.createElement('div');
-
-      container.className = 'bytemd-mermaid';
-      container.style.lineHeight = 'initial';
-      container.innerHTML = svg;
-      pre.replaceWith(container);
-    } catch (error) {
-      console.error('Website Mermaid render failed', error);
-    } finally {
-      delete pre.dataset.vbMermaidPending;
-    }
-  }
+      // Mermaid configuration is global, so configure and render each SVG as one queued job.
+      request.promise = renderQueue.then(async () => {
+        if (!canCommit()) return;
+        try {
+          const mermaid = await loadMermaid();
+          if (!canCommit()) return;
+          mermaid.initialize({ ...getMermaidConfig(themeMode), startOnLoad: false });
+          const { svg } = await mermaid.render(`vb-mermaid-${Date.now()}-${mermaidId++}`, source);
+          if (!canCommit()) return;
+          const container = document.createElement('div');
+          container.className = 'bytemd-mermaid';
+          container.dataset.vbMermaidSource = source;
+          container.dataset.vbMermaidRendered = themeMode;
+          container.style.lineHeight = 'initial';
+          container.innerHTML = svg;
+          target.replaceWith(container);
+        } catch (error) {
+          if (canCommit()) console.error('Website Mermaid render failed', error);
+        } finally {
+          if (pendingRenders.get(target) === request) pendingRenders.delete(target);
+        }
+      });
+      renderQueue = request.promise;
+      return request.promise;
+    }),
+  );
 }
 
-export const customMermaidPlugin = (
-  themeMode: MermaidThemeMode = 'light',
-): BytemdPlugin => ({
+export const customMermaidPlugin = (themeMode: MermaidThemeMode = 'light'): BytemdPlugin => ({
   viewerEffect({ markdownBody }) {
     const existingObserver = observerRegistry.get(markdownBody);
     existingObserver?.disconnect();

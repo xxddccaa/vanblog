@@ -57,7 +57,8 @@ html.dark .markdown-body table tr:nth-child(2n),
 html.dark .markdown-body table thead { background: #1b1f1c; }
 html.dark .markdown-body table :is(th, td) { padding: 6px 13px; border: 1px solid #3a433d !important; }
 html.dark .markdown-body table tbody :is(tr:hover td, td:hover) { background: #222723 !important; color: #f1f3ef !important; }
-html.dark .markdown-body :is(code, tt) { color: #f1f3ef; background: #1b1f1c; border: 1px solid #2a302c; border-radius: 4px; }
+/* Inline code keeps a compact chip; highlighted blocks are styled by the shared code theme. */
+html.dark .markdown-body :is(code, tt):not(pre *, .code-block-wrapper *, .code-content-wrapper *) { color: #f1f3ef; background: #1b1f1c; border: 1px solid #2a302c; border-radius: 4px; }
 html.dark .markdown-body :is(h1, h2, h3, h4, h5, h6)::before,
 html.dark .markdown-body :is(h1, h2, h3, h4, h5, h6)::after { content: none !important; display: none !important; }
 html.dark .markdown-body ::selection { background: rgba(110, 159, 248, 0.28); color: #f1f3ef; }

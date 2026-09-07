@@ -1,5 +1,6 @@
 "use client";
 
+import '../../styles/markdown-content.css';
 import React, { useContext, useMemo } from "react";
 import { Viewer } from "@bytemd/react";
 import gfm from '@bytemd/plugin-gfm';
@@ -10,7 +11,6 @@ import { customMermaidPlugin, normalizeMermaidThemeMode } from './mermaidTheme';
 import { diagramPlugin } from './diagrams';
 import { extendedSyntaxPlugin } from './extendedSyntax';
 import { customContainer } from './customContainer';
-import "katex/dist/katex.min.css";
 import rawHTML from "./rawHTML";
 import { customCodeBlock } from "./codeBlock";
 import { LinkTarget } from "./linkTarget";

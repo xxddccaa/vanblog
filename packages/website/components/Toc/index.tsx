@@ -1,33 +1,26 @@
-import { useEffect, useRef } from "react";
-import Headroom from "headroom.js";
-import MarkdownTocBar from "../MarkdownTocBar";
-export default function (props: {
-  content: string;
-  showSubMenu: "true" | "false";
-}) {
-  const { current } = useRef({ hasInit: false });
+import { useEffect, useRef } from 'react';
+import Headroom from 'headroom.js';
+import MarkdownTocBar from '../MarkdownTocBar';
+export default function (props: { content: string; showSubMenu: 'true' | 'false' }) {
+  const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!current.hasInit) {
-      const el = document.querySelector("#toc-card");
-      if (el) {
-        current.hasInit = true;
-        const headroom = new Headroom(el, {
-          classes: {
-            initial: `side-bar${
-              props.showSubMenu == "true" ? "" : " no-submenu"
-            }`,
-            pinned: "side-bar-pinned",
-            unpinned: "side-bar-unpinned",
-            top: "side-bar-top",
-            notTop: "side-bar-not-top",
-          },
-        });
-        headroom.init();
-      }
+    const el = cardRef.current;
+    if (el) {
+      const headroom = new Headroom(el, {
+        classes: {
+          initial: `side-bar${props.showSubMenu == 'true' ? '' : ' no-submenu'}`,
+          pinned: 'side-bar-pinned',
+          unpinned: 'side-bar-unpinned',
+          top: 'side-bar-top',
+          notTop: 'side-bar-not-top',
+        },
+      });
+      headroom.init();
+      return () => headroom.destroy();
     }
-  }, [current]);
+  }, [props.showSubMenu]);
   return (
-    <div className="sticky" id="toc-card">
+    <div ref={cardRef} className="sticky" id="toc-card">
       <div
         id="toc-container"
         className="vb-surface-card w-60 card-shadow dark:card-shadow-dark ml-2 overflow-y-auto pb-2"

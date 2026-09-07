@@ -37,6 +37,7 @@ export default function (props: {
 }) {
   const [showSearch, setShowSearch] = useState(false);
   const headroomRef = useRef<Headroom | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
   const { theme } = useContext(ThemeContext);
   const pathname = usePathname();
 
@@ -72,7 +73,7 @@ export default function (props: {
     return props.logo;
   }, [theme, props]);
   useEffect(() => {
-    const el = document.querySelector("#nav");
+    const el = navRef.current;
     if (!el) {
       return;
     }
@@ -119,6 +120,7 @@ export default function (props: {
       ) : null}
       <div
         id="nav"
+        ref={navRef}
         className=" vb-surface-nav sticky top-0 nav-shadow dark:nav-shadow-dark"
         style={{ zIndex: 90 }}
       >

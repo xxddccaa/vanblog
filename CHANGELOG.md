@@ -1,4 +1,12 @@
 # Changelog
+### [1.8.7](https://github.com/xxddccaa/vanblog/compare/v1.8.6...v1.8.7) (2026-09-07)
+
+### Bug 修复
+
+* **website:** 统一 Markdown 内容样式加载，修复代码块换行、折叠按钮与暗色主题样式冲突
+* **website:** 清理代码块、图片缩放和侧栏滚动监听，修复页面切换后的重复绑定与延迟初始化
+* **diagrams:** 修复 Mermaid 与通用图表主题切换的异步竞争，补齐 WaveDrom SVG 序列化、皮肤和图形展开
+
 ### [1.8.6](https://github.com/xxddccaa/vanblog/compare/v1.8.5...v1.8.6) (2026-09-05)
 
 

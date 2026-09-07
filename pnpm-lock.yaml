@@ -47,6 +47,9 @@ patchedDependencies:
   '@waline/vercel@1.41.4':
     hash: 0f35d7df1735ee80e3bd810a05553cdac95f386d27158e944c9d2a764d1458d7
     path: patches/@waline__vercel@1.41.4.patch
+  headroom.js@0.12.0:
+    hash: 096ff0b1aa15988c145c9681feaab1228fb5512250327383463048e5f9ca0490
+    path: patches/headroom.js@0.12.0.patch
 
 importers:
 
@@ -565,7 +568,7 @@ importers:
         version: 3.4.13
       headroom.js:
         specifier: ^0.12.0
-        version: 0.12.0
+        version: 0.12.0(patch_hash=096ff0b1aa15988c145c9681feaab1228fb5512250327383463048e5f9ca0490)
       js-base64:
         specifier: ^3.7.5
         version: 3.7.5
@@ -25221,7 +25224,7 @@ snapshots:
 
   he@1.2.0: {}
 
-  headroom.js@0.12.0: {}
+  headroom.js@0.12.0(patch_hash=096ff0b1aa15988c145c9681feaab1228fb5512250327383463048e5f9ca0490): {}
 
   hermes-estree@0.25.1: {}
 

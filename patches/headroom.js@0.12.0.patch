@@ -1,0 +1,30 @@
+diff --git a/dist/headroom.js b/dist/headroom.js
+index b62648b61b36d3cca5e5b39899c897f24202f762..bcc5c9ce8a3ef7f8180d30bcc03d8d0cfdd88321 100644
+--- a/dist/headroom.js
++++ b/dist/headroom.js
+@@ -227,8 +227,10 @@
+ 
+         // defer event registration to handle browser
+         // potentially restoring previous scroll position
+-        setTimeout(
++        this.initTimer = setTimeout(
+           function(self) {
++            self.initTimer = null;
++            if (!self.initialised) return;
+             self.scrollTracker = trackScroll(
+               self.scroller,
+               { offset: self.offset, tolerance: self.tolerance },
+@@ -248,9 +250,12 @@
+      * @public
+      */
+     destroy: function() {
++      clearTimeout(this.initTimer);
++      this.initTimer = null;
+       this.initialised = false;
+       Object.keys(this.classes).forEach(this.removeClass, this);
+-      this.scrollTracker.destroy();
++      if (this.scrollTracker) this.scrollTracker.destroy();
++      this.scrollTracker = null;
+     },
+ 
+     /**
