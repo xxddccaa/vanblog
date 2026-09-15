@@ -1,8 +1,9 @@
+import CategorySearchSelect from '@/components/CategorySearchSelect';
 import ColumnsToolBar from '@/components/ColumnsToolBar';
 import PublishDraftModal from '@/components/PublishDraftModal';
 import UpdateModal from '@/components/UpdateModal';
 import { genActiveObj } from '@/services/van-blog/activeColTools';
-import { deleteDraft, getAllCategories, getDraftById, getTags } from '@/services/van-blog/api';
+import { deleteDraft, getDraftById, getTags } from '@/services/van-blog/api';
 import { parseObjToMarkdown } from '@/services/van-blog/parseMarkdownFile';
 import { message, Modal, Tag } from 'antd';
 import { SwapOutlined } from '@ant-design/icons';
@@ -50,16 +51,7 @@ export const getColumns = (handleConvertToDocument) => [
     title: '分类',
     dataIndex: 'category',
     width: 100,
-    valueType: 'select',
-    request: async () => {
-      const { data: categories } = await getAllCategories();
-      const data = categories?.map((each) => ({
-        label: each,
-        value: each,
-      }));
-
-      return data;
-    },
+    renderFormItem: () => <CategorySearchSelect />,
   },
   {
     title: '标签',

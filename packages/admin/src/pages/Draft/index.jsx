@@ -1,4 +1,5 @@
 import AdminMobileCardList from '@/components/AdminMobileCardList';
+import CategorySearchSelect from '@/components/CategorySearchSelect';
 import ContentSearchModal from '@/components/ContentSearchModal';
 import ConvertToDocumentModal from '@/components/ConvertToDocumentModal';
 import ImportDraftModal from '@/components/ImportDraftModal';
@@ -6,7 +7,6 @@ import NewDraftModal from '@/components/NewDraftModal';
 import PublishDraftModal from '@/components/PublishDraftModal';
 import {
   deleteDraft,
-  getAllCategories,
   getDraftById,
   getDraftsByOption,
   getSiteInfo,
@@ -107,7 +107,6 @@ export default () => {
   const [mobileTotal, setMobileTotal] = useState(0);
   const [mobilePage, setMobilePage] = useState(1);
   const [mobileLoading, setMobileLoading] = useState(false);
-  const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
   const [mobileFilters, setMobileFilters] = useState({
     title: '',
@@ -176,11 +175,7 @@ export default () => {
 
   const fetchMobileMeta = useCallback(async () => {
     try {
-      const [{ data: categoryData }, { data: tagData }] = await Promise.all([
-        getAllCategories(),
-        getTags(),
-      ]);
-      setCategories(categoryData || []);
+      const { data: tagData } = await getTags();
       setTags(tagData || []);
     } catch (error) {
       message.error('加载移动端筛选项失败');
@@ -429,14 +424,8 @@ export default () => {
               }))
             }
           />
-          <Select
-            allowClear
-            placeholder="选择分类"
+          <CategorySearchSelect
             value={mobileFilterDraft.category}
-            options={categories.map((item) => ({
-              label: item,
-              value: item,
-            }))}
             onChange={(value) =>
               setMobileFilterDraft((state) => ({
                 ...state,

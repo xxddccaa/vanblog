@@ -1,6 +1,7 @@
+import CategorySearchSelect from '@/components/CategorySearchSelect';
 import ColumnsToolBar from '@/components/ColumnsToolBar';
 import UpdateModal from '@/components/UpdateModal';
-import { deleteArticle, getAllCategories, getArticleById, getTags } from '@/services/van-blog/api';
+import { deleteArticle, getArticleById, getTags } from '@/services/van-blog/api';
 import { getPathname } from '@/services/van-blog/getPathname';
 import { parseObjToMarkdown } from '@/services/van-blog/parseMarkdownFile';
 import { message, Modal, Space, Tag } from 'antd';
@@ -55,16 +56,8 @@ export const columns = [
   {
     title: '分类',
     dataIndex: 'category',
-    valueType: 'select',
     width: 100,
-    request: async () => {
-      const { data: categories } = await getAllCategories();
-      const data = categories.map((each) => ({
-        label: each,
-        value: each,
-      }));
-      return data;
-    },
+    renderFormItem: () => <CategorySearchSelect />,
     render: (_, record) => {
       const categories = getRecordCategories(record);
       if (!categories.length) {
