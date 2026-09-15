@@ -99,6 +99,12 @@ This machine now has two sanctioned `18080` debug workflows documented in `docs/
 
 - There is also a separate machine-local Docker test environment documented in `docs/reference/test-env.md`; when the task refers to the dedicated `test-env-vanblog` stack, read that doc first for its absolute path, startup commands, and `/api/admin/auth/debug-token` setup.
 
+- Deploying to the dedicated `test-env-vanblog` stack (`http://127.0.0.1:8020`, path A in `docs/reference/test-env.md`) has two traps that have already broken the front page once:
+  - After any `pnpm build:website`, `next build` does not put `static` into the standalone output. Always sync it before restarting: `rm -rf packages/website/.next/standalone/packages/website/.next/static && cp -a packages/website/.next/static packages/website/.next/standalone/packages/website/.next/static`.
+  - The running Next.js process caches the presence of `.next/static` at startup: adding or replacing that directory without restarting the container leaves `/_next/static/**` returning `404` even though the files exist on disk inside the container. Always `docker compose -f docker-compose.all-in-one.latest.yml restart vanblog` after `.next` changes, then verify a referenced asset returns `200`.
+  - Symptom to recognize: the front page returns `200` HTML but renders unstyled/乱码 because every `/_next/static/**` asset is missing. Confirm with `curl --noproxy '*' -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8020/<asset-from-view-source>` before blaming the page itself.
+- Bind-mounted build outputs (`packages/admin/dist`, `packages/server/dist`, the website `.next`) can silently point at a stale inode after a rebuild: `docker exec test-env-vanblog-vanblog-1 ls /usr/share/nginx/html/admin` showing an empty directory means the mount is stale and `/admin` will return `403`. Restarting the container re-binds the mounts.
+
 - Docker image-style acceptance on `18080`:
   - `docker compose -f tests/manual-v1.3.0/docker-compose.yaml -p vanblog-manual-v130 up -d`
   - `docker compose -f tests/manual-v1.3.0/docker-compose.yaml -p vanblog-manual-v130 down`
