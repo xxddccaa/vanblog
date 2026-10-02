@@ -1,15 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const repoRoot = process.cwd();
 const trackedIndexPath = path.join(repoRoot, 'mind-map', 'index.html');
 const adminMindMapDir = path.join(repoRoot, 'packages', 'admin', 'dist', 'mindmap');
+const copyScriptPath = path.join(repoRoot, 'mind-map', 'copy.js');
 
 const sha256 = (content) => createHash('sha256').update(content).digest('hex');
+
+test('standalone mindmap build does not overwrite the tracked shell', () => {
+  const fixtureDir = mkdtempSync(path.join(tmpdir(), 'vanblog-mindmap-copy-'));
+  const sourcePath = path.join(fixtureDir, 'dist', 'index.html');
+  const source = '<!doctype html><html><body>generated</body></html>';
+  mkdirSync(path.dirname(sourcePath), { recursive: true });
+  writeFileSync(sourcePath, source);
+
+  const result = spawnSync(process.execPath, ['-e', `
+    const { copyConfiguredBuiltIndex } = require(${JSON.stringify(copyScriptPath)});
+    const result = copyConfiguredBuiltIndex({
+      src: ${JSON.stringify(sourcePath)},
+      dest: undefined,
+    });
+    if (result !== false) process.exit(1);
+  `], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, [result.stdout, result.stderr].filter(Boolean).join('\n'));
+  assert.equal(readFileSync(sourcePath, 'utf8'), source);
+});
 
 test(
   'mindmap admin build preserves the tracked shell and emits content-hashed assets',
