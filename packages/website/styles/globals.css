@@ -186,7 +186,7 @@
   transform: translateY(0%);
 }
 .headroom--unpinned {
-  transform: translateY(-56px);
+  transform: translateY(-100%);
 }
 .side-bar {
   will-change: top;

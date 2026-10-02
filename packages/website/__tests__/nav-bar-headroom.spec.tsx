@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import fs from "node:fs";
+import path from "node:path";
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -135,5 +137,16 @@ describe("NavBar Headroom lifecycle", () => {
     });
 
     expect(headroomInstances[0].destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it("moves the whole nav out of view, including the category sub-bar", () => {
+    const globalsCss = fs.readFileSync(
+      path.join(__dirname, "../styles/globals.css"),
+      "utf8",
+    );
+    const unpinnedRule = globalsCss.match(/\.headroom--unpinned\s*\{[^}]*\}/);
+
+    expect(unpinnedRule).not.toBeNull();
+    expect(unpinnedRule?.[0]).toMatch(/transform:\s*translateY\(-100%\)/);
   });
 });

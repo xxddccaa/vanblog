@@ -1,4 +1,10 @@
 # Changelog
+### [1.8.8](https://github.com/xxddccaa/vanblog/compare/v1.8.7...v1.8.8) (2026-10-02)
+
+### Bug 修复
+
+* **website:** 导航栏下滑隐藏时按自身高度整体移出，开启分类子菜单后分类栏不再滞留在页面顶部
+
 ### [1.8.7](https://github.com/xxddccaa/vanblog/compare/v1.8.6...v1.8.7) (2026-09-07)
 
 ### Bug 修复
