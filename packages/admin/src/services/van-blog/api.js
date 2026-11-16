@@ -143,6 +143,29 @@ export async function exportAllImgs() {
     method: 'POST',
   });
 }
+export async function getPublicMaskSetting() {
+  return request('/api/admin/setting/public-mask', {
+    method: 'GET',
+  });
+}
+export async function updatePublicMaskSetting(data) {
+  return request('/api/admin/setting/public-mask', {
+    method: 'PUT',
+    data,
+  });
+}
+export async function previewPublicMask(data) {
+  return request('/api/admin/setting/public-mask/preview', {
+    method: 'POST',
+    data,
+  });
+}
+export async function scanPublicMask(data) {
+  return request('/api/admin/setting/public-mask/scan', {
+    method: 'POST',
+    data,
+  });
+}
 export async function downloadImgExport(fileName) {
   return request('/api/admin/img/export/download', {
     method: 'GET',

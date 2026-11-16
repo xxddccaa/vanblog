@@ -14,6 +14,7 @@ const AutoBackup = lazy(() => import('./tabs/AutoBackup'));
 const User = lazy(() => import('./tabs/User'));
 const ImgTab = lazy(() => import('./tabs/ImgTab'));
 const WalineTab = lazy(() => import('./tabs/WalineTab'));
+const PublicMask = lazy(() => import('./tabs/PublicMask'));
 const Advance = lazy(() => import('./tabs/Advance'));
 const Token = lazy(() => import('./tabs/Token'));
 const AdminLayout = lazy(() => import('./tabs/AdminLayout'));
@@ -27,6 +28,7 @@ const tabComponentMap = {
   user: User,
   img: ImgTab,
   waline: WalineTab,
+  publicMask: PublicMask,
   advance: Advance,
   token: Token,
   adminLayout: AdminLayout,
@@ -67,6 +69,11 @@ export default function () {
       label: '评论设置',
       shortLabel: '评论',
       key: 'waline',
+    },
+    {
+      label: '前台屏蔽',
+      shortLabel: '屏蔽',
+      key: 'publicMask',
     },
     {
       label: '备份恢复',
