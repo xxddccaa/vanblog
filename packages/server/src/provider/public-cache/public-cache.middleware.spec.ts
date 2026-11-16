@@ -27,6 +27,64 @@ describe('PublicCacheMiddleware', () => {
     expect(res.headers.get('Cloudflare-CDN-Cache-Control')).toBe('no-store');
   });
 
+  it('treats upper-case public paths like their canonical form', () => {
+    const middleware = new PublicCacheMiddleware();
+    const searchRes = createRes();
+    middleware.use({ method: 'GET', path: '/API/PUBLIC/Search' } as any, searchRes as any, jest.fn());
+    expect(searchRes.headers.get('Cache-Control')).toBe('no-store');
+
+    const siteInfoRes = createRes();
+    middleware.use({ method: 'GET', path: '/API/Public/site-info' } as any, siteInfoRes as any, jest.fn());
+    expect(siteInfoRes.headers.get('Cache-Tag')).toContain('site-info');
+
+    const customPageRes = createRes();
+    middleware.use({ method: 'GET', path: '/api/public/customPage/all' } as any, customPageRes as any, jest.fn());
+    expect(customPageRes.headers.get('Cache-Tag')).toContain('custom-page-list');
+  });
+
+  it('keeps original spelling of captured names in cache tags for upper-case routes', () => {
+    const middleware = new PublicCacheMiddleware();
+    const res = createRes();
+    middleware.use({ method: 'GET', path: '/API/PUBLIC/tag-articles/GoLang' } as any, res as any, jest.fn());
+    expect(res.headers.get('Cache-Tag')).toContain('tag-articles');
+  });
+
+  it('ignores If-Modified-Since when If-None-Match is present and does not match', () => {
+    const middleware = new PublicCacheMiddleware();
+    const res = createRes();
+    const req = {
+      method: 'GET',
+      path: '/api/public/meta',
+      headers: {
+        'if-none-match': '"stale-etag"',
+        'if-modified-since': 'Wed, 01 Jan 2099 00:00:00 GMT',
+      },
+    };
+    middleware.use(req as any, res as any, jest.fn());
+
+    const body = { data: { updatedAt: '2026-01-01T00:00:00.000Z', text: 'changed' } };
+    const result = (res as any).json(body);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.send).not.toHaveBeenCalled();
+    expect(result).toBe(body);
+  });
+
+  it('still honors If-Modified-Since when no entity tag is sent', () => {
+    const middleware = new PublicCacheMiddleware();
+    const res = createRes();
+    const req = {
+      method: 'GET',
+      path: '/api/public/meta',
+      headers: { 'if-modified-since': 'Wed, 01 Jan 2099 00:00:00 GMT' },
+    };
+    middleware.use(req as any, res as any, jest.fn());
+
+    (res as any).json({ data: { updatedAt: '2026-01-01T00:00:00.000Z' } });
+
+    expect(res.statusCode).toBe(304);
+  });
+
   it('marks unified search responses as no-store', () => {
     const middleware = new PublicCacheMiddleware();
     const res = createRes();

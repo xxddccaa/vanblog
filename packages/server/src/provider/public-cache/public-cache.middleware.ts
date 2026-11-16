@@ -158,7 +158,9 @@ const applyPublicValidators = (req: Request, res: Response) => {
       return res.send();
     }
 
-    if (lastModifiedValue && requestModifiedSince) {
+    // RFC 7232: If-Modified-Since is ignored when If-None-Match is present. Otherwise a
+    // changed body with unchanged timestamps (e.g. new masking rules) would still 304.
+    if (!requestEtags.length && lastModifiedValue && requestModifiedSince) {
       const current = new Date(String(lastModifiedValue)).getTime();
       const requested = new Date(String(requestModifiedSince)).getTime();
       if (!Number.isNaN(current) && !Number.isNaN(requested) && current <= requested) {
@@ -184,22 +186,25 @@ const toQueryValueList = (value: unknown) => {
 
 const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) => {
   const tags = ['public-api'];
-  const articleMatch = path.match(/^\/api\/public\/article\/([^/]+)$/);
-  const navMatch = path.match(/^\/api\/public\/article\/([^/]+)\/nav$/);
-  const engagementMatch = path.match(/^\/api\/public\/article\/([^/]+)\/engagement$/);
-  const fragmentsMatch = path.match(/^\/api\/public\/article\/([^/]+)\/fragments$/);
-  const viewerMatch = path.match(/^\/api\/public\/article\/viewer\/([^/]+)$/);
-  const tagArticlesMatch = path.match(/^\/api\/public\/tag-articles\/([^/]+)$/);
-  const categoryArticlesMatch = path.match(/^\/api\/public\/category\/([^/]+)\/articles$/);
-  const timelineArticlesMatch = path.match(/^\/api\/public\/timeline\/([^/]+)\/articles$/);
-  const archiveMonthMatch = path.match(/^\/api\/public\/archive\/([^/]+)\/([^/]+)\/articles$/);
-  const categoryArchiveSummaryMatch = path.match(/^\/api\/public\/category\/([^/]+)\/archive\/summary$/);
+  // Express and Caddy route case-insensitively, so structural checks ignore case
+  // while captured name segments keep their original spelling.
+  const lowerPath = path.toLowerCase();
+  const articleMatch = path.match(/^\/api\/public\/article\/([^/]+)$/i);
+  const navMatch = path.match(/^\/api\/public\/article\/([^/]+)\/nav$/i);
+  const engagementMatch = path.match(/^\/api\/public\/article\/([^/]+)\/engagement$/i);
+  const fragmentsMatch = path.match(/^\/api\/public\/article\/([^/]+)\/fragments$/i);
+  const viewerMatch = path.match(/^\/api\/public\/article\/viewer\/([^/]+)$/i);
+  const tagArticlesMatch = path.match(/^\/api\/public\/tag-articles\/([^/]+)$/i);
+  const categoryArticlesMatch = path.match(/^\/api\/public\/category\/([^/]+)\/articles$/i);
+  const timelineArticlesMatch = path.match(/^\/api\/public\/timeline\/([^/]+)\/articles$/i);
+  const archiveMonthMatch = path.match(/^\/api\/public\/archive\/([^/]+)\/([^/]+)\/articles$/i);
+  const categoryArchiveSummaryMatch = path.match(/^\/api\/public\/category\/([^/]+)\/archive\/summary$/i);
   const categoryArchiveMonthMatch = path.match(
-    /^\/api\/public\/category\/([^/]+)\/archive\/([^/]+)\/([^/]+)\/articles$/,
+    /^\/api\/public\/category\/([^/]+)\/archive\/([^/]+)\/([^/]+)\/articles$/i,
   );
-  const tagArchiveSummaryMatch = path.match(/^\/api\/public\/tag\/([^/]+)\/archive\/summary$/);
+  const tagArchiveSummaryMatch = path.match(/^\/api\/public\/tag\/([^/]+)\/archive\/summary$/i);
   const tagArchiveMonthMatch = path.match(
-    /^\/api\/public\/tag\/([^/]+)\/archive\/([^/]+)\/([^/]+)\/articles$/,
+    /^\/api\/public\/tag\/([^/]+)\/archive\/([^/]+)\/([^/]+)\/articles$/i,
   );
 
   if (articleMatch) {
@@ -229,7 +234,7 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
   if (archiveMonthMatch) {
     tags.push('archive-month', toCacheTag('archive-month', `${archiveMonthMatch[1]}-${archiveMonthMatch[2]}`));
   }
-  if (path === '/api/public/article') {
+  if (lowerPath === '/api/public/article') {
     tags.push('article-listing', 'site-stats');
     const categories = toQueryValueList(query.category);
     const tagFilters = toQueryValueList(query.tags);
@@ -245,25 +250,25 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
       tags.push(toCacheTag('tag', decodeCacheSegment(tag)));
     }
   }
-  if (path === '/api/public/site-stats') {
+  if (lowerPath === '/api/public/site-stats') {
     tags.push('site-stats');
   }
-  if (path === '/api/public/meta') {
+  if (lowerPath === '/api/public/meta') {
     tags.push('public-meta');
   }
-  if (path === '/api/public/site-info') {
+  if (lowerPath === '/api/public/site-info') {
     tags.push('site-info');
   }
-  if (path === '/api/public/customPage/all') {
+  if (lowerPath === '/api/public/custompage/all') {
     tags.push('custom-page-list');
   }
-  if (path === '/api/public/customPage') {
+  if (lowerPath === '/api/public/custompage') {
     tags.push('custom-page');
   }
-  if (path === '/api/public/category/summary') {
+  if (lowerPath === '/api/public/category/summary') {
     tags.push('category-summary');
   }
-  if (path === '/api/public/archive/summary') {
+  if (lowerPath === '/api/public/archive/summary') {
     tags.push('archive-summary');
   }
   if (categoryArchiveSummaryMatch) {
@@ -280,19 +285,19 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
       toCacheTag('category-archive-month', `${category}-${year}-${month}`),
     );
   }
-  if (path === '/api/public/category') {
+  if (lowerPath === '/api/public/category') {
     tags.push('category-list');
   }
-  if (path === '/api/public/timeline/summary') {
+  if (lowerPath === '/api/public/timeline/summary') {
     tags.push('timeline-summary');
   }
-  if (path === '/api/public/timeline') {
+  if (lowerPath === '/api/public/timeline') {
     tags.push('timeline-list');
   }
-  if (path === '/api/public/tags/hot') {
+  if (lowerPath === '/api/public/tags/hot') {
     tags.push('tag-hot');
   }
-  if (path === '/api/public/tags/paginated' || path === '/api/public/tags/all') {
+  if (lowerPath === '/api/public/tags/paginated' || lowerPath === '/api/public/tags/all') {
     tags.push('tag-list');
   }
   if (tagArchiveSummaryMatch) {
@@ -309,16 +314,16 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
       toCacheTag('tag-archive-month', `${tag}-${year}-${month}`),
     );
   }
-  if (path === '/api/public/icon' || path.startsWith('/api/public/icon/')) {
+  if (lowerPath === '/api/public/icon' || lowerPath.startsWith('/api/public/icon/')) {
     tags.push('icon-public');
   }
-  if (path === '/api/public/music/setting' || path === '/api/public/music/list') {
+  if (lowerPath === '/api/public/music/setting' || lowerPath === '/api/public/music/list') {
     tags.push('music-public');
   }
-  if (path.startsWith('/api/public/nav')) {
+  if (lowerPath.startsWith('/api/public/nav')) {
     tags.push('nav-public');
   }
-  if (path.startsWith('/api/public/moment')) {
+  if (lowerPath.startsWith('/api/public/moment')) {
     tags.push('moment-public');
   }
   return formatCacheTags(tags);
@@ -349,8 +354,9 @@ export class PublicCacheMiddleware implements NestMiddleware {
 
     applyPublicValidators(req, res);
 
-    const path = req.path;
-    const cacheTags = getPublicCacheTags(path, (req.query || {}) as Record<string, unknown>);
+    const rawPath = req.path;
+    const cacheTags = getPublicCacheTags(rawPath, (req.query || {}) as Record<string, unknown>);
+    const path = rawPath.toLowerCase();
     if (cacheTags) {
       res.setHeader('Cache-Tag', cacheTags);
     }
