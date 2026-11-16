@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { Feed } from 'feed';
 import { config } from 'src/config';
-import { RssProvider } from './rss.provider';
+import { RSS_PROTECTED_CONTENT, RssProvider } from './rss.provider';
 
 jest.mock('fs');
 jest.mock('feed', () => {
@@ -31,10 +31,10 @@ describe('RssProvider', () => {
     config.staticPath = originalStaticPath;
   });
 
-  const createProvider = () =>
-    new RssProvider(
-      {
-        getAll: jest.fn().mockResolvedValue([
+  const createProvider = (articles?: any[]) => {
+    const articleProvider = {
+      getByOption: jest.fn().mockResolvedValue({
+        articles: articles || [
           {
             id: 7,
             title: 'Edge Cache Post',
@@ -45,8 +45,17 @@ describe('RssProvider', () => {
             createdAt: '2026-04-10T00:00:00.000Z',
             updatedAt: '2026-04-11T00:00:00.000Z',
           },
-        ]),
-      } as any,
+        ],
+        total: 1,
+      }),
+    };
+    const markdownProvider = {
+      renderMarkdown: jest.fn((value: string) => `<p>${value}</p>`),
+      renderMarkdownWithDiagrams: jest.fn(async (value: string) => `<p>${value}</p>`),
+      getDescription: jest.fn((value: string) => value.slice(0, 20)),
+    };
+    const provider = new RssProvider(
+      articleProvider as any,
       {
         getAll: jest.fn().mockResolvedValue({
           siteInfo: {
@@ -60,15 +69,38 @@ describe('RssProvider', () => {
       {
         getWalineSetting: jest.fn().mockResolvedValue({ authorEmail: 'author@example.com' }),
       } as any,
-      {
-        renderMarkdown: jest.fn((value: string) => `<p>${value}</p>`),
-        renderMarkdownWithDiagrams: jest.fn(async (value: string) => `<p>${value}</p>`),
-        getDescription: jest.fn((value: string) => value.slice(0, 20)),
-      } as any,
+      markdownProvider as any,
     );
+    return { provider, articleProvider, markdownProvider };
+  };
+
+  it('reads articles through the public list query so private categories are honored', async () => {
+    const { provider, articleProvider, markdownProvider } = createProvider([
+      {
+        id: 9,
+        title: 'Locked By Category',
+        pathname: 'locked-by-category',
+        category: 'Secret',
+        content: undefined,
+        private: true,
+        createdAt: '2026-04-10T00:00:00.000Z',
+      },
+    ]);
+
+    await provider.generateRssFeedFn('test');
+
+    expect(articleProvider.getByOption).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: -1, regMatch: false }),
+      true,
+    );
+    const renderedSources = markdownProvider.renderMarkdownWithDiagrams.mock.calls.map(
+      (call) => call[0],
+    );
+    expect(renderedSources).toEqual([RSS_PROTECTED_CONTENT]);
+  });
 
   it('publishes feed self links on the root aliases instead of the internal /rss prefix', async () => {
-    const provider = createProvider();
+    const { provider } = createProvider();
 
     await provider.generateRssFeedFn('test');
 
@@ -83,7 +115,7 @@ describe('RssProvider', () => {
   });
 
   it('writes rss, json feed, and atom artifacts into the static rss directory', async () => {
-    const provider = createProvider();
+    const { provider } = createProvider();
 
     await provider.generateRssFeedFn('test');
 

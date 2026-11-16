@@ -10,6 +10,9 @@ import { config } from 'src/config';
 import { MarkdownProvider } from '../markdown/markdown.provider';
 import { washUrl } from 'src/utils/washUrl';
 
+// User-facing feed copy shown in place of protected article content.
+export const RSS_PROTECTED_CONTENT = '此文章已加密';
+
 @Injectable()
 export class RssProvider {
   logger = new Logger(RssProvider.name);
@@ -47,11 +50,17 @@ export class RssProvider {
   async generateRssFeedFn(info?: string) {
     this.logger.log(info + '重新生成 RSS 订阅');
     try {
-      let articles = await this.articleProvider.getAll('public', false, false);
+      // Use the public list query: it flags articles that are private by themselves
+      // or through a private category, and drops their content and password.
+      const publicResult = await this.articleProvider.getByOption(
+        { page: 1, pageSize: -1, regMatch: false },
+        true,
+      );
+      let articles: any[] = publicResult?.articles || [];
       articles = articles.map((a: any) => {
         const article = a?._doc || a;
         if (article.private) {
-          return { ...article, content: '此文章已加密' };
+          return { ...article, content: RSS_PROTECTED_CONTENT };
         } else {
           return article;
         }

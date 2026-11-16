@@ -32,6 +32,7 @@ import { WalineProvider } from 'src/provider/waline/waline.provider';
 import { normalizeCustomPageRoutePath } from 'src/utils/customPagePath';
 import { getRequestIp } from 'src/provider/log/utils';
 import { createHash } from 'node:crypto';
+import { isTrue } from 'src/utils/isTrue';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -65,6 +66,19 @@ export class PublicController {
     const data = await loader();
     await this.cacheProvider.set(key, data, ttlSeconds);
     return data;
+  }
+
+  /**
+   * List shells never carry article bodies or credentials, even if an upstream
+   * query starts returning them again.
+   */
+  private toListShell(article: Record<string, any> | null | undefined) {
+    const payload = this.toArticleShell(article);
+    if (payload) {
+      delete payload.content;
+      delete payload.password;
+    }
+    return payload;
   }
 
   private toArticleShell(article: Record<string, any> | null | undefined) {
@@ -582,7 +596,8 @@ export class PublicController {
     @Query('pageSize') pageSize = 5,
     @Query('toListView') toListView = false,
     @Query('withPreviewContent') withPreviewContent = false,
-    @Query('regMatch') regMatch = false,
+    // Accepted for backward compatibility but ignored: public matching is always exact.
+    @Query('regMatch') _regMatch = false,
     @Query('withWordCount') withWordCount = false,
     @Query('category') category?: string,
     @Query('tags') tags?: string,
@@ -592,17 +607,20 @@ export class PublicController {
   ) {
     const safePage = this.normalizePositiveInt(page as any, 1, 10_000);
     const safePageSize = this.normalizePositiveInt(pageSize as any, 5, 100);
+    // Query values arrive as strings, so "false" must not be treated as truthy.
+    // Public callers always get exact category/tag matching; substring matching would
+    // let anyone probe raw taxonomy names.
     const option = {
       page: safePage,
       pageSize: safePageSize,
       category,
       tags,
-      toListView,
-      withPreviewContent,
-      regMatch,
+      toListView: isTrue(toListView as any),
+      withPreviewContent: isTrue(withPreviewContent as any),
+      regMatch: false,
       sortTop,
       sortCreatedAt,
-      withWordCount,
+      withWordCount: isTrue(withWordCount as any),
     };
     // 三个 sort 是完全排他的。
     const data = await this.articleProvider.getByOption(option, true);
@@ -779,7 +797,19 @@ export class PublicController {
     @Param('name') name: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    const data = await this.categoryProvider.getArticlesByCategory(decodeURIComponent(name), false);
+    // Go through the public list query so private articles and private categories are
+    // projected the same way as every other public list (no content, no password).
+    const result = await this.articleProvider.getByOption(
+      {
+        page: 1,
+        pageSize: -1,
+        category: decodeURIComponent(name),
+        regMatch: false,
+        toListView: true,
+      },
+      true,
+    );
+    const data = result?.articles || [];
     const latestArticle = (data || []).reduce((latest: any, article: any) => {
       if (!latest) {
         return article;
@@ -792,7 +822,7 @@ export class PublicController {
     this.setLastModified(res, latestArticle?.updatedAt, latestArticle?.createdAt);
     return {
       statusCode: 200,
-      data: (data || []).map((article: any) => this.toArticleShell(article)),
+      data: (data || []).map((article: any) => this.toListShell(article)),
     };
   }
 

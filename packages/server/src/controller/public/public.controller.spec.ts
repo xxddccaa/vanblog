@@ -1558,30 +1558,77 @@ describe('PublicController', () => {
     );
   });
 
+  it('parses string query flags strictly and never enables substring matching for public lists', async () => {
+    const { controller, articleProvider } = createController();
+    const res = createRes();
+    articleProvider.getByOption.mockResolvedValue({
+      total: 0,
+      articles: [],
+    });
+
+    await controller.getByOption(
+      '1' as any,
+      '5' as any,
+      'false' as any,
+      'false' as any,
+      'true' as any,
+      'false' as any,
+      'Arch' as any,
+      'Go' as any,
+      undefined as any,
+      undefined as any,
+      res as any,
+    );
+
+    expect(articleProvider.getByOption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'Arch',
+        tags: 'Go',
+        toListView: false,
+        withPreviewContent: false,
+        withWordCount: false,
+        regMatch: false,
+      }),
+      true,
+    );
+  });
+
   it('returns category expansion payloads as stable shells without viewer counters', async () => {
-    const { controller, categoryProvider } = createController();
+    const { controller, articleProvider } = createController();
     const res = {
       headers: new Map<string, string>(),
       setHeader(key: string, value: string) {
         this.headers.set(key, value);
       },
     };
-    categoryProvider.getArticlesByCategory.mockResolvedValue([
-      {
-        id: 8,
-        title: 'Category Article',
-        pathname: 'category-article',
-        viewer: 22,
-        visited: 11,
-        commentCount: 3,
-        likeCount: 2,
-        lastVisitedTime: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-04-11T00:00:00.000Z',
-      },
-    ]);
+    articleProvider.getByOption.mockResolvedValue({
+      total: 1,
+      articles: [
+        {
+          id: 8,
+          title: 'Category Article',
+          pathname: 'category-article',
+          viewer: 22,
+          visited: 11,
+          commentCount: 3,
+          likeCount: 2,
+          lastVisitedTime: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-04-11T00:00:00.000Z',
+        },
+      ],
+    });
 
     const result = await controller.getArticlesByCategoryName('Architecture', res as any);
 
+    expect(articleProvider.getByOption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'Architecture',
+        pageSize: -1,
+        regMatch: false,
+        toListView: true,
+      }),
+      true,
+    );
     expect(result).toEqual({
       statusCode: 200,
       data: [
@@ -1594,6 +1641,30 @@ describe('PublicController', () => {
       ],
     });
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
+  });
+
+  it('never exposes article bodies or passwords from public category expansion', async () => {
+    const { controller, articleProvider } = createController();
+    const res = createRes();
+    articleProvider.getByOption.mockResolvedValue({
+      total: 1,
+      articles: [
+        {
+          id: 11,
+          title: 'Locked Article',
+          content: 'secret body',
+          password: 'pw-1',
+          private: true,
+          updatedAt: '2026-04-11T00:00:00.000Z',
+        },
+      ],
+    });
+
+    const result = await controller.getArticlesByCategoryName('Locked', res as any);
+
+    expect(result.data[0]).not.toHaveProperty('content');
+    expect(result.data[0]).not.toHaveProperty('password');
+    expect(JSON.stringify(result)).not.toContain('secret body');
   });
 
   it('returns timeline expansion payloads as stable shells without viewer counters', async () => {
