@@ -1,4 +1,23 @@
 # Changelog
+## [1.9.0](https://github.com/xxddccaa/vanblog/compare/v1.8.8...v1.9.0) (2026-11-16)
+
+### 新功能
+
+* **public-mask:** 新增前台屏蔽：自定义关键词/正则与内置 Token、私钥、JWT、URL 凭据、认证头、密码赋值、邮箱、公网 IP 检测，覆盖全部公开接口、页面、搜索、RSS、sitemap、自定义页面与静态文本文件，后台保持原文
+* **admin:** 系统设置新增「前台屏蔽」页面，支持试一试预览与全站命中扫描
+* **scripts:** 新增 `pnpm audit:public-mask` 匿名审计脚本
+
+### 安全修复
+
+* **server:** 公开分类文章列表不再返回文章正文与访问密码，公开接口统一剔除 `password` 字段
+* **server:** `/static` 改为白名单目录，旧备份、导出与临时目录返回 404；图片导出改为登录后下载
+* **rss:** 私密分类下的文章在 RSS 中显示为已加密
+* **server:** 公开缓存路径判断忽略大小写，带 `If-None-Match` 时不再按修改时间返回 304
+
+### Bug 修复
+
+* **build:** 修复思维导图构建覆盖源码入口
+
 ### [1.8.8](https://github.com/xxddccaa/vanblog/compare/v1.8.7...v1.8.8) (2026-10-02)
 
 ### Bug 修复
