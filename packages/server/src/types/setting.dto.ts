@@ -1,4 +1,5 @@
 import { MenuItem } from './menu.dto';
+import type { PublicMaskSetting } from 'src/utils/publicMask/types';
 
 export const defaultStaticSetting: StaticSetting = {
   storageType: 'local',
@@ -23,7 +24,8 @@ export type SettingType =
   | 'autoBackup'
   | 'music'
   | 'font'
-  | 'aiTagging';
+  | 'aiTagging'
+  | 'publicMask';
 
 export type SettingValue =
   | StaticSetting
@@ -37,6 +39,7 @@ export type SettingValue =
   | AutoBackupSetting
   | MusicSetting
   | FontSetting
+  | PublicMaskSetting
   | Record<string, any>;
 
 export interface ISRSetting {

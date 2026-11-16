@@ -28,6 +28,12 @@ import { defaultMenu, MenuItem } from 'src/types/menu.dto';
 import { MetaProvider } from '../meta/meta.provider';
 import { parseHtmlToHeadTagArr } from 'src/utils/htmlParser';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import {
+  normalizePublicMaskSetting,
+  PublicMaskSetting,
+  PublicMaskValidationError,
+  validatePublicMaskSetting,
+} from 'src/utils/publicMask';
 @Injectable()
 export class SettingProvider {
   logger = new Logger(SettingProvider.name);
@@ -144,6 +150,13 @@ export class SettingProvider {
   async importAllSettings(settings: Array<{ type: string; value: any }>, overwrite = false) {
     for (const setting of settings || []) {
       if (!setting?.type) {
+        continue;
+      }
+
+      if (setting.type === 'publicMask') {
+        // Restore masking rules as a whole and normalize their shape. Invalid rules
+        // are kept on purpose: public output then fails closed until they are fixed.
+        await this.upsertSettingValue('publicMask', normalizePublicMaskSetting(setting.value));
         continue;
       }
 
@@ -1843,5 +1856,24 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     const res = await this.upsertSettingValue('font', newValue);
     this.logger.log(existingSetting ? '字体设置已更新' : '字体设置已创建');
     return res;
+  }
+
+  async getPublicMaskSetting(): Promise<PublicMaskSetting> {
+    const res = await this.findSettingRecord('publicMask');
+    return normalizePublicMaskSetting(res?.value);
+  }
+
+  /** Validates and replaces the whole masking setting. Nothing is saved on errors. */
+  async updatePublicMaskSetting(
+    input: unknown,
+  ): Promise<{ value?: PublicMaskSetting; errors: PublicMaskValidationError[] }> {
+    const { value, errors } = validatePublicMaskSetting(input);
+    if (errors.length) {
+      return { errors };
+    }
+    const saved: PublicMaskSetting = { ...value, updatedAt: new Date().toISOString() };
+    await this.upsertSettingValue('publicMask', saved);
+    this.logger.log(`Public mask setting saved (${saved.rules.length} rules)`);
+    return { value: saved, errors: [] };
   }
 }

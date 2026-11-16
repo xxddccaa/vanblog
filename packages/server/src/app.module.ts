@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/c
 import { MulterModule } from '@nestjs/platform-express';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PublicOutputInterceptor } from './provider/public-mask/public-output.interceptor';
+import { PublicMaskProvider } from './provider/public-mask/public-mask.provider';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from 'src/storage/mongoose-compat';
@@ -214,6 +215,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
   providers: [
     // Applies to every handler; it only acts on /api/public controllers.
     { provide: APP_INTERCEPTOR, useClass: PublicOutputInterceptor },
+    PublicMaskProvider,
     AppService,
     ArticleProvider,
     CategoryProvider,
