@@ -18,6 +18,7 @@ import { CaddyProvider } from './provider/caddy/caddy.provider';
 import { initJwt } from './utils/initJwt';
 import { SearchIndexProvider } from './provider/search-index/search-index.provider';
 import { setStaticCacheHeaders } from './utils/staticCacheHeaders';
+import { createPublicStaticGuard } from './provider/public-mask/public-static.middleware';
 import fs from 'fs';
 
 const STDIO_TEE_FLAG = Symbol.for('vanblog.stdio-tee-enabled');
@@ -124,6 +125,8 @@ async function bootstrap() {
   // JSON APIs should not accept backup-sized payloads; file imports use multipart limits.
   app.use(json({ limit: '1mb' }));
 
+  // Only allowlisted folders under the static root are public; everything else 404s.
+  app.use('/static', createPublicStaticGuard());
   app.useStaticAssets(globalConfig.staticPath, {
     prefix: '/static/',
     setHeaders: (res, filePath) => setStaticCacheHeaders('asset', res, filePath),

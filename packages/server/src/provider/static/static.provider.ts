@@ -309,19 +309,23 @@ export class StaticProvider {
     return { total: total, errorLinks };
   }
 
-  async exportAllImg() {
+  async exportAllImg(): Promise<{ fileName: string }> {
     const storageSetting = await this.settingProvider.getStaticSetting();
     const storageType = storageSetting?.storageType || 'local';
     if (storageType == 'local') {
-      const { success, path } = await this.localProvider.exportAllImg();
-      if (success && path) {
-        return path;
+      const { success, fileName } = await this.localProvider.exportAllImg();
+      if (success && fileName) {
+        return { fileName };
       } else {
         throw new HttpException({ statusCode: 500, message: '打包错误！' }, 500);
       }
     } else {
       throw new NotImplementedException('其他图床暂不支持打包导出！');
     }
+  }
+
+  resolveImgExportFile(fileName: string) {
+    return this.localProvider.resolveImgExportFile(fileName);
   }
   async saveFile(
     fileType: string,

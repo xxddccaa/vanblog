@@ -143,6 +143,14 @@ export async function exportAllImgs() {
     method: 'POST',
   });
 }
+export async function downloadImgExport(fileName) {
+  return request('/api/admin/img/export/download', {
+    method: 'GET',
+    params: { name: fileName },
+    skipErrorHandler: true,
+    responseType: 'blob',
+  });
+}
 
 export async function login(body, options) {
   return request('/api/admin/auth/login', {

@@ -384,6 +384,18 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     });
     assert.equal(swagger.status, 404);
 
+    // Only allowlisted static folders are public; backups, exports and temp files are not.
+    for (const hiddenPath of [
+      '/static/blog-json/vanblog-backup-2026-01-01-030000.json',
+      '/STATIC/blog-json/vanblog-backup-2026-01-01-030000.json',
+      '/static/export/export-img-2026-01-01.zip',
+      '/static/tmp/anything',
+      '/static/img/../blog-json/anything.json',
+    ]) {
+      const hidden = await fetchText(`${baseUrl}${hiddenPath}`);
+      assert.equal(hidden.status, 404, `${hiddenPath} should not be public`);
+    }
+
     const walineAdmin = await waitFor(async () => {
       try {
         const response = await fetchText(`${baseUrl}/api/ui/`);

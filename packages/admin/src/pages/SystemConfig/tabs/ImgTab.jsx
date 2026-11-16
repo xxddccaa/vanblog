@@ -1,6 +1,6 @@
 import StaticForm from '@/components/StaticForm';
 import WatchMarkForm from '@/components/WaterMarkForm';
-import { exportAllImgs, scanImgsOfArticles } from '@/services/van-blog/api';
+import { downloadImgExport, exportAllImgs, scanImgsOfArticles } from '@/services/van-blog/api';
 import { Alert, Button, Card, message, Modal, Table, Typography } from 'antd';
 import { useState } from 'react';
 
@@ -87,10 +87,15 @@ export default function () {
             setExporting(true);
             try {
               const { data } = await exportAllImgs();
+              // The archive is served only to authenticated admins, so fetch it with
+              // the session token instead of linking to a public URL.
+              const blob = await downloadImgExport(data.fileName);
+              const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
-              link.href = data;
-              link.download = data.split('/').pop();
+              link.href = url;
+              link.download = data.fileName;
               link.click();
+              setTimeout(() => URL.revokeObjectURL(url), 0);
               setExporting(false);
             } catch (err) {
             } finally {

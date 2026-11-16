@@ -2,13 +2,17 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Post,
   Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Response } from 'express';
+import * as path from 'path';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { SearchStaticOption } from 'src/types/setting.dto';
@@ -89,6 +93,15 @@ export class ImgController {
       statusCode: 200,
       data: res,
     };
+  }
+  @Get('export/download')
+  async downloadImgExport(@Query('name') name: string, @Res() res: Response) {
+    const filePath = this.staticProvider.resolveImgExportFile(name);
+    if (!filePath) {
+      throw new NotFoundException();
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    return res.download(filePath, path.basename(filePath));
   }
   @Delete('/all/delete')
   async deleteALL() {

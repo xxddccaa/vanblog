@@ -157,15 +157,33 @@ export class LocalProvider {
       console.log('删除实际文件失败：', fileName, '可能是更新版本后没映射静态文件目录导致的');
     }
   }
+  /**
+   * Image exports bundle every local upload, including images only referenced by
+   * drafts or private articles, so they live outside the public static root and are
+   * downloaded through an authenticated admin route.
+   */
+  static readonly IMG_EXPORT_FILE_PATTERN = /^export-img-\d{4}-\d{2}-\d{2}\.zip$/;
+
+  getPrivateExportDir() {
+    const dir = path.join(config.log, 'exports');
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    return dir;
+  }
+
+  resolveImgExportFile(fileName: string) {
+    const safeName = String(fileName || '');
+    if (!LocalProvider.IMG_EXPORT_FILE_PATTERN.test(safeName)) {
+      return null;
+    }
+    const filePath = path.join(this.getPrivateExportDir(), safeName);
+    return fs.existsSync(filePath) ? filePath : null;
+  }
+
   async exportAllImg() {
     const compressing = require('compressing');
     const src = path.join(config.staticPath, 'img');
-    const dst = path.join(
-      config.staticPath,
-      'export',
-      `export-img-${dayjs().format('YYYY-MM-DD')}.zip`,
-    );
-    const dstSrc = `/static/export/export-img-${dayjs().format('YYYY-MM-DD')}.zip`;
+    const fileName = `export-img-${dayjs().format('YYYY-MM-DD')}.zip`;
+    const dst = path.join(this.getPrivateExportDir(), fileName);
 
     const compressPromise = new Promise((resolve, reject) => {
       compressing.zip
@@ -182,7 +200,7 @@ export class LocalProvider {
       console.log(r);
       return {
         success: true,
-        path: dstSrc,
+        fileName,
       };
     } catch (err) {
       console.log(err);
