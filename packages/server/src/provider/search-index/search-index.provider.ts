@@ -1,5 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
-import fs from 'fs';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import path from 'path';
 import { config } from 'src/config';
 import { buildArticlePreview } from 'src/utils/articlePreview';
@@ -8,6 +7,9 @@ import { DocumentProvider } from '../document/document.provider';
 import { DraftProvider } from '../draft/draft.provider';
 import { MindMapProvider } from '../mindmap/mindmap.provider';
 import { MomentProvider } from '../moment/moment.provider';
+import { PublicMaskProvider } from '../public-mask/public-mask.provider';
+import { recordPublicMaskArtifact, writeFileAtomic } from '../public-mask/public-mask-artifacts';
+import { INACTIVE_PUBLIC_MASKER } from 'src/utils/publicMask';
 
 interface SearchIndexItem {
   id: number;
@@ -46,6 +48,7 @@ export class SearchIndexProvider {
     private readonly draftProvider: DraftProvider,
     private readonly documentProvider: DocumentProvider,
     private readonly mindMapProvider: MindMapProvider,
+    @Optional() private readonly publicMaskProvider?: PublicMaskProvider,
   ) {}
 
   private getArticleCategories(article: any): string[] {
@@ -134,31 +137,49 @@ export class SearchIndexProvider {
   async generateSearchIndexFn(info?: string) {
     this.logger.log(`${info || ''}重新生成搜索索引`);
 
+    const masker = this.publicMaskProvider
+      ? await this.publicMaskProvider.getMasker()
+      : INACTIVE_PUBLIC_MASKER;
+    const mask = (value: unknown) => masker.mask(String(value ?? ''));
     const articles = await this.articleProvider.getPublicSearchIndexArticles();
     const searchIndex: SearchIndexItem[] = articles.map((article) => {
-      const preview = buildArticlePreview(article.content || '', 280);
-      const tags = article.tags || [];
-      const categories = this.getArticleCategories(article);
+      // Mask before building the preview and lower-casing: a preview cut or a
+      // case change must never leave part of a masked term behind.
+      const content = masker.active
+        ? this.publicMaskProvider.maskCached(
+            masker,
+            `article:${article.id}:${article.updatedAt || article.createdAt || ''}`,
+            article.content || '',
+          )
+        : article.content || '';
+      const preview = buildArticlePreview(content, 280);
+      const title = masker.active ? mask(article.title) : article.title;
+      const category = masker.active && article.category ? mask(article.category) : article.category;
+      const tags = (article.tags || []).map((tag: string) => (masker.active ? mask(tag) : tag));
+      const categories = this.getArticleCategories(article).map((item) =>
+        masker.active ? mask(item) : item,
+      );
+      const pathname =
+        article.pathname && !masker.hasHit(String(article.pathname)) ? article.pathname : undefined;
 
       return {
         id: article.id,
-        pathname: article.pathname,
-        title: article.title,
-        category: article.category,
+        pathname,
+        title,
+        category,
         categories,
         tags,
         createdAt: new Date(article.createdAt).toISOString(),
         updatedAt: new Date(article.updatedAt || article.createdAt).toISOString(),
         preview,
-        searchText: Array.from(new Set([article.title, ...categories, article.category, ...tags, preview].filter(Boolean)))
+        searchText: Array.from(new Set([title, ...categories, category, ...tags, preview].filter(Boolean)))
           .join(' ')
           .toLowerCase(),
       };
     });
 
-    const outputPath = path.join(config.staticPath, 'search-index.json');
-    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-    fs.writeFileSync(outputPath, JSON.stringify(searchIndex));
+    writeFileAtomic(path.join(config.staticPath, 'search-index.json'), JSON.stringify(searchIndex));
+    recordPublicMaskArtifact(config.staticPath, 'searchIndex', masker.version);
   }
 
   async searchContent(keyword: string, limit = 20, scope: 'public' | 'admin' = 'public') {

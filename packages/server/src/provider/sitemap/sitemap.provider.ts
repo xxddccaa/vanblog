@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ArticleProvider } from '../article/article.provider';
 import { encodeQuerystring, washUrl } from 'src/utils/washUrl';
 import { CustomPageProvider } from '../customPage/customPage.provider';
@@ -8,7 +8,17 @@ import { MetaProvider } from '../meta/meta.provider';
 import { SitemapStream, streamToPromise } from 'sitemap';
 import { config } from 'src/config';
 import path from 'path';
-import fs from 'fs';
+import { PublicMaskProvider } from '../public-mask/public-mask.provider';
+import { recordPublicMaskArtifact, writeFileAtomic } from '../public-mask/public-mask-artifacts';
+import { INACTIVE_PUBLIC_MASKER, PublicMasker } from 'src/utils/publicMask';
+
+const safeDecode = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
 
 @Injectable()
 export class SiteMapProvider {
@@ -20,6 +30,7 @@ export class SiteMapProvider {
     private readonly tagProvider: TagProvider,
     private readonly customPageProvider: CustomPageProvider,
     private readonly metaProvider: MetaProvider,
+    @Optional() private readonly publicMaskProvider?: PublicMaskProvider,
   ) {}
 
   async generateSiteMap(info?: string, delay?: number) {
@@ -37,7 +48,10 @@ export class SiteMapProvider {
   async generateSiteMapFn(info?: string) {
     this.logger.log(info + '重新生成 SiteMap ');
     try {
-      const pathnames = await this.getSiteUrls();
+      const masker = this.publicMaskProvider
+        ? await this.publicMaskProvider.getMasker()
+        : INACTIVE_PUBLIC_MASKER;
+      const pathnames = await this.toPublicSiteUrls(await this.getSiteUrls(), masker);
       const siteInfo = await this.metaProvider.getSiteInfo();
       const baseUrl = washUrl(siteInfo?.baseUrl || '');
       if (!baseUrl) {
@@ -50,18 +64,82 @@ export class SiteMapProvider {
           url: pathname,
         });
       });
-      streamToPromise(smStream).then((sm) => {
-        const sitemapPath = path.join(config.staticPath, 'sitemap');
-
-        fs.mkdirSync(sitemapPath, { recursive: true });
-        fs.writeFileSync(path.join(sitemapPath, 'sitemap.xml'), sm);
+      const written = streamToPromise(smStream).then((sm) => {
+        writeFileAtomic(path.join(config.staticPath, 'sitemap', 'sitemap.xml'), sm);
+        recordPublicMaskArtifact(config.staticPath, 'sitemap', masker.version);
       });
       smStream.end();
+      await written;
     } catch (err) {
       this.logger.error('生成 SiteMap 失败！');
       this.logger.error(JSON.stringify(err, null, 2));
     }
   }
+  /**
+   * Rewrites internal site URLs into the ones the public site exposes: article
+   * pathnames with masked terms become ids, tag and category names become their
+   * masked form (dropped when two names collide), and anything that still carries a
+   * masked term is left out. The internal URL list stays raw for ISR.
+   */
+  async toPublicSiteUrls(urls: string[], masker: PublicMasker) {
+    if (!masker.active) {
+      return urls;
+    }
+    const articles = await this.articleProvider.getAll('list', false, false);
+    const idByPathname = new Map<string, string>();
+    for (const article of articles as any[]) {
+      if (article?.pathname) {
+        idByPathname.set(String(article.pathname), String(article.id));
+      }
+    }
+    const maskedNameOwners = new Map<string, Set<string>>();
+    const trackName = (name: string) => {
+      const masked = masker.mask(name);
+      maskedNameOwners.set(masked, (maskedNameOwners.get(masked) || new Set()).add(name));
+      return masked;
+    };
+
+    const rewritten: string[] = [];
+    for (const url of urls) {
+      const [, section, rawSegment, ...rest] = url.split('/');
+      let next: string | null = url;
+      if (section === 'post' && rawSegment && masker.hasHit(safeDecode(rawSegment))) {
+        const id = idByPathname.get(safeDecode(rawSegment));
+        next = id ? `/post/${id}` : null;
+      } else if ((section === 'category' || section === 'tag') && rawSegment) {
+        const name = safeDecode(rawSegment);
+        if (masker.hasHit(name)) {
+          const masked = trackName(name);
+          next = ['', section, encodeQuerystring(masked), ...rest].join('/');
+        } else {
+          trackName(name);
+        }
+      }
+      rewritten.push(next);
+    }
+
+    const ambiguous = new Set(
+      [...maskedNameOwners.entries()]
+        .filter(([, owners]) => owners.size > 1)
+        .map(([masked]) => masked),
+    );
+    return Array.from(
+      new Set(
+        rewritten.filter((url): url is string => {
+          if (!url || masker.hasHit(safeDecode(url))) {
+            return false;
+          }
+          const [, section, segment] = url.split('/');
+          return !(
+            (section === 'category' || section === 'tag') &&
+            segment &&
+            ambiguous.has(safeDecode(segment))
+          );
+        }),
+      ),
+    );
+  }
+
   async getArticleUrls() {
     const articles = await this.articleProvider.getAll('list', false, false);
     return articles.map((a) => {

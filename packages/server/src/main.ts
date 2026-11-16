@@ -19,6 +19,7 @@ import { initJwt } from './utils/initJwt';
 import { SearchIndexProvider } from './provider/search-index/search-index.provider';
 import { setStaticCacheHeaders } from './utils/staticCacheHeaders';
 import { createPublicStaticGuard } from './provider/public-mask/public-static.middleware';
+import { PublicMaskProvider } from './provider/public-mask/public-mask.provider';
 import fs from 'fs';
 
 const STDIO_TEE_FLAG = Symbol.for('vanblog.stdio-tee-enabled');
@@ -126,7 +127,12 @@ async function bootstrap() {
   app.use(json({ limit: '1mb' }));
 
   // Only allowlisted folders under the static root are public; everything else 404s.
-  app.use('/static', createPublicStaticGuard());
+  // With masking on, the same guard masks text files and holds back stale feeds.
+  const publicStaticMasking = app.get(PublicMaskProvider);
+  app.use(
+    '/static',
+    createPublicStaticGuard({ staticRoot: globalConfig.staticPath, masking: publicStaticMasking }),
+  );
   app.useStaticAssets(globalConfig.staticPath, {
     prefix: '/static/',
     setHeaders: (res, filePath) => setStaticCacheHeaders('asset', res, filePath),
@@ -143,6 +149,14 @@ async function bootstrap() {
 
   // rss
   checkOrCreate(path.join(globalConfig.staticPath, 'rss'));
+  app.use(
+    '/rss',
+    createPublicStaticGuard({
+      staticRoot: globalConfig.staticPath,
+      mountDir: 'rss',
+      masking: publicStaticMasking,
+    }),
+  );
   app.useStaticAssets(path.join(globalConfig.staticPath, 'rss'), {
     prefix: '/rss/',
     setHeaders: (res, filePath) => setStaticCacheHeaders('feed', res, filePath),
@@ -150,6 +164,14 @@ async function bootstrap() {
 
   // sitemap
   checkOrCreate(path.join(globalConfig.staticPath, 'sitemap'));
+  app.use(
+    '/sitemap',
+    createPublicStaticGuard({
+      staticRoot: globalConfig.staticPath,
+      mountDir: 'sitemap',
+      masking: publicStaticMasking,
+    }),
+  );
   app.useStaticAssets(path.join(globalConfig.staticPath, 'sitemap'), {
     prefix: '/sitemap/',
     setHeaders: (res, filePath) => setStaticCacheHeaders('sitemap', res, filePath),

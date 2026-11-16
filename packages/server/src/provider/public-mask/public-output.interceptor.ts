@@ -1,12 +1,32 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import {
+  CallHandler,
+  ExecutionContext,
+  HttpException,
+  Injectable,
+  NestInterceptor,
+  Optional,
+} from '@nestjs/common';
 import { PATH_METADATA } from '@nestjs/common/constants';
 import { Reflector } from '@nestjs/core';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
-import { SKIP_PUBLIC_MASK_METADATA } from './public-mask.decorators';
+import { randomBytes } from 'node:crypto';
+import { Observable, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { INACTIVE_PUBLIC_MASKER, maskPublicPayload, PublicMasker } from 'src/utils/publicMask';
+import {
+  PUBLIC_MASK_BASE64_FIELDS_METADATA,
+  SKIP_PUBLIC_MASK_METADATA,
+} from './public-mask.decorators';
+import { PublicMaskProvider } from './public-mask.provider';
 
 /** Keys that must never appear in anonymous output, at any depth. */
 export const PUBLIC_OUTPUT_STRIPPED_KEYS = new Set(['password']);
+
+/**
+ * Replaces route params and query values that contain a masked term. It cannot
+ * match any stored id, name, path, or search text, so every route answers exactly
+ * as it does for a value that does not exist, and the mask list cannot be probed.
+ */
+export const PUBLIC_MASK_UNMATCHABLE_INPUT = `vanblog-masked-${randomBytes(8).toString('hex')}`;
 
 const PUBLIC_CONTROLLER_PREFIX = 'api/public';
 
@@ -69,9 +89,85 @@ export const stripPublicOutputKeys = <T>(payload: T): T => {
   return cloned;
 };
 
+const safeDecode = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const inputHasHit = (value: unknown, masker: PublicMasker): boolean => {
+  if (typeof value === 'string') {
+    // Handlers decode some params a second time, so check both forms.
+    return masker.hasHit(value) || masker.hasHit(safeDecode(value));
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => inputHasHit(item, masker));
+  }
+  if (value && typeof value === 'object') {
+    return Object.values(value).some((item) => inputHasHit(item, masker));
+  }
+  return false;
+};
+
+/** Neutralizes request params and query values that contain masked terms. */
+export const neutralizeMaskedInput = (req: any, masker: PublicMasker) => {
+  if (!masker.active || !req) {
+    return;
+  }
+  const params = req.params;
+  if (params && typeof params === 'object') {
+    for (const key of Object.keys(params)) {
+      if (inputHasHit(params[key], masker)) {
+        params[key] = PUBLIC_MASK_UNMATCHABLE_INPUT;
+      }
+    }
+  }
+  const query = req.query;
+  if (query && typeof query === 'object') {
+    let changed = false;
+    const nextQuery: Record<string, unknown> = { ...query };
+    for (const key of Object.keys(nextQuery)) {
+      if (inputHasHit(nextQuery[key], masker)) {
+        nextQuery[key] = PUBLIC_MASK_UNMATCHABLE_INPUT;
+        changed = true;
+      }
+    }
+    if (changed) {
+      // Express 5 exposes req.query as a getter that re-parses the URL on every
+      // access, so shadow it with an own property.
+      Object.defineProperty(req, 'query', {
+        value: nextQuery,
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
+    }
+  }
+};
+
+const bumpLastModified = (res: any, updatedAt?: string) => {
+  if (!updatedAt || typeof res?.getHeader !== 'function') {
+    return;
+  }
+  const existing = res.getHeader('Last-Modified');
+  if (!existing) {
+    return;
+  }
+  const current = new Date(String(existing)).getTime();
+  const maskTime = new Date(updatedAt).getTime();
+  if (!Number.isNaN(maskTime) && (Number.isNaN(current) || maskTime > current)) {
+    res.setHeader('Last-Modified', new Date(maskTime).toUTCString());
+  }
+};
+
 @Injectable()
 export class PublicOutputInterceptor implements NestInterceptor {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    @Optional() private readonly publicMaskProvider?: PublicMaskProvider,
+  ) {}
 
   shouldHandle(context: ExecutionContext) {
     if (context.getType() !== 'http') {
@@ -87,10 +183,41 @@ export class PublicOutputInterceptor implements NestInterceptor {
     return !skip;
   }
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
     if (!this.shouldHandle(context)) {
       return next.handle();
     }
-    return next.handle().pipe(map((body) => stripPublicOutputKeys(body)));
+    // Throws 503 when the stored rules cannot compile: public output fails closed.
+    const masker = this.publicMaskProvider
+      ? await this.publicMaskProvider.getMasker()
+      : INACTIVE_PUBLIC_MASKER;
+    const http = context.switchToHttp();
+    const req = http.getRequest();
+    const res = http.getResponse();
+    neutralizeMaskedInput(req, masker);
+    const base64Paths =
+      this.reflector.getAllAndOverride<string[]>(PUBLIC_MASK_BASE64_FIELDS_METADATA, [
+        context.getHandler(),
+        context.getClass(),
+      ]) || [];
+
+    return next.handle().pipe(
+      map((body) => {
+        const stripped = stripPublicOutputKeys(body);
+        if (!masker.active) {
+          return stripped;
+        }
+        const masked = maskPublicPayload(stripped, masker, { base64Paths });
+        bumpLastModified(res, masker.updatedAt);
+        return masked;
+      }),
+      catchError((error) => {
+        if (masker.active && error instanceof HttpException) {
+          const response = maskPublicPayload(stripPublicOutputKeys(error.getResponse()), masker);
+          return throwError(() => new HttpException(response, error.getStatus()));
+        }
+        return throwError(() => error);
+      }),
+    );
   }
 }

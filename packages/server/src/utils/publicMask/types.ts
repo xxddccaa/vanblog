@@ -62,6 +62,12 @@ export interface PublicMasker {
 }
 
 /**
+ * Masks one piece of text for public output. `cacheKey` identifies the source text
+ * (e.g. article id + updatedAt) so repeated masking can be served from a cache.
+ */
+export type PublicTextMasker = (text: string, cacheKey?: string) => string;
+
+/**
  * Default replacement texts. They are product copy shown to readers, so they follow
  * the site's interface language. Full-width brackets keep them inert in Markdown.
  */

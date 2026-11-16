@@ -2,6 +2,8 @@ import fs from 'fs';
 import { Feed } from 'feed';
 import { config } from 'src/config';
 import { RSS_PROTECTED_CONTENT, RssProvider } from './rss.provider';
+import { PublicMaskProvider } from '../public-mask/public-mask.provider';
+import { defaultPublicMaskSetting } from 'src/utils/publicMask';
 
 jest.mock('fs');
 jest.mock('feed', () => {
@@ -31,7 +33,7 @@ describe('RssProvider', () => {
     config.staticPath = originalStaticPath;
   });
 
-  const createProvider = (articles?: any[]) => {
+  const createProvider = (articles?: any[], publicMaskProvider?: any) => {
     const articleProvider = {
       getByOption: jest.fn().mockResolvedValue({
         articles: articles || [
@@ -70,6 +72,7 @@ describe('RssProvider', () => {
         getWalineSetting: jest.fn().mockResolvedValue({ authorEmail: 'author@example.com' }),
       } as any,
       markdownProvider as any,
+      publicMaskProvider,
     );
     return { provider, articleProvider, markdownProvider };
   };
@@ -99,6 +102,41 @@ describe('RssProvider', () => {
     expect(renderedSources).toEqual([RSS_PROTECTED_CONTENT]);
   });
 
+  it('masks article Markdown and links before rendering the feed', async () => {
+    const publicMaskProvider = new PublicMaskProvider({
+      getSetting: jest.fn().mockResolvedValue({
+        value: {
+          ...defaultPublicMaskSetting,
+          enabled: true,
+          replacements: { custom: 'X-CUSTOM-X', secret: 'X-SECRET-X', email: 'X-EMAIL-X', ip: 'X-IP-X' },
+          rules: [{ id: 'kw', enabled: true, type: 'keyword', pattern: 'acmecore' }],
+        },
+      }),
+    } as any);
+    const { provider, markdownProvider } = createProvider(
+      [
+        {
+          id: 12,
+          title: 'acmecore notes',
+          pathname: 'acmecore-notes',
+          category: 'acmecore-lab',
+          content: 'deploy to acmecore',
+          createdAt: '2026-04-10T00:00:00.000Z',
+        },
+      ],
+      publicMaskProvider,
+    );
+
+    await provider.generateRssFeedFn('test');
+
+    expect(markdownProvider.renderMarkdownWithDiagrams).toHaveBeenCalledWith('deploy to X-CUSTOM-X');
+    const feedInstance = FeedMock.mock.results.at(-1)!.value;
+    const item = feedInstance.addItem.mock.calls[0][0];
+    expect(item.title).toBe('X-CUSTOM-X notes');
+    expect(item.link).toBe('https://blog.example.com/post/12');
+    expect(JSON.stringify(item).toLowerCase()).not.toContain('acmecore');
+  });
+
   it('publishes feed self links on the root aliases instead of the internal /rss prefix', async () => {
     const { provider } = createProvider();
 
@@ -120,8 +158,11 @@ describe('RssProvider', () => {
     await provider.generateRssFeedFn('test');
 
     expect(mockedFs.mkdirSync).toHaveBeenCalledWith('/tmp/vanblog-static/rss', { recursive: true });
-    expect(mockedFs.writeFileSync).toHaveBeenCalledWith('/tmp/vanblog-static/rss/feed.json', expect.any(String));
-    expect(mockedFs.writeFileSync).toHaveBeenCalledWith('/tmp/vanblog-static/rss/feed.xml', expect.any(String));
-    expect(mockedFs.writeFileSync).toHaveBeenCalledWith('/tmp/vanblog-static/rss/atom.xml', expect.any(String));
+    for (const name of ['feed.json', 'feed.xml', 'atom.xml']) {
+      expect(mockedFs.renameSync).toHaveBeenCalledWith(
+        expect.stringContaining(`/tmp/vanblog-static/rss/.${name}.`),
+        `/tmp/vanblog-static/rss/${name}`,
+      );
+    }
   });
 });

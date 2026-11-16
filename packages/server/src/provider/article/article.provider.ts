@@ -10,6 +10,12 @@ import { VisitProvider } from '../visit/visit.provider';
 import { sleep } from 'src/utils/sleep';
 import { CategoryDocument } from 'src/scheme/category.schema';
 import { buildArticleMarkdownPreview } from 'src/utils/articlePreview';
+import type { PublicTextMasker } from 'src/utils/publicMask/types';
+
+export interface PublicArticleOutputOptions {
+  /** When set, previews, word counts, and search matching use masked text. */
+  maskText?: PublicTextMasker;
+}
 import { StructuredDataService } from 'src/storage/structured-data.service';
 import { escapeRegExp } from 'src/utils/escapeRegExp';
 import {
@@ -258,6 +264,27 @@ export class ArticleProvider {
       .map((item) => String(item).toLocaleLowerCase());
 
     return haystacks.some((item) => item.includes(search));
+  }
+
+  private maskArticleContent(article: any, maskText?: PublicTextMasker) {
+    const content = article?.content || '';
+    if (!maskText || !content) {
+      return content;
+    }
+    return maskText(content, `article:${article?.id}:${article?.updatedAt || article?.createdAt || ''}`);
+  }
+
+  /** Copies the fields public search matches against, masked. */
+  private maskArticleSearchFields(article: any, maskText: PublicTextMasker) {
+    return {
+      title: maskText(String(article?.title || '')),
+      content: this.maskArticleContent(article, maskText),
+      category: maskText(String(article?.category || '')),
+      categories: this.getArticleCategories(article).map((item) => maskText(item)),
+      tags: (Array.isArray(article?.tags) ? article.tags : []).map((item: string) =>
+        maskText(String(item)),
+      ),
+    };
   }
 
   private async getCategoryByName(name?: string) {
@@ -1010,13 +1037,15 @@ export class ArticleProvider {
   async getByOption(
     option: SearchArticleOption,
     isPublic: boolean,
+    outputOptions: PublicArticleOutputOptions = {},
   ): Promise<{ articles: Article[]; total: number; totalWordCount?: number }> {
+    const { maskText } = outputOptions;
     const pgResult = await this.structuredDataService.queryArticles(option, isPublic);
     let articles: any[] = pgResult.articles;
     const total = pgResult.total;
 
     if (!articles.length && !total && !this.structuredDataService.isInitialized()) {
-      return await this.getByOptionFallback(option, isPublic);
+      return await this.getByOptionFallback(option, isPublic, outputOptions);
     }
     // 过滤私有文章
     if (isPublic) {
@@ -1074,7 +1103,8 @@ export class ArticleProvider {
 
         return {
           ...article,
-          content: buildArticleMarkdownPreview(article.content || ''),
+          // Mask before truncating so a cut can never leave part of a masked term.
+          content: buildArticleMarkdownPreview(this.maskArticleContent(article, maskText)),
         };
       });
     }
@@ -1082,7 +1112,7 @@ export class ArticleProvider {
     if (option.withWordCount) {
       let totalWordCount = 0;
       articles.forEach((a) => {
-        totalWordCount = totalWordCount + wordCount(a?.content || '');
+        totalWordCount = totalWordCount + wordCount(this.maskArticleContent(a, maskText));
       });
       resData.totalWordCount = totalWordCount;
     }
@@ -1108,7 +1138,9 @@ export class ArticleProvider {
   private async getByOptionFallback(
     option: SearchArticleOption,
     isPublic: boolean,
+    outputOptions: PublicArticleOutputOptions = {},
   ): Promise<{ articles: Article[]; total: number; totalWordCount?: number }> {
+    const { maskText } = outputOptions;
     const query: any = {};
     const $and: any = [
       {
@@ -1259,7 +1291,8 @@ export class ArticleProvider {
         }
         return {
           ...article,
-          content: buildArticleMarkdownPreview(article.content || ''),
+          // Mask before truncating so a cut can never leave part of a masked term.
+          content: buildArticleMarkdownPreview(this.maskArticleContent(article, maskText)),
         };
       });
     }
@@ -1267,7 +1300,7 @@ export class ArticleProvider {
     if (option.withWordCount) {
       let totalWordCount = 0;
       articles.forEach((a) => {
-        totalWordCount = totalWordCount + wordCount(a?.content || '');
+        totalWordCount = totalWordCount + wordCount(this.maskArticleContent(a, maskText));
       });
       resData.totalWordCount = totalWordCount;
     }
@@ -1592,7 +1625,11 @@ export class ArticleProvider {
     }));
   }
 
-  async searchByString(str: string, includeHidden: boolean): Promise<Article[]> {
+  async searchByString(
+    str: string,
+    includeHidden: boolean,
+    outputOptions: PublicArticleOutputOptions = {},
+  ): Promise<Article[]> {
     const normalizedSearch = String(str || '').trim().toLocaleLowerCase();
     if (!normalizedSearch) {
       return [];
@@ -1657,7 +1694,15 @@ export class ArticleProvider {
 
     if (!includeHidden) {
       sortedData = await this.applyPublicPrivacyToArticles(sortedData);
-      sortedData = sortedData.filter((article) => this.matchesSanitizedSearch(article, normalizedSearch));
+      const { maskText } = outputOptions;
+      // Re-check hits against masked fields: a query that only matched masked text
+      // (including a prefix of a masked term) must not count as a hit.
+      sortedData = sortedData.filter((article) =>
+        this.matchesSanitizedSearch(
+          maskText ? this.maskArticleSearchFields(article, maskText) : article,
+          normalizedSearch,
+        ),
+      );
     }
 
     const resData = [];

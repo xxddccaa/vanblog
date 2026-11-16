@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Optional,
   Param,
   Post,
   Query,
@@ -27,12 +28,16 @@ import { TokenProvider } from 'src/provider/token/token.provider';
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { StaticProvider } from 'src/provider/static/static.provider';
 import { CacheProvider } from 'src/provider/cache/cache.provider';
-import { SearchIndexProvider } from 'src/provider/search-index/search-index.provider';
 import { WalineProvider } from 'src/provider/waline/waline.provider';
 import { normalizeCustomPageRoutePath } from 'src/utils/customPagePath';
 import { getRequestIp } from 'src/provider/log/utils';
 import { createHash } from 'node:crypto';
 import { isTrue } from 'src/utils/isTrue';
+import { PublicArticleOutputOptions } from 'src/provider/article/article.provider';
+import { PublicMaskProvider } from 'src/provider/public-mask/public-mask.provider';
+import { PublicMaskBase64Fields } from 'src/provider/public-mask/public-mask.decorators';
+import { PUBLIC_MASK_UNMATCHABLE_INPUT } from 'src/provider/public-mask/public-output.interceptor';
+import { INACTIVE_PUBLIC_MASKER } from 'src/utils/publicMask';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -50,9 +55,49 @@ export class PublicController {
     private readonly iconProvider: IconProvider,
     private readonly staticProvider: StaticProvider,
     private readonly cacheProvider: CacheProvider,
-    private readonly searchIndexProvider: SearchIndexProvider,
     private readonly walineProvider: WalineProvider,
+    @Optional() private readonly publicMaskProvider?: PublicMaskProvider,
   ) {}
+
+  private async getPublicMasker() {
+    return this.publicMaskProvider ? this.publicMaskProvider.getMasker() : INACTIVE_PUBLIC_MASKER;
+  }
+
+  /** Options that make article previews, word counts, and search use masked text. */
+  private async getPublicOutputOptions(): Promise<PublicArticleOutputOptions> {
+    if (!this.publicMaskProvider) {
+      return {};
+    }
+    const masker = await this.publicMaskProvider.getMasker();
+    return { maskText: this.publicMaskProvider.createTextMasker(masker) };
+  }
+
+  /**
+   * Maps a tag or category name from a public URL (which carries masked names) to
+   * its stored name. Names that cannot be resolved unambiguously match nothing.
+   */
+  private async resolvePublicTaxonomyName(kind: 'tag' | 'category', name: string) {
+    if (!this.publicMaskProvider || !name) {
+      return name;
+    }
+    const masker = await this.publicMaskProvider.getMasker();
+    const resolved = await this.publicMaskProvider.resolvePublicTaxonomyName(kind, name, masker);
+    return resolved ?? PUBLIC_MASK_UNMATCHABLE_INPUT;
+  }
+
+  private async resolvePublicTaxonomyList(kind: 'tag' | 'category', value?: string) {
+    if (!value) {
+      return value;
+    }
+    const names = await Promise.all(
+      String(value)
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => this.resolvePublicTaxonomyName(kind, item)),
+    );
+    return names.join(',');
+  }
 
   private async getCachedPublicPayload<T>(
     key: string,
@@ -188,9 +233,14 @@ export class PublicController {
 
   @Get('/customPage/all')
   async getAll(@Res({ passthrough: true }) res?: Response) {
-    const data = await this.getCachedPublicPayload('public:customPage:all', 300, async () =>
+    const allPages = await this.getCachedPublicPayload('public:customPage:all', 300, async () =>
       this.customPageProvider.getAll(),
     );
+    // Pages whose path contains a masked term are not listed at all.
+    const masker = await this.getPublicMasker();
+    const data = masker.active
+      ? (allPages || []).filter((page: any) => !masker.hasHit(String(page?.path || '')))
+      : allPages;
     const latestPage = (data || []).reduce((latest: any, page: any) => {
       if (!latest) {
         return page;
@@ -207,6 +257,7 @@ export class PublicController {
     };
   }
   @Get('/customPage')
+  @PublicMaskBase64Fields(['data.html'])
   async getOneByPath(@Query('path') path: string, @Res({ passthrough: true }) res?: Response) {
     const normalizedPath = normalizeCustomPageRoutePath(path);
     const data = await this.getCachedPublicPayload(
@@ -440,7 +491,11 @@ export class PublicController {
 
   @Get('/search')
   async searchArticle(@Query('value') search: string) {
-    const data = await this.articleProvider.searchByString(search, false);
+    const data = await this.articleProvider.searchByString(
+      search,
+      false,
+      await this.getPublicOutputOptions(),
+    );
     const limited = data.slice(0, 100);
 
     return {
@@ -452,19 +507,6 @@ export class PublicController {
     };
   }
 
-  @Get('/search/all')
-  async searchAllContent(@Query('value') search: string, @Query('limit') limit: string = '20') {
-    const size = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 50);
-    const data = await this.searchIndexProvider.searchContent(search, size);
-
-    return {
-      statusCode: 200,
-      data: {
-        total: data.length,
-        data,
-      },
-    };
-  }
   @Post('/viewer')
   async addViewer(
     @Query('isNew') isNew: boolean | string,
@@ -572,7 +614,8 @@ export class PublicController {
     @Param('name') name: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    const data = await this.tagProvider.getArticlesByTag(name, false);
+    const tagName = await this.resolvePublicTaxonomyName('tag', name);
+    const data = await this.tagProvider.getArticlesByTag(tagName, false);
     const latestArticle = (data || []).reduce((latest: any, article: any) => {
       if (!latest) {
         return article;
@@ -613,8 +656,8 @@ export class PublicController {
     const option = {
       page: safePage,
       pageSize: safePageSize,
-      category,
-      tags,
+      category: await this.resolvePublicTaxonomyList('category', category),
+      tags: await this.resolvePublicTaxonomyList('tag', tags),
       toListView: isTrue(toListView as any),
       withPreviewContent: isTrue(withPreviewContent as any),
       regMatch: false,
@@ -623,7 +666,11 @@ export class PublicController {
       withWordCount: isTrue(withWordCount as any),
     };
     // 三个 sort 是完全排他的。
-    const data = await this.articleProvider.getByOption(option, true);
+    const data = await this.articleProvider.getByOption(
+      option,
+      true,
+      await this.getPublicOutputOptions(),
+    );
     const articles = Array.isArray(data?.articles)
       ? data.articles.map((article: any) => this.toArticleShell(article))
       : [];
@@ -738,7 +785,7 @@ export class PublicController {
     @Param('name') name: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    const categoryName = decodeURIComponent(name);
+    const categoryName = await this.resolvePublicTaxonomyName('category', decodeURIComponent(name));
     const payload = await this.getCachedPublicPayload(
       `public:category:archive:summary:${categoryName}`,
       300,
@@ -770,7 +817,7 @@ export class PublicController {
     @Param('month') month: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    const categoryName = decodeURIComponent(name);
+    const categoryName = await this.resolvePublicTaxonomyName('category', decodeURIComponent(name));
     const payload = await this.getCachedPublicPayload(
       `public:category:archive:${categoryName}:${year}:${month}`,
       300,
@@ -803,7 +850,7 @@ export class PublicController {
       {
         page: 1,
         pageSize: -1,
-        category: decodeURIComponent(name),
+        category: await this.resolvePublicTaxonomyName('category', decodeURIComponent(name)),
         regMatch: false,
         toListView: true,
       },
@@ -880,13 +927,43 @@ export class PublicController {
   ) {
     const safePage = this.normalizePositiveInt(page, 1, 10_000);
     const safePageSize = this.normalizePositiveInt(pageSize, 50, 100);
-    const data = await this.tagProvider.getTagsPaginated(
-      safePage,
-      safePageSize,
-      sortBy,
-      sortOrder,
-      search,
-    );
+    const masker = await this.getPublicMasker();
+    let data: any;
+    if (masker.active && (search || sortBy === 'name')) {
+      // Searching or sorting raw names would reveal masked terms (or their prefixes)
+      // through hit counts and ordering, so do both on masked names instead.
+      const all: any = await this.tagProvider.getTagsPaginated(1, 100_000, sortBy, sortOrder);
+      let tags = (all?.tags || []).map((tag: any) => ({
+        ...tag,
+        name: masker.mask(String(tag?.name || '')),
+      }));
+      const query = String(search || '')
+        .trim()
+        .toLocaleLowerCase();
+      if (query) {
+        tags = tags.filter((tag: any) => tag.name.toLocaleLowerCase().includes(query));
+      }
+      if (sortBy === 'name') {
+        const direction = sortOrder === 'asc' ? 1 : -1;
+        tags.sort((a: any, b: any) => a.name.localeCompare(b.name) * direction);
+      }
+      const total = tags.length;
+      data = {
+        tags: tags.slice((safePage - 1) * safePageSize, safePage * safePageSize),
+        total,
+        page: safePage,
+        pageSize: safePageSize,
+        totalPages: Math.ceil(total / safePageSize),
+      };
+    } else {
+      data = await this.tagProvider.getTagsPaginated(
+        safePage,
+        safePageSize,
+        sortBy,
+        sortOrder,
+        search,
+      );
+    }
     const latestTag = (data?.tags || []).reduce((latest: any, tag: any) => {
       if (!latest) {
         return tag;
@@ -928,7 +1005,7 @@ export class PublicController {
     @Param('name') name: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    const tagName = decodeURIComponent(name);
+    const tagName = await this.resolvePublicTaxonomyName('tag', decodeURIComponent(name));
     const payload = await this.getCachedPublicPayload(
       `public:tag:archive:summary:${tagName}`,
       300,
@@ -960,7 +1037,7 @@ export class PublicController {
     @Param('month') month: string,
     @Res({ passthrough: true }) res?: Response,
   ) {
-    const tagName = decodeURIComponent(name);
+    const tagName = await this.resolvePublicTaxonomyName('tag', decodeURIComponent(name));
     const payload = await this.getCachedPublicPayload(
       `public:tag:archive:${tagName}:${year}:${month}`,
       300,
@@ -983,6 +1060,7 @@ export class PublicController {
   }
 
   @Get('/meta')
+  @PublicMaskBase64Fields(['data.layout.html', 'data.layout.css', 'data.layout.script'])
   async getBuildMeta(@Res({ passthrough: true }) res?: Response) {
     const cacheKey = 'public:meta';
     const cached = await this.cacheProvider.get(cacheKey);

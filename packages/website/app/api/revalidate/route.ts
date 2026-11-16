@@ -17,8 +17,17 @@ export async function GET(request: NextRequest) {
     return new NextResponse('触发增量增量渲染失败', { status: 500 });
   }
 
+  // `type=layout` drops every page under the given layout, which the server uses
+  // when public masking rules change.
+  const typeParam = request.nextUrl.searchParams.get('type');
+  const type = typeParam === 'layout' || typeParam === 'page' ? typeParam : undefined;
+
   try {
-    revalidatePath(path);
+    if (type) {
+      revalidatePath(path, type);
+    } else {
+      revalidatePath(path);
+    }
     return NextResponse.json({ revalidated: true });
   } catch (error) {
     console.log(error);

@@ -52,6 +52,78 @@ describe('ISRProvider', () => {
     }
   });
 
+  describe('public mask refresh', () => {
+    const createRefreshProvider = () => {
+      const calls: string[] = [];
+      const track = (name: string) =>
+        jest.fn().mockImplementation(async () => {
+          calls.push(name);
+        });
+      const publicDataCacheProvider = { clearAllPublicData: track('clear-cache') };
+      const searchIndexProvider = { generateSearchIndexFn: track('search-index') };
+      const sitemapProvider = { generateSiteMapFn: track('sitemap') };
+      const rssProvider = { generateRssFeedFn: track('rss') };
+      const cloudflareCacheProvider = {
+        ...createCloudflareCacheProvider(),
+        purgeEverything: track('purge-everything'),
+      };
+      jest.spyOn(axios, 'get').mockImplementation(async (url: string) => {
+        calls.push(url.includes('type=layout') ? 'revalidate-layout' : 'probe');
+        return {} as any;
+      });
+      const provider = new ISRProvider(
+        {} as any,
+        rssProvider as any,
+        sitemapProvider as any,
+        {} as any,
+        searchIndexProvider as any,
+        publicDataCacheProvider as any,
+        cloudflareCacheProvider as any,
+      );
+      jest.spyOn(provider, 'activeWithRetry').mockResolvedValue(undefined);
+      return { provider, calls };
+    };
+
+    it('drops caches and rendered pages before rebuilding artifacts', async () => {
+      const { provider, calls } = createRefreshProvider();
+
+      await provider.refreshForPublicMaskChange('mask change');
+
+      expect(calls.slice(0, 3)).toEqual(['clear-cache', 'revalidate-layout', 'purge-everything']);
+      expect(calls.slice(3).sort()).toEqual(['rss', 'search-index', 'sitemap']);
+      expect(provider.activeWithRetry).toHaveBeenCalled();
+    });
+  });
+
+  it('keeps a forced refresh when a later call replaces the pending debounce', async () => {
+    let pending: (() => void) | null = null;
+    global.setTimeout = ((fn: () => void) => {
+      pending = fn;
+      return 1 as any;
+    }) as any;
+    const provider = new ISRProvider(
+      {} as any,
+      { generateRssFeed: jest.fn() } as any,
+      { generateSiteMap: jest.fn() } as any,
+      {} as any,
+      { generateSearchIndex: jest.fn() } as any,
+      { clearAllPublicData: jest.fn().mockResolvedValue(undefined) } as any,
+      createCloudflareCacheProvider() as any,
+    );
+    const activeWithRetry = jest
+      .spyOn(provider, 'activeWithRetry')
+      .mockImplementation(async (fn: any) => fn());
+    const activeAllFn = jest.spyOn(provider, 'activeAllFn').mockResolvedValue(undefined);
+
+    await provider.activeAll('forced', 1000, { forceActice: true });
+    await provider.activeAll('plain', 1000);
+    pending!();
+
+    expect(activeWithRetry).toHaveBeenCalledTimes(1);
+    expect(activeAllFn).toHaveBeenCalledWith('plain', expect.objectContaining({ forceActice: true }));
+    global.setTimeout = originalSetTimeout;
+  });
+
   it('reads the revalidate base URL from the environment', () => {
     process.env['VANBLOG_WEBSITE_ISR_BASE'] = 'http://website:3001/api/revalidate?path=';
 
@@ -451,7 +523,7 @@ describe('ISRProvider', () => {
     await provider.activeAllFn('manual');
 
     expect(activeUrls).toHaveBeenCalledWith(
-      ['/', '/archive', '/category', '/tag', '/timeline', '/about', '/link'],
+      ['/', '/archive', '/category', '/tag', '/timeline', '/about', '/link', '/moment', '/nav'],
       false,
     );
     expect(activePath).toHaveBeenCalledWith('post', undefined);

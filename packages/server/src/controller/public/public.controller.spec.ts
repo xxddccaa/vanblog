@@ -293,7 +293,6 @@ describe('PublicController', () => {
       iconProvider as any,
       staticProvider as any,
       cacheProvider as any,
-      {} as any,
       walineProvider as any,
     );
 
@@ -447,7 +446,7 @@ describe('PublicController', () => {
     expect(result.statusCode).toBe(200);
     expect(result.data.total).toBe(120);
     expect(result.data.data).toHaveLength(100);
-    expect(articleProvider.searchByString).toHaveBeenCalledWith('tech', false);
+    expect(articleProvider.searchByString).toHaveBeenCalledWith('tech', false, {});
     expect(articleProvider.toSearchResult).toHaveBeenCalledWith(searchHits.slice(0, 100));
   });
 
@@ -1555,6 +1554,7 @@ describe('PublicController', () => {
         pageSize: 100,
       }),
       true,
+      {},
     );
   });
 
@@ -1590,6 +1590,7 @@ describe('PublicController', () => {
         regMatch: false,
       }),
       true,
+      {},
     );
   });
 

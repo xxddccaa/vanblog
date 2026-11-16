@@ -1,14 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 
 import { ArticleProvider } from '../article/article.provider';
 import { Feed } from 'feed';
 import { MetaProvider } from '../meta/meta.provider';
 import { SettingProvider } from '../setting/setting.provider';
-import fs from 'fs';
 import path from 'path';
 import { config } from 'src/config';
 import { MarkdownProvider } from '../markdown/markdown.provider';
 import { washUrl } from 'src/utils/washUrl';
+import { PublicMaskProvider } from '../public-mask/public-mask.provider';
+import { recordPublicMaskArtifact, writeFileAtomic } from '../public-mask/public-mask-artifacts';
+import { INACTIVE_PUBLIC_MASKER, maskPublicPayload } from 'src/utils/publicMask';
 
 // User-facing feed copy shown in place of protected article content.
 export const RSS_PROTECTED_CONTENT = '此文章已加密';
@@ -22,6 +24,7 @@ export class RssProvider {
     private readonly metaProvider: MetaProvider,
     private readonly settingProvider: SettingProvider,
     private readonly markdownProvider: MarkdownProvider,
+    @Optional() private readonly publicMaskProvider?: PublicMaskProvider,
   ) {}
 
   private getArticleCategories(article: any): string[] {
@@ -56,23 +59,44 @@ export class RssProvider {
         { page: 1, pageSize: -1, regMatch: false },
         true,
       );
+      const masker = this.publicMaskProvider
+        ? await this.publicMaskProvider.getMasker()
+        : INACTIVE_PUBLIC_MASKER;
       let articles: any[] = publicResult?.articles || [];
       articles = articles.map((a: any) => {
         const article = a?._doc || a;
         if (article.private) {
           return { ...article, content: RSS_PROTECTED_CONTENT };
-        } else {
+        }
+        if (!masker.active) {
           return article;
         }
+        // Mask the Markdown before rendering, so rendered HTML, the description
+        // excerpt, and diagrams inlined from Kroki all derive from masked text.
+        return {
+          ...article,
+          content: this.publicMaskProvider.maskCached(
+            masker,
+            `article:${article.id}:${article.updatedAt || article.createdAt || ''}`,
+            article.content || '',
+          ),
+        };
       });
+      articles = articles.map((article: any) => ({
+        ...maskPublicPayload({ ...article, content: undefined }, masker, { dropKeysOnHit: [] }),
+        content: article.content,
+        publicPath: this.publicMaskProvider
+          ? this.publicMaskProvider.toPublicArticlePath(article, masker)
+          : String(article.pathname || article.id),
+      }));
       const meta = await this.metaProvider.getAll();
       const walineSetting = await this.settingProvider.getWalineSetting();
       let email = process.env.EMAIL;
       if (walineSetting && walineSetting?.authorEmail) {
         email = walineSetting?.authorEmail;
       }
-      walineSetting?.authorEmail;
-      const siteInfo = meta?.siteInfo || {};
+      email = email ? masker.mask(email) : email;
+      const siteInfo: any = maskPublicPayload(meta?.siteInfo || {}, masker);
       const siteUrl = washUrl(siteInfo.baseUrl || '');
       if (!siteUrl) {
         this.logger.warn('站点 baseUrl 未配置，跳过 RSS 生成');
@@ -112,7 +136,7 @@ export class RssProvider {
         author,
       });
       for (const article of articles) {
-        const url = `${siteUrl}post/${article.pathname || article.id}`;
+        const url = `${siteUrl}post/${article.publicPath}`;
         const categories = this.getArticleCategories(article);
         const renderedContent = await this.markdownProvider.renderMarkdownWithDiagrams(article.content);
         const html = `<div class="markdown-body rss">
@@ -144,10 +168,10 @@ export class RssProvider {
       }
       const rssPath = path.join(config.staticPath, 'rss');
 
-      fs.mkdirSync(rssPath, { recursive: true });
-      fs.writeFileSync(path.join(rssPath, 'feed.json'), feed.json1());
-      fs.writeFileSync(path.join(rssPath, 'feed.xml'), feed.rss2());
-      fs.writeFileSync(path.join(rssPath, 'atom.xml'), feed.atom1());
+      writeFileAtomic(path.join(rssPath, 'feed.json'), feed.json1());
+      writeFileAtomic(path.join(rssPath, 'feed.xml'), feed.rss2());
+      writeFileAtomic(path.join(rssPath, 'atom.xml'), feed.atom1());
+      recordPublicMaskArtifact(config.staticPath, 'rss', masker.version);
     } catch (err) {
       this.logger.error('生成订阅源失败！');
       this.logger.error(JSON.stringify(err, null, 2));

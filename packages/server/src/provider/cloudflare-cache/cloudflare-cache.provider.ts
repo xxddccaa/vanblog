@@ -81,6 +81,18 @@ export class CloudflareCacheProvider {
     }
   }
 
+  /** Purges every cached file of the zone. Used when masking rules change. */
+  async purgeEverything(reason: string) {
+    if (!this.isEnabled()) {
+      return;
+    }
+    try {
+      await this.purge({ purge_everything: true }, `${reason} [everything]`);
+    } catch (err) {
+      this.logger.warn(`Cloudflare purge everything failed: ${err?.message || err}`);
+    }
+  }
+
   async purgeByTagsAndUrls(tags: string[], urls: string[], reason: string) {
     await Promise.all([this.purgeByTags(tags, reason), this.purgeByUrls(urls, reason)]);
   }

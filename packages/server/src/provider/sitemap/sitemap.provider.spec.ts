@@ -1,4 +1,5 @@
 import { SiteMapProvider } from './sitemap.provider';
+import { compilePublicMask, defaultPublicMaskSetting } from 'src/utils/publicMask';
 
 describe('SiteMapProvider', () => {
   it('emits archive summary urls instead of deep offset pagination urls', async () => {
@@ -110,5 +111,52 @@ describe('SiteMapProvider', () => {
     expect(urls).not.toEqual(expect.arrayContaining(['/page/2']));
     expect(urls).not.toEqual(expect.arrayContaining(['/category/System Design/page/2']));
     expect(urls).not.toEqual(expect.arrayContaining(['/tag/Cloudflare/page/2']));
+  });
+  it('rewrites site urls so the public sitemap never carries masked terms', async () => {
+    const masker = compilePublicMask({
+      ...defaultPublicMaskSetting,
+      enabled: true,
+      replacements: {
+        custom: 'X-CUSTOM-X',
+        secret: 'X-SECRET-X',
+        email: 'X-EMAIL-X',
+        ip: 'X-IP-X',
+      },
+      rules: [{ id: 'kw', enabled: true, type: 'keyword', pattern: 'acmecore' }],
+    });
+    const provider = new SiteMapProvider(
+      {
+        getAll: jest.fn().mockResolvedValue([
+          { id: 3, pathname: 'acmecore-setup' },
+          { id: 4, pathname: 'hello' },
+        ]),
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const urls = await provider.toPublicSiteUrls(
+      [
+        '/post/acmecore-setup',
+        '/post/hello',
+        '/tag/acmecore-ops',
+        '/tag/acmecore-ops/archive/2026',
+        '/category/acmecore',
+        '/category/ACMECORE',
+        '/tag/golang',
+        '/c/acmecore-runbook',
+      ],
+      masker,
+    );
+
+    expect(urls).toEqual([
+      '/post/3',
+      '/post/hello',
+      '/tag/X-CUSTOM-X-ops',
+      '/tag/X-CUSTOM-X-ops/archive/2026',
+      '/tag/golang',
+    ]);
   });
 });

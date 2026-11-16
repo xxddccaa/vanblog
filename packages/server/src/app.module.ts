@@ -3,6 +3,8 @@ import { MulterModule } from '@nestjs/platform-express';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PublicOutputInterceptor } from './provider/public-mask/public-output.interceptor';
 import { PublicMaskProvider } from './provider/public-mask/public-mask.provider';
+import { PublicMaskScanService } from './provider/public-mask/public-mask-scan.service';
+import { PublicMaskController } from './controller/admin/public-mask/public-mask.controller';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from 'src/storage/mongoose-compat';
@@ -187,6 +189,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     MetaController,
     AnalysisController,
     SettingController,
+    PublicMaskController,
     ImgController,
     CaddyController,
     LogController,
@@ -216,6 +219,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     // Applies to every handler; it only acts on /api/public controllers.
     { provide: APP_INTERCEPTOR, useClass: PublicOutputInterceptor },
     PublicMaskProvider,
+    PublicMaskScanService,
     AppService,
     ArticleProvider,
     CategoryProvider,

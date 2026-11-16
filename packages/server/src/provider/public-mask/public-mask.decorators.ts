@@ -2,9 +2,6 @@ import { SetMetadata } from '@nestjs/common';
 
 export const SKIP_PUBLIC_MASK_METADATA = 'vanblog:skip-public-mask';
 export const PUBLIC_MASK_BASE64_FIELDS_METADATA = 'vanblog:public-mask-base64-fields';
-export const PUBLIC_MASK_INPUT_POLICY_METADATA = 'vanblog:public-mask-input-policy';
-
-export type PublicMaskInputPolicy = 'not-found' | 'empty-search';
 
 /**
  * Opt a public handler out of output masking. Only use this for endpoints that
@@ -20,11 +17,3 @@ export const SkipPublicMask = () => SetMetadata(SKIP_PUBLIC_MASK_METADATA, true)
  */
 export const PublicMaskBase64Fields = (paths: string[]) =>
   SetMetadata(PUBLIC_MASK_BASE64_FIELDS_METADATA, paths);
-
-/**
- * Decide what a public handler returns when a route param or query value contains
- * a masked term. Both answers look the same as "nothing matched", so the mask list
- * cannot be probed from outside.
- */
-export const PublicMaskInput = (policy: PublicMaskInputPolicy) =>
-  SetMetadata(PUBLIC_MASK_INPUT_POLICY_METADATA, policy);

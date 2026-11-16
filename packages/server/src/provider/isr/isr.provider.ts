@@ -17,7 +17,7 @@ export interface ActiveConfig {
 }
 @Injectable()
 export class ISRProvider {
-  urlList = ['/', '/archive', '/category', '/tag', '/timeline', '/about', '/link'];
+  urlList = ['/', '/archive', '/category', '/tag', '/timeline', '/about', '/link', '/moment', '/nav'];
   base =
     process.env['VANBLOG_WEBSITE_ISR_BASE'] ||
     (process.env.NODE_ENV === 'production'
@@ -27,6 +27,9 @@ export class ISRProvider {
     process.env['VANBLOG_ISR_TOKEN'] || process.env['WALINE_JWT_TOKEN'] || '';
   logger = new Logger(ISRProvider.name);
   timer = null;
+  // A forced refresh must survive the debounce even if a later, non-forced call
+  // replaces the pending timer.
+  private pendingForceActive = false;
   constructor(
     private readonly articleProvider: ArticleProvider,
     private readonly rssProvider: RssProvider,
@@ -101,12 +104,18 @@ export class ISRProvider {
     if (this.timer) {
       clearTimeout(this.timer);
     }
+    this.pendingForceActive = this.pendingForceActive || Boolean(activeConfig?.forceActice);
     this.timer = setTimeout(() => {
+      const effectiveConfig: ActiveConfig = {
+        ...(activeConfig || {}),
+        forceActice: this.pendingForceActive,
+      };
+      this.pendingForceActive = false;
       this.rssProvider.generateRssFeed(info || '', delay);
       this.sitemapProvider.generateSiteMap(info || '', delay);
       this.searchIndexProvider.generateSearchIndex(info || '', delay);
       this.activeWithRetry(() => {
-        this.activeAllFn(info, activeConfig);
+        this.activeAllFn(info, effectiveConfig);
       });
       void this.cloudflareCacheProvider.purgeByTagsAndUrls(
         [
@@ -122,6 +131,40 @@ export class ISRProvider {
         info || 'full-site-refresh',
       );
     }, 1000);
+  }
+
+  /**
+   * Rebuilds everything public after masking rules change. Order matters: cached
+   * data and rendered pages are dropped first so new rules apply at once; the slow
+   * artifact rebuilds (feeds can be large) run last, and the static guard answers
+   * 503 for them until they carry the new rules.
+   */
+  async refreshForPublicMaskChange(reason: string) {
+    await this.publicDataCacheProvider.clearAllPublicData();
+    await this.revalidateWholeSite();
+    await this.cloudflareCacheProvider.purgeEverything(reason);
+    const results = await Promise.allSettled([
+      this.searchIndexProvider.generateSearchIndexFn(reason),
+      this.sitemapProvider.generateSiteMapFn(reason),
+      this.rssProvider.generateRssFeedFn(reason),
+    ]);
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        this.logger.error(`Public artifact rebuild failed: ${result.reason?.message || result.reason}`);
+      }
+    }
+    this.activeWithRetry(() => {
+      this.activeAllFn(reason, { forceActice: true });
+    });
+  }
+
+  /** Drops the website's cached pages and data for every route under the root layout. */
+  async revalidateWholeSite() {
+    try {
+      await axios.get(`${this.base}${encodeURIComponent('/')}&type=layout`, this.getIsrRequestConfig());
+    } catch (err) {
+      this.logger.error(`Whole-site revalidation failed: ${err?.message || err}`);
+    }
   }
 
   async testConn() {

@@ -510,6 +510,63 @@ describe('ArticleProvider', () => {
     ]);
   });
 
+  describe('public masking', () => {
+    const maskText = (text: string) => text.replace(/acmecore/gi, 'X-CUSTOM-X');
+
+    const createSearchProvider = (articles: any[]) =>
+      new ArticleProvider(
+        { find: jest.fn() } as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        {
+          searchArticles: jest.fn().mockResolvedValue(articles),
+          getCategoriesByNames: jest.fn().mockResolvedValue([]),
+          isInitialized: jest.fn().mockReturnValue(true),
+        } as any,
+      );
+
+    it('drops search hits that only match masked text, including prefixes', async () => {
+      const provider = createSearchProvider([
+        { id: 1, title: 'Cluster notes', tags: [], content: 'runs on acmecore nodes', createdAt: 1 },
+        { id: 2, title: 'acme tools', tags: [], content: 'public', createdAt: 2 },
+      ]);
+
+      await expect(provider.searchByString('acmecore', false, { maskText })).resolves.toEqual([]);
+      const prefix = await provider.searchByString('acmec', false, { maskText });
+      expect(prefix).toEqual([]);
+      const visible = await provider.searchByString('acme', false, { maskText });
+      expect(visible.map((article: any) => article.id)).toEqual([2]);
+    });
+
+    it('builds previews and word counts from masked content', async () => {
+      const longBody = `${'intro line\n'.repeat(3)}acmecore lives here\n`;
+      const provider = new ArticleProvider(
+        {} as any,
+        {} as any,
+        {} as any,
+        {} as any,
+        {
+          queryArticles: jest.fn().mockResolvedValue({
+            articles: [{ id: 5, title: 'T', content: longBody, categories: [], tags: [] }],
+            total: 1,
+          }),
+          getCategoriesByNames: jest.fn().mockResolvedValue([]),
+          isInitialized: jest.fn().mockReturnValue(true),
+        } as any,
+      );
+
+      const preview = await provider.getByOption(
+        { page: 1, pageSize: 5, regMatch: false, withPreviewContent: true },
+        true,
+        { maskText },
+      );
+
+      expect(JSON.stringify(preview)).not.toContain('acmecore');
+      expect((preview.articles[0] as any).content).toContain('X-CUSTOM-X');
+    });
+  });
+
   it('returns no public search results for blank queries without touching the model fallback', async () => {
     const articleModel = {
       find: jest.fn(),

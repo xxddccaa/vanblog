@@ -5,6 +5,7 @@ import {
   INACTIVE_PUBLIC_MASKER,
   normalizePublicMaskSetting,
   PublicMasker,
+  PublicTextMasker,
 } from 'src/utils/publicMask';
 
 /** Small LRU for masked text, bounded by total characters. */
@@ -139,8 +140,16 @@ export class PublicMaskProvider {
     }
   }
 
-  /** Masks text through the LRU. `key` must identify the source text, e.g. id + updatedAt. */
-  maskCached(masker: PublicMasker, key: string, text: string) {
+  /**
+   * Masks text through the LRU. `key` must identify the source text, e.g. id plus
+   * updatedAt. `transform` replaces plain masking for formats such as JSON files.
+   */
+  maskCached(
+    masker: PublicMasker,
+    key: string,
+    text: string,
+    transform: (text: string) => string = (value) => masker.mask(value),
+  ) {
     if (!masker.active || typeof text !== 'string' || !text) {
       return text;
     }
@@ -149,9 +158,18 @@ export class PublicMaskProvider {
     if (hit !== undefined) {
       return hit;
     }
-    const masked = masker.mask(text);
+    const masked = transform(text);
     this.textCache.set(cacheKey, masked);
     return masked;
+  }
+
+  /** Returns a text masker bound to `masker`, or undefined when masking is inactive. */
+  createTextMasker(masker: PublicMasker): PublicTextMasker | undefined {
+    if (!masker.active) {
+      return undefined;
+    }
+    return (text: string, cacheKey?: string) =>
+      cacheKey ? this.maskCached(masker, cacheKey, text) : masker.mask(text);
   }
 
   /** Public URL segment for an article: its pathname unless that contains a hit. */

@@ -1,12 +1,25 @@
 import fs from 'fs';
 import { SearchIndexProvider } from './search-index.provider';
+import { PublicMaskProvider } from '../public-mask/public-mask.provider';
+import { defaultPublicMaskSetting } from 'src/utils/publicMask';
 
 jest.mock('fs', () => ({
   existsSync: jest.fn().mockReturnValue(false),
-  readFileSync: jest.fn(),
+  readFileSync: jest.fn(() => {
+    throw new Error('missing');
+  }),
   mkdirSync: jest.fn(),
   writeFileSync: jest.fn(),
+  renameSync: jest.fn(),
 }));
+
+/** Returns the parsed search index from the atomic write of search-index.json. */
+const readWrittenIndex = () => {
+  const call = (fs.writeFileSync as jest.Mock).mock.calls.find(([filePath]) =>
+    String(filePath).includes('.search-index.json.'),
+  );
+  return JSON.parse(call[1] as string);
+};
 
 describe('SearchIndexProvider', () => {
   afterEach(() => {
@@ -56,14 +69,16 @@ describe('SearchIndexProvider', () => {
 
     expect(articleProvider.getPublicSearchIndexArticles).toHaveBeenCalledTimes(1);
     expect(fs.mkdirSync).toHaveBeenCalled();
-    expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+    expect(fs.renameSync).toHaveBeenCalledWith(
+      expect.stringContaining('.search-index.json.'),
+      expect.stringMatching(/search-index\.json$/),
+    );
     expect(momentProvider.getByOption).not.toHaveBeenCalled();
     expect(draftProvider.getByOption).not.toHaveBeenCalled();
     expect(documentProvider.getByOption).not.toHaveBeenCalled();
     expect(mindMapProvider.getAllForBackup).not.toHaveBeenCalled();
 
-    const [, content] = (fs.writeFileSync as jest.Mock).mock.calls[0];
-    const parsed = JSON.parse(content as string);
+    const parsed = readWrittenIndex();
     expect(parsed).toEqual([
       expect.objectContaining({
         id: 1,
@@ -105,8 +120,7 @@ describe('SearchIndexProvider', () => {
 
     await provider.generateSearchIndexFn('测试');
 
-    const [, content] = (fs.writeFileSync as jest.Mock).mock.calls[0];
-    const parsed = JSON.parse(content as string);
+    const parsed = readWrittenIndex();
 
     expect(parsed).toEqual([
       expect.objectContaining({
@@ -118,6 +132,52 @@ describe('SearchIndexProvider', () => {
     ]);
     expect(parsed[0].searchText).not.toContain('private');
     expect(parsed[0].searchText).not.toContain('content');
+  });
+
+  it('masks titles, taxonomy, previews, and search text before writing the index', async () => {
+    const publicMaskProvider = new PublicMaskProvider({
+      getSetting: jest.fn().mockResolvedValue({
+        value: {
+          ...defaultPublicMaskSetting,
+          enabled: true,
+          replacements: {
+            custom: 'X-CUSTOM-X',
+            secret: 'X-SECRET-X',
+            email: 'X-EMAIL-X',
+            ip: 'X-IP-X',
+          },
+          rules: [{ id: 'kw', enabled: true, type: 'keyword', pattern: 'acmecore' }],
+        },
+      }),
+    } as any);
+    const provider = new SearchIndexProvider(
+      {
+        getPublicSearchIndexArticles: jest.fn().mockResolvedValue([
+          {
+            id: 4,
+            pathname: 'acmecore-runbook',
+            title: 'AcmeCore runbook',
+            category: 'acmecore-lab',
+            tags: ['ACMECORE'],
+            // The masked term sits right at the preview cut-off.
+            content: `${'x'.repeat(275)} acmecore tail`,
+            createdAt: new Date('2024-01-03T00:00:00.000Z'),
+          },
+        ]),
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      publicMaskProvider,
+    );
+
+    await provider.generateSearchIndexFn('test');
+
+    const parsed = readWrittenIndex();
+    expect(JSON.stringify(parsed).toLowerCase()).not.toContain('acme');
+    expect(parsed[0].pathname).toBeUndefined();
+    expect(parsed[0].title).toBe('X-CUSTOM-X runbook');
   });
 
   it('falls back to provider search when elasticsearch has no hits', async () => {
