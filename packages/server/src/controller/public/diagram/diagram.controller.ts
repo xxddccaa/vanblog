@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 import { deflateRaw } from 'node:zlib';
 import { CacheProvider } from 'src/provider/cache/cache.provider';
 import { getRequestIp } from 'src/provider/log/utils';
+import { SkipPublicMask } from 'src/provider/public-mask/public-mask.decorators';
 
 const KROKI_URL = process.env.VANBLOG_KROKI_URL || 'http://kroki:8000';
 const PLANTUML_URL = process.env.VANBLOG_PLANTUML_URL || '';
@@ -131,6 +132,8 @@ async function readLimitedBody(response: globalThis.Response): Promise<Buffer> {
 }
 
 @ApiTags('diagram')
+// Renders caller-supplied diagram source only; the admin editor needs exact output.
+@SkipPublicMask()
 @Controller('/api/public/diagram')
 export class DiagramController {
   private readonly logger = new Logger(DiagramController.name);
