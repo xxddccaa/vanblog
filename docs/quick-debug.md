@@ -130,6 +130,8 @@ docker compose -f docker-compose.all-in-one.latest.yml \
 
 Kroki 容器不受 server、website、admin 重编影响，无需重启。
 
+> 原生评论替换 Waline 时，server 新增了 npm 依赖（如 `nodemailer`、`ip2region`），all-in-one 的入口脚本、Caddy 路由和系统包（`cwebp`）也都变了。测试目录运行的镜像如果还是带 Waline 的旧版本，路径 A 只挂载新产物是跑不起来的，要先重建一次 all-in-one 镜像，或者等包含原生评论的 all-in-one 镜像发布后再用路径 A。
+
 ## 与其他调试方式对比
 
 | 方式 | 入口 | 适合场景 |
