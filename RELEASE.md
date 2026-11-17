@@ -230,3 +230,79 @@ pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-te
 仅替换镜像构建阶段的 Alpine 仓库主机，不影响 Docker Hub 推送目标。若发布机器
 不在中国大陆或该镜像不可达，应改成当前网络可稳定访问的 Alpine 镜像；不要为了
 恢复 `apk` 下载而重新向构建容器注入宿主机 `127.0.0.1` 代理。
+
+### 7.2 每个 `apk add` 构建阶段都必须接入镜像源
+
+`CLEAR_BUILD_PROXIES=true` 之后，构建容器里**没有任何代理**。在这台发布机器上，
+无代理直连 `dl-cdn.alpinelinux.org` 时 `apk add` 不报错、也不推进，会一直挂住。
+因此 `ALPINE_MIRROR_HOST` 只有在**每一个**执行 `apk add` 的构建阶段都生效时才有用；
+漏掉任何一个阶段，发版就会卡在那一层。
+
+`2026-11-16` 发布 `v1.9.0` 时，`docker/server.Dockerfile` 的 `runner` 阶段
+（自 `v1.8.0` 起）没有替换 Alpine 源，`server` 镜像在 `[runner 3/8] RUN apk add`
+停留约 1 小时后被取消。同一机器上复测：
+
+| 构建容器网络条件 | `apk add` 结果 |
+| --- | --- |
+| 无代理 + 官方 `dl-cdn` | 45 秒内无任何输出，被超时终止 |
+| 无代理 + `mirrors.aliyun.com` | 约 8 秒完成 |
+| 代理 `172.17.0.1:10826` + 官方 `dl-cdn` | 约 5 秒完成 |
+
+修复后约定：
+
+- 在 `docker/*.Dockerfile` 里新增或修改含 `apk add` 的阶段时，阶段内必须声明
+  `ARG ALPINE_MIRROR_HOST=""`，并在同一条 `RUN` 开头先执行：
+  `if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi`
+- `tests/deployment-config.test.mjs` 会逐个阶段检查这条约定，`pnpm test:deploy`
+  会在发版前拦下遗漏的阶段。
+- `scripts/release-images.sh` 只给 `server`、`website`、`waline` 传
+  `ALPINE_MIRROR_HOST`；如果 `caddy` 或 `admin` 将来也需要 `apk add`，要同步扩展脚本里的服务列表。
+
+### 7.3 构建卡住时的判断与处理
+
+现象：发布日志停在某个 `RUN apk add ...` 步骤，超过 3 分钟没有新输出，也没有
+`DONE` 或 `ERROR`。正常情况下这一步应在 1 分钟内完成。
+
+先确认是不是 Alpine 源的问题（只读、不影响发布）：
+
+```bash
+# 模拟发版时的无代理构建容器：rc=143 表示官方源挂住，rc=0 表示正常
+docker run --rm -e http_proxy= -e https_proxy= -e HTTP_PROXY= -e HTTPS_PROXY= \
+  node:22.22.2-alpine sh -c 'timeout 45 apk add --no-cache bash >/dev/null 2>&1; echo rc=$?'
+
+# 同样条件换成镜像源，应返回 rc=0
+docker run --rm -e http_proxy= -e https_proxy= -e HTTP_PROXY= -e HTTPS_PROXY= \
+  node:22.22.2-alpine sh -c 'sed -i s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g /etc/apk/repositories; timeout 45 apk add --no-cache bash >/dev/null 2>&1; echo rc=$?'
+```
+
+确认后：中止当前发布进程，在日志里找出卡住的 Dockerfile 阶段，按 7.2 补上镜像源，
+跑 `pnpm test:deploy`，再从头重跑发布命令。已经推送成功的镜像会被同名标签覆盖，不影响结果。
+不要靠无限等待或重试来“碰运气”。
+
+### 7.4 在后台运行发布命令
+
+5 个核心镜像加 all-in-one 通常需要几十分钟。发布命令必须脱离当前终端或 AI 会话运行，
+日志写入文件，这样会话中断时构建不会被一起杀掉，之后也能从日志接着判断进度：
+
+```bash
+mkdir -p /tmp/vanblog-release
+
+nohup env ALPINE_MIRROR_HOST=mirrors.aliyun.com CLEAR_BUILD_PROXIES=true \
+  pnpm release:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds \
+  > /tmp/vanblog-release/core-vX.Y.Z.log 2>&1 &
+
+# 观察进度；出现 ">>> Building <service>" 表示进入下一个镜像
+grep -nE '>>> Building|pushing manifest|ERROR|CANCELED' /tmp/vanblog-release/core-vX.Y.Z.log | tail
+```
+
+核心镜像全部成功后，再用同样方式运行 all-in-one 发布：
+
+```bash
+nohup env ALPINE_MIRROR_HOST=mirrors.aliyun.com CLEAR_BUILD_PROXIES=true \
+  pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds \
+  > /tmp/vanblog-release/all-in-one-vX.Y.Z.log 2>&1 &
+```
+
+`--skip-builds` 会把宿主机上已有的构建产物直接复制进镜像（`website` 用
+`packages/website/.next/standalone` 与 `.next/static`，`admin` 用 `packages/admin/dist`）。
+发布前要确认这些产物是用本次发布的提交构建出来的，否则镜像里会是旧代码。
