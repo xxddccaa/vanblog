@@ -9,9 +9,6 @@ describe('SiteMetaController', () => {
     const isrProvider = {
       activeAll: jest.fn().mockResolvedValue(undefined),
     };
-    const walineProvider = {
-      restart: jest.fn().mockResolvedValue(undefined),
-    };
     const websiteProvider = {
       restart: jest.fn().mockResolvedValue(undefined),
     };
@@ -25,7 +22,6 @@ describe('SiteMetaController', () => {
     const controller = new SiteMetaController(
       metaProvider as any,
       isrProvider as any,
-      walineProvider as any,
       websiteProvider as any,
       pipelineProvider as any,
       privateSiteProvider as any,
@@ -35,7 +31,6 @@ describe('SiteMetaController', () => {
       controller,
       metaProvider,
       isrProvider,
-      walineProvider,
       websiteProvider,
       pipelineProvider,
       privateSiteProvider,
@@ -55,14 +50,8 @@ describe('SiteMetaController', () => {
   });
 
   it('refreshes public site state after updating site info', async () => {
-    const {
-      controller,
-      metaProvider,
-      isrProvider,
-      walineProvider,
-      websiteProvider,
-      pipelineProvider,
-    } = createController();
+    const { controller, metaProvider, isrProvider, websiteProvider, pipelineProvider } =
+      createController();
 
     const updateDto = {
       siteName: 'Edge Cache Blog',
@@ -75,7 +64,6 @@ describe('SiteMetaController', () => {
     expect(metaProvider.updateSiteInfo).toHaveBeenCalledWith(updateDto);
     expect(pipelineProvider.dispatchEvent).toHaveBeenCalledWith('updateSiteInfo', updateDto);
     expect(isrProvider.activeAll).toHaveBeenCalledWith('更新站点配置触发增量渲染！');
-    expect(walineProvider.restart).toHaveBeenCalledWith('更新站点，');
     expect(websiteProvider.restart).toHaveBeenCalledWith('更新站点信息');
     expect(result).toEqual({
       statusCode: 200,
