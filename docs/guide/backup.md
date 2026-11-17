@@ -15,7 +15,7 @@ VanBlog 当前采用多容器部署，真正需要长期保存的是宿主机上
 
 这类备份适合：
 
-- 导出文章、草稿、分类、标签、站点配置等业务数据
+- 导出文章、草稿、分类、标签、评论、站点配置等业务数据
 - 做升级前的快速安全备份
 - 在已有实例之间迁移主要内容
 
@@ -25,10 +25,10 @@ VanBlog 当前采用多容器部署，真正需要长期保存的是宿主机上
 
 默认建议至少备份：
 
-- `data/static`：本地图床与静态资源
-- `data/postgres`：PostgreSQL 数据（包含 VanBlog 与 Waline 独立数据库）
+- `data/static`：本地图床与静态资源（包括 `img/comment/` 下的访客评论图片）
+- `data/postgres`：PostgreSQL 数据（博客内容与评论都在 `vanblog` 库中；从旧版本升级的部署里还会保留不再使用的 `waline` 库）
 - `data/redis`：Redis 数据
-- `log`：运行日志与 `restore.key`
+- `log`：运行日志、`restore.key` 与站点共享密钥 `vanblog-shared.secret`
 - `caddy/config`：Caddy 配置目录
 - `caddy/data`：Caddy 证书与运行数据
 - `aliyunpan/config`：如果启用了阿里云盘相关能力，也要一起备份
@@ -71,7 +71,9 @@ docker compose -f docker-compose.image.yml up -d
 
 ## 额外提醒
 
-- 如果只导出了后台数据，没有备份 `data/static`，本地图床文件不会自动恢复
+- 如果只导出了后台数据，没有备份 `data/static`，本地图床文件和访客评论图片不会自动恢复
+- 评论和点赞属于后台逻辑备份的一部分：导出时一起导出，导入包含评论的备份时一起恢复，清空站点数据时也一起清空
+- 旧版本导出的加密备份升级后仍能解密导入：解密时除了独立的备份加密密钥，还会尝试站点共享密钥（`VANBLOG_SHARED_SECRET`，以及它的旧名 `WALINE_JWT_TOKEN`）
 - 如果没有备份 `caddy/data`，证书可能需要重新申请
 - 如果只是容器重建而挂载目录未丢失，通常不会丢数据
 - 更细的导入导出说明可参考 [导入导出](../advanced/backup.md)
