@@ -523,6 +523,13 @@ export async function getPublicSiteInfo() {
     method: 'GET',
   });
 }
+export async function getPrivateSiteAccess(token) {
+  return request(`/api/public/private-site/access`, {
+    method: 'GET',
+    headers: { token },
+    skipErrorHandler: true,
+  });
+}
 export async function getArticlesByOption(option) {
   const searchParams = new URLSearchParams();
   for (const [k, v] of Object.entries(option)) {

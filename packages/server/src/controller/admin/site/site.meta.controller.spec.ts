@@ -18,6 +18,9 @@ describe('SiteMetaController', () => {
     const pipelineProvider = {
       dispatchEvent: jest.fn(),
     };
+    const privateSiteProvider = {
+      handleSiteInfoUpdated: jest.fn().mockResolvedValue(undefined),
+    };
 
     const controller = new SiteMetaController(
       metaProvider as any,
@@ -25,6 +28,7 @@ describe('SiteMetaController', () => {
       walineProvider as any,
       websiteProvider as any,
       pipelineProvider as any,
+      privateSiteProvider as any,
     );
 
     return {
@@ -34,6 +38,7 @@ describe('SiteMetaController', () => {
       walineProvider,
       websiteProvider,
       pipelineProvider,
+      privateSiteProvider,
     };
   };
 
@@ -76,5 +81,14 @@ describe('SiteMetaController', () => {
       statusCode: 200,
       data: { siteName: 'Edge Cache Blog' },
     });
+  });
+
+  it('tells the private site gate about the previous and new privateSite value', async () => {
+    const { controller, metaProvider, privateSiteProvider } = createController();
+    metaProvider.getSiteInfo.mockResolvedValueOnce({ siteName: 'VanBlog', privateSite: 'false' });
+
+    await controller.update({ privateSite: 'true' } as any);
+
+    expect(privateSiteProvider.handleSiteInfoUpdated).toHaveBeenCalledWith('false', 'true');
   });
 });

@@ -38,6 +38,7 @@ import { PublicMaskProvider } from 'src/provider/public-mask/public-mask.provide
 import { PublicMaskBase64Fields } from 'src/provider/public-mask/public-mask.decorators';
 import { PUBLIC_MASK_UNMATCHABLE_INPUT } from 'src/provider/public-mask/public-output.interceptor';
 import { INACTIVE_PUBLIC_MASKER } from 'src/utils/publicMask';
+import { PrivateSiteProvider } from 'src/provider/private-site/private-site.provider';
 
 @ApiTags('public')
 @Controller('/api/public/')
@@ -57,6 +58,7 @@ export class PublicController {
     private readonly cacheProvider: CacheProvider,
     private readonly walineProvider: WalineProvider,
     @Optional() private readonly publicMaskProvider?: PublicMaskProvider,
+    @Optional() private readonly privateSiteProvider?: PrivateSiteProvider,
   ) {}
 
   private async getPublicMasker() {
@@ -1178,6 +1180,19 @@ export class PublicController {
         message: error.message,
       };
     }
+  }
+
+  /** Lets the website and the admin login page check private-site access. */
+  @Get('/private-site/access')
+  async getPrivateSiteAccess(@Req() req: Request, @Res({ passthrough: true }) res?: Response) {
+    res?.setHeader('Cache-Control', 'private, no-store, max-age=0');
+    const data = this.privateSiteProvider
+      ? await this.privateSiteProvider.getAccess(req)
+      : { privateSite: false, allowed: true };
+    return {
+      statusCode: 200,
+      data,
+    };
   }
 
   @Get('/site-info')

@@ -46,6 +46,24 @@ export const config = {
     typeof window === "undefined" ? getServerBaseUrl() : getBrowserBaseUrl(),
 };
 
+/** Header that marks the website's own server-side requests to the API server. */
+export const INTERNAL_REQUEST_HEADER = "x-vanblog-internal-token";
+
+/** Shared secret with the API server (same source as the ISR token). */
+export const getInternalRequestSecret = () =>
+  process.env.VANBLOG_ISR_TOKEN || process.env.WALINE_JWT_TOKEN || "";
+
+// Lets server-side rendering read content while the private site switch is on.
+const withInternalAuth = (init: NextFetchOptions): NextFetchOptions => {
+  const secret = getInternalRequestSecret();
+  if (!secret) {
+    return init;
+  }
+  const headers = new Headers(init.headers);
+  headers.set(INTERNAL_REQUEST_HEADER, secret);
+  return { ...init, headers };
+};
+
 export const getServerFetchOptions = (
   init: NextFetchOptions = {}
 ): NextFetchOptions => {
@@ -54,24 +72,24 @@ export const getServerFetchOptions = (
   }
 
   if (init.cache || init.next?.revalidate !== undefined) {
-    return init;
+    return withInternalAuth(init);
   }
 
   const revalidate = getRevalidateSeconds();
   if (revalidate === false) {
-    return {
+    return withInternalAuth({
       ...init,
       cache: "force-cache",
-    };
+    });
   }
 
-  return {
+  return withInternalAuth({
     ...init,
     next: {
       ...init.next,
       revalidate,
     },
-  };
+  });
 };
 
 // 改为服务端触发 isr

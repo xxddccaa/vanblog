@@ -11,6 +11,7 @@ const AUTH_COOKIE_NAMES = new Set([
   "session_id",
   "sessionid",
   "token",
+  "vanblog_token",
 ]);
 const AUTH_HEADER_NAMES = new Set([
   "authorization",

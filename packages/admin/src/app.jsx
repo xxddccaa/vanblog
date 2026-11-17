@@ -7,6 +7,7 @@ import {
   handleAdminAuthExpired,
   hasStoredAdminToken,
   isAuthExpiredResponse,
+  syncAdminAccessCookie,
 } from '@/utils/adminSession';
 import { getStoredUser } from '@/utils/getStoredUser';
 import {
@@ -520,6 +521,8 @@ const AdminViewportSync = () => {
  * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
  * */
 export async function getInitialState() {
+  // Keep the private-site access cookie in step with the stored admin session.
+  syncAdminAccessCookie();
   if (history.location.pathname == '/init') {
     try {
       const initStatus = await fetchInitStatus({

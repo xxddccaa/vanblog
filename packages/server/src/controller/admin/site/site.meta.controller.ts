@@ -9,6 +9,7 @@ import { config } from 'src/config';
 import { WebsiteProvider } from 'src/provider/website/website.provider';
 import { PipelineProvider } from 'src/provider/pipeline/pipeline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
+import { PrivateSiteProvider } from 'src/provider/private-site/private-site.provider';
 @ApiTags('site')
 @UseGuards(...AdminGuard)
 @ApiToken
@@ -20,6 +21,7 @@ export class SiteMetaController {
     private readonly walineProvider: WalineProvider,
     private readonly websiteProvider: WebsiteProvider,
     private readonly pipelineProvider: PipelineProvider,
+    private readonly privateSiteProvider: PrivateSiteProvider,
   ) {}
 
   @Get()
@@ -39,7 +41,12 @@ export class SiteMetaController {
         message: '演示站禁止修改此项！',
       };
     }
+    const previous: any = await this.metaProvider.getSiteInfo();
     const data = await this.metaProvider.updateSiteInfo(updateDto);
+    await this.privateSiteProvider.handleSiteInfoUpdated(
+      previous?.privateSite,
+      (updateDto as any)?.privateSite ?? previous?.privateSite,
+    );
     this.pipelineProvider.dispatchEvent('updateSiteInfo', updateDto);
     this.isrProvider.activeAll('更新站点配置触发增量渲染！');
     this.walineProvider.restart('更新站点，');

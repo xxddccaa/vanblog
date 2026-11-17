@@ -124,6 +124,7 @@ import { PublicDataCacheProvider } from './provider/public-data-cache/public-dat
 import { SearchController } from './controller/admin/search/search.controller';
 import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
 import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-cache.provider';
+import { PrivateSiteProvider } from './provider/private-site/private-site.provider';
 
 @Module({
   imports: [
@@ -267,6 +268,7 @@ import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-
     MongoBackupProvider,
     PublicDataCacheProvider,
     CloudflareCacheProvider,
+    PrivateSiteProvider,
     BackupImportJobProvider,
   ],
 })

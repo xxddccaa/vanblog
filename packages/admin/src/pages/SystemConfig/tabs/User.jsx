@@ -8,6 +8,7 @@ import { ProForm, ProFormText, ProTable } from '@ant-design/pro-components';
 import { Button, Card, Dropdown, message, Modal, Space } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { useEffect, useRef, useState } from 'react';
+import { clearStoredAdminToken } from '@/utils/adminSession';
 import { history, useModel } from '@umijs/max';
 const columns = [
   { dataIndex: 'id', title: 'ID' },
@@ -109,7 +110,7 @@ export default function () {
               name: data.name,
               password: encryptPwd(data.name, data.password),
             });
-            window.localStorage.removeItem('token');
+            clearStoredAdminToken();
             setInitialState((s) => ({ ...s, user: undefined }));
             history.push('/');
             message.success('更新用户成功！请重新登录！');

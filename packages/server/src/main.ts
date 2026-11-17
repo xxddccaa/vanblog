@@ -20,6 +20,8 @@ import { SearchIndexProvider } from './provider/search-index/search-index.provid
 import { setStaticCacheHeaders } from './utils/staticCacheHeaders';
 import { createPublicStaticGuard } from './provider/public-mask/public-static.middleware';
 import { PublicMaskProvider } from './provider/public-mask/public-mask.provider';
+import { PrivateSiteProvider } from './provider/private-site/private-site.provider';
+import { createPrivateSiteMiddleware } from './provider/private-site/private-site.middleware';
 import fs from 'fs';
 
 const STDIO_TEE_FLAG = Symbol.for('vanblog.stdio-tee-enabled');
@@ -136,6 +138,9 @@ async function bootstrap() {
 
   // JSON APIs should not accept backup-sized payloads; file imports use multipart limits.
   app.use(json({ limit: '1mb' }));
+
+  // Private site: anonymous visitors only reach an allowlist (login, media, admin APIs).
+  app.use(createPrivateSiteMiddleware(app.get(PrivateSiteProvider)));
 
   // Only allowlisted folders under the static root are public; everything else 404s.
   // With masking on, the same guard masks text files and holds back stale feeds.

@@ -1,6 +1,11 @@
 import AuthThemeSync from '@/components/AuthThemeSync';
 import Footer from '@/components/Footer';
-import { login, getPublicSiteInfo, fetchAllMeta } from '@/services/van-blog/api';
+import {
+  login,
+  getPublicSiteInfo,
+  fetchAllMeta,
+  getPrivateSiteAccess,
+} from '@/services/van-blog/api';
 import { encryptPwd } from '@/services/van-blog/encryptPwd';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormCheckbox, ProFormText } from '@ant-design/pro-form';
@@ -9,7 +14,13 @@ import { history, useModel } from '@umijs/max';
 import { useState, useEffect } from 'react';
 import { getAdminAssetPath } from '@/utils/getAssetPath';
 import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
-import { consumeAdminAuthExpiredReason } from '@/utils/adminSession';
+import {
+  consumeAdminAuthExpiredReason,
+  getSafeSiteReturnPath,
+  getStoredAdminToken,
+  storeAdminToken,
+  syncAdminAccessCookie,
+} from '@/utils/adminSession';
 import styles from './index.less';
 
 const Login = () => {
@@ -24,7 +35,16 @@ const Login = () => {
       return;
     }
     if (/^https?:\/\//i.test(redirect)) {
-      window.location.assign(redirect);
+      // Never send a freshly logged-in admin to another site.
+      let target = null;
+      try {
+        target = new URL(redirect);
+      } catch {
+        target = null;
+      }
+      window.location.assign(
+        target && target.origin === window.location.origin ? target.href : '/admin/',
+      );
       return;
     }
     const normalizedPath = redirect.startsWith('/admin')
@@ -45,6 +65,26 @@ const Login = () => {
       }
     };
     fetchSiteInfo();
+  }, []);
+
+  // Coming from a private site page while already logged in: refresh the access
+  // cookie and go straight back once the stored session is confirmed valid.
+  useEffect(() => {
+    const returnPath = getSafeSiteReturnPath(
+      new URLSearchParams(window.location.search).get('return'),
+    );
+    const token = getStoredAdminToken();
+    if (!returnPath || !token) {
+      return;
+    }
+    getPrivateSiteAccess(token)
+      .then((response) => {
+        if (response?.data?.allowed) {
+          syncAdminAccessCookie(token);
+          window.location.assign(returnPath);
+        }
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -70,7 +110,7 @@ const Login = () => {
         id: msg.data.user.id,
       };
 
-      window.localStorage.setItem('token', token);
+      storeAdminToken(token);
 
       let meta = {};
       try {
@@ -89,9 +129,13 @@ const Login = () => {
         ...meta,
       }));
 
-      const redirect =
-        history?.location?.query?.redirect ||
-        new URLSearchParams(window.location.search).get('redirect');
+      const searchParams = new URLSearchParams(window.location.search);
+      const returnPath = getSafeSiteReturnPath(searchParams.get('return'));
+      if (returnPath) {
+        window.location.assign(returnPath);
+        return;
+      }
+      const redirect = history?.location?.query?.redirect || searchParams.get('redirect');
       redirectToAdmin(redirect || '/');
     } catch (error) {
       console.error('登录请求失败:', error);

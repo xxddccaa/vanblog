@@ -37,8 +37,50 @@ export const getStoredAdminToken = () => getLocalStorage()?.getItem('token') || 
 
 export const hasStoredAdminToken = () => Boolean(getStoredAdminToken());
 
+// Mirrors the admin session into a cookie so a "private site" can let the owner
+// read the public pages. The token is already readable by scripts through
+// localStorage, so the cookie does not widen its exposure.
+export const ADMIN_ACCESS_COOKIE = 'vanblog_token';
+const ADMIN_ACCESS_COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
+
+export const clearAdminAccessCookie = () => {
+  if (!isBrowser()) {
+    return;
+  }
+  document.cookie = `${ADMIN_ACCESS_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+};
+
+export const syncAdminAccessCookie = (token = getStoredAdminToken()) => {
+  if (!isBrowser()) {
+    return;
+  }
+  if (!token) {
+    clearAdminAccessCookie();
+    return;
+  }
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${ADMIN_ACCESS_COOKIE}=${encodeURIComponent(
+    token,
+  )}; Path=/; Max-Age=${ADMIN_ACCESS_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+};
+
+export const storeAdminToken = (token) => {
+  getLocalStorage()?.setItem('token', token);
+  syncAdminAccessCookie(token);
+};
+
 export const clearStoredAdminToken = () => {
   getLocalStorage()?.removeItem('token');
+  clearAdminAccessCookie();
+};
+
+/** Site page to open after login; only same-site relative paths are accepted. */
+export const getSafeSiteReturnPath = (value) => {
+  const target = String(value || '');
+  if (!target.startsWith('/') || target.startsWith('//') || target.includes('\\')) {
+    return '';
+  }
+  return target;
 };
 
 export const isAuthExpiredResponse = (response) =>

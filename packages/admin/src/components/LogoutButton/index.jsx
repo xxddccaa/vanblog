@@ -1,6 +1,7 @@
 import { logout } from '@/services/van-blog/api';
 import { message } from 'antd';
 import { history, useModel } from '@umijs/max';
+import { clearStoredAdminToken } from '@/utils/adminSession';
 export const logoutAndRedirect = async () => {
   await logout();
 
@@ -14,7 +15,7 @@ export const logoutAndRedirect = async () => {
       //   redirect: pathname + search,
       // }),
     });
-    window.localStorage.removeItem('token');
+    clearStoredAdminToken();
   }
 };
 export default function (props) {
