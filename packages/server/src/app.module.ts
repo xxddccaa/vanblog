@@ -98,6 +98,8 @@ import { Comment, CommentSchema } from './scheme/comment.schema';
 import { CommentLike, CommentLikeSchema } from './scheme/commentLike.schema';
 import { CommentRequestService } from './provider/comment/comment-request.service';
 import { CommentClientInfoProvider } from './provider/comment/client-info.provider';
+import { CommentNotifyProvider } from './provider/comment/comment-notify.provider';
+import { CommentNotifyController } from './controller/admin/comment/comment-notify.controller';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -129,7 +131,7 @@ import { SearchController } from './controller/admin/search/search.controller';
 import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
 import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-cache.provider';
 import { PrivateSiteProvider } from './provider/private-site/private-site.provider';
-import { COMMENT_CLIENT_INFO } from './types/comment.dto';
+import { COMMENT_CLIENT_INFO, COMMENT_LIFECYCLE_HOOKS } from './types/comment.dto';
 
 @Module({
   imports: [
@@ -222,6 +224,7 @@ import { COMMENT_CLIENT_INFO } from './types/comment.dto';
     MindMapController,
     SearchController,
     DiagramController,
+    CommentNotifyController,
   ],
   providers: [
     // Applies to every handler; it only acts on /api/public controllers.
@@ -266,6 +269,8 @@ import { COMMENT_CLIENT_INFO } from './types/comment.dto';
     CommentRequestService,
     CommentClientInfoProvider,
     { provide: COMMENT_CLIENT_INFO, useExisting: CommentClientInfoProvider },
+    CommentNotifyProvider,
+    { provide: COMMENT_LIFECYCLE_HOOKS, useExisting: CommentNotifyProvider },
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
