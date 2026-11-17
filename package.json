@@ -47,7 +47,6 @@
       "ws@5.2.3": "5.2.7"
     },
     "patchedDependencies": {
-      "@waline/vercel@1.41.4": "patches/@waline__vercel@1.41.4.patch",
       "headroom.js@0.12.0": "patches/headroom.js@0.12.0.patch"
     }
   },

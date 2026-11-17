@@ -75,7 +75,6 @@ RUN chmod +x /app/server/entrypoint.sh
 ENV NODE_ENV=production
 ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
 ENV VAN_BLOG_REDIS_URL="redis://redis:6379"
-ENV VAN_BLOG_WALINE_DB="waline"
 ENV VANBLOG_CADDY_API_URL="http://caddy:2019"
 ENV VANBLOG_WEBSITE_CONTROL_URL="http://website:3011"
 ENV VANBLOG_WEBSITE_ISR_BASE="http://website:3001/api/revalidate?path="

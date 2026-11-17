@@ -25,7 +25,6 @@ COPY patches ./patches
 COPY packages/server/package.json ./packages/server/
 COPY packages/website/package.json ./packages/website/
 COPY packages/admin/package.json ./packages/admin/
-COPY packages/waline/package.json ./packages/waline/
 COPY packages/cli/package.json ./packages/cli/
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
@@ -38,8 +37,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm --filter @vanblog/server build \
     && pnpm build:website \
     && pnpm build:admin \
-    && pnpm deploy --legacy --filter @vanblog/server --prod /prod/server \
-    && pnpm deploy --legacy --filter @vanblog/waline --prod /prod/waline
+    && pnpm deploy --legacy --filter @vanblog/server --prod /prod/server
 
 FROM node:22.22.2-alpine AS runner
 WORKDIR /app
@@ -55,7 +53,7 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
 RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi \
-    && apk add --no-cache --update bash curl wget nginx caddy redis postgresql16 postgresql16-client postgresql16-contrib su-exec tzdata \
+    && apk add --no-cache --update bash curl wget nginx caddy redis postgresql16 postgresql16-client postgresql16-contrib su-exec tzdata libwebp-tools \
     && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk del tzdata \
@@ -73,31 +71,22 @@ COPY --from=builder /app/packages/website/public /app/website/packages/website/p
 COPY --from=builder /app/packages/website/package.json /app/website/packages/website/package.json
 COPY --from=builder /app/packages/website/.next/static /app/website/packages/website/.next/static
 COPY --from=builder /app/packages/admin/dist /usr/share/nginx/html/admin
-COPY --from=builder /prod/waline/ /app/waline/
 
 COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
 COPY docker/server/entrypoint.sh /app/server/entrypoint.sh
 COPY docker/website/entrypoint.sh /app/website/entrypoint.sh
 COPY docker/website/control-auth.cjs /app/website/control-auth.cjs
 COPY docker/website/runner.cjs /app/website/runner.cjs
-COPY docker/waline/entrypoint.sh /app/waline/entrypoint.sh
-COPY docker/waline/control-auth.cjs /app/waline/control-auth.cjs
-COPY docker/waline/runner.cjs /app/waline/runner.cjs
 COPY packages/admin/default.conf /etc/nginx/http.d/default.conf
-COPY scripts/fix-waline-dashboard.js /app/scripts/fix-waline-dashboard.js
-COPY scripts/fix-waline-adapter.js /app/scripts/fix-waline-adapter.js
 COPY docker/all-in-one/Caddyfile /etc/caddy/Caddyfile
 COPY docker/all-in-one/entrypoint.sh /usr/local/bin/vanblog-all-in-one-entrypoint
 COPY docker/all-in-one/healthcheck.sh /usr/local/bin/vanblog-all-in-one-healthcheck
 RUN chmod +x \
       /app/server/entrypoint.sh \
       /app/website/entrypoint.sh \
-      /app/waline/entrypoint.sh \
       /usr/local/bin/vanblog-all-in-one-entrypoint \
       /usr/local/bin/vanblog-all-in-one-healthcheck \
-    && node /app/scripts/fix-waline-dashboard.js \
-    && node /app/scripts/fix-waline-adapter.js \
-    && chown -R vanblog:vanblog /app/server /app/website /app/waline /app/ensure-waline-jwt.cjs
+    && chown -R vanblog:vanblog /app/server /app/website /app/ensure-waline-jwt.cjs
 
 ENV NODE_ENV=production
 ENV POSTGRES_PORT=5432
@@ -118,7 +107,6 @@ ENV REDIS_APPENDONLY=yes
 ENV REDIS_PASSWORD=""
 ENV REDIS_MAXMEMORY=4gb
 ENV REDIS_MAXMEMORY_POLICY=allkeys-lru
-ENV VAN_BLOG_WALINE_DB=waline
 ENV VAN_BLOG_CADDY_MANAGE_HTTPS=false
 ENV VAN_BLOG_DEBUG_SUPER_TOKEN=""
 ENV VAN_BLOG_CLOUDFLARE_API_TOKEN=""
@@ -126,15 +114,12 @@ ENV VAN_BLOG_CLOUDFLARE_ZONE_ID=""
 ENV VANBLOG_ISR_TOKEN=""
 ENV VANBLOG_CADDY_API_URL="http://127.0.0.1:2019"
 ENV VANBLOG_WEBSITE_CONTROL_URL="http://127.0.0.1:3011"
-ENV VANBLOG_WALINE_CONTROL_URL="http://127.0.0.1:8361"
 ENV VANBLOG_WEBSITE_ISR_BASE="http://127.0.0.1:3001/api/revalidate?path="
 ENV VAN_BLOG_SERVER_URL="http://127.0.0.1:3000"
 ENV VAN_BLOG_REVALIDATE=false
 ENV VAN_BLOG_ALLOW_DOMAINS="pic.mereith.com"
 ENV PORT=3001
 ENV WEBSITE_CONTROL_PORT=3011
-ENV WALINE_CONTROL_PORT=8361
-ENV AKISMET_KEY=false
 ENV WALINE_JWT_TOKEN=""
 ENV EMAIL="someone@example.com"
 

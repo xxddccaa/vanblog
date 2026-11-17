@@ -14,7 +14,7 @@ PLATFORMS="${PLATFORMS:-linux/amd64}"
 INSTALL_ALIYUNPAN="${INSTALL_ALIYUNPAN:-false}"
 ALPINE_MIRROR_HOST="${ALPINE_MIRROR_HOST:-}"
 CLEAR_BUILD_PROXIES="${CLEAR_BUILD_PROXIES:-false}"
-SERVICES=(caddy server website admin waline)
+SERVICES=(caddy server website admin)
 
 usage() {
   cat <<'USAGE'
@@ -148,7 +148,7 @@ build_service() {
     )
   fi
 
-  if [[ -n "$ALPINE_MIRROR_HOST" && "$service" =~ ^(server|website|waline)$ ]]; then
+  if [[ -n "$ALPINE_MIRROR_HOST" && "$service" =~ ^(server|website)$ ]]; then
     args+=(--build-arg "ALPINE_MIRROR_HOST=${ALPINE_MIRROR_HOST}")
   fi
 

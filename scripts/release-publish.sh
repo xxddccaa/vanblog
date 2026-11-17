@@ -14,7 +14,7 @@ INSTALL_ALIYUNPAN="${INSTALL_ALIYUNPAN:-false}"
 ALPINE_MIRROR_HOST="${ALPINE_MIRROR_HOST:-}"
 DRY_RUN=false
 MODE="publish"
-SERVICES=(caddy server website admin waline)
+SERVICES=(caddy server website admin)
 
 usage() {
   cat <<'USAGE'

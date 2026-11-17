@@ -4,7 +4,6 @@ node_modules/
 packages/admin/dist/
 
 # TODO: Introduce prettier v3
-packages/waline/
 packages/website/
 
 caddyTemplate.json
