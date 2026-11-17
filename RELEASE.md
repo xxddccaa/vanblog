@@ -226,6 +226,11 @@ CLEAR_BUILD_PROXIES=true \
 pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
 ```
 
+`2026-11-17` 发布 `v1.9.1` 时，`mirrors.aliyun.com` 能装 `bash` 这类小包，
+但 all-in-one 运行层安装 `caddy`、`postgresql16` 时持续挂住超过 1 小时；同一时刻
+`mirrors.tuna.tsinghua.edu.cn` 与 `mirrors.ustc.edu.cn` 都能正常完成。换成清华源后
+重跑即成功。镜像源的可用性会变，7.3 的预检要用**实际要装的大包**测，不要只测 `bash`。
+
 `ALPINE_MIRROR_HOST` 会传给使用 Alpine 包管理器的拆分镜像和 all-in-one 镜像，
 仅替换镜像构建阶段的 Alpine 仓库主机，不影响 Docker Hub 推送目标。若发布机器
 不在中国大陆或该镜像不可达，应改成当前网络可稳定访问的 Alpine 镜像；不要为了
@@ -270,9 +275,27 @@ pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-te
 docker run --rm -e http_proxy= -e https_proxy= -e HTTP_PROXY= -e HTTPS_PROXY= \
   node:22.22.2-alpine sh -c 'timeout 45 apk add --no-cache bash >/dev/null 2>&1; echo rc=$?'
 
-# 同样条件换成镜像源，应返回 rc=0
+# 同样条件换成镜像源，应返回 rc=0；用 all-in-one 真正要装的大包来测
 docker run --rm -e http_proxy= -e https_proxy= -e HTTP_PROXY= -e HTTPS_PROXY= \
-  node:22.22.2-alpine sh -c 'sed -i s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g /etc/apk/repositories; timeout 45 apk add --no-cache bash >/dev/null 2>&1; echo rc=$?'
+  node:22.22.2-alpine sh -c 'sed -i s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g /etc/apk/repositories; timeout 60 apk add --no-cache caddy postgresql16 >/dev/null 2>&1; echo rc=$?'
+```
+
+若某个镜像源返回 `rc=143`，换成 `mirrors.tuna.tsinghua.edu.cn` 或 `mirrors.ustc.edu.cn`
+再测，用返回 `rc=0` 的那个作为 `ALPINE_MIRROR_HOST`。
+
+### 7.5 工作区有未提交改动时发布 all-in-one
+
+all-in-one 在镜像内从源码重新编译，构建上下文就是仓库目录（`COPY . ./`），
+工作区里任何未提交的改动都会被打进镜像。发布时若工作区不干净（例如有人正在开发新功能），
+不要 stash 或回退别人的改动，改为在独立 worktree 里发布：
+
+```bash
+git worktree add --detach /tmp/vanblog-release/wt-vX.Y.Z vX.Y.Z
+cd /tmp/vanblog-release/wt-vX.Y.Z
+ALPINE_MIRROR_HOST=<可用镜像源> CLEAR_BUILD_PROXIES=true \
+  bash scripts/release-all-in-one-publish.sh --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+# 发布完成后清理
+git -C <仓库目录> worktree remove /tmp/vanblog-release/wt-vX.Y.Z
 ```
 
 确认后：中止当前发布进程，在日志里找出卡住的 Dockerfile 阶段，按 7.2 补上镜像源，
