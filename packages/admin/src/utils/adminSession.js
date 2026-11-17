@@ -43,22 +43,24 @@ export const hasStoredAdminToken = () => Boolean(getStoredAdminToken());
 export const ADMIN_ACCESS_COOKIE = 'vanblog_token';
 const ADMIN_ACCESS_COOKIE_MAX_AGE = 7 * 24 * 60 * 60;
 
+const canWriteCookies = () => isBrowser() && typeof document !== 'undefined';
+
 export const clearAdminAccessCookie = () => {
-  if (!isBrowser()) {
+  if (!canWriteCookies()) {
     return;
   }
   document.cookie = `${ADMIN_ACCESS_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
 };
 
 export const syncAdminAccessCookie = (token = getStoredAdminToken()) => {
-  if (!isBrowser()) {
+  if (!canWriteCookies()) {
     return;
   }
   if (!token) {
     clearAdminAccessCookie();
     return;
   }
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  const secure = window.location?.protocol === 'https:' ? '; Secure' : '';
   document.cookie = `${ADMIN_ACCESS_COOKIE}=${encodeURIComponent(
     token,
   )}; Path=/; Max-Age=${ADMIN_ACCESS_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
