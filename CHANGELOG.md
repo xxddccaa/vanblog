@@ -1,4 +1,15 @@
 # Changelog
+### [1.9.1](https://github.com/xxddccaa/vanblog/compare/v1.9.0...v1.9.1) (2026-11-17)
+
+### 安全修复
+
+* **server:** 登录请求缺少 User-Agent 时不再导致进程退出（all-in-one 下整个容器会重启）；未处理的 Promise 拒绝改为记录日志
+* **server:** body-parser 升级到 2.4.0，修复压缩请求体尾部多余字节导致进程退出的问题（GHSA-27r3-jxmh-p828）
+* **server:** 「全站隐私」改为服务端强制：未登录访客无法获取页面、公开接口、RSS、sitemap、搜索索引与自定义页面，私有模式响应禁止 CDN 缓存，开启时自动清理 Cloudflare 缓存
+* **server:** 登录失败次数限制默认开启并改为原子计数，另加常开的兜底限额；IPv6 按 /64 归并计数；不存在的用户名与错误密码耗时一致
+* **server:** 加密文章解锁按真实文章计数，`02`、`002` 等 ID 别名不再绕过次数限制
+* **caddy:** 访问日志不再记录 `Token`、`X-Debug-Super-Token` 等凭证请求头及 URL 中的 `token` 参数
+* **admin:** 登录后的跳转只允许本站地址
 ## [1.9.0](https://github.com/xxddccaa/vanblog/compare/v1.8.8...v1.9.0) (2026-11-16)
 
 ### 新功能
