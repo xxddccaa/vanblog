@@ -57,8 +57,10 @@ test('current 18080 stack serves core public and admin APIs', async () => {
   const swagger = await fetch(`${baseUrl}/swagger`);
   assert.equal(swagger.status, 200);
 
-  const waline = await fetch(`${baseUrl}/api/ui/`);
-  assert.equal(waline.status, 200);
+  // Waline was removed; its former admin UI route is now an unknown server route.
+  const legacyCommentUi = await fetch(`${baseUrl}/api/ui/`);
+  assert.equal(legacyCommentUi.status, 404);
+  assert.doesNotMatch(await legacyCommentUi.text(), /Waline Management System/i);
 
   const token = await getDebugToken();
   const authHeaders = { token };
