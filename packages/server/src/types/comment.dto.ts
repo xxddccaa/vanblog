@@ -486,3 +486,35 @@ export interface CommentLifecycleHooks {
 
 /** Nest injection token for CommentLifecycleHooks. */
 export const COMMENT_LIFECYCLE_HOOKS = 'COMMENT_LIFECYCLE_HOOKS';
+
+/**
+ * Resolves and validates a public comment target. Implemented by the core
+ * CommentProvider and bound to COMMENT_TARGET_RESOLVER so other modules (the
+ * image upload controller) can validate targets without importing it.
+ */
+export interface CommentTargetResolver {
+  /**
+   * Parses a CommentTargetKey and checks the target is open for comments
+   * (comments enabled, article published and not private or hidden).
+   * Throws a 404 COMMENT_TARGET_UNAVAILABLE (or 403 COMMENT_DISABLED).
+   */
+  resolvePublicTarget(targetKey: unknown): Promise<ResolvedCommentTarget>;
+}
+
+export const COMMENT_TARGET_RESOLVER = 'COMMENT_TARGET_RESOLVER';
+
+export interface CommentClientInfo {
+  /** Province for mainland China, otherwise country; '' when unknown or local. */
+  location: string;
+  /** e.g. "Chrome 131"; '' when unknown. */
+  browser: string;
+  /** e.g. "Windows 10"; '' when unknown. */
+  os: string;
+}
+
+/** Derives display metadata from an IP and user agent. Must never throw. */
+export interface CommentClientInfoResolver {
+  inspect(ip: string, userAgent: string): CommentClientInfo | Promise<CommentClientInfo>;
+}
+
+export const COMMENT_CLIENT_INFO = 'COMMENT_CLIENT_INFO';

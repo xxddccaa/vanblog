@@ -94,6 +94,9 @@ import { Moment, MomentSchema } from './scheme/moment.schema';
 import { MomentProvider } from './provider/moment/moment.provider';
 import { MomentController } from './controller/admin/moment/moment.controller';
 import { PublicMomentController } from './controller/public/moment/moment.controller';
+import { Comment, CommentSchema } from './scheme/comment.schema';
+import { CommentLike, CommentLikeSchema } from './scheme/commentLike.schema';
+import { CommentRequestService } from './provider/comment/comment-request.service';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -151,6 +154,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
       { name: NavCategory.name, schema: NavCategorySchema },
       { name: Document.name, schema: DocumentSchema },
       { name: MindMap.name, schema: MindMapSchema },
+      { name: Comment.name, schema: CommentSchema },
+      { name: CommentLike.name, schema: CommentLikeSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: async () => {
@@ -256,6 +261,7 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     WebsiteProvider,
     PipelineProvider,
     MomentProvider,
+    CommentRequestService,
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
