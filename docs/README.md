@@ -21,11 +21,11 @@ actions:
 features:
   - title: 多容器架构
     icon: cubes
-    details: 默认拆分为 caddy、server、website、admin、waline、postgres、redis 七个核心博客服务，并配套 Kroki 图表渲染服务
+    details: 默认拆分为 caddy、server、website、admin、postgres、redis 六个核心博客服务，并配套 Kroki 图表渲染服务
 
   - title: 前后台一体
     icon: window-maximize
-    details: 内置前台站点、后台管理、公开 API 与评论服务，统一由 Caddy 对外转发
+    details: 内置前台站点、后台管理、公开 API 与原生评论系统，统一由 Caddy 对外转发
 
   - title: 可维护性
     icon: wrench
