@@ -48,5 +48,5 @@ VanBlog 的前台存在静态生成与重建过程。升级后如果某些页面
 
 ```bash
 docker compose ps
-docker compose logs -f caddy server website admin waline postgres redis
+docker compose logs -f caddy server website admin postgres redis
 ```

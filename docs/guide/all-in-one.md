@@ -4,12 +4,12 @@ icon: cubes
 order: 3
 ---
 
-本页介绍 VanBlog **all-in-one 单镜像** 的生产部署方式——把 `caddy + server + website + admin + waline + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是作者线上博客实际使用的方式。
+本页介绍 VanBlog **all-in-one 单镜像** 的生产部署方式——把 `caddy + server + website + admin + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是作者线上博客实际使用的方式。
 
 <!-- more -->
 
 ::: tip 需要多容器？
-想分别维护 `caddy` / `server` / `website` / `admin` / `waline` / `postgres` / `redis`，请看 [快速上手](/guide/get-started.md) 与仓库根的 [`DEPLOY.md`](https://github.com/xxddccaa/vanblog/blob/master/DEPLOY.md)。本页只讲单镜像。
+想分别维护 `caddy` / `server` / `website` / `admin` / `postgres` / `redis`，请看 [快速上手](/guide/get-started.md) 与仓库根的 [`DEPLOY.md`](https://github.com/xxddccaa/vanblog/blob/master/DEPLOY.md)。本页只讲单镜像。
 :::
 
 ## 一句话结论
@@ -124,6 +124,7 @@ docker compose -f docker-compose.all-in-one.latest.yml up -d
 
 - `./data` 会被复用，博客内容不受影响。
 - 从旧版首次升到 v1.8.0 时，PostgreSQL 密码会被轮换为随机强口令，属预期行为，可自愈。
+- 从带 Waline 的旧版本升级时，容器里不再启动 Waline，评论改由 server 内置提供。旧的 Waline 评论不会迁移，PostgreSQL 里的 `waline` 库原样保留；`log/waline.jwt` 会被沿用为站点共享密钥，`.env` 不用改。详见 [评论](../features/comment.md)。
 - 回滚：把 `docker-compose.all-in-one.latest.yml.bak` 覆盖回去，或把 `image:` 指到某个具体版本标签（如 `kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id>`），再 `up -d`。
 
 ## 锁定具体版本

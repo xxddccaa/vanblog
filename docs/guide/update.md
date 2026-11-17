@@ -22,6 +22,17 @@ order: -3
 | latest 单镜像 | `docker-compose.all-in-one.latest.yml` | `pull` 后重新 `up -d` |
 | 锁版镜像部署 | `docker-compose.image.yml` + `.env` | 改 `.env` 里的 `VANBLOG_RELEASE_SUFFIX` 再升级 |
 
+## 从带 Waline 的旧版本升级
+
+新版本把评论改为 `server` 内置的原生评论系统，并移除了 Waline 服务和 `vanblog-waline-*` 镜像。从旧版本升级时：
+
+- 必须换用仓库里新版本的 compose 文件。旧的 `docker-compose.image.yml` 还引用 `vanblog-waline-*` 镜像，新版本不再发布这个标签，继续用旧文件拉取会失败
+- 旧 `.env` 不用改：`WALINE_JWT_TOKEN` 仍会被读取，日志目录里的 `waline.jwt` 会被沿用为站点共享密钥
+- 拆分部署换用新 compose 后，旧的 `waline` 容器会变成孤儿容器，可以在 `up -d` 时加 `--remove-orphans` 删掉它
+- 旧的 Waline 评论不会迁移；数据库里的 `waline` 库原样保留，新版本不会读写或删除它
+
+完整说明见 [v2.0.0 发布说明](../releases/v2.0.0.md)（草稿，版本号待定）和 [评论](../features/comment.md)。
+
 ## 源码部署升级
 
 ```bash
@@ -92,7 +103,7 @@ docker compose up -d --build
 - 前台首页、文章页、分类页、标签页是否正常访问
 - 评论、图片、RSS 是否仍可访问
 - 公网 `/swagger` 是否继续返回 `404`；需要 API 文档时只通过主机本地或容器内的 server 入口访问
-- `docker compose logs -f caddy server website admin waline postgres redis` 是否有明显报错
+- `docker compose logs -f caddy server website admin postgres redis` 是否有明显报错
 
 ## 常见问题
 
