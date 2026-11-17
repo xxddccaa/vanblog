@@ -75,17 +75,6 @@ export async function updateFontSetting(body) {
     data: body,
   });
 }
-export async function getWalineConfig() {
-  return request('/api/admin/setting/waline', {
-    method: 'GET',
-  });
-}
-export async function updateWalineConfig(body) {
-  return request('/api/admin/setting/waline', {
-    method: 'PUT',
-    data: body,
-  });
-}
 const COMMENT_ADMIN_BASE = '/api/admin/comment';
 const commentPath = (id, suffix = '') =>
   `${COMMENT_ADMIN_BASE}/${encodeURIComponent(String(id))}${suffix}`;
