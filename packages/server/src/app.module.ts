@@ -100,7 +100,12 @@ import { CommentRequestService } from './provider/comment/comment-request.servic
 import { CommentProvider } from './provider/comment/comment.provider';
 import { CommentController } from './controller/admin/comment/comment.controller';
 import { PublicCommentController } from './controller/public/comment/comment.controller';
-import { COMMENT_TARGET_RESOLVER } from './types/comment.dto';
+import { CommentClientInfoProvider } from './provider/comment/client-info.provider';
+import { CommentNotifyProvider } from './provider/comment/comment-notify.provider';
+import { CommentNotifyController } from './controller/admin/comment/comment-notify.controller';
+import { CommentImageProvider } from './provider/comment/comment-image.provider';
+import { CommentImageController } from './controller/public/comment/comment-image.controller';
+import { CommentImageCleanupTask } from './schedule/comment-image-cleanup.task';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -132,6 +137,11 @@ import { SearchController } from './controller/admin/search/search.controller';
 import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
 import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-cache.provider';
 import { PrivateSiteProvider } from './provider/private-site/private-site.provider';
+import {
+  COMMENT_CLIENT_INFO,
+  COMMENT_LIFECYCLE_HOOKS,
+  COMMENT_TARGET_RESOLVER,
+} from './types/comment.dto';
 
 @Module({
   imports: [
@@ -226,6 +236,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     MindMapController,
     SearchController,
     DiagramController,
+    CommentNotifyController,
+    CommentImageController,
   ],
   providers: [
     // Applies to every handler; it only acts on /api/public controllers.
@@ -270,6 +282,12 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     CommentRequestService,
     CommentProvider,
     { provide: COMMENT_TARGET_RESOLVER, useExisting: CommentProvider },
+    CommentClientInfoProvider,
+    { provide: COMMENT_CLIENT_INFO, useExisting: CommentClientInfoProvider },
+    CommentNotifyProvider,
+    { provide: COMMENT_LIFECYCLE_HOOKS, useExisting: CommentNotifyProvider },
+    CommentImageProvider,
+    CommentImageCleanupTask,
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
