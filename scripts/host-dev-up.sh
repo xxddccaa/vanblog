@@ -98,7 +98,7 @@ post_restart() {
   echo "[host-dev] requesting ${name} restart"
   local curl_args=(-fsS -X POST "${url}" -H 'content-type: application/json')
   if [[ "${name}" == "website" ]]; then
-    curl_args+=(-H "x-vanblog-control-token: ${VANBLOG_ISR_TOKEN:-${WALINE_JWT_TOKEN}}")
+    curl_args+=(-H "x-vanblog-control-token: ${VANBLOG_ISR_TOKEN:-${VANBLOG_SHARED_SECRET}}")
   fi
   curl "${curl_args[@]}" \
     -d "${payload}" >/dev/null

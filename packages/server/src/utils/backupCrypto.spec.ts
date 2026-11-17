@@ -86,6 +86,60 @@ describe('backup encryption', () => {
     }
   });
 
+  it('decrypts a pre-migration backup through the renamed VANBLOG_SHARED_SECRET', async () => {
+    const previousBackupKey = process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+    const previousSharedSecret = process.env.VANBLOG_SHARED_SECRET;
+    const previousWalineToken = process.env.WALINE_JWT_TOKEN;
+    try {
+      process.env.VANBLOG_BACKUP_ENCRYPTION_KEY = 'new-dedicated-backup-key-32-bytes';
+      process.env.VANBLOG_SHARED_SECRET = 'renamed-shared-secret-32-bytes-long';
+      delete process.env.WALINE_JWT_TOKEN;
+      await writeEncryptedBackupFile(
+        target,
+        { backupInfo: { version: 'renamed-shared-secret' } },
+        process.env.VANBLOG_SHARED_SECRET,
+      );
+
+      expect(parseBackupBuffer(await readFile(target))).toEqual({
+        backupInfo: { version: 'renamed-shared-secret' },
+      });
+    } finally {
+      for (const [key, value] of [
+        ['VANBLOG_BACKUP_ENCRYPTION_KEY', previousBackupKey],
+        ['VANBLOG_SHARED_SECRET', previousSharedSecret],
+        ['WALINE_JWT_TOKEN', previousWalineToken],
+      ] as const) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  });
+
+  it('never derives the backup key from the shared secret', () => {
+    const previousBackupKey = process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+    const previousSharedSecret = process.env.VANBLOG_SHARED_SECRET;
+    try {
+      delete process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+      process.env.VANBLOG_SHARED_SECRET = 'shared-secret-that-must-not-encrypt-backups';
+
+      expect(() => getBackupEncryptionSecret()).toThrow();
+    } finally {
+      if (previousBackupKey === undefined) {
+        delete process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
+      } else {
+        process.env.VANBLOG_BACKUP_ENCRYPTION_KEY = previousBackupKey;
+      }
+      if (previousSharedSecret === undefined) {
+        delete process.env.VANBLOG_SHARED_SECRET;
+      } else {
+        process.env.VANBLOG_SHARED_SECRET = previousSharedSecret;
+      }
+    }
+  });
+
   it('can still decrypt a pre-migration backup made with the Waline secret', async () => {
     const previousBackupKey = process.env.VANBLOG_BACKUP_ENCRYPTION_KEY;
     const previousWalineToken = process.env.WALINE_JWT_TOKEN;

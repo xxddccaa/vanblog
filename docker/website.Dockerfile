@@ -26,12 +26,12 @@ COPY packages/website/next.config.js ./packages/website/next.config.js
 COPY packages/website/public ./packages/website/public
 COPY packages/website/package.json ./packages/website/package.json
 COPY packages/website/.next/static ./packages/website/.next/static
-COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
+COPY docker/shared/ensure-shared-secret.cjs /app/ensure-shared-secret.cjs
 COPY docker/website/control-auth.cjs ./control-auth.cjs
 COPY docker/website/runner.cjs ./runner.cjs
 COPY docker/website/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh \
-    && chown -R vanblog:vanblog /app/website /app/ensure-waline-jwt.cjs
+    && chown -R vanblog:vanblog /app/website /app/ensure-shared-secret.cjs
 
 ENV NODE_ENV=production
 ENV PORT=3001

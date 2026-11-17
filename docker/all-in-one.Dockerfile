@@ -72,7 +72,7 @@ COPY --from=builder /app/packages/website/package.json /app/website/packages/web
 COPY --from=builder /app/packages/website/.next/static /app/website/packages/website/.next/static
 COPY --from=builder /app/packages/admin/dist /usr/share/nginx/html/admin
 
-COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
+COPY docker/shared/ensure-shared-secret.cjs /app/ensure-shared-secret.cjs
 COPY docker/server/entrypoint.sh /app/server/entrypoint.sh
 COPY docker/website/entrypoint.sh /app/website/entrypoint.sh
 COPY docker/website/control-auth.cjs /app/website/control-auth.cjs
@@ -86,7 +86,7 @@ RUN chmod +x \
       /app/website/entrypoint.sh \
       /usr/local/bin/vanblog-all-in-one-entrypoint \
       /usr/local/bin/vanblog-all-in-one-healthcheck \
-    && chown -R vanblog:vanblog /app/server /app/website /app/ensure-waline-jwt.cjs
+    && chown -R vanblog:vanblog /app/server /app/website /app/ensure-shared-secret.cjs
 
 ENV NODE_ENV=production
 ENV POSTGRES_PORT=5432
@@ -120,7 +120,7 @@ ENV VAN_BLOG_REVALIDATE=false
 ENV VAN_BLOG_ALLOW_DOMAINS="pic.mereith.com"
 ENV PORT=3001
 ENV WEBSITE_CONTROL_PORT=3011
-ENV WALINE_JWT_TOKEN=""
+ENV VANBLOG_SHARED_SECRET=""
 ENV EMAIL="someone@example.com"
 
 VOLUME /app/static

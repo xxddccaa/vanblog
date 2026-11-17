@@ -5,6 +5,8 @@ describe('ISRProvider', () => {
   const oldEnv = process.env['VANBLOG_WEBSITE_ISR_BASE'];
   const oldDisableWebsite = process.env['VANBLOG_DISABLE_WEBSITE'];
   const oldIsrToken = process.env['VANBLOG_ISR_TOKEN'];
+  const oldSharedSecret = process.env['VANBLOG_SHARED_SECRET'];
+  const oldLegacySharedSecret = process.env['WALINE_JWT_TOKEN'];
   const originalSetTimeout = global.setTimeout;
 
   const createCloudflareCacheProvider = () => ({
@@ -34,6 +36,16 @@ describe('ISRProvider', () => {
       delete process.env['VANBLOG_ISR_TOKEN'];
     } else {
       process.env['VANBLOG_ISR_TOKEN'] = oldIsrToken;
+    }
+    if (oldSharedSecret === undefined) {
+      delete process.env['VANBLOG_SHARED_SECRET'];
+    } else {
+      process.env['VANBLOG_SHARED_SECRET'] = oldSharedSecret;
+    }
+    if (oldLegacySharedSecret === undefined) {
+      delete process.env['WALINE_JWT_TOKEN'];
+    } else {
+      process.env['WALINE_JWT_TOKEN'] = oldLegacySharedSecret;
     }
     jest.restoreAllMocks();
   });
@@ -164,6 +176,37 @@ describe('ISRProvider', () => {
     expect(getSpy).toHaveBeenNthCalledWith(2, `${provider.base}/post/edge`, {
       headers: {
         'x-vanblog-isr-token': 'isr-secret',
+      },
+    });
+  });
+
+  it.each([
+    [
+      { VANBLOG_SHARED_SECRET: 'shared-secret', WALINE_JWT_TOKEN: 'legacy-secret' },
+      'shared-secret',
+    ],
+    [{ WALINE_JWT_TOKEN: 'legacy-secret' }, 'legacy-secret'],
+  ])('falls back to the shared secret when no ISR token is set (%o)', async (env, expected) => {
+    delete process.env['VANBLOG_ISR_TOKEN'];
+    delete process.env['VANBLOG_SHARED_SECRET'];
+    delete process.env['WALINE_JWT_TOKEN'];
+    Object.assign(process.env, env);
+    const getSpy = jest.spyOn(axios, 'get').mockResolvedValue({} as any);
+    const provider = new ISRProvider(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      createCloudflareCacheProvider() as any,
+    );
+
+    await provider.testConn();
+
+    expect(getSpy).toHaveBeenCalledWith(`${provider.base}/`, {
+      headers: {
+        'x-vanblog-isr-token': expected,
       },
     });
   });
