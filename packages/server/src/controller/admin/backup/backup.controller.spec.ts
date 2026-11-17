@@ -251,6 +251,12 @@ describe('BackupController import mode', () => {
       upsertDocument: jest.fn().mockResolvedValue(undefined),
       ...overrides.structuredDataService,
     };
+    const commentProvider = {
+      countAll: jest.fn().mockResolvedValue(0),
+      deleteAllRecords: jest.fn().mockResolvedValue(0),
+      importRecords: jest.fn().mockResolvedValue({ comments: 0, likes: 0, skipped: 0 }),
+      ...overrides.commentProvider,
+    };
     const backupImportJobProvider = {
       createJob: jest.fn().mockResolvedValue({
         created: true,
@@ -293,6 +299,7 @@ describe('BackupController import mode', () => {
       mongoBackupProvider as any,
       structuredDataService as any,
       backupImportJobProvider as any,
+      commentProvider as any,
     );
 
     return {
@@ -319,6 +326,7 @@ describe('BackupController import mode', () => {
       mongoBackupProvider,
       structuredDataService,
       backupImportJobProvider,
+      commentProvider,
     };
   };
 
@@ -339,9 +347,9 @@ describe('BackupController import mode', () => {
           getAllTagRecords: jest.fn().mockResolvedValue([{ name: 'cloudflare', articleCount: 3 }]),
         },
         staticProvider: {
-          exportAll: jest.fn().mockResolvedValue([
-            { sign: 'img-1', storageType: 'local', staticType: 'img' },
-          ]),
+          exportAll: jest
+            .fn()
+            .mockResolvedValue([{ sign: 'img-1', storageType: 'local', staticType: 'img' }]),
         },
         tokenProvider: {
           getAllTokens: jest.fn().mockResolvedValue([
@@ -395,9 +403,7 @@ describe('BackupController import mode', () => {
         '当前 JSON 备份不会内嵌本地静态文件和 folder 型自定义页面的实际文件内容；恢复时只会导入数据库记录。',
     });
     expect(download).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /\/vanblog-backup-\d{4}-\d{2}-\d{2}-\d{6}\.vbe$/,
-      ),
+      expect.stringMatching(/\/vanblog-backup-\d{4}-\d{2}-\d{2}-\d{6}\.vbe$/),
       expect.any(Function),
     );
     downloadCallback?.();
@@ -703,6 +709,83 @@ describe('BackupController import mode', () => {
     ]);
   });
 
+  it('clears existing comments and restores comments and likes for a full-site import', async () => {
+    const { controller, commentProvider, structuredDataService } = createController({
+      articleProvider: {
+        getTotalNum: jest.fn().mockResolvedValue(1),
+      },
+      commentProvider: {
+        importRecords: jest.fn().mockResolvedValue({ comments: 2, likes: 1, skipped: 0 }),
+      },
+    });
+    const comments = [
+      {
+        id: 1,
+        targetType: 'page',
+        targetId: 'link',
+        parentId: null,
+        rootId: null,
+        status: 'approved',
+        content: 'root',
+      },
+      {
+        id: 2,
+        targetType: 'page',
+        targetId: 'link',
+        parentId: 1,
+        rootId: 1,
+        status: 'approved',
+        content: 'reply',
+      },
+    ];
+    const commentLikes = [{ _id: `1:${'a'.repeat(64)}`, commentId: 1, actorHash: 'a'.repeat(64) }];
+
+    const result = await controller.importAllSync({
+      buffer: Buffer.from(
+        JSON.stringify({
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
+          comments,
+          commentLikes,
+        }),
+      ),
+    } as any);
+
+    expect(result.statusCode).toBe(200);
+    expect(commentProvider.deleteAllRecords).toHaveBeenCalled();
+    expect(commentProvider.importRecords).toHaveBeenCalledWith(comments, commentLikes);
+    expect(structuredDataService.refreshCollectionsFromRecordStore).toHaveBeenCalledWith(
+      expect.arrayContaining(['comments', 'commentLikes']),
+      expect.any(String),
+    );
+  });
+
+  it('hydrates comments from the raw record collections of a backup', async () => {
+    const { controller, commentProvider } = createController();
+    const comments = [
+      {
+        id: 7,
+        targetType: 'post',
+        targetId: '3',
+        parentId: null,
+        rootId: null,
+        status: 'pending',
+        content: 'raw',
+      },
+    ];
+
+    const result = await controller.importAllSync({
+      buffer: Buffer.from(
+        JSON.stringify({
+          backupInfo: { version: '4.0.0', formatVersion: '4.0.0' },
+          mongoCollections: { comments, comment_likes: [] },
+        }),
+      ),
+    } as any);
+
+    expect(result.statusCode).toBe(200);
+    expect(commentProvider.importRecords).toHaveBeenCalledWith(comments, []);
+  });
+
   it('restores articles with direct create saves instead of per-title merge lookups', async () => {
     const articleSaveMock = jest.fn().mockResolvedValue(undefined);
     const articleModel = Object.assign(
@@ -772,10 +855,7 @@ describe('BackupController import mode', () => {
     const { controller, customPageProvider, backupImportJobProvider, structuredDataService } =
       createController({
         customPageProvider: {
-          getCustomPageByPath: jest
-            .fn()
-            .mockResolvedValueOnce(null)
-            .mockResolvedValueOnce(null),
+          getCustomPageByPath: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(null),
           createCustomPage: jest
             .fn()
             .mockResolvedValueOnce(undefined)
