@@ -1,5 +1,6 @@
 import {
   getPlatform,
+  getRateLimitBucket,
   getRequestIp,
   isPrivateClientIp,
   normalizeClientIp,
@@ -53,5 +54,23 @@ describe('getPlatform', () => {
   it('still classifies regular user agents', () => {
     expect(getPlatform('Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile')).toBe('mobile');
     expect(getPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('desktop');
+  });
+});
+
+describe('getRateLimitBucket', () => {
+  it('keeps IPv4 addresses and unwraps IPv4-mapped IPv6', () => {
+    expect(getRateLimitBucket('203.0.113.5')).toBe('203.0.113.5');
+    expect(getRateLimitBucket('::ffff:203.0.113.5')).toBe('203.0.113.5');
+  });
+
+  it('groups IPv6 addresses by /64', () => {
+    expect(getRateLimitBucket('2001:db8:0:1::1')).toBe('2001:db8:0:1::/64');
+    expect(getRateLimitBucket('2001:0db8:0000:0001:ffff:eeee:dddd:cccc')).toBe('2001:db8:0:1::/64');
+    expect(getRateLimitBucket('::1')).toBe('0:0:0:0::/64');
+  });
+
+  it('falls back to a shared bucket for unusable input', () => {
+    expect(getRateLimitBucket(undefined)).toBe('unknown');
+    expect(getRateLimitBucket('not-an-ip')).toBe('unknown');
   });
 });

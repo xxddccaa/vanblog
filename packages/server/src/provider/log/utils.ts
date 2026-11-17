@@ -47,6 +47,29 @@ export function isPrivateClientIp(ip: string) {
   );
 }
 
+/**
+ * Key used to rate limit a client. IPv4 addresses are used as-is; IPv6
+ * addresses are grouped by their /64 prefix because a single host usually
+ * controls the whole /64 and could otherwise rotate through 2^64 buckets.
+ */
+export function getRateLimitBucket(ip: unknown): string {
+  const normalized = normalizeClientIp(ip);
+  if (!normalized) return 'unknown';
+  if (isIP(normalized) === 4) return normalized;
+
+  const [headRaw, tailRaw] = normalized.split('::');
+  const head = headRaw ? headRaw.split(':') : [];
+  const tail = normalized.includes('::') && tailRaw ? tailRaw.split(':') : [];
+  const groups = normalized.includes('::')
+    ? [...head, ...Array(Math.max(0, 8 - head.length - tail.length)).fill('0'), ...tail]
+    : normalized.split(':');
+  const prefix = groups
+    .slice(0, 4)
+    .map((group) => (group || '0').replace(/^0+(?=.)/, ''))
+    .join(':');
+  return `${prefix}::/64`;
+}
+
 export function getRequestIp(req: any): string | null {
   const trustProxy = Boolean(req?.app?.get?.('trust proxy'));
   const candidates = [

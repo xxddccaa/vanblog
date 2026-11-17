@@ -19,6 +19,12 @@ import {
 } from 'src/utils/crypto';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 
+let dummyPasswordHash: Promise<string> | null = null;
+const getDummyPasswordHash = () => {
+  dummyPasswordHash = dummyPasswordHash || hashPasswordCredential(makeSalt());
+  return dummyPasswordHash;
+};
+
 @Injectable()
 export class UserProvider {
   logger = new Logger(UserProvider.name);
@@ -102,6 +108,9 @@ export class UserProvider {
         ? await this.userModel.findOne({ name }).lean().exec()
         : null);
     if (!user) {
+      // Spend the same argon2 work as a real check so response time does not
+      // reveal whether the username exists.
+      await verifyPasswordCredential(await getDummyPasswordHash(), String(password || ''));
       return null;
     } else {
       const encryptedPassword = encryptPassword(name, password, user.salt);

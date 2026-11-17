@@ -3,6 +3,7 @@ import { config } from 'src/config';
 import { AuthController } from './auth.controller';
 
 jest.mock('src/provider/log/utils', () => ({
+  ...jest.requireActual('src/provider/log/utils'),
   getNetIp: jest.fn(),
   getRequestIp: jest.fn(),
 }));
@@ -85,6 +86,7 @@ describe('AuthController', () => {
 
     expect(logProvider.login).toHaveBeenCalledWith(expect.anything(), true);
     expect(cacheProvider.del).toHaveBeenCalledWith('login-8.8.8.8');
+    expect(cacheProvider.del).toHaveBeenCalledWith('login-baseline-8.8.8.8');
     expect(authProvider.login).toHaveBeenCalledWith({ id: 0, name: 'admin', type: 'admin' });
     expect(pipelineProvider.dispatchEvent).toHaveBeenCalledWith('login', {
       user: result.data.user,

@@ -5,14 +5,29 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
-import dayjs from 'dayjs';
 import { Request } from 'express';
 import { CacheProvider } from '../cache/cache.provider';
-import { getRequestIp } from '../log/utils';
+import { getRateLimitBucket, getRequestIp } from '../log/utils';
 import { SettingProvider } from '../setting/setting.provider';
 
 const DEFAULT_MAX_RETRY_TIMES = 3;
 const DEFAULT_DURATION_SECONDS = 60;
+
+/**
+ * Always-on floor that applies even when the configurable limit is disabled,
+ * so the admin login can never be brute forced at full speed.
+ */
+export const LOGIN_BASELINE_MAX_ATTEMPTS = 10;
+export const LOGIN_BASELINE_WINDOW_SECONDS = 10 * 60;
+
+/** Cache keys holding the login attempt counters for this request's client. */
+export function getLoginRetryKeys(request: any) {
+  const bucket = getRateLimitBucket(getRequestIp(request));
+  return {
+    configurable: `login-${bucket}`,
+    baseline: `login-baseline-${bucket}`,
+  };
+}
 
 @Injectable()
 export class LoginGuard implements CanActivate {
@@ -34,49 +49,44 @@ export class LoginGuard implements CanActivate {
     }
     return parsed;
   }
+
+  private reject(ip: string, count: number, limit: number, windowSeconds: number) {
+    this.logger.warn(
+      `Too many login attempts: ip=${ip} count=${count} limit=${limit} window=${windowSeconds}s`,
+    );
+    throw new UnauthorizedException({
+      statusCode: 401,
+      message: `错误次数过多！请 ${windowSeconds} 秒之后再试！`,
+    });
+  }
+
   async validateRequest(request: Request) {
+    const ip = getRequestIp(request) || 'unknown';
+    const keys = getLoginRetryKeys(request);
+
+    // Counters are incremented atomically before the password is checked, so
+    // parallel guesses cannot all slip through a read-then-write window.
+    const baselineCount = await this.cacheProvider.incrementWithTtl(
+      keys.baseline,
+      LOGIN_BASELINE_WINDOW_SECONDS,
+    );
+    if (baselineCount > LOGIN_BASELINE_MAX_ATTEMPTS) {
+      this.reject(ip, baselineCount, LOGIN_BASELINE_MAX_ATTEMPTS, LOGIN_BASELINE_WINDOW_SECONDS);
+    }
+
     const loginSetting = await this.settingProvider.getLoginSetting();
-    if (!loginSetting?.enableMaxLoginRetry) {
+    // Enabled unless the owner explicitly turned it off.
+    if (loginSetting?.enableMaxLoginRetry === false) {
       return true;
     }
-    const maxRetryTimes = this.toPositiveInt(loginSetting.maxRetryTimes, DEFAULT_MAX_RETRY_TIMES);
+    const maxRetryTimes = this.toPositiveInt(loginSetting?.maxRetryTimes, DEFAULT_MAX_RETRY_TIMES);
     const durationSeconds = this.toPositiveInt(
-      loginSetting.durationSeconds,
+      loginSetting?.durationSeconds,
       DEFAULT_DURATION_SECONDS,
     );
-
-    const ip = getRequestIp(request) || 'unknown';
-    const key = `login-${ip}`;
-    const cacheEntry = (await this.cacheProvider.get(key)) || {};
-    const { lastLoginTime } = cacheEntry;
-    const count = this.toPositiveInt(cacheEntry.count, 0);
-    const parsedLastLoginTime = dayjs(lastLoginTime);
-    const windowExpired =
-      !lastLoginTime ||
-      !parsedLastLoginTime.isValid() ||
-      dayjs().diff(parsedLastLoginTime, 'seconds') > durationSeconds;
-
-    if (windowExpired || count <= 0) {
-      await this.cacheProvider.set(key, { count: 1, lastLoginTime: new Date() }, durationSeconds);
-      return true;
-    }
-
-    const blocked = count >= maxRetryTimes;
-    if (blocked) {
-      this.logger.warn(
-        `登录频繁失败检测触发\nip: ${ip}\ncount: ${count}\nmaxRetryTimes: ${maxRetryTimes}\nlastLoginTime: ${lastLoginTime}\ndurationSeconds: ${durationSeconds}`,
-      );
-    }
-    await this.cacheProvider.set(
-      key,
-      { count: count + 1, lastLoginTime: new Date() },
-      durationSeconds,
-    );
-    if (blocked) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        message: `错误次数过多！请 ${durationSeconds} 秒之后再试！`,
-      });
+    const count = await this.cacheProvider.incrementWithTtl(keys.configurable, durationSeconds);
+    if (count > maxRetryTimes) {
+      this.reject(ip, count, maxRetryTimes, durationSeconds);
     }
     return true;
   }

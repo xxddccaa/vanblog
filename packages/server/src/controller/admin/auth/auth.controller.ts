@@ -17,7 +17,7 @@ import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { AuthProvider } from 'src/provider/auth/auth.provider';
 import { LogProvider } from 'src/provider/log/log.provider';
 import { UserProvider } from 'src/provider/user/user.provider';
-import { LoginGuard } from 'src/provider/auth/login.guard';
+import { getLoginRetryKeys, LoginGuard } from 'src/provider/auth/login.guard';
 import { TokenProvider } from 'src/provider/token/token.provider';
 import { CacheProvider } from 'src/provider/cache/cache.provider';
 import { InitProvider } from 'src/provider/init/init.provider';
@@ -42,11 +42,11 @@ export class AuthController {
 
   private async clearLoginRetryCounter(request: any) {
     try {
-      const normalizedIp = getRequestIp(request) || 'unknown';
-      if (!normalizedIp) {
-        return;
-      }
-      await this.cacheProvider.del(`login-${normalizedIp}`);
+      const keys = getLoginRetryKeys(request);
+      await Promise.all([
+        this.cacheProvider.del(keys.configurable),
+        this.cacheProvider.del(keys.baseline),
+      ]);
     } catch {
       // Login must still succeed even if retry counters cannot be cleared.
     }

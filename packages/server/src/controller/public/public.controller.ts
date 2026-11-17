@@ -30,7 +30,7 @@ import { StaticProvider } from 'src/provider/static/static.provider';
 import { CacheProvider } from 'src/provider/cache/cache.provider';
 import { WalineProvider } from 'src/provider/waline/waline.provider';
 import { normalizeCustomPageRoutePath } from 'src/utils/customPagePath';
-import { getRequestIp } from 'src/provider/log/utils';
+import { getRateLimitBucket, getRequestIp } from 'src/provider/log/utils';
 import { createHash } from 'node:crypto';
 import { isTrue } from 'src/utils/isTrue';
 import { PublicArticleOutputOptions } from 'src/provider/article/article.provider';
@@ -426,8 +426,12 @@ export class PublicController {
     @Body() body: { password: string },
     @Req() req?: Request,
   ) {
+    // Key the limit on the resolved article, not the raw path segment: "2",
+    // "02" and "002" all resolve to the same article and must share a counter.
+    const target = await this.articleProvider.getByIdOrPathname(id, 'list');
+    const articleIdentity = target ? `article:${target.id}` : 'article:missing';
     const retryIdentity = createHash('sha256')
-      .update(`${getRequestIp(req) || 'unknown'}\0${String(id)}`)
+      .update(`${getRateLimitBucket(getRequestIp(req))}\0${articleIdentity}`)
       .digest('hex')
       .slice(0, 32);
     const retryKey = `article-unlock:${retryIdentity}`;

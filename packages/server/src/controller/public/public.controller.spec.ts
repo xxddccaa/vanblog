@@ -343,6 +343,29 @@ describe('PublicController', () => {
     expect(articleProvider.getByIdWithPassword).toHaveBeenCalledTimes(5);
   });
 
+  it('shares one unlock counter across id aliases of the same article', async () => {
+    const { controller, articleProvider } = createController();
+    articleProvider.getByIdWithPassword.mockResolvedValue(null);
+    articleProvider.getByIdOrPathname.mockResolvedValue({ id: 2, pathname: 'locked-post' });
+    const request = { ip: '203.0.113.21', socket: {} } as any;
+
+    const aliases = ['2', '02', '002', '0002', 'locked-post', '00002'];
+    const attempts = [];
+    for (const alias of aliases) {
+      attempts.push(
+        await controller
+          .getArticleByIdOrPathnameWithPassword(alias, { password: 'wrong' }, request)
+          .then(
+            () => 'ok',
+            () => 'limited',
+          ),
+      );
+    }
+
+    expect(attempts.filter((attempt) => attempt === 'ok')).toHaveLength(5);
+    expect(attempts[5]).toBe('limited');
+  });
+
   it('skips viewer updates when referer is missing', async () => {
     const { controller, metaProvider } = createController();
 

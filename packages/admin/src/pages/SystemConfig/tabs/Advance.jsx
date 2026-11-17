@@ -13,21 +13,16 @@ export default function (props) {
   return (
     <>
       <Card title="登录安全策略">
-        <Alert
-          type="warning"
-          message="开启最大登录失败次数限制目前还不稳定！暂时先不可配置，稳定后开放。"
-          style={{ marginBottom: 8 }}
-        />
         <ProForm
           grid={true}
           layout={'horizontal'}
           request={async (params) => {
             try {
               const { data } = await getLoginConfig();
-              return data || { enableMaxLoginRetry: false };
+              return { enableMaxLoginRetry: true, ...(data || {}) };
             } catch (err) {
               console.log(err);
-              return { enableMaxLoginRetry: false };
+              return { enableMaxLoginRetry: true };
             }
           }}
           syncToInitialValues={true}
@@ -41,7 +36,6 @@ export default function (props) {
           }}
         >
           <ProFormSelect
-            disabled={true}
             name={'enableMaxLoginRetry'}
             label="开启最大登录失败次数限制"
             fieldProps={{
@@ -56,8 +50,10 @@ export default function (props) {
                 },
               ],
             }}
-            placeholder="关闭"
-            tooltip={'默认关闭，开启后同一 ip 登录失败次数过多后需等一分钟后才能再次登录'}
+            placeholder="开启"
+            tooltip={
+              '默认开启：同一 IP 每分钟最多尝试 3 次。无论是否开启，同一 IP 10 分钟内超过 10 次登录尝试都会被暂时拒绝。'
+            }
           ></ProFormSelect>
           <ProFormDigit
             name={'expiresIn'}
