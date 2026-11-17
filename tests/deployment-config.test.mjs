@@ -470,6 +470,32 @@ fi
   assert.doesNotMatch(releaseDoc, /pnpm release:[^\n]+ -- --version/);
 });
 
+test('every Alpine apk stage honors ALPINE_MIRROR_HOST so proxy-cleared release builds cannot stall', () => {
+  // Release builds run with CLEAR_BUILD_PROXIES=true, so a stage that still pulls from
+  // dl-cdn.alpinelinux.org has no proxy and can hang for an hour (v1.9.0 server runner).
+  const mirrorSwitch =
+    /^RUN if \[ -n "\$ALPINE_MIRROR_HOST" \]; then sed -i "s\/dl-cdn\.alpinelinux\.org\/\$\{ALPINE_MIRROR_HOST\}\/g" \/etc\/apk\/repositories; fi\s+&& apk add /;
+  const checkedStages = [];
+
+  for (const name of fs.readdirSync('docker').filter((file) => file.endsWith('.Dockerfile'))) {
+    const stages = read(nodePath.join('docker', name)).split(/^FROM\s+/m).slice(1);
+    for (const stage of stages) {
+      const stageName = stage.match(/^\S+(?:\s+AS\s+(\S+))?/i)?.[1] ?? 'final';
+      const label = `${name} ${stageName}`;
+      const instructions = stage.replace(/\\\n\s*/g, ' ').split('\n');
+      for (const instruction of instructions.filter((line) => /^RUN\b.*\bapk add\b/.test(line))) {
+        assert.match(stage, /^ARG ALPINE_MIRROR_HOST=""$/m, `${label} must declare ARG ALPINE_MIRROR_HOST`);
+        assert.match(instruction, mirrorSwitch, `${label} must switch the Alpine mirror before apk add`);
+        checkedStages.push(label);
+      }
+    }
+  }
+
+  assert.ok(checkedStages.includes('server.Dockerfile base'), checkedStages.join(', '));
+  assert.ok(checkedStages.includes('server.Dockerfile runner'), checkedStages.join(', '));
+  assert.ok(checkedStages.includes('all-in-one.Dockerfile runner'), checkedStages.join(', '));
+});
+
 test('docker compose wires cross-container control endpoints', () => {
   assert.match(compose, /VANBLOG_CADDY_API_URL:\s+http:\/\/caddy:2019/);
   assert.match(compose, /VANBLOG_WEBSITE_CONTROL_URL:\s+http:\/\/website:3011/);

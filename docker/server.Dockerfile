@@ -45,8 +45,10 @@ LABEL org.opencontainers.image.title="${VANBLOG_IMAGE_NAME}" \
       io.vanblog.image.version="${VANBLOG_IMAGE_VERSION}" \
       io.vanblog.image.id="${VANBLOG_IMAGE_ID}"
 
+ARG ALPINE_MIRROR_HOST=""
 ARG INSTALL_ALIYUNPAN=false
-RUN apk add --no-cache bash wget unzip libwebp-tools su-exec \
+RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi \
+    && apk add --no-cache bash wget unzip libwebp-tools su-exec \
     && addgroup -S -g 10001 vanblog \
     && adduser -S -D -H -u 10001 -G vanblog vanblog \
     && if [ "$INSTALL_ALIYUNPAN" = "true" ]; then \
