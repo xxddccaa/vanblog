@@ -164,6 +164,12 @@ export const superAdminOnlyRoutePrefixes = [
   'post-/api/admin/meta/reward',
   'put-/api/admin/meta/reward',
   'delete-/api/admin/meta/reward',
+  // Comment moderation exposes visitor emails and IP addresses.
+  'get-/api/admin/comment',
+  'post-/api/admin/comment',
+  'put-/api/admin/comment',
+  'patch-/api/admin/comment',
+  'delete-/api/admin/comment',
 ];
 
 export const publicRoutes = [
