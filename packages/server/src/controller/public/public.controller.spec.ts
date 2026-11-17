@@ -277,8 +277,8 @@ describe('PublicController', () => {
         return next;
       }),
     };
-    const walineProvider = {
-      getCommentCount: jest.fn().mockResolvedValue(6),
+    const commentProvider = {
+      countForArticle: jest.fn().mockResolvedValue(6),
     };
 
     const controller = new PublicController(
@@ -293,7 +293,7 @@ describe('PublicController', () => {
       iconProvider as any,
       staticProvider as any,
       cacheProvider as any,
-      walineProvider as any,
+      commentProvider as any,
     );
 
     return {
@@ -309,7 +309,7 @@ describe('PublicController', () => {
       tokenProvider,
       iconProvider,
       cacheProvider,
-      walineProvider,
+      commentProvider,
     };
   };
 
@@ -1306,7 +1306,7 @@ describe('PublicController', () => {
   });
 
   it('caches engagement payloads behind a dedicated public fragment endpoint', async () => {
-    const { controller, cacheProvider, walineProvider } = createController();
+    const { controller, cacheProvider, commentProvider } = createController();
     const articleProvider = (controller as any).articleProvider;
     const visitProvider = (controller as any).visitProvider;
     const res = createRes();
@@ -1333,7 +1333,7 @@ describe('PublicController', () => {
       },
     });
     expect(second).toEqual(first);
-    expect(walineProvider.getCommentCount).toHaveBeenCalledWith('/post/edge-cache');
+    expect(commentProvider.countForArticle).toHaveBeenCalledWith(7);
     expect(cacheProvider.set).toHaveBeenCalledWith(
       'public:article:engagement:edge-cache',
       {
@@ -1348,12 +1348,12 @@ describe('PublicController', () => {
     );
     expect(articleProvider.getPublicArticleByIdOrPathname).toHaveBeenCalledTimes(1);
     expect(visitProvider.getByArticleId).toHaveBeenCalledTimes(1);
-    expect(walineProvider.getCommentCount).toHaveBeenCalledTimes(1);
+    expect(commentProvider.countForArticle).toHaveBeenCalledTimes(1);
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
   });
 
   it('unwraps cached engagement envelopes without leaking cache metadata to clients', async () => {
-    const { controller, cacheProvider, walineProvider } = createController();
+    const { controller, cacheProvider, commentProvider } = createController();
     const articleProvider = (controller as any).articleProvider;
     const visitProvider = (controller as any).visitProvider;
     const res = createRes();
@@ -1384,12 +1384,12 @@ describe('PublicController', () => {
     expect((result.data as any).__lastModified).toBeUndefined();
     expect(articleProvider.getPublicArticleByIdOrPathname).not.toHaveBeenCalled();
     expect(visitProvider.getByArticleId).not.toHaveBeenCalled();
-    expect(walineProvider.getCommentCount).not.toHaveBeenCalled();
+    expect(commentProvider.countForArticle).not.toHaveBeenCalled();
     expect(res.headers.get('Last-Modified')).toBe('Sat, 11 Apr 2026 00:00:00 GMT');
   });
 
   it('derives fragment validators from the newest timestamp even when sources mix Date objects and strings', async () => {
-    const { controller, walineProvider, cacheProvider } = createController();
+    const { controller, commentProvider, cacheProvider } = createController();
     const articleProvider = (controller as any).articleProvider;
     const res = createRes();
     articleProvider.getPublicArticleByIdOrPathname = jest.fn().mockResolvedValue({
@@ -1444,17 +1444,17 @@ describe('PublicController', () => {
       },
       120,
     );
-    expect(walineProvider.getCommentCount).toHaveBeenCalledWith('/post/edge-cache');
+    expect(commentProvider.countForArticle).toHaveBeenCalledWith(7);
     expect(articleProvider.getPublicArticleByIdOrPathname).toHaveBeenCalledTimes(1);
     expect(articleProvider.getRelatedPublicArticles).toHaveBeenCalledTimes(1);
     expect(articleProvider.getLatestPublicArticles).toHaveBeenCalledTimes(1);
     expect(articleProvider.getHotPublicArticles).toHaveBeenCalledTimes(1);
-    expect(walineProvider.getCommentCount).toHaveBeenCalledTimes(1);
+    expect(commentProvider.countForArticle).toHaveBeenCalledTimes(1);
     expect(res.headers.get('Last-Modified')).toBe('Sun, 12 Apr 2026 00:00:00 GMT');
   });
 
   it('unwraps cached fragment envelopes without leaking cache metadata to clients', async () => {
-    const { controller, cacheProvider, walineProvider } = createController();
+    const { controller, cacheProvider, commentProvider } = createController();
     const articleProvider = (controller as any).articleProvider;
     const res = createRes();
     articleProvider.getPublicArticleByIdOrPathname = jest.fn();
@@ -1492,7 +1492,7 @@ describe('PublicController', () => {
     expect(articleProvider.getRelatedPublicArticles).not.toHaveBeenCalled();
     expect(articleProvider.getLatestPublicArticles).not.toHaveBeenCalled();
     expect(articleProvider.getHotPublicArticles).not.toHaveBeenCalled();
-    expect(walineProvider.getCommentCount).not.toHaveBeenCalled();
+    expect(commentProvider.countForArticle).not.toHaveBeenCalled();
     expect(res.headers.get('Last-Modified')).toBe('Sun, 12 Apr 2026 00:00:00 GMT');
   });
 
@@ -1730,7 +1730,7 @@ describe('PublicController', () => {
   });
 
   it('caches post fragment payloads to keep dynamic blocks out of HTML', async () => {
-    const { controller, walineProvider, cacheProvider } = createController();
+    const { controller, commentProvider, cacheProvider } = createController();
     const articleProvider = (controller as any).articleProvider;
     const res = createRes();
     articleProvider.getPublicArticleByIdOrPathname = jest.fn().mockResolvedValue({
@@ -1790,7 +1790,7 @@ describe('PublicController', () => {
       },
     });
     expect(second).toEqual(first);
-    expect(walineProvider.getCommentCount).toHaveBeenCalledWith('/post/edge-cache');
+    expect(commentProvider.countForArticle).toHaveBeenCalledWith(7);
     expect(cacheProvider.set).toHaveBeenCalledWith(
       'public:article:fragments:edge-cache:4',
       {
@@ -1808,7 +1808,7 @@ describe('PublicController', () => {
   });
 
   it('normalizes oversized fragment limits so cache keys stay bounded', async () => {
-    const { controller, walineProvider, cacheProvider } = createController();
+    const { controller, commentProvider, cacheProvider } = createController();
     const articleProvider = (controller as any).articleProvider;
     const res = createRes();
     articleProvider.getPublicArticleByIdOrPathname = jest.fn().mockResolvedValue({
@@ -1847,7 +1847,7 @@ describe('PublicController', () => {
       },
       120,
     );
-    expect(walineProvider.getCommentCount).toHaveBeenCalledWith('/post/edge-cache');
+    expect(commentProvider.countForArticle).toHaveBeenCalledWith(7);
     expect(res.headers.get('Last-Modified')).toBe('Thu, 09 Apr 2026 00:00:00 GMT');
   });
 });

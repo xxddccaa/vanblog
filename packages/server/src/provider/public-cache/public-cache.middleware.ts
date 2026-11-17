@@ -2,6 +2,8 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { createHash } from 'crypto';
 import { formatCacheTags, toCacheTag } from 'src/utils/cacheTag';
+import { COMMENT_LIMITS } from 'src/types/comment.dto';
+import { parseCommentTargetKey } from 'src/utils/commentInput';
 
 const setEdgeCacheHeaders = (res: Response, browserValue: string, cdnValue: string) => {
   res.setHeader('Cache-Control', browserValue);
@@ -184,6 +186,24 @@ const toQueryValueList = (value: unknown) => {
     .filter(Boolean);
 };
 
+const COMMENT_PATH = '/api/public/comment';
+
+/** Lower-cased comment sub-path without a trailing slash, or null for other paths. */
+const getCommentRoute = (lowerPath: string) => {
+  if (lowerPath !== COMMENT_PATH && !lowerPath.startsWith(`${COMMENT_PATH}/`)) {
+    return null;
+  }
+  return lowerPath.slice(COMMENT_PATH.length).replace(/\/+$/, '') || '/';
+};
+
+/** One tag per valid comment target; the provider purges `comment:<target>` on change. */
+const getCommentTargetTags = (value: unknown) =>
+  toQueryValueList(value)
+    .slice(0, COMMENT_LIMITS.countMaxTargets)
+    .map((item) => parseCommentTargetKey(item))
+    .filter(Boolean)
+    .map((target) => toCacheTag('comment', target.key));
+
 const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) => {
   const tags = ['public-api'];
   // Express and Caddy route case-insensitively, so structural checks ignore case
@@ -214,10 +234,19 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
     tags.push('article-nav', toCacheTag('post', navMatch[1]));
   }
   if (engagementMatch) {
-    tags.push('article-engagement', toCacheTag('post', engagementMatch[1]));
+    tags.push(
+      'article-engagement',
+      toCacheTag('post', engagementMatch[1]),
+      toCacheTag('post-comments', engagementMatch[1]),
+    );
   }
   if (fragmentsMatch) {
-    tags.push('article-fragments', 'article-ranking', toCacheTag('post', fragmentsMatch[1]));
+    tags.push(
+      'article-fragments',
+      'article-ranking',
+      toCacheTag('post', fragmentsMatch[1]),
+      toCacheTag('post-comments', fragmentsMatch[1]),
+    );
   }
   if (viewerMatch) {
     tags.push('article-engagement', toCacheTag('post', viewerMatch[1]));
@@ -326,6 +355,16 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
   if (lowerPath.startsWith('/api/public/moment')) {
     tags.push('moment-public');
   }
+  const commentRoute = getCommentRoute(lowerPath);
+  if (commentRoute) {
+    tags.push('comment-public');
+    if (commentRoute === '/') {
+      tags.push(...getCommentTargetTags(query.target));
+    }
+    if (commentRoute === '/count') {
+      tags.push(...getCommentTargetTags(query.targets));
+    }
+  }
   return formatCacheTags(tags);
 };
 
@@ -371,6 +410,18 @@ export class PublicCacheMiddleware implements NestMiddleware {
       return next();
     }
 
+    const commentRoute = getCommentRoute(path);
+    if (commentRoute) {
+      // Thread and count reads are identical for every visitor; a short edge TTL
+      // keeps new comments visible quickly. Everything else here is per visitor.
+      if (commentRoute === '/' || commentRoute === '/count') {
+        setEdgeCacheHeaders(res, 'public, max-age=0, s-maxage=30', 'public, s-maxage=30');
+      } else {
+        setNoStoreHeaders(res);
+      }
+      return next();
+    }
+
     if (
       path.startsWith('/api/public/moment')
     ) {
@@ -397,8 +448,7 @@ export class PublicCacheMiddleware implements NestMiddleware {
       path === '/api/public/viewer' ||
       path.startsWith('/api/public/article/viewer/') ||
       path.endsWith('/engagement') ||
-      path.endsWith('/fragments') ||
-      path.startsWith('/api/public/comment')
+      path.endsWith('/fragments')
     ) {
       setEdgeCacheHeaders(
         res,

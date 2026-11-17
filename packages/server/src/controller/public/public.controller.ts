@@ -28,7 +28,7 @@ import { TokenProvider } from 'src/provider/token/token.provider';
 import { IconProvider } from 'src/provider/icon/icon.provider';
 import { StaticProvider } from 'src/provider/static/static.provider';
 import { CacheProvider } from 'src/provider/cache/cache.provider';
-import { WalineProvider } from 'src/provider/waline/waline.provider';
+import { CommentProvider } from 'src/provider/comment/comment.provider';
 import { normalizeCustomPageRoutePath } from 'src/utils/customPagePath';
 import { getRateLimitBucket, getRequestIp } from 'src/provider/log/utils';
 import { createHash } from 'node:crypto';
@@ -56,7 +56,7 @@ export class PublicController {
     private readonly iconProvider: IconProvider,
     private readonly staticProvider: StaticProvider,
     private readonly cacheProvider: CacheProvider,
-    private readonly walineProvider: WalineProvider,
+    private readonly commentProvider: CommentProvider,
     @Optional() private readonly publicMaskProvider?: PublicMaskProvider,
     @Optional() private readonly privateSiteProvider?: PrivateSiteProvider,
   ) {}
@@ -310,10 +310,9 @@ export class PublicController {
     const cacheKey = `public:article:engagement:${id}`;
     const payload = await this.getCachedPublicPayload(cacheKey, 60, async () => {
       const article = await this.articleProvider.getPublicArticleByIdOrPathname(id, 'list');
-      const articlePath = `/post/${article.pathname || article.id}`;
       const [viewer, commentCount] = await Promise.all([
         this.visitProvider.getByArticleId(article.id),
-        this.walineProvider.getCommentCount(articlePath),
+        this.commentProvider.countForArticle(article.id),
       ]);
 
       return {
@@ -349,12 +348,11 @@ export class PublicController {
     const cacheKey = `public:article:fragments:${id}:${size}`;
     const payload = await this.getCachedPublicPayload(cacheKey, 120, async () => {
       const article = await this.articleProvider.getPublicArticleByIdOrPathname(id, 'list');
-      const articlePath = `/post/${article.pathname || article.id}`;
       const [related, latest, hot, commentCount] = await Promise.all([
         this.articleProvider.getRelatedPublicArticles(id, size),
         this.articleProvider.getLatestPublicArticles(size, article.id),
         this.articleProvider.getHotPublicArticles(size, article.id),
-        this.walineProvider.getCommentCount(articlePath),
+        this.commentProvider.countForArticle(article.id),
       ]);
 
       return {
