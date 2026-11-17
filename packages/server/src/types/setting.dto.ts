@@ -14,7 +14,6 @@ export const defaultStaticSetting: StaticSetting = {
 export type SettingType =
   | 'static'
   | 'https'
-  | 'waline'
   | 'layout'
   | 'login'
   | 'menu'
@@ -32,7 +31,6 @@ export type SettingType =
 export type SettingValue =
   | StaticSetting
   | HttpsSetting
-  | WalineSetting
   | LayoutSetting
   | VersionSetting
   | ISRSetting
@@ -124,20 +122,6 @@ export interface HeadTag {
   name: string;
   props: Record<string, string>;
   conent: string;
-}
-
-export interface WalineSetting {
-  'smtp.enabled': boolean;
-  'smtp.port': number;
-  'smtp.host': string;
-  'smtp.user': string;
-  'smtp.password': string;
-  'sender.name': string;
-  'sender.email': string;
-  authorEmail: string;
-  webhook?: string;
-  forceLoginComment: boolean;
-  otherConfig?: string;
 }
 
 export interface HttpsSetting {

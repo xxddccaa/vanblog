@@ -9,7 +9,6 @@ import {
   MenuSetting,
   StaticSetting,
   VersionSetting,
-  WalineSetting,
   defaultStaticSetting,
   AdminLayoutSetting,
   defaultAdminLayoutSetting,
@@ -1707,19 +1706,6 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
   }
 `;
   }
-  async getWalineSetting(): Promise<WalineSetting> {
-    const res = await this.findSettingRecord('waline');
-    if (res) {
-      return (
-        (res?.value as any) || {
-          email: process.env.EMAIL || undefined,
-          'smtp.enabled': false,
-          forceLoginComment: false,
-        }
-      );
-    }
-    return null;
-  }
   async updateLoginSetting(dto: LoginSetting) {
     const oldValue = await this.getLoginSetting();
     const newValue = { ...oldValue, ...dto };
@@ -1731,11 +1717,6 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     return await this.upsertSettingValue('version', newValue);
   }
 
-  async updateWalineSetting(dto: WalineSetting) {
-    const oldValue = await this.getWalineSetting();
-    const newValue = { ...oldValue, ...dto };
-    return await this.upsertSettingValue('waline', newValue);
-  }
   async updateLayoutSetting(dto: LayoutSetting) {
     const oldValue = await this.getLayoutSetting();
     const newValue = { ...(oldValue || {}), ...dto };

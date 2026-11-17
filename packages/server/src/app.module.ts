@@ -63,7 +63,6 @@ import { CaddyProvider } from './provider/caddy/caddy.provider';
 import { LogProvider } from './provider/log/log.provider';
 import { LogController } from './controller/admin/log/log.controller';
 import { ISRProvider } from './provider/isr/isr.provider';
-import { WalineProvider } from './provider/waline/waline.provider';
 import { CacheProvider } from './provider/cache/cache.provider';
 import { LoginGuard } from './provider/auth/login.guard';
 import { AccessGuard } from './provider/access/access.guard';
@@ -265,7 +264,6 @@ import {
     CaddyProvider,
     LogProvider,
     ISRProvider,
-    WalineProvider,
     CacheProvider,
     LoginGuard,
     AccessGuard,
