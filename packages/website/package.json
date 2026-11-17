@@ -15,7 +15,6 @@
     "@bytemd/react": "^1.22.0",
     "@types/lodash": "^4.14.202",
     "@types/markdown-navbar": "^1.4.3",
-    "@waline/client": "3.13.0",
     "bytemd": "^1.22.0",
     "copy-to-clipboard": "^3.3.3",
     "dayjs": "^1.11.10",

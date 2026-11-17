@@ -37,7 +37,7 @@ vi.mock("../components/LinkCard", () => ({
     React.createElement("div", null, link.name),
 }));
 
-vi.mock("../components/WaLine", () => ({
+vi.mock("../components/Comments", () => ({
   default: () => React.createElement("div", null, "comments"),
 }));
 
