@@ -8,7 +8,7 @@ import CopyRight from "../CopyRight";
 import Reward from "../Reward";
 import TopPinIcon from "../TopPinIcon";
 import UnLockCard from "../UnLockCard";
-import WaLine from "../WaLine";
+import Comments from "../Comments";
 import { PostBottom } from "./bottom";
 import PostFragments from "./fragments";
 import { SubTitle, Title } from "./title";
@@ -18,6 +18,7 @@ import { hasToc } from "../../utils/hasToc";
 import Markdown from "../Markdown";
 import { encodeQuerystring } from "../../utils/encode";
 import { getOverviewPreview } from "../../utils/getOverviewPreview";
+import { buildPostCommentTarget } from "../../api/comments";
 
 export default function (props: {
   id: number | string;
@@ -210,7 +211,10 @@ export default function (props: {
         ></div>
       </div>
       {props.type != "overview" && (
-        <WaLine enable={props.enableComment} visible={true} />
+        <Comments
+          enable={props.type === "article" && props.private ? "false" : props.enableComment}
+          target={props.type === "about" ? "page:about" : buildPostCommentTarget(props.id)}
+        />
       )}
     </div>
   );

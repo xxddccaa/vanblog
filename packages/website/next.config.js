@@ -10,32 +10,11 @@ const markdownThemeAssetVersion =
   process.env.VAN_BLOG_VERSION ||
   rootPackage.version ||
   "dev";
-const walineDevRewrites = [
-  "/api/comment",
-  "/api/user",
-  "/api/token",
-  "/api/db",
-  "/api/oauth",
-  "/api/ui",
-].flatMap((source) => {
-  const targetBase = `http://127.0.0.1:8360${source.replace("/api", "")}`;
-  return [
-    {
-      source,
-      destination: targetBase,
-    },
-    {
-      source: `${source}/:path*`,
-      destination: `${targetBase}/:path*`,
-    },
-  ];
-});
 const rewites =
   process.env.NODE_ENV == "development"
     ? {
         async rewrites() {
           return [
-            ...walineDevRewrites,
             {
               source: "/api/:path*",
               destination: "http://127.0.0.1:3000/api/:path*", // Proxy to Backend

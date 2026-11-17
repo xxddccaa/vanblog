@@ -44,18 +44,7 @@ const PUBLIC_HTML_PREFIXES = [
   "/nav/",
 ];
 
-const NON_HTML_PREFIXES = [
-  "/api/",
-  "/admin",
-  "/_next/",
-  "/static/",
-  "/comment",
-  "/ui",
-  "/user",
-  "/token",
-  "/db",
-  "/oauth",
-];
+const NON_HTML_PREFIXES = ["/api/", "/admin", "/_next/", "/static/"];
 
 const STATIC_FILE_PATTERN = /\.[a-z0-9]+$/i;
 

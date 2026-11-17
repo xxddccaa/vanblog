@@ -4,7 +4,7 @@ import AuthorCard, { AuthorCardProps } from "../components/AuthorCard";
 import Layout from "../components/Layout";
 import LinkCard from "../components/LinkCard";
 import Markdown from "../components/Markdown";
-import WaLine from "../components/WaLine";
+import Comments from "../components/Comments";
 import { LayoutProps } from "../utils/getLayoutProps";
 import { getLinkPageProps } from "../utils/getPageProps";
 import { revalidate } from "../utils/loadConfig";
@@ -77,7 +77,7 @@ const LinkPage = (props: LinkPageProps) => {
           </div>
         </div>
       </div>
-      <WaLine enable={props.layoutProps.enableComment} visible={true} />
+      <Comments enable={props.layoutProps.enableComment} target="page:link" />
     </Layout>
   );
 };

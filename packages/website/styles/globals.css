@@ -215,8 +215,6 @@
 
 
 :root {
-  --waline-bg-color-light: #fff !important;
-  --waline-bgcolor-light: #fff !important;
   --vb-front-card-bg-light: #ffffff;
   --vb-front-card-bg-light-soft: #fbfcfe;
   --vb-front-card-bg-light-deep: #eef4fa;
@@ -236,24 +234,6 @@
   --vb-front-dark-text-on-accent: #111315;
   --vb-front-dark-fill: #c7d0d8;
 }
-/* waline */
-body .wl-panel {
-  margin: 0.5em 0;
-  border-radius: 0;
-  background-color: var(--vb-front-card-bg-light);
-}
-.dark .wl-input:focus {
-  background-color: inherit;
-}
-.dark .wl-editor:focus {
-  background-color: inherit;
-}
-body #wl-edit {
-  transition: none;
-}
-.dark .wl-panel {
-  background-color: var(--vb-front-card-bg-dark-soft);
-}
 .toast {
   background-color: var(--vb-front-card-bg-light-deep);
   color: #1f2937;
@@ -261,10 +241,6 @@ body #wl-edit {
 .dark .toast {
   background-color: var(--vb-front-card-bg-dark-soft);
   color: #d7e8f7;
-}
-.wl-git-popup input {
-  background-color: inherit;
-  outline: none;
 }
 .popover-arrow {
   opacity: 1 !important;

@@ -67,8 +67,9 @@ vi.mock("../components/UnLockCard", () => ({
   default: () => React.createElement("div", null, "unlock-card"),
 }));
 
-vi.mock("../components/WaLine", () => ({
-  default: () => React.createElement("div", null, "waline"),
+vi.mock("../components/Comments", () => ({
+  default: ({ enable, target }: { enable: string; target: string }) =>
+    React.createElement("div", { "data-comments": target }, `comments-${enable}`),
 }));
 
 vi.mock("../components/TocMobile", () => ({
@@ -330,7 +331,7 @@ describe("public cache fragments", () => {
       }),
     );
 
-    expect(html).not.toContain("waline-comment-count");
+    expect(html).not.toContain("comments-true");
     expect(html).not.toContain(">0</span>");
   });
 
@@ -364,7 +365,7 @@ describe("public cache fragments", () => {
     expect(html).not.toContain("当前文章评论数");
     expect(html).not.toContain("before-change");
     expect(html).not.toContain("after-change");
-    expect(html).not.toContain("waline");
+    expect(html).not.toContain("data-comments");
   });
 
   it("keeps article shell HTML stable when nav and fragment payloads change", async () => {
