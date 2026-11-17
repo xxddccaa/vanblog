@@ -115,6 +115,56 @@ async function openAdminRoute(page, route) {
   return assertNoErrorBoundary(page, route);
 }
 
+async function assertCommentManagePage(page) {
+  const commentBody = await openAdminRoute(page, '/site/comment');
+  assert.ok(commentBody.includes('评论管理'), '/site/comment did not render expected title');
+  for (const tabText of ['全部', '待审核', '已通过', '垃圾', '已删除']) {
+    assert.ok(commentBody.includes(tabText), `/site/comment is missing the ${tabText} status tab`);
+  }
+  await page.locator('.ant-pro-table .ant-table').first().waitFor({
+    state: 'visible',
+    timeout: 15000,
+  });
+  const headerText = await page.locator('.ant-pro-table thead').first().innerText();
+  for (const column of ['作者', '内容', '所在页面', '状态', '操作']) {
+    assert.ok(headerText.includes(column), `comment table is missing the ${column} column`);
+  }
+  assert.equal(
+    await page.locator('iframe[src*="/api/ui"]').count(),
+    0,
+    'comment page still embeds the Waline admin UI',
+  );
+  await clickTab(page, '待审核', 'status');
+  assert.equal(
+    new URL(page.url()).searchParams.get('status'),
+    'pending',
+    'pending status tab did not update the URL',
+  );
+  await page.locator('.ant-pro-table .ant-table').first().waitFor({
+    state: 'visible',
+    timeout: 15000,
+  });
+}
+
+async function assertCommentSettingTab(page) {
+  await openAdminRoute(page, '/site/setting?tab=comment');
+  for (const label of ['审核策略', '违禁词', '博主邮箱', 'SMTP 主机', 'SMTP 密码']) {
+    await page.getByText(label, { exact: true }).first().waitFor({ timeout: 15000 });
+  }
+  assert.ok(
+    (await page.getByRole('button', { name: '发送测试邮件' }).count()) > 0,
+    'comment setting tab is missing the test mail button',
+  );
+
+  await openAdminRoute(page, '/site/setting?tab=waline');
+  await page.getByText('审核策略', { exact: true }).first().waitFor({ timeout: 15000 });
+  assert.equal(
+    new URL(page.url()).searchParams.get('tab'),
+    'comment',
+    'legacy ?tab=waline link was not mapped to the comment settings tab',
+  );
+}
+
 async function clickTab(page, tabText, queryKey = 'tab') {
   const tab = page.getByRole('tab', { name: tabText });
   if ((await tab.count()) > 0) {
@@ -762,10 +812,6 @@ async function main() {
     await assertDarkByteMdEmojiClickable(page, token);
     await assertDarkByteMdDropdownHoverReadable(page, token);
     await page.waitForTimeout(2500);
-    const walinePrewarmState = await page.evaluate(() =>
-      window.sessionStorage.getItem('vanblog.admin.waline-prewarmed'),
-    );
-    assert.ok(walinePrewarmState, 'waline prewarm did not run after entering admin shell');
 
     const cases = [
       { route: '/welcome', title: '分析概览', tabTexts: ['访客统计', '文章分析'] },
@@ -823,15 +869,8 @@ async function main() {
       await deleteTempMindMap(token, tempMindMapId);
     }
 
-    const commentBody = await openAdminRoute(page, '/site/comment');
-    assert.ok(commentBody.includes('评论管理'), '/site/comment did not render expected title');
-    const commentFrame = page.locator('iframe[title="waline 后台"]');
-    await commentFrame.waitFor({ state: 'visible', timeout: 15000 });
-    const commentFrameBox = await commentFrame.boundingBox();
-    assert.ok(
-      commentFrameBox && commentFrameBox.height >= 700,
-      'comment iframe height is too short',
-    );
+    await assertCommentManagePage(page);
+    await assertCommentSettingTab(page);
 
     assert.deepEqual(pageErrors, [], `page errors: ${pageErrors.join('\n')}`);
     assert.equal(

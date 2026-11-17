@@ -99,8 +99,7 @@ const InitPage = () => {
                 if (res?.statusCode == 200 || res?.statusCode == 500) {
                   Modal.success({
                     title: '初始化成功!',
-                    content:
-                      '首次使用请记得去后台 “站点管理/评论管理” 中注册一下评论系统的管理员账号哦！评论通知等设置可在 “系统设置/评论设置” 中找到。',
+                    content: '评论审核策略、邮件通知等设置可在 “系统设置/评论设置” 中找到。',
                     onOk: () => {
                       history.push('/user/login');
                     },
