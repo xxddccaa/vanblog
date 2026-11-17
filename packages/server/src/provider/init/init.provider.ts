@@ -4,7 +4,6 @@ import { Model } from 'src/storage/mongoose-compat';
 import { InitDto } from 'src/types/init.dto';
 import { MetaDocument } from 'src/scheme/meta.schema';
 import { UserDocument } from 'src/scheme/user.schema';
-import { WalineProvider } from '../waline/waline.provider';
 import { SettingProvider } from '../setting/setting.provider';
 import { version } from '../../utils/loadConfig';
 import { hashPasswordCredential, makeSalt } from 'src/utils/crypto';
@@ -31,7 +30,6 @@ export class InitProvider {
     @InjectModel('Category') private categoryModal: Model<CategoryDocument>,
     @InjectModel('CustomPage')
     private customPageModal: Model<CustomPageDocument>,
-    private readonly walineProvider: WalineProvider,
     private readonly settingProvider: SettingProvider,
     private readonly cacheProvider: CacheProvider,
     private readonly websiteProvider: WebsiteProvider,
@@ -153,12 +151,6 @@ export class InitProvider {
     } catch (err) {
       this.logger.error(`初始化核心数据失败: ${err?.message || err}`);
       throw new BadRequestException('初始化失败');
-    }
-
-    try {
-      await this.walineProvider.init();
-    } catch (err) {
-      this.logger.warn(`初始化后同步 Waline 失败: ${err?.message || err}`);
     }
 
     try {

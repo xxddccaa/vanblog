@@ -11,6 +11,7 @@ import { encodeQuerystring } from 'src/utils/washUrl';
 import { PublicDataCacheProvider } from '../public-data-cache/public-data-cache.provider';
 import { CloudflareCacheProvider } from '../cloudflare-cache/cloudflare-cache.provider';
 import { toCacheTag } from 'src/utils/cacheTag';
+import { getSharedSecret } from 'src/utils/sharedSecret';
 export interface ActiveConfig {
   postId?: number;
   forceActice?: boolean;
@@ -23,8 +24,7 @@ export class ISRProvider {
     (process.env.NODE_ENV === 'production'
       ? 'http://website:3001/api/revalidate?path='
       : 'http://127.0.0.1:3001/api/revalidate?path=');
-  private readonly isrToken =
-    process.env['VANBLOG_ISR_TOKEN'] || process.env['WALINE_JWT_TOKEN'] || '';
+  private readonly isrToken = process.env['VANBLOG_ISR_TOKEN'] || getSharedSecret();
   logger = new Logger(ISRProvider.name);
   timer = null;
   // A forced refresh must survive the debounce even if a later, non-forced call

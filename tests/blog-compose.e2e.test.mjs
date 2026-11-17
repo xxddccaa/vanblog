@@ -5,6 +5,7 @@ import path from 'node:path';
 import net from 'node:net';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { assertNativeCommentFlow, assertWalineRoutesRemoved } from './native-comment-smoke.mjs';
 
 const repoRoot = process.cwd();
 const projectName = `vanblog-e2e-${Date.now().toString(36)}`;
@@ -248,7 +249,7 @@ async function waitForHealthyStack(composeEnv, { requireCaddy = true } = {}) {
 
     const services = parseComposePsOutput(result.stdout);
     const byService = Object.fromEntries(services.map((service) => [service.Service, service]));
-    const requiredHealthy = ['postgres', 'redis', 'server', 'website', 'admin', 'waline'];
+    const requiredHealthy = ['postgres', 'redis', 'server', 'website', 'admin'];
     if (!requiredHealthy.every((name) => byService[name]?.Health === 'healthy')) {
       return false;
     }
@@ -320,7 +321,7 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     });
     await waitForHealthyStack(composeEnv);
 
-    for (const service of ['server', 'website', 'waline']) {
+    for (const service of ['server', 'website']) {
       const uidResult = runCommand(
         [
           '-f',
@@ -349,27 +350,6 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
       );
     }
 
-    const walineDependencyCheck = runCommand(
-      [
-        '-f',
-        'docker-compose.yml',
-        'exec',
-        '-T',
-        'waline',
-        'node',
-        '-e',
-        `for (const name of ['@cloudbase/node-sdk', 'leancloud-storage', 'akismet']) {
-          try {
-            require.resolve(name);
-            console.error('unexpected dependency:', name);
-            process.exitCode = 1;
-          } catch {}
-        }`,
-      ],
-      { env: composeEnv },
-    );
-    assert.equal(walineDependencyCheck.status, 0);
-
     const swagger = await waitFor(async () => {
       try {
         const response = await fetchText(`${baseUrl}/swagger`);
@@ -395,20 +375,6 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
       const hidden = await fetchText(`${baseUrl}${hiddenPath}`);
       assert.equal(hidden.status, 404, `${hiddenPath} should not be public`);
     }
-
-    const walineAdmin = await waitFor(async () => {
-      try {
-        const response = await fetchText(`${baseUrl}/api/ui/`);
-        return response.status === 200 ? response : false;
-      } catch {
-        return false;
-      }
-    }, {
-      timeoutMs: 90 * 1000,
-      intervalMs: 3000,
-      label: 'waline admin to be reachable',
-    });
-    assert.match(walineAdmin.text, /Waline Management System/i);
 
     const adminRedirect = await fetchText(`${baseUrl}/admin`, {
       redirect: 'manual',
@@ -507,7 +473,7 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
           enableCustomizing: 'true',
           showRSS: 'true',
           openArticleLinksInNewWindow: 'false',
-          enableComment: 'false',
+          enableComment: 'true',
           showSubMenu: 'false',
           homePageSize: 5,
         },
@@ -592,6 +558,9 @@ test('split stack supports init, login, draft publish, and frontend browsing', {
     assert.equal(engagementResponse.status, 200);
     assert.equal(engagementResponse.body?.statusCode, 200);
     assert.equal(engagementResponse.body?.data?.commentCount, 0);
+
+    await assertWalineRoutesRemoved(baseUrl);
+    await assertNativeCommentFlow(baseUrl, waitFor);
 
     const publicList = await fetchJson(`${baseUrl}/api/public/article?page=1&pageSize=10&toListView=true`);
     assert.equal(publicList.status, 200);

@@ -6,10 +6,6 @@
   }
 }
 
-(h) {
-  trusted_proxies private_ranges
-}
-
 http:// {
   encode zstd gzip
   header {
@@ -48,36 +44,6 @@ http:// {
   }
   log_skip @vanblog_healthcheck
 
-  handle /ui* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /user* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /token* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /db* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /comment* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /oauth* {
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
   handle /favicon* {
     uri replace /favicon /static/img/favicon
     reverse_proxy 127.0.0.1:3000
@@ -112,42 +78,6 @@ http:// {
   }
   handle /swagger* {
     respond "Not Found" 404
-  }
-  handle /api/user* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/db* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/comment* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/token* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/oauth* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/ui* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
   }
   handle /api/* {
     reverse_proxy 127.0.0.1:3000

@@ -7,19 +7,12 @@ describe('SettingController adminTheme', () => {
       getAdminThemeSetting: jest.fn().mockResolvedValue(defaultAdminThemeSetting),
       updateAdminThemeSetting: jest.fn().mockResolvedValue(defaultAdminThemeSetting),
     };
-    const walineProvider = {
-      restart: jest.fn(),
-    };
     const isrProvider = {
       activeAll: jest.fn().mockResolvedValue('ok'),
     };
 
     return {
-      controller: new SettingController(
-        settingProvider as any,
-        walineProvider as any,
-        isrProvider as any,
-      ),
+      controller: new SettingController(settingProvider as any, isrProvider as any),
       settingProvider,
       isrProvider,
     };

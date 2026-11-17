@@ -33,7 +33,11 @@ describe('RssProvider', () => {
     config.staticPath = originalStaticPath;
   });
 
-  const createProvider = (articles?: any[], publicMaskProvider?: any) => {
+  const createProvider = (
+    articles?: any[],
+    publicMaskProvider?: any,
+    commentSetting: any = { notify: { ownerEmail: 'author@example.com' } },
+  ) => {
     const articleProvider = {
       getByOption: jest.fn().mockResolvedValue({
         articles: articles || [
@@ -69,7 +73,7 @@ describe('RssProvider', () => {
         }),
       } as any,
       {
-        getWalineSetting: jest.fn().mockResolvedValue({ authorEmail: 'author@example.com' }),
+        getCommentSetting: jest.fn().mockResolvedValue(commentSetting),
       } as any,
       markdownProvider as any,
       publicMaskProvider,
@@ -150,6 +154,39 @@ describe('RssProvider', () => {
         },
       }),
     );
+  });
+
+  it('uses the comment owner email as the feed author email', async () => {
+    const { provider } = createProvider();
+
+    await provider.generateRssFeedFn('test');
+
+    expect(FeedMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        author: expect.objectContaining({ name: 'Author', email: 'author@example.com' }),
+      }),
+    );
+  });
+
+  it('falls back to the EMAIL env var when no comment owner email is set', async () => {
+    const previousEmail = process.env.EMAIL;
+    process.env.EMAIL = 'env-owner@example.com';
+    try {
+      const { provider } = createProvider(undefined, undefined, {
+        notify: { ownerEmail: '' },
+      });
+
+      await provider.generateRssFeedFn('test');
+
+      expect(FeedMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          author: expect.objectContaining({ email: 'env-owner@example.com' }),
+        }),
+      );
+    } finally {
+      if (previousEmail === undefined) delete process.env.EMAIL;
+      else process.env.EMAIL = previousEmail;
+    }
   });
 
   it('writes rss, json feed, and atom artifacts into the static rss directory', async () => {

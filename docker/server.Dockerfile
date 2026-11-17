@@ -68,14 +68,13 @@ RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALP
 
 COPY --from=builder /prod/server/ ./
 COPY --from=builder /app/packages/server/dist ./dist
-COPY docker/shared/ensure-waline-jwt.cjs /app/ensure-waline-jwt.cjs
+COPY docker/shared/ensure-shared-secret.cjs /app/ensure-shared-secret.cjs
 COPY docker/server/entrypoint.sh /app/server/entrypoint.sh
 RUN chmod +x /app/server/entrypoint.sh
 
 ENV NODE_ENV=production
 ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
 ENV VAN_BLOG_REDIS_URL="redis://redis:6379"
-ENV VAN_BLOG_WALINE_DB="waline"
 ENV VANBLOG_CADDY_API_URL="http://caddy:2019"
 ENV VANBLOG_WEBSITE_CONTROL_URL="http://website:3011"
 ENV VANBLOG_WEBSITE_ISR_BASE="http://website:3001/api/revalidate?path="

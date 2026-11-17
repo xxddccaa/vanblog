@@ -6,7 +6,6 @@ import {
   LayoutSetting,
   LoginSetting,
   StaticSetting,
-  WalineSetting,
   AdminLayoutSetting,
   defaultAdminLayoutSetting,
   AdminThemeSetting,
@@ -16,7 +15,6 @@ import {
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { ISRProvider } from 'src/provider/isr/isr.provider';
 import { SettingProvider } from 'src/provider/setting/setting.provider';
-import { WalineProvider } from 'src/provider/waline/waline.provider';
 import { ApiToken } from 'src/provider/swagger/token';
 
 @ApiTags('setting')
@@ -26,7 +24,6 @@ import { ApiToken } from 'src/provider/swagger/token';
 export class SettingController {
   constructor(
     private readonly settingProvider: SettingProvider,
-    private readonly walineProvider: WalineProvider,
     private readonly isrProvider: ISRProvider,
   ) {}
 
@@ -48,35 +45,6 @@ export class SettingController {
       };
     }
     const res = await this.settingProvider.updateStaticSetting(body);
-    return {
-      statusCode: 200,
-      data: res,
-    };
-  }
-  @Put('waline')
-  async updateWalineSetting(@Body() body: WalineSetting) {
-    if (config?.demo == true || config?.demo == 'true') {
-      return {
-        statusCode: 401,
-        message: '演示站禁止修改此项！',
-      };
-    }
-    const res = await this.settingProvider.updateWalineSetting(body);
-    await this.walineProvider.restart('更新 waline 设置，');
-    return {
-      statusCode: 200,
-      data: res,
-    };
-  }
-  @Get('waline')
-  async getWalineSetting() {
-    if (config?.demo == true || config?.demo == 'true') {
-      return {
-        statusCode: 200,
-        data: null,
-      };
-    }
-    const res = await this.settingProvider.getWalineSetting();
     return {
       statusCode: 200,
       data: res,

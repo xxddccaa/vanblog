@@ -7,7 +7,7 @@
 !patches/**
 !docker/
 !docker/shared/
-!docker/shared/ensure-waline-jwt.cjs
+!docker/shared/ensure-shared-secret.cjs
 !docker/server/
 !docker/server/entrypoint.sh
 !packages/

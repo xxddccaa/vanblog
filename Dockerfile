@@ -23,7 +23,6 @@ COPY packages/server/package.json ./packages/server/
 COPY packages/website/package.json ./packages/website/
 COPY packages/admin/package.json ./packages/admin/
 COPY packages/cli/package.json ./packages/cli/
-COPY packages/waline/package.json ./packages/waline/
 
 # Install all dependencies (including devDependencies for building)
 RUN pnpm install
@@ -91,12 +90,6 @@ COPY ./packages/cli/ ./
 COPY packages/cli/package.json ./package.json
 RUN pnpm install --prod
 
-# Copy Waline with PRODUCTION dependencies only
-WORKDIR /app/waline
-COPY ./packages/waline/ ./
-COPY packages/waline/package.json ./package.json
-RUN pnpm install --prod
-
 # Copy server with PRODUCTION dependencies only
 WORKDIR /app/server
 COPY --from=server_builder /app/packages/server/dist/src/ ./
@@ -125,7 +118,6 @@ WORKDIR /app
 COPY caddyTemplate.json /app/caddyTemplate.json
 COPY CaddyfileTemplateLocal /app/CaddyfileTemplateLocal
 COPY ./scripts/start.js ./
-COPY ./scripts/fix-waline-dashboard.js ./scripts/
 COPY ./entrypoint.sh ./
 
 # Set production environment variables.
@@ -135,8 +127,6 @@ ENV VAN_BLOG_SERVER_URL="http://127.0.0.1:3000"
 ENV VAN_BLOG_ALLOW_DOMAINS="pic.mereith.com"
 ENV VAN_BLOG_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/vanblog"
 ENV EMAIL="vanblog@mereith.com"
-ENV VAN_BLOG_WALINE_DB="waline"
-ENV VAN_BLOG_WALINE_DATABASE_URL="postgresql://postgres:postgres@postgres:5432/waline"
 ENV PORT=3001
 ARG VAN_BLOG_VERSIONS
 ENV VAN_BLOG_VERSION=${VAN_BLOG_VERSIONS}

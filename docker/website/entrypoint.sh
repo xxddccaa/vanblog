@@ -9,7 +9,8 @@ if [ "$(id -u)" = "0" ] && [ "${VANBLOG_DROPPED_PRIVILEGES:-}" != "1" ]; then
   exec su-exec vanblog:vanblog sh "$(readlink -f "$0")" "$@"
 fi
 
-WALINE_SHARED_JWT="$(node /app/ensure-waline-jwt.cjs WALINE_JWT_TOKEN)"
-export WALINE_JWT_TOKEN="${WALINE_SHARED_JWT}"
+# WALINE_JWT_TOKEN is the pre-rename name of the shared secret and stays a fallback.
+SHARED_SECRET="$(node /app/ensure-shared-secret.cjs VANBLOG_SHARED_SECRET WALINE_JWT_TOKEN)"
+export VANBLOG_SHARED_SECRET="${SHARED_SECRET}"
 
 exec node runner.cjs

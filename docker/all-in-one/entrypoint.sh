@@ -27,16 +27,10 @@ REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-}"
 REDIS_MAXMEMORY_POLICY="${REDIS_MAXMEMORY_POLICY:-}"
 REDIS_LOGLEVEL="${REDIS_LOGLEVEL:-warning}"
 REDIS_PASSWORD="${REDIS_PASSWORD:-}"
-WALINE_DB="${VAN_BLOG_WALINE_DB:-waline}"
-WALINE_USER="${POSTGRES_USER:-postgres}"
-WALINE_PASSWORD="${PG_PASSWORD:-}"
 WEBSITE_CONTROL_PORT="${WEBSITE_CONTROL_PORT:-3011}"
-WALINE_CONTROL_PORT="${WALINE_CONTROL_PORT:-8361}"
-WALINE_PORT="${WALINE_PORT:-8360}"
 
 server_pid=""
 website_pid=""
-waline_pid=""
 admin_pid=""
 redis_pid=""
 postgres_pid=""
@@ -112,8 +106,7 @@ initialize_runtime_secrets() {
     ensure_runtime_secret "${REDIS_PASSWORD}" \
       /var/log/vanblog-secrets/redis.password ""
   )"
-  WALINE_PASSWORD="${WALINE_PASSWORD:-${POSTGRES_PASSWORD}}"
-  export POSTGRES_PASSWORD REDIS_PASSWORD WALINE_PASSWORD
+  export POSTGRES_PASSWORD REDIS_PASSWORD
 }
 
 write_postgres_runtime_config() {
@@ -268,34 +261,19 @@ start_redis() {
 start_apps() {
   local postgres_password_url
   local redis_password_url
-  local waline_password_url
   postgres_password_url="$(
     node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "${POSTGRES_PASSWORD}"
   )"
   redis_password_url="$(
     node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "${REDIS_PASSWORD}"
   )"
-  waline_password_url="$(
-    node -e "process.stdout.write(encodeURIComponent(process.argv[1]))" "${WALINE_PASSWORD}"
-  )"
   export NODE_ENV="${NODE_ENV:-production}"
   export VAN_BLOG_DATABASE_URL="${VAN_BLOG_DATABASE_URL:-postgresql://${POSTGRES_USER}:${postgres_password_url}@127.0.0.1:${POSTGRES_PORT}/${POSTGRES_DB}}"
   export VAN_BLOG_REDIS_URL="${VAN_BLOG_REDIS_URL:-redis://:${redis_password_url}@127.0.0.1:${REDIS_PORT}}"
-  export VAN_BLOG_WALINE_DB="${WALINE_DB}"
-  export VAN_BLOG_WALINE_DATABASE_URL="${VAN_BLOG_WALINE_DATABASE_URL:-postgresql://${WALINE_USER}:${waline_password_url}@127.0.0.1:${POSTGRES_PORT}/${WALINE_DB}}"
-  # all-in-one 单容器内 Waline 跑在 127.0.0.1，必须覆盖多容器默认的 http://waline:8360，
-  # 否则 server 取评论数会 ENOTFOUND、评论数恒为 0 并每次访问刷 WARN 日志。
-  export VAN_BLOG_WALINE_API_URL="${VAN_BLOG_WALINE_API_URL:-http://127.0.0.1:${WALINE_PORT}}"
   export VANBLOG_CADDY_API_URL="${VANBLOG_CADDY_API_URL:-http://127.0.0.1:2019}"
   export VANBLOG_WEBSITE_CONTROL_URL="${VANBLOG_WEBSITE_CONTROL_URL:-http://127.0.0.1:${WEBSITE_CONTROL_PORT}}"
-  export VANBLOG_WALINE_CONTROL_URL="${VANBLOG_WALINE_CONTROL_URL:-http://127.0.0.1:${WALINE_CONTROL_PORT}}"
   export VANBLOG_WEBSITE_ISR_BASE="${VANBLOG_WEBSITE_ISR_BASE:-http://127.0.0.1:3001/api/revalidate?path=}"
   export VAN_BLOG_CADDY_MANAGE_HTTPS="${VAN_BLOG_CADDY_MANAGE_HTTPS:-false}"
-  export PG_HOST="${PG_HOST:-127.0.0.1}"
-  export PG_PORT="${PG_PORT:-${POSTGRES_PORT}}"
-  export PG_DB="${PG_DB:-${WALINE_DB}}"
-  export PG_USER="${PG_USER:-${WALINE_USER}}"
-  export PG_PASSWORD="${PG_PASSWORD:-${WALINE_PASSWORD}}"
 
   log "starting server"
   (
@@ -311,20 +289,12 @@ start_apps() {
   ) &
   website_pid=$!
 
-  log "starting Waline"
-  (
-    cd /app/waline
-    exec sh entrypoint.sh
-  ) &
-  waline_pid=$!
-
   log "starting admin"
   nginx -g 'daemon off;' &
   admin_pid=$!
 
   wait_for_http "server" "http://127.0.0.1:3000/"
   wait_for_http "website" "http://127.0.0.1:${WEBSITE_CONTROL_PORT}/health"
-  wait_for_http "Waline" "http://127.0.0.1:${WALINE_CONTROL_PORT}/health"
   wait_for_http "admin" "http://127.0.0.1:3002/admin/"
 }
 
@@ -338,7 +308,7 @@ start_caddy() {
 cleanup() {
   set +e
 
-  for pid in "${caddy_pid}" "${admin_pid}" "${waline_pid}" "${website_pid}" "${server_pid}" "${redis_pid}"; do
+  for pid in "${caddy_pid}" "${admin_pid}" "${website_pid}" "${server_pid}" "${redis_pid}"; do
     if [[ -n "${pid}" ]]; then
       kill "${pid}" 2>/dev/null || true
     fi
@@ -360,7 +330,6 @@ write_postgres_runtime_config
 start_postgres
 ensure_postgres_password
 ensure_postgres_database "${POSTGRES_DB}"
-ensure_postgres_database "${WALINE_DB}"
 start_redis
 start_apps
 start_caddy
@@ -371,7 +340,6 @@ wait -n \
   "${redis_pid}" \
   "${server_pid}" \
   "${website_pid}" \
-  "${waline_pid}" \
   "${admin_pid}" \
   "${caddy_pid}"
 log "a managed process exited; stopping container"

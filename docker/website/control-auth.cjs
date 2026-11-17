@@ -2,8 +2,15 @@ const crypto = require('crypto');
 
 const CONTROL_TOKEN_HEADER = 'x-vanblog-control-token';
 
+// WALINE_JWT_TOKEN is the pre-rename name of VANBLOG_SHARED_SECRET.
 const getExpectedControlToken = (env = process.env) =>
-  String(env.VANBLOG_WEBSITE_CONTROL_TOKEN || env.VANBLOG_ISR_TOKEN || env.WALINE_JWT_TOKEN || '');
+  String(
+    env.VANBLOG_WEBSITE_CONTROL_TOKEN ||
+      env.VANBLOG_ISR_TOKEN ||
+      env.VANBLOG_SHARED_SECRET ||
+      env.WALINE_JWT_TOKEN ||
+      '',
+  );
 
 const normalizeHeaderValue = (value) => {
   if (Array.isArray(value)) {

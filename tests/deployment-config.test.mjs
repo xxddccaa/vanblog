@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import nodePath from 'node:path';
 
+const require = createRequire(import.meta.url);
 const read = (path) => fs.readFileSync(path, 'utf8');
 const exists = (path) => fs.existsSync(path);
 
@@ -15,19 +16,36 @@ const composeLatest = read('docker-compose.latest.yml');
 const composeAllInOne = read('docker-compose.all-in-one.yml');
 const composeAllInOneImage = read('docker-compose.all-in-one.image.yml');
 const composeAllInOneLatest = read('docker-compose.all-in-one.latest.yml');
+const composeHttps = read('docker-compose.https.yml');
 const manualCompose = read('tests/manual-v1.3.0/docker-compose.yaml');
 
 const caddyfile = read('docker/caddy/Caddyfile');
 const caddyfileHttps = read('docker/caddy/Caddyfile.https');
 const allInOneCaddyfile = read('docker/all-in-one/Caddyfile');
+const hostDevCaddyfile = read('tests/host-dev/Caddyfile');
+const legacyCaddyfileTemplate = read('CaddyfileTemplate');
+const legacyCaddyfileTemplateLocal = read('CaddyfileTemplateLocal');
+const legacyCaddyJsonTemplate = read('caddyTemplate.json');
 
 const serverDockerfile = read('docker/server.Dockerfile');
 const serverDockerignore = read('docker/server.Dockerfile.dockerignore');
 const serverEntrypoint = read('docker/server/entrypoint.sh');
-const walineDockerfile = read('docker/waline.Dockerfile');
-const walineDockerignore = read('docker/waline.Dockerfile.dockerignore');
+const websiteDockerfile = read('docker/website.Dockerfile');
+const websiteDockerignore = read('docker/website.Dockerfile.dockerignore');
 const websiteEntrypoint = read('docker/website/entrypoint.sh');
-const walineEntrypoint = read('docker/waline/entrypoint.sh');
+const websiteControlAuth = require('../docker/website/control-auth.cjs');
+const rootDockerfile = read('Dockerfile');
+const rootEntrypoint = read('entrypoint.sh');
+const releaseImagesScript = read('scripts/release-images.sh');
+const releasePublishScript = read('scripts/release-publish.sh');
+const auditProductionScript = read('scripts/audit-production.mjs');
+const hostDevScripts = [
+  'scripts/host-dev-up.sh',
+  'scripts/host-dev-env.sh',
+  'scripts/host-dev-down.sh',
+  'scripts/host-dev-status.sh',
+  'scripts/ensure-host-dev-db.mjs',
+].map((file) => [file, read(file)]);
 const allInOneDockerfile = read('docker/all-in-one.Dockerfile');
 const allInOneEntrypoint = read('docker/all-in-one/entrypoint.sh');
 const allInOneHealthcheck = read('docker/all-in-one/healthcheck.sh');
@@ -60,7 +78,6 @@ const websitePageviewApi = read('packages/website/api/pageview.ts');
 const websiteMarkdownTheme = read('packages/website/utils/markdownTheme.ts');
 const adminMarkdownTheme = read('packages/admin/src/utils/markdownTheme.ts');
 
-const require = createRequire(import.meta.url);
 const nextConfig = require('../packages/website/next.config.js');
 const proxyBuildArgs = [
   'HTTP_PROXY=',
@@ -100,7 +117,6 @@ test('host, CI, packages, and Docker builds stay on Node 22', () => {
     'Dockerfile',
     'docker/server.Dockerfile',
     'docker/website.Dockerfile',
-    'docker/waline.Dockerfile',
     'docker/all-in-one.Dockerfile',
     'packages/admin/Dockerfile',
     'packages/server/Dockerfile',
@@ -197,12 +213,12 @@ test('docker compose defines the split runtime services', () => {
     'server:',
     'website:',
     'admin:',
-    'waline:',
     'postgres:',
     'redis:',
   ]) {
     assert.match(compose, new RegExp(`^\\s{2}${service}`, 'm'));
   }
+  assert.doesNotMatch(compose, /^\s{2}waline:/m);
 
   assert.match(compose, /docker\/caddy\.Dockerfile/);
   assert.match(compose, /docker\/server\.Dockerfile/);
@@ -222,7 +238,10 @@ test('all-in-one compose defines a single non-AI service', () => {
     assert.doesNotMatch(file, /^\s{2}fastgpt-app:/m);
     assert.match(file, /POSTGRES_DB:/);
     assert.match(file, /VANBLOG_REDIS_DIR/);
-    assert.match(file, /WALINE_JWT_TOKEN:/);
+    assert.match(
+      file,
+      /VANBLOG_SHARED_SECRET: \$\{VANBLOG_SHARED_SECRET:-\$\{WALINE_JWT_TOKEN:-\}\}/,
+    );
     assert.match(file, /VANBLOG_SECRET_DIR:-\.\/secrets}:\s*\/run\/secrets\/vanblog/);
   }
 
@@ -250,7 +269,7 @@ test('all-in-one runtime uses localhost fan-out and no AI terminal flags', () =>
   assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3000/);
   assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3001/);
   assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3002/);
-  assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:8360/);
+  assert.doesNotMatch(allInOneCaddyfile, /8360/);
   assert.doesNotMatch(allInOneCaddyfile, /ai-terminal/);
 
   assert.match(allInOneEntrypoint, /127\.0\.0\.1:2019/);
@@ -272,9 +291,7 @@ test('all-in-one runtime uses localhost fan-out and no AI terminal flags', () =>
     serverEntrypoint,
     /su-exec vanblog:vanblog bash "\$\(readlink -f "\$0"\)"/,
   );
-  for (const entrypoint of [websiteEntrypoint, walineEntrypoint]) {
-    assert.match(entrypoint, /su-exec vanblog:vanblog sh "\$\(readlink -f "\$0"\)"/);
-  }
+  assert.match(websiteEntrypoint, /su-exec vanblog:vanblog sh "\$\(readlink -f "\$0"\)"/);
 
   assert.match(allInOneHealthcheck, /pg_isready -h 127\.0\.0\.1/);
   assert.match(allInOneHealthcheck, /redis-cli -h 127\.0\.0\.1/);
@@ -297,7 +314,6 @@ test('all-in-one image keeps dependency installation ahead of source copies', ()
     'packages/server/package.json ./packages/server/',
     'packages/website/package.json ./packages/website/',
     'packages/admin/package.json ./packages/admin/',
-    'packages/waline/package.json ./packages/waline/',
     'packages/cli/package.json ./packages/cli/',
   ]) {
     assert.match(
@@ -339,14 +355,14 @@ printf '\\n' >> "$DOCKER_LOG"
       script: 'scripts/release-images.sh',
       clear: true,
       push: false,
-      expectedCalls: 5,
+      expectedCalls: 4,
       commandPrefix: 'build\t',
     },
     {
       script: 'scripts/release-images.sh',
       clear: false,
       push: true,
-      expectedCalls: 5,
+      expectedCalls: 4,
       commandPrefix: 'buildx\tbuild\t',
     },
     {
@@ -499,7 +515,6 @@ test('every Alpine apk stage honors ALPINE_MIRROR_HOST so proxy-cleared release 
 test('docker compose wires cross-container control endpoints', () => {
   assert.match(compose, /VANBLOG_CADDY_API_URL:\s+http:\/\/caddy:2019/);
   assert.match(compose, /VANBLOG_WEBSITE_CONTROL_URL:\s+http:\/\/website:3011/);
-  assert.match(compose, /VANBLOG_WALINE_CONTROL_URL:\s+http:\/\/waline:8361/);
   assert.match(compose, /VAN_BLOG_DATABASE_URL:\s+\$\{VAN_BLOG_DATABASE_URL:-postgresql:\/\//);
   assert.match(
     compose,
@@ -585,36 +600,16 @@ test('server runtime no longer bundles AI terminal dependencies', () => {
   }
 });
 
-test('split server and Waline images include the patched production dependency graph', () => {
+test('split server image includes the patched production dependency graph', () => {
   assert.match(serverDockerfile, /COPY patches \.\/patches/);
   assert.match(serverDockerignore, /!patches\/\*\*/);
-  assert.match(walineDockerfile, /COPY patches \.\/patches/);
-  assert.match(walineDockerignore, /!package\.json/);
-  assert.match(walineDockerignore, /!pnpm-lock\.yaml/);
-  assert.match(walineDockerignore, /!pnpm-workspace\.yaml/);
-  assert.match(walineDockerignore, /!patches\/\*\*/);
-  assert.match(walineDockerignore, /!scripts\/fix-waline-adapter\.js/);
-  assert.match(
-    walineDockerfile,
-    /pnpm install --filter @vanblog\/waline\.\.\. --prod --ignore-scripts --frozen-lockfile/,
-  );
   assert.match(
     serverDockerfile,
     /delete manifest\.pnpm\?\.patchedDependencies;[\s\S]*pnpm deploy --legacy/,
   );
-  assert.match(walineDockerfile, /COPY --from=builder \/app\/node_modules \/app\/node_modules/);
-  assert.match(
-    walineDockerfile,
-    /COPY --from=builder \/app\/packages\/waline \/app\/packages\/waline/,
-  );
-  assert.match(walineDockerfile, /ln -s \/app\/packages\/waline \/app\/waline/);
-  assert.match(
-    walineDockerfile,
-    /chown -R vanblog:vanblog \/app\/waline\/node_modules\/@waline\/vercel\/runtime/,
-  );
 });
 
-test('Caddy only exposes blog, admin, api, and comment routes', () => {
+test('Caddy only exposes blog, admin, and api routes', () => {
   for (const file of [caddyfile, caddyfileHttps, allInOneCaddyfile]) {
     assert.match(file, /redir @adminNoSlash \/admin\/ 308/);
     assert.match(file, /handle \/admin\*/);
@@ -630,10 +625,8 @@ test('Caddy only exposes blog, admin, api, and comment routes', () => {
   }
   for (const file of [caddyfile, caddyfileHttps]) {
     assert.match(file, /reverse_proxy website:3001/);
-    assert.match(file, /reverse_proxy waline:8360/);
   }
   assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:3001/);
-  assert.match(allInOneCaddyfile, /reverse_proxy 127\.0\.0\.1:8360/);
 });
 
 test('manual compose fixture stays on the split runtime topology', () => {
@@ -746,19 +739,12 @@ test('all compose files cap docker logs with json-file rotation', () => {
   }
 });
 
-test('all-in-one overrides waline api url to localhost (fixes ENOTFOUND + comment count)', () => {
-  for (const file of [composeAllInOne, composeAllInOneImage, composeAllInOneLatest]) {
-    assert.match(file, /VAN_BLOG_WALINE_API_URL:\s*\$\{VAN_BLOG_WALINE_API_URL:-http:\/\/127\.0\.0\.1:8360\}/);
-  }
-  assert.match(allInOneEntrypoint, /VAN_BLOG_WALINE_API_URL/);
-});
-
 test('split services bypass injected proxies for internal traffic', () => {
-  const internalServices = 'localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki';
+  const internalServices = 'localhost,127.0.0.1,server,website,admin,postgres,redis,kroki';
   for (const [file, minimumMatches] of [
     [compose, 1],
-    [composeImage, 4],
-    [composeLatest, 4],
+    [composeImage, 3],
+    [composeLatest, 3],
   ]) {
     const upperMatches = file.match(new RegExp(`NO_PROXY: ${internalServices}`, 'g')) || [];
     const lowerMatches = file.match(new RegExp(`no_proxy: ${internalServices}`, 'g')) || [];
@@ -815,6 +801,347 @@ test('redis noise is reduced to warning level', () => {
 
 test('release env documents the new log-governance knobs', () => {
   assert.match(releaseEnv, /VAN_BLOG_LOG_LEVEL/);
-  assert.match(releaseEnv, /VAN_BLOG_WALINE_API_URL/);
   assert.match(releaseEnv, /REDIS_LOGLEVEL/);
+});
+
+
+const allComposeFiles = [
+  ['docker-compose.yml', compose],
+  ['docker-compose.image.yml', composeImage],
+  ['docker-compose.latest.yml', composeLatest],
+  ['docker-compose.all-in-one.yml', composeAllInOne],
+  ['docker-compose.all-in-one.image.yml', composeAllInOneImage],
+  ['docker-compose.all-in-one.latest.yml', composeAllInOneLatest],
+  ['docker-compose.https.yml', composeHttps],
+];
+
+const allCaddyConfigs = [
+  ['docker/caddy/Caddyfile', caddyfile],
+  ['docker/caddy/Caddyfile.https', caddyfileHttps],
+  ['docker/all-in-one/Caddyfile', allInOneCaddyfile],
+  ['tests/host-dev/Caddyfile', hostDevCaddyfile],
+  ['CaddyfileTemplate', legacyCaddyfileTemplate],
+  ['CaddyfileTemplateLocal', legacyCaddyfileTemplateLocal],
+  ['caddyTemplate.json', legacyCaddyJsonTemplate],
+];
+
+// The only Waline name allowed to survive is the legacy fallback of the shared secret.
+const withoutLegacySecretFallback = (content) =>
+  content.replace(/\$\{WALINE_JWT_TOKEN:-[^}]*\}/g, '');
+
+const readReleaseServices = (script) => {
+  const match = script.match(/^SERVICES=\(([^)]*)\)$/m);
+  assert.ok(match, 'release script should declare SERVICES');
+  return match[1].trim().split(/\s+/);
+};
+
+test('no compose file defines a Waline service or Waline env', () => {
+  for (const [label, content] of allComposeFiles) {
+    assert.doesNotMatch(content, /^\s{2}waline:/m, `${label} should not define a waline service`);
+    assert.doesNotMatch(content, /VAN_BLOG_WALINE_|VANBLOG_WALINE_|WALINE_CONTROL_/, label);
+    assert.doesNotMatch(content, /\b(?:8360|8361)\b/, label);
+    assert.doesNotMatch(withoutLegacySecretFallback(content), /waline/i, label);
+  }
+});
+
+test('no Caddy config routes to Waline any more', () => {
+  for (const [label, content] of allCaddyConfigs) {
+    assert.doesNotMatch(content, /8360|8361/, `${label} should not proxy to Waline`);
+    assert.doesNotMatch(content, /waline/i, label);
+    assert.doesNotMatch(
+      content,
+      /handle \/(?:api\/)?(?:ui|user|token|db|comment|oauth)\*?\s*\{/,
+      label,
+    );
+    assert.doesNotMatch(content, /"\/(?:api\/)?(?:ui|user|token|db|comment|oauth)\*?"/, label);
+  }
+  // /api/comment* and friends now fall through to the server, everything else to the website.
+  assert.match(caddyfile, /handle \/api\/\* \{\s*reverse_proxy server:3000/);
+  assert.match(caddyfileHttps, /handle \/api\/\* \{\s*reverse_proxy server:3000/);
+  assert.match(allInOneCaddyfile, /handle \/api\/\* \{\s*reverse_proxy 127\.0\.0\.1:3000/);
+});
+
+test('Waline images, package, patch, and scripts are removed', () => {
+  for (const path of [
+    'docker/waline.Dockerfile',
+    'docker/waline.Dockerfile.dockerignore',
+    'docker/waline',
+    'docker/shared/ensure-waline-jwt.cjs',
+    'packages/waline',
+    'patches/@waline__vercel@1.41.4.patch',
+    'scripts/fix-waline-adapter.js',
+    'scripts/fix-waline-dashboard.js',
+    'scripts/host-waline-runner.cjs',
+    'scripts/reset-waline.sh',
+  ]) {
+    assert.equal(exists(path), false, `${path} should be removed`);
+  }
+  assert.deepEqual(Object.keys(packageJson.pnpm.patchedDependencies), ['headroom.js@0.12.0']);
+  for (const [label, content] of [
+    ['docker/all-in-one.Dockerfile', allInOneDockerfile],
+    ['docker/all-in-one/entrypoint.sh', allInOneEntrypoint],
+    ['docker/all-in-one/healthcheck.sh', allInOneHealthcheck],
+    ['docker/server.Dockerfile', serverDockerfile],
+    ['docker/server.Dockerfile.dockerignore', serverDockerignore],
+    ['docker/website.Dockerfile', websiteDockerfile],
+    ['docker/website.Dockerfile.dockerignore', websiteDockerignore],
+    ['Dockerfile', rootDockerfile],
+    ['entrypoint.sh', rootEntrypoint],
+    ['scripts/audit-production.mjs', auditProductionScript],
+    ['scripts/release-images.sh', releaseImagesScript],
+    ['scripts/release-publish.sh', releasePublishScript],
+    ['.prettierignore', read('.prettierignore')],
+  ]) {
+    assert.doesNotMatch(content, /waline|8360|8361/i, `${label} should not reference Waline`);
+  }
+  for (const [label, content] of hostDevScripts) {
+    // host-dev still reads the pre-rename WALINE_JWT_TOKEN as a fallback.
+    assert.doesNotMatch(content.replace(/\bWALINE_JWT_TOKEN\b/g, ''), /waline|8360|8361/i, label);
+  }
+});
+
+test('all-in-one entrypoint no longer starts Waline or creates its database', () => {
+  assert.doesNotMatch(allInOneEntrypoint, /waline_pid|WALINE_DB|PG_HOST|PG_DB|PG_PASSWORD/);
+  assert.match(allInOneEntrypoint, /ensure_postgres_database "\$\{POSTGRES_DB\}"/);
+  assert.equal(allInOneEntrypoint.match(/^ensure_postgres_database /gm)?.length, 1);
+  assert.doesNotMatch(allInOneEntrypoint, /DROP DATABASE/i);
+  const waitBlock = allInOneEntrypoint.slice(allInOneEntrypoint.lastIndexOf('wait -n'));
+  for (const pid of [
+    'postgres_pid',
+    'redis_pid',
+    'server_pid',
+    'website_pid',
+    'admin_pid',
+    'caddy_pid',
+  ]) {
+    assert.match(waitBlock, new RegExp(`\\$\\{${pid}\\}`), `wait -n should watch ${pid}`);
+  }
+});
+
+test('release scripts publish exactly the four core images', () => {
+  for (const script of [releaseImagesScript, releasePublishScript]) {
+    assert.deepEqual(readReleaseServices(script), ['caddy', 'server', 'website', 'admin']);
+  }
+  assert.match(releaseImagesScript, /"\$service" =~ \^\(server\|website\)\$/);
+  for (const service of readReleaseServices(releaseImagesScript)) {
+    assert.ok(exists(`docker/${service}.Dockerfile`), `docker/${service}.Dockerfile should exist`);
+  }
+});
+
+test('cwebp stays installed in the server and all-in-one runtime images', () => {
+  const runnerStage = (dockerfile) => dockerfile.slice(dockerfile.lastIndexOf('AS runner'));
+  for (const [label, dockerfile] of [
+    ['docker/server.Dockerfile', serverDockerfile],
+    ['docker/all-in-one.Dockerfile', allInOneDockerfile],
+  ]) {
+    assert.match(runnerStage(dockerfile), /apk add[^\n]*\blibwebp-tools\b/, label);
+  }
+});
+
+test('the shared secret is wired as VANBLOG_SHARED_SECRET with the legacy fallback', () => {
+  for (const [label, content] of [
+    ['docker-compose.yml', compose],
+    ['docker-compose.image.yml', composeImage],
+  ]) {
+    assert.equal(
+      content.match(
+        /VANBLOG_SHARED_SECRET: \$\{VANBLOG_SHARED_SECRET:-\$\{WALINE_JWT_TOKEN:-[^}]*\}\}/g,
+      )?.length,
+      2,
+      `${label} should pass the shared secret to server and website`,
+    );
+  }
+  // The split dev stack keeps its old website default so an unchanged .env resolves the same.
+  assert.match(
+    compose,
+    /VANBLOG_SHARED_SECRET: \$\{VANBLOG_SHARED_SECRET:-\$\{WALINE_JWT_TOKEN:-vanblog-change-me\}\}/,
+  );
+  // latest.yml never read WALINE_JWT_TOKEN from .env; it keeps relying on the persisted file.
+  assert.equal(composeLatest.match(/VANBLOG_SHARED_SECRET: ""/g)?.length, 2);
+  for (const content of [compose, composeImage, composeLatest]) {
+    assert.doesNotMatch(content, /^\s+WALINE_JWT_TOKEN:/m);
+  }
+
+  for (const entrypoint of [serverEntrypoint, websiteEntrypoint]) {
+    assert.match(
+      entrypoint,
+      /node \/app\/ensure-shared-secret\.cjs VANBLOG_SHARED_SECRET WALINE_JWT_TOKEN\)"/,
+    );
+    assert.match(entrypoint, /export VANBLOG_SHARED_SECRET="\$\{SHARED_SECRET\}"/);
+  }
+  // The backup key keeps its path and generator, and never adopts the legacy shared secret.
+  assert.match(
+    serverEntrypoint,
+    /VANBLOG_SHARED_SECRET_FILE="\$\{VANBLOG_BACKUP_ENCRYPTION_KEY_FILE:-\/run\/secrets\/vanblog\/backup-encryption\.key\}" \\\s+VANBLOG_SHARED_SECRET_LEGACY_FILE="" \\\s+node \/app\/ensure-shared-secret\.cjs VANBLOG_BACKUP_ENCRYPTION_KEY/,
+  );
+
+  for (const [label, content] of [
+    ['docker/server.Dockerfile', serverDockerfile],
+    ['docker/website.Dockerfile', websiteDockerfile],
+    ['docker/all-in-one.Dockerfile', allInOneDockerfile],
+  ]) {
+    assert.match(
+      content,
+      /COPY docker\/shared\/ensure-shared-secret\.cjs \/app\/ensure-shared-secret\.cjs/,
+      label,
+    );
+  }
+  for (const ignore of [serverDockerignore, websiteDockerignore]) {
+    assert.match(ignore, /^!docker\/shared\/ensure-shared-secret\.cjs$/m);
+  }
+  assert.match(releaseEnv, /^VANBLOG_SHARED_SECRET=$/m);
+  assert.doesNotMatch(releaseEnv, /^WALINE_JWT_TOKEN=/m);
+
+  const env = {
+    VANBLOG_WEBSITE_CONTROL_TOKEN: '',
+    VANBLOG_ISR_TOKEN: '',
+  };
+  assert.equal(
+    websiteControlAuth.getExpectedControlToken({
+      ...env,
+      VANBLOG_SHARED_SECRET: 'shared-secret',
+      WALINE_JWT_TOKEN: 'legacy-secret',
+    }),
+    'shared-secret',
+  );
+  assert.equal(
+    websiteControlAuth.getExpectedControlToken({ ...env, WALINE_JWT_TOKEN: 'legacy-secret' }),
+    'legacy-secret',
+  );
+});
+
+const runEnsureSharedSecret = (envKeys, env) => {
+  const result = spawnSync(
+    process.execPath,
+    ['docker/shared/ensure-shared-secret.cjs', ...envKeys],
+    {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        VANBLOG_SHARED_SECRET_WAIT_MS: '2000',
+        VANBLOG_SHARED_SECRET_POLL_MS: '20',
+        ...env,
+      },
+    },
+  );
+  assert.equal(result.status, 0, `ensure-shared-secret failed: ${result.stderr}`);
+  return result.stdout;
+};
+
+test('ensure-shared-secret keeps an upgraded deployment on its existing secret', async () => {
+  const tempDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'vanblog-shared-secret-'));
+  const secretFile = nodePath.join(tempDir, 'vanblog-shared.secret');
+  const legacyFile = nodePath.join(tempDir, 'waline.jwt');
+  const legacySecret = 'a'.repeat(64);
+  const keys = ['VANBLOG_SHARED_SECRET', 'WALINE_JWT_TOKEN'];
+  try {
+    fs.writeFileSync(legacyFile, `${legacySecret}\n`, { mode: 0o600 });
+    const base = {
+      VANBLOG_SHARED_SECRET_FILE: secretFile,
+      VANBLOG_SHARED_SECRET_LEGACY_FILE: legacyFile,
+    };
+
+    // Missing new file + existing legacy file: adopt the legacy value, leave the legacy file alone.
+    assert.equal(runEnsureSharedSecret(keys, base), legacySecret);
+    assert.equal(read(secretFile).trim(), legacySecret);
+    assert.equal(fs.statSync(secretFile).mode & 0o777, 0o600);
+    assert.equal(read(legacyFile).trim(), legacySecret);
+
+    // Weak placeholders never override the persisted secret.
+    assert.equal(
+      runEnsureSharedSecret(keys, {
+        ...base,
+        VANBLOG_SHARED_SECRET: '',
+        WALINE_JWT_TOKEN: 'vanblog-change-me',
+      }),
+      legacySecret,
+    );
+
+    // The pre-rename env name still works as an explicit value, the new name wins over it.
+    const legacyEnvSecret = 'b'.repeat(40);
+    const newEnvSecret = 'c'.repeat(40);
+    assert.equal(
+      runEnsureSharedSecret(keys, { ...base, WALINE_JWT_TOKEN: legacyEnvSecret }),
+      legacyEnvSecret,
+    );
+    assert.equal(
+      runEnsureSharedSecret(keys, {
+        ...base,
+        VANBLOG_SHARED_SECRET: newEnvSecret,
+        WALINE_JWT_TOKEN: legacyEnvSecret,
+      }),
+      newEnvSecret,
+    );
+    assert.equal(read(secretFile).trim(), newEnvSecret);
+
+    // The pre-rename file override is still honoured.
+    const legacyOverride = nodePath.join(tempDir, 'custom.jwt');
+    fs.writeFileSync(legacyOverride, `${'d'.repeat(48)}\n`);
+    assert.equal(
+      runEnsureSharedSecret(keys, { VANBLOG_WALINE_JWT_FILE: legacyOverride }),
+      'd'.repeat(48),
+    );
+
+    // Fresh install: a random secret is generated once and reused; concurrent starts agree.
+    const freshFile = nodePath.join(tempDir, 'fresh', 'vanblog-shared.secret');
+    const fresh = { VANBLOG_SHARED_SECRET_FILE: freshFile, VANBLOG_SHARED_SECRET_LEGACY_FILE: '' };
+    const generated = await Promise.all(
+      [0, 1, 2].map(
+        () =>
+          new Promise((resolve, reject) => {
+            const child = spawn(
+              process.execPath,
+              ['docker/shared/ensure-shared-secret.cjs', ...keys],
+              {
+                cwd: process.cwd(),
+                env: { PATH: process.env.PATH, ...fresh },
+              },
+            );
+            let stdout = '';
+            child.stdout.on('data', (chunk) => {
+              stdout += chunk;
+            });
+            child.on('error', reject);
+            child.on('close', (code) =>
+              code === 0 ? resolve(stdout) : reject(new Error(`exit ${code}`)),
+            );
+          }),
+      ),
+    );
+    assert.match(generated[0], /^[0-9a-f]{64}$/);
+    assert.deepEqual(new Set(generated).size, 1);
+    assert.equal(runEnsureSharedSecret(keys, fresh), generated[0]);
+    assert.notEqual(generated[0], legacySecret);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('ensure-shared-secret never turns the legacy shared secret into the backup key', () => {
+  const tempDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'vanblog-backup-key-'));
+  try {
+    const backupKeyFile = nodePath.join(tempDir, 'backup-encryption.key');
+    const legacyFile = nodePath.join(tempDir, 'waline.jwt');
+    fs.writeFileSync(legacyFile, `${'e'.repeat(64)}\n`);
+    // Mirrors the server entrypoint invocation for the backup key.
+    const backupKey = runEnsureSharedSecret(['VANBLOG_BACKUP_ENCRYPTION_KEY'], {
+      VANBLOG_SHARED_SECRET_FILE: backupKeyFile,
+      VANBLOG_SHARED_SECRET_LEGACY_FILE: '',
+      WALINE_JWT_TOKEN: 'f'.repeat(64),
+    });
+    assert.match(backupKey, /^[0-9a-f]{64}$/);
+    assert.notEqual(backupKey, 'e'.repeat(64));
+    assert.notEqual(backupKey, 'f'.repeat(64));
+    assert.equal(read(backupKeyFile).trim(), backupKey);
+    assert.equal(
+      runEnsureSharedSecret(['VANBLOG_BACKUP_ENCRYPTION_KEY'], {
+        VANBLOG_SHARED_SECRET_FILE: backupKeyFile,
+        VANBLOG_SHARED_SECRET_LEGACY_FILE: '',
+      }),
+      backupKey,
+    );
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });
