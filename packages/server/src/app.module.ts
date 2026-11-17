@@ -100,6 +100,8 @@ import { CommentRequestService } from './provider/comment/comment-request.servic
 import { CommentClientInfoProvider } from './provider/comment/client-info.provider';
 import { CommentNotifyProvider } from './provider/comment/comment-notify.provider';
 import { CommentNotifyController } from './controller/admin/comment/comment-notify.controller';
+import { CommentImageProvider } from './provider/comment/comment-image.provider';
+import { CommentImageController } from './controller/public/comment/comment-image.controller';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -225,6 +227,7 @@ import { COMMENT_CLIENT_INFO, COMMENT_LIFECYCLE_HOOKS } from './types/comment.dt
     SearchController,
     DiagramController,
     CommentNotifyController,
+    CommentImageController,
   ],
   providers: [
     // Applies to every handler; it only acts on /api/public controllers.
@@ -271,6 +274,7 @@ import { COMMENT_CLIENT_INFO, COMMENT_LIFECYCLE_HOOKS } from './types/comment.dt
     { provide: COMMENT_CLIENT_INFO, useExisting: CommentClientInfoProvider },
     CommentNotifyProvider,
     { provide: COMMENT_LIFECYCLE_HOOKS, useExisting: CommentNotifyProvider },
+    CommentImageProvider,
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
