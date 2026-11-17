@@ -102,6 +102,7 @@ import { CommentNotifyProvider } from './provider/comment/comment-notify.provide
 import { CommentNotifyController } from './controller/admin/comment/comment-notify.controller';
 import { CommentImageProvider } from './provider/comment/comment-image.provider';
 import { CommentImageController } from './controller/public/comment/comment-image.controller';
+import { CommentImageCleanupTask } from './schedule/comment-image-cleanup.task';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -275,6 +276,7 @@ import { COMMENT_CLIENT_INFO, COMMENT_LIFECYCLE_HOOKS } from './types/comment.dt
     CommentNotifyProvider,
     { provide: COMMENT_LIFECYCLE_HOOKS, useExisting: CommentNotifyProvider },
     CommentImageProvider,
+    CommentImageCleanupTask,
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
