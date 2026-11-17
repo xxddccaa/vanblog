@@ -121,8 +121,8 @@ docker logs test-env-vanblog-vanblog-1 --tail 50
 - 不要把 Caddy admin API `2019` 暴露到公网
 - 默认 HTTP-only 模式只需要暴露 `80`
 - 如果叠加 `docker-compose.https.yml`，再额外暴露 `443`
-- 默认官方拓扑会自动启用 `VANBLOG_WALINE_CONTROL_URL=http://waline:8361`，不需要再额外开放 Waline 端口
-- 默认镜像拓扑会把共享 Waline JWT 落盘到日志目录中的 `waline.jwt`
+- 评论由 `server` 内置提供，没有独立的评论容器，也不需要额外开放评论端口
+- 默认镜像拓扑会把站点共享密钥落盘到日志目录中的 `vanblog-shared.secret`；从旧版本升级时会沿用已有的 `waline.jwt`
 
 ## 4. 如需锁版部署：生成服务器环境文件
 
@@ -139,15 +139,17 @@ cp .env.release.example .env
 - `VANBLOG_RELEASE_SUFFIX`
 - `POSTGRES_PASSWORD`
 - `REDIS_PASSWORD`
-- `WALINE_JWT_TOKEN`
+- `VANBLOG_SHARED_SECRET`
 - 目录挂载项
 
-如果 `WALINE_JWT_TOKEN` 留空，镜像运行时会在首次启动时自动生成一份共享密钥，并写入日志目录中的 `waline.jwt` 文件，后续重启会继续复用这份密钥。
+`VANBLOG_SHARED_SECRET` 是 server 与 website 共用的站点密钥，用于 ISR 刷新、website 内部请求和 website 控制端点。留空时，镜像运行时会在首次启动时自动生成一份，并写入日志目录中的 `vanblog-shared.secret` 文件，后续重启会继续复用。
+
+这个变量以前叫 `WALINE_JWT_TOKEN`。旧名字仍然有效：`.env` 里只写了 `WALINE_JWT_TOKEN` 时会照常读取；日志目录里已有 `waline.jwt` 而还没有 `vanblog-shared.secret` 时，首次启动会沿用旧文件里的值（旧文件本身不会被修改）。因此升级后密钥不变，旧 `.env` 不用改。
 
 备份加密使用独立的 `VANBLOG_BACKUP_ENCRYPTION_KEY`。留空时 server
 镜像会生成并保存到独立的 `VANBLOG_SECRET_DIR` 下的
-`backup-encryption.key`，不会复用数据库 JWT 或 Waline
-JWT。使用异机/异地备份前，请把该密钥另存到独立的密码管理器或密钥系统；
+`backup-encryption.key`，不会复用数据库 JWT 或站点共享密钥。
+使用异机/异地备份前，请把该密钥另存到独立的密码管理器或密钥系统；
 只有 `.vbe` 文件而没有该密钥时无法恢复。
 
 可选但常用的配置：
@@ -181,14 +183,14 @@ docker compose -f docker-compose.image.yml up -d
 
 说明：
 
-- 官方 `waline` 容器会在首次启动时尝试确保 `waline` 数据库存在
-- 如果你改成了权限受限的数据库账号，导致容器无法自动建库，请手动补建 Waline 数据库
+- 评论数据与博客内容存放在同一个 `vanblog` 数据库中，不再需要额外的评论数据库
+- 从旧版本升级的部署里已有的 `waline` 数据库会原样保留，新版本不再创建或读写它
 
 查看状态：
 
 ```bash
 docker compose -f docker-compose.image.yml ps
-docker compose -f docker-compose.image.yml logs -f caddy server website admin waline postgres redis
+docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 首次启动后，访问：
@@ -230,7 +232,7 @@ docker compose -f docker-compose.all-in-one.image.yml pull
 docker compose -f docker-compose.all-in-one.image.yml up -d
 ```
 
-这个路径仍然会把 PostgreSQL、Redis、Caddy、server、website、admin、waline 都收进一个容器，但数据目录仍走宿主机挂载。
+这个路径仍然会把 PostgreSQL、Redis、Caddy、server、website、admin 都收进一个容器，但数据目录仍走宿主机挂载。
 
 ### 6.1 直接 `docker run`
 
@@ -273,7 +275,6 @@ docker run -d \
   - `REDIS_APPENDONLY=yes`
   - `REDIS_MAXMEMORY=4gb`
   - `REDIS_MAXMEMORY_POLICY=allkeys-lru`
-  - `VAN_BLOG_WALINE_DB=waline`
 - 但 `docker run -d 镜像` 这件事有一个天然边界：端口映射、重启策略、`init`、`shm-size`、数据卷挂载，不可能由镜像自己替你强制加上，所以真正可上线的最小命令至少还是上面这种带 `-p` 和 `-v` 的写法
 - 如果你希望改密码或改数据库名，推荐显式传环境变量，例如：
 
@@ -286,7 +287,7 @@ docker run -d \
   -p 80:80 \
   -e POSTGRES_PASSWORD='your-postgres-password' \
   -e EMAIL='you@example.com' \
-  -e WALINE_JWT_TOKEN='your-waline-jwt-token' \
+  -e VANBLOG_SHARED_SECRET='your-shared-secret' \
   -v "$(pwd)/data/static:/app/static" \
   -v "$(pwd)/log:/var/log" \
   -v "$(pwd)/caddy/config:/root/.config/caddy" \
@@ -342,7 +343,7 @@ git log -5 --oneline
    IMAGE_ID="$(git rev-parse --short=8 HEAD)"
    ```
 
-6. 推送 Git 后发布 5 个核心镜像，再发布 all-in-one：
+6. 推送 Git 后发布 4 个核心镜像，再发布 all-in-one：
 
    ```bash
    git push origin master
@@ -384,7 +385,7 @@ Warning: git worktree is not clean. Releasing from a dirty tree may reduce trace
 
 #### 症状
 
-容器内服务进程和端口都正常，但 website、admin 或 Waline 一直显示 `unhealthy`，健康日志类似：
+容器内服务进程和端口都正常，但 website 或 admin 一直显示 `unhealthy`，健康日志类似：
 
 ```text
 wget: can't connect to remote host (127.0.0.1): Connection refused
@@ -412,7 +413,7 @@ wget -Y off ...
 
 #### 症状
 
-- Caddy 已启动，但 `/api/ui/` 返回 `502`。
+- Caddy 已启动，但转发到内部服务的请求返回 `502`。
 - Caddy 错误日志出现：
 
   ```text
@@ -425,16 +426,16 @@ wget -Y off ...
 
 Docker daemon 把 `HTTP_PROXY` / `HTTPS_PROXY` 注入容器，但原来的 `NO_PROXY` 只有 `localhost,127.0.0.1`：
 
-- Caddy → `server` / `website` / `admin` / `waline` 会错误走代理，返回 502。
-- server 初始化后同步调用 `website:3011` 和 `waline:8361`，Axios 自动读取代理变量，导致初始化请求等待外部控制调用超时。
+- Caddy → `server` / `website` / `admin` 会错误走代理，返回 502。
+- server 初始化后同步调用 `website:3011`，Axios 自动读取代理变量，导致初始化请求等待外部控制调用超时。
 
 #### 已采用的修复
 
-拆分 Compose 的 Caddy、server、website、Waline 均显式配置大小写两组代理例外：
+拆分 Compose 的 Caddy、server、website 均显式配置大小写两组代理例外：
 
 ```yaml
-NO_PROXY: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
-no_proxy: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
+NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
+no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
 ```
 
 排查时使用：
@@ -443,9 +444,9 @@ no_proxy: localhost,127.0.0.1,server,website,admin,waline,postgres,redis,kroki
 # 查看 Caddy 是否错误连接代理
 docker exec <caddy-container> sh -lc 'tail -50 /var/log/caddy.log'
 
-# 从 Caddy 容器直连 Waline
+# 从 Caddy 容器直连 server
 docker exec <caddy-container> \
-  wget -Y off -S -O - http://waline:8360/ui/
+  wget -Y off -S -O - http://server:3000/api/public/site-info
 
 # 查看 server / Caddy 的代理变量
 docker exec <container> sh -lc 'env | sort | grep -i proxy'
@@ -457,7 +458,7 @@ docker exec <container> sh -lc 'env | sort | grep -i proxy'
 
 #### 症状
 
-5 个核心镜像发布成功，但 all-in-one 在镜像内执行 `pnpm build:website` 时失败：
+4 个核心镜像发布成功，但 all-in-one 在镜像内执行 `pnpm build:website` 时失败：
 
 ```text
 ResourceExhausted: ... cannot allocate memory
@@ -519,7 +520,7 @@ IMAGE_REPO=kevinchina/deeplearning
 VERSION=vX.Y.Z
 IMAGE_ID=<image-id>
 
-for service in caddy server website admin waline all-in-one; do
+for service in caddy server website admin all-in-one; do
   for tag in \
     "$IMAGE_REPO:vanblog-$service-$VERSION" \
     "$IMAGE_REPO:vanblog-$service-latest"; do
@@ -548,7 +549,7 @@ VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>
 - `http://<你的域名>/admin/init` 是否只在未初始化时出现
 - 前台首页、文章页、分类页、标签页是否正常访问
 - 评论、图片、RSS 是否仍可访问
-- `docker compose logs -f caddy server website admin waline postgres redis` 是否有明显报错
+- `docker compose logs -f caddy server website admin postgres redis` 是否有明显报错
 
 ## 9. 最小结论
 
