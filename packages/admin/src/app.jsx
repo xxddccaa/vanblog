@@ -1,4 +1,5 @@
 import Footer from '@/components/Footer';
+import { CommentPendingSync, renderAdminMenuItem } from '@/components/CommentMenuBadge';
 import FontSync from '@/components/FontSync';
 import { logoutAndRedirect } from '@/components/LogoutButton';
 import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
@@ -784,6 +785,7 @@ export const layout = ({ initialState, setInitialState }) => {
 
   return {
     menuDataRender,
+    menuItemRender: renderAdminMenuItem,
     menuHeaderRender: (_, __, props) => (
       <Link
         to="/"
@@ -846,6 +848,7 @@ export const layout = ({ initialState, setInitialState }) => {
           <SiderCollapseSync />
           <AdminViewportSync />
           <WalinePrewarm />
+          <CommentPendingSync enabled={sessionUser?.id == 0} />
           <FontSync />
           {children}
         </>

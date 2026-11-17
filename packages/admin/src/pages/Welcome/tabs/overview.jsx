@@ -14,6 +14,7 @@ import {
   EditOutlined,
 } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import RecentComments from '../RecentComments';
 import style from '../index.less';
 import {
   WELCOME_CHART_COLORS,
@@ -320,6 +321,8 @@ const OverView = ({ compact = false }) => {
               </div>
             ))}
           </section>
+
+          <RecentComments />
 
           {compact ? (
             <>
