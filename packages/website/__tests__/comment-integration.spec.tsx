@@ -51,6 +51,12 @@ describe('comment section integration', () => {
     expect(html).toContain('data-enable="true"');
   });
 
+  it('keys the thread by the numeric id when the article has a custom pathname', async () => {
+    const html = await render({ id: 'hello-world', articleId: 7, type: 'article' });
+    expect(html).toContain('data-comments="post:7"');
+    expect(html).toContain('data-enable="true"');
+  });
+
   it('shows a visible about-page thread', async () => {
     const html = await render({ id: 0, type: 'about' });
     expect(html).toContain('data-comments="page:about"');

@@ -22,6 +22,8 @@ import { buildPostCommentTarget } from "../../api/comments";
 
 export default function (props: {
   id: number | string;
+  /** Numeric article id; comment threads are always keyed by it. */
+  articleId?: number;
   title: string;
   updatedAt: Date;
   createdAt: Date;
@@ -213,7 +215,7 @@ export default function (props: {
       {props.type != "overview" && (
         <Comments
           enable={props.type === "article" && props.private ? "false" : props.enableComment}
-          target={props.type === "about" ? "page:about" : buildPostCommentTarget(props.id)}
+          target={props.type === "about" ? "page:about" : buildPostCommentTarget(props.articleId ?? props.id)}
         />
       )}
     </div>

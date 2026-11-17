@@ -24,7 +24,10 @@ const MarkdownClient = dynamic(() => import('../Markdown'), {
 });
 
 export default function RichPostCard(props: {
+  /** Article pathname or id, used for links and fragments. */
   id: number | string;
+  /** Numeric article id; comment threads are always keyed by it. */
+  articleId?: number;
   title: string;
   updatedAt: Date;
   createdAt: Date;
@@ -206,7 +209,7 @@ export default function RichPostCard(props: {
       <Comments
         // Password-protected articles never accept comments (the server answers 404).
         enable={props.type === 'article' && props.private ? 'false' : props.enableComment}
-        target={props.type === 'about' ? 'page:about' : buildPostCommentTarget(props.id)}
+        target={props.type === 'about' ? 'page:about' : buildPostCommentTarget(props.articleId ?? props.id)}
       />
     </div>
   );
