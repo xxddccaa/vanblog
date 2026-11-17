@@ -78,7 +78,12 @@ export default [
         component: './CustomPage',
       },
       { name: '流水线', path: '/site/pipeline', component: './Pipeline' },
-      { name: '评论管理', path: '/site/comment', component: './CommentManage' },
+      {
+        name: '评论管理',
+        path: '/site/comment',
+        component: './CommentManage',
+        access: 'isSuperAdmin',
+      },
       { name: '日志管理', path: '/site/log', component: './LogManage' },
     ],
   },

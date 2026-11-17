@@ -53,3 +53,49 @@ describe('getArticlesByOption', () => {
     });
   });
 });
+
+describe('admin comment services', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    request.mockResolvedValue({ statusCode: 200, data: {} });
+  });
+
+  it('calls every admin comment route with the contract method and body', async () => {
+    const api = await import('./api');
+
+    await api.getComments({ page: 1, pageSize: 20, status: 'pending' });
+    await api.getCommentStats({ skipErrorHandler: true });
+    await api.updateComment(5, { status: 'approved' });
+    await api.batchUpdateComments([1, 2], 'purge');
+    await api.deleteComment(5);
+    await api.purgeComment(5);
+    await api.replyComment(5, 'thanks');
+    await api.getCommentSetting();
+    await api.updateCommentSetting({ pageSize: 10 });
+    await api.sendCommentTestMail('a@b.co');
+
+    expect(request.mock.calls).toEqual([
+      [
+        '/api/admin/comment',
+        { method: 'GET', params: { page: 1, pageSize: 20, status: 'pending' } },
+      ],
+      ['/api/admin/comment/stats', { method: 'GET', skipErrorHandler: true }],
+      ['/api/admin/comment/5', { method: 'PATCH', data: { status: 'approved' } }],
+      ['/api/admin/comment/batch', { method: 'POST', data: { ids: [1, 2], action: 'purge' } }],
+      ['/api/admin/comment/5', { method: 'DELETE' }],
+      ['/api/admin/comment/5/purge', { method: 'DELETE' }],
+      ['/api/admin/comment/5/reply', { method: 'POST', data: { content: 'thanks' } }],
+      ['/api/admin/comment/setting', { method: 'GET' }],
+      ['/api/admin/comment/setting', { method: 'PUT', data: { pageSize: 10 } }],
+      ['/api/admin/comment/notify/test', { method: 'POST', data: { to: 'a@b.co' } }],
+    ]);
+  });
+
+  it('encodes comment ids in the path', async () => {
+    const api = await import('./api');
+    await api.deleteComment('1/../setting');
+    expect(request).toHaveBeenCalledWith('/api/admin/comment/1%2F..%2Fsetting', {
+      method: 'DELETE',
+    });
+  });
+});
