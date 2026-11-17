@@ -6,6 +6,7 @@ import {
   Put,
   Get,
   Body,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -27,6 +28,8 @@ import { getNetIp, getRequestIp } from 'src/provider/log/utils';
 @ApiTags('tag')
 @Controller('/api/admin/auth/')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authProvider: AuthProvider,
     private readonly userProvider: UserProvider,
@@ -59,18 +62,27 @@ export class AuthController {
     }
   }
 
+  /** Login auditing is best effort and must never take the process down. */
+  private recordLoginAttempt(request: any, success: boolean) {
+    void Promise.resolve()
+      .then(() => this.logProvider.login(request, success))
+      .catch((error) => {
+        this.logger.warn(`Failed to record login attempt: ${error?.message || error}`);
+      });
+  }
+
   @UseGuards(LoginGuard, AuthGuard('local'))
   @Post('/login')
   async login(@Request() request: any) {
     if (request?.user?.fail) {
-      this.logProvider.login(request, false);
+      this.recordLoginAttempt(request, false);
       throw new UnauthorizedException({
         statusCode: 401,
         message: '用户名或密码错误！',
       });
     }
     // 能到这里登陆就成功了
-    this.logProvider.login(request, true);
+    this.recordLoginAttempt(request, true);
     await this.clearLoginRetryCounter(request);
     const data = await this.authProvider.login(request.user);
     this.pipelineProvider.dispatchEvent('login', {

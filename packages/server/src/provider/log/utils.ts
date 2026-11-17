@@ -88,8 +88,10 @@ export async function getNetIp(req: any) {
   return { address: '获取失败', ip, isPrivate: false, valid: true };
 }
 
-export function getPlatform(userAgent: string): 'mobile' | 'desktop' {
-  const ua = userAgent.toLowerCase();
+export function getPlatform(userAgent: unknown): 'mobile' | 'desktop' {
+  // The header is attacker controlled: it can be missing, empty, or an array.
+  const rawUserAgent = Array.isArray(userAgent) ? userAgent[0] : userAgent;
+  const ua = typeof rawUserAgent === 'string' ? rawUserAgent.toLowerCase() : '';
   const testUa = (regexp: RegExp) => regexp.test(ua);
   const testVs = (regexp: RegExp) =>
     (ua.match(regexp) || [])

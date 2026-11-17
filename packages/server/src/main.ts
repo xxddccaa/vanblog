@@ -111,7 +111,18 @@ function enableStdioLogMirror(logPath: string) {
   runtime[STDIO_TEE_FLAG] = true;
 }
 
+function installProcessSafetyNet() {
+  // Node exits on an unhandled promise rejection by default. One stray
+  // fire-and-forget promise reachable from a public request would otherwise let
+  // anonymous visitors crash the server (and the whole all-in-one container).
+  process.on('unhandledRejection', (reason) => {
+    const message = reason instanceof Error ? reason.stack || reason.message : String(reason);
+    console.error(`[vanblog] Unhandled promise rejection: ${message}`);
+  });
+}
+
 async function bootstrap() {
+  installProcessSafetyNet();
   enableStdioLogMirror(path.join(globalConfig.log, 'vanblog-stdio.log'));
   const jwtSecret = await initJwt();
   global.jwtSecret = jwtSecret;

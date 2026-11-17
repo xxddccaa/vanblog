@@ -1,4 +1,5 @@
 import {
+  getPlatform,
   getRequestIp,
   isPrivateClientIp,
   normalizeClientIp,
@@ -38,5 +39,19 @@ describe('network IP utilities', () => {
 
     expect(getRequestIp(untrusted)).toBe('127.0.0.1');
     expect(getRequestIp(trusted)).toBe('8.8.8.8');
+  });
+});
+
+describe('getPlatform', () => {
+  it('does not throw when the user-agent header is missing or malformed', () => {
+    expect(getPlatform(undefined)).toBe('desktop');
+    expect(getPlatform('')).toBe('desktop');
+    expect(getPlatform(['Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'])).toBe('mobile');
+    expect(getPlatform(123 as any)).toBe('desktop');
+  });
+
+  it('still classifies regular user agents', () => {
+    expect(getPlatform('Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile')).toBe('mobile');
+    expect(getPlatform('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('desktop');
   });
 });

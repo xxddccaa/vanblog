@@ -17,7 +17,7 @@
       "brace-expansion@5.0.5": "5.0.9",
       "browserslist": "^4.28.2",
       "caniuse-lite": "^1.0.30001787",
-      "body-parser@2.2.2": "2.3.0",
+      "body-parser@2": "2.4.0",
       "dompurify@3.4.12": "3.4.13",
       "diff@5.1.0": "5.2.2",
       "form-data@2.3.3": "2.5.6",
