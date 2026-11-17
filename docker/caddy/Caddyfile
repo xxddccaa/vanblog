@@ -25,7 +25,20 @@
       roll_size 5MiB
       roll_keep 3
     }
-    format json
+    # Never write credentials to the access log. Caddy already redacts
+    # Authorization and Cookie; the admin API uses custom headers instead.
+    format filter {
+      wrap json
+      fields {
+        request>headers>Token delete
+        request>headers>X-Debug-Super-Token delete
+        request>headers>X-Vanblog-Isr-Token delete
+        request>headers>X-Vanblog-Control-Token delete
+        request>uri query {
+          delete token
+        }
+      }
+    }
   }
   # 跳过内部健康检查(wget http://.../ 探活)的 access log，避免每 15s 一条把日志刷爆磁盘。
   # 仅命中 path=/ 且 UA 以 Wget 开头，真实浏览器访问首页不受影响。

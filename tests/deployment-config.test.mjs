@@ -795,6 +795,16 @@ test('caddy access logs skip internal healthchecks and roll', () => {
   }
 });
 
+test('caddy access logs never record admin credentials', () => {
+  for (const file of [caddyfile, caddyfileHttps, allInOneCaddyfile]) {
+    assert.doesNotMatch(file, /^\s*format json\s*$/m);
+    assert.match(file, /format filter \{/);
+    assert.match(file, /request>headers>Token delete/);
+    assert.match(file, /request>headers>X-Debug-Super-Token delete/);
+    assert.match(file, /request>uri query \{\s*delete token\s*\}/);
+  }
+});
+
 test('redis noise is reduced to warning level', () => {
   assert.match(allInOneEntrypoint, /REDIS_LOGLEVEL="\$\{REDIS_LOGLEVEL:-warning\}"/);
   assert.match(allInOneEntrypoint, /loglevel \$\{REDIS_LOGLEVEL\}/);
