@@ -44,6 +44,7 @@ describe('public route inventory', () => {
       expect.arrayContaining([
         'DiagramController',
         'NavController',
+        'PublicCommentController',
         'PublicController',
         'PublicMomentController',
       ]),
@@ -69,6 +70,22 @@ describe('public route inventory', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it('registers the public comment routes behind the output interceptor', () => {
+    const controller = publicControllers.find((item) => item.name === 'PublicCommentController');
+    expect(Reflect.getMetadata(PATH_METADATA, controller)).toBe('/api/public/comment');
+    const routes = getRouteHandlers(controller)
+      .map(
+        ({ handler }) =>
+          `${Reflect.getMetadata(METHOD_METADATA, handler)} ${Reflect.getMetadata(
+            PATH_METADATA,
+            handler,
+          )}`,
+      )
+      .sort();
+    // RequestMethod: GET = 0, POST = 1.
+    expect(routes).toEqual(['0 /', '0 /count', '0 /identity', '0 /liked', '1 /', '1 /:id/like']);
   });
 
   it('only skips masking for the diagram echo endpoint', () => {

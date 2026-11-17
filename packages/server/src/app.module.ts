@@ -97,6 +97,10 @@ import { PublicMomentController } from './controller/public/moment/moment.contro
 import { Comment, CommentSchema } from './scheme/comment.schema';
 import { CommentLike, CommentLikeSchema } from './scheme/commentLike.schema';
 import { CommentRequestService } from './provider/comment/comment-request.service';
+import { CommentProvider } from './provider/comment/comment.provider';
+import { CommentController } from './controller/admin/comment/comment.controller';
+import { PublicCommentController } from './controller/public/comment/comment.controller';
+import { COMMENT_TARGET_RESOLVER } from './types/comment.dto';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -208,6 +212,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     TokenController,
     MomentController,
     PublicMomentController,
+    CommentController,
+    PublicCommentController,
     IconController,
     NavToolController,
     NavCategoryController,
@@ -262,6 +268,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     PipelineProvider,
     MomentProvider,
     CommentRequestService,
+    CommentProvider,
+    { provide: COMMENT_TARGET_RESOLVER, useExisting: CommentProvider },
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
