@@ -97,6 +97,7 @@ import { PublicMomentController } from './controller/public/moment/moment.contro
 import { Comment, CommentSchema } from './scheme/comment.schema';
 import { CommentLike, CommentLikeSchema } from './scheme/commentLike.schema';
 import { CommentRequestService } from './provider/comment/comment-request.service';
+import { CommentClientInfoProvider } from './provider/comment/client-info.provider';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -128,6 +129,7 @@ import { SearchController } from './controller/admin/search/search.controller';
 import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
 import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-cache.provider';
 import { PrivateSiteProvider } from './provider/private-site/private-site.provider';
+import { COMMENT_CLIENT_INFO } from './types/comment.dto';
 
 @Module({
   imports: [
@@ -262,6 +264,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     PipelineProvider,
     MomentProvider,
     CommentRequestService,
+    CommentClientInfoProvider,
+    { provide: COMMENT_CLIENT_INFO, useExisting: CommentClientInfoProvider },
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,
