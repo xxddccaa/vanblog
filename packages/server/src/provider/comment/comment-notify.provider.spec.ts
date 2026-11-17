@@ -311,6 +311,15 @@ describe('CommentNotifyProvider', () => {
       expect(recipients()).toEqual([OWNER, 'Bob@Example.com']);
     });
 
+    it('does not email the owner address again when a reply to it is approved later', async () => {
+      const parent = parentOf({ mail: 'Owner@Example.com' });
+      const reply = makeComment({ status: 'pending', parentId: parent.id });
+      await create(reply, { parent });
+      reply.status = 'approved';
+      await approve(reply, { parent });
+      expect(recipients()).toEqual([OWNER]);
+    });
+
     it('respects notifyReply', async () => {
       setting.notify.notifyReply = false;
       const parent = parentOf();

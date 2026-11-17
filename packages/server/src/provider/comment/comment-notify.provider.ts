@@ -244,7 +244,10 @@ export class CommentNotifyProvider implements CommentLifecycleHooks {
         this.pipelineProvider.dispatchEvent(COMMENT_PIPELINE_EVENTS.afterApprove, payload),
       ),
       this.step(comment, 'webhook', () => this.postWebhook(env, payload)),
-      this.step(comment, 'reply email', () => this.notifyReply(env, comment, context, '')),
+      // The owner was already told about this comment when it was created.
+      this.step(comment, 'reply email', () =>
+        this.notifyReply(env, comment, context, this.ownerRecipient(env, comment)),
+      ),
     ]);
   }
 
