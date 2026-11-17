@@ -102,9 +102,6 @@ const AdminBrandSync = ({ siteInfo }) => {
   return null;
 };
 
-const WALINE_PREWARM_KEY = 'vanblog.admin.waline-prewarmed';
-const WALINE_PREWARM_RETRY_KEY = 'vanblog.admin.waline-prewarm-retry';
-
 const getViewportWidth = () =>
   typeof window === 'undefined' ? ADMIN_DEFAULT_VIEWPORT_WIDTH : window.innerWidth;
 
@@ -372,124 +369,6 @@ const AdminSiderFooter = ({ collapsed, initialState, setInitialState }) => {
       />
     </div>
   );
-};
-
-const WalinePrewarm = () => {
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-    if ([loginPath, '/init', '/user/restore'].includes(history.location.pathname)) {
-      return undefined;
-    }
-    if (window.sessionStorage.getItem(WALINE_PREWARM_KEY) === 'full') {
-      return undefined;
-    }
-
-    let frame = null;
-    let disposed = false;
-    let idleHandle = null;
-
-    const cleanup = () => {
-      if (frame?.parentNode) {
-        frame.parentNode.removeChild(frame);
-      }
-      frame = null;
-    };
-
-    const appendHintLink = (rel) => {
-      const link = document.createElement('link');
-      link.rel = rel;
-      link.href = '/api/ui/';
-      link.as = 'document';
-      document.head.appendChild(link);
-      return link;
-    };
-
-    const start = () => {
-      if (disposed || window.sessionStorage.getItem(WALINE_PREWARM_KEY) === 'full') {
-        return;
-      }
-
-      fetch('/api/ui/', { credentials: 'same-origin' })
-        .then(() => {
-          if (!disposed && window.sessionStorage.getItem(WALINE_PREWARM_KEY) !== 'full') {
-            window.sessionStorage.setItem(WALINE_PREWARM_KEY, 'page');
-          }
-        })
-        .catch(() => {
-          window.sessionStorage.setItem(
-            WALINE_PREWARM_RETRY_KEY,
-            String(Number(window.sessionStorage.getItem(WALINE_PREWARM_RETRY_KEY) || 0) + 1),
-          );
-        });
-
-      frame = document.createElement('iframe');
-      frame.src = '/api/ui/';
-      frame.setAttribute('aria-hidden', 'true');
-      frame.setAttribute('tabindex', '-1');
-      frame.style.position = 'fixed';
-      frame.style.left = '-9999px';
-      frame.style.bottom = '0';
-      frame.style.width = '1px';
-      frame.style.height = '1px';
-      frame.style.opacity = '0';
-      frame.style.pointerEvents = 'none';
-      frame.style.border = '0';
-
-      frame.addEventListener(
-        'load',
-        () => {
-          if (disposed) {
-            cleanup();
-            return;
-          }
-          window.sessionStorage.setItem(WALINE_PREWARM_KEY, 'full');
-          window.sessionStorage.removeItem(WALINE_PREWARM_RETRY_KEY);
-          cleanup();
-        },
-        { once: true },
-      );
-
-      frame.addEventListener(
-        'error',
-        () => {
-          window.sessionStorage.setItem(
-            WALINE_PREWARM_RETRY_KEY,
-            String(Number(window.sessionStorage.getItem(WALINE_PREWARM_RETRY_KEY) || 0) + 1),
-          );
-          cleanup();
-        },
-        { once: true },
-      );
-
-      document.body.appendChild(frame);
-    };
-
-    const prefetchLink = appendHintLink('prefetch');
-    const preloadLink = appendHintLink('preload');
-    const kickoff = () => window.setTimeout(start, 300);
-
-    if (typeof window.requestIdleCallback === 'function') {
-      idleHandle = window.requestIdleCallback(kickoff, { timeout: 1200 });
-    } else {
-      idleHandle = kickoff();
-    }
-
-    return () => {
-      disposed = true;
-      if (typeof idleHandle === 'number') {
-        window.clearTimeout(idleHandle);
-      } else if (idleHandle !== null && typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(idleHandle);
-      }
-      prefetchLink?.remove();
-      preloadLink?.remove();
-      cleanup();
-    };
-  }, []);
-
-  return null;
 };
 
 const AdminViewportSync = () => {
@@ -847,7 +726,6 @@ export const layout = ({ initialState, setInitialState }) => {
           <AdminBrandSync siteInfo={initialState} />
           <SiderCollapseSync />
           <AdminViewportSync />
-          <WalinePrewarm />
           <CommentPendingSync enabled={sessionUser?.id == 0} />
           <FontSync />
           {children}
