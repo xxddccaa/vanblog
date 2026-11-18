@@ -70,32 +70,7 @@ export async function exportArticlePdf(articleId: number) {
       }
     }
 
-    async function renderDiagrams() {
-      const DIAGRAM_LANGS = ['plantuml','puml','graphviz','dot','viz','d2','wavedrom','vegalite','vega-lite','ditaa','nomnoml'];
-      for (const lang of DIAGRAM_LANGS) {
-        const blocks = document.querySelectorAll('pre > code.language-' + lang);
-        for (const block of blocks) {
-          const source = block.textContent;
-          try {
-            const res = await fetch('/api/public/diagram/render', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ type: lang, source, format: 'svg' })
-            });
-            if (res.ok) {
-              const svg = await res.text();
-              const div = document.createElement('div');
-              div.className = 'vb-diagram-container';
-              div.innerHTML = svg;
-              block.parentElement.replaceWith(div);
-            }
-          } catch(e) { console.warn('Diagram render failed:', e); }
-        }
-      }
-    }
-
     await renderMermaidBlocks();
-    await renderDiagrams();
     setTimeout(() => window.print(), 500);
   <\/script>
 </body>

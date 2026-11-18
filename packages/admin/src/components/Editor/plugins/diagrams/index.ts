@@ -1,6 +1,6 @@
 import type { BytemdPlugin } from 'bytemd';
 import type { DiagramThemeMode } from './types';
-import { ALL_DIAGRAM_LANGUAGES, KROKI_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
+import { ALL_DIAGRAM_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
 import { sanitizeDiagramSvg } from '../../sanitize';
 
 export function diagramPlugin(themeMode: DiagramThemeMode): BytemdPlugin {
@@ -39,8 +39,6 @@ async function renderDiagramBlocks(
         const { renderAny, waveSkin } = await import('wavedrom');
         const parsed = JSON.parse(source);
         svg = renderAny(0, parsed, waveSkin);
-      } else if (KROKI_LANGUAGES.includes(language)) {
-        svg = await renderWithKroki(source, language, themeMode);
       } else {
         continue;
       }
@@ -59,25 +57,6 @@ async function renderDiagramBlocks(
       preEl.after(errDiv);
     }
   }
-}
-
-async function renderWithKroki(
-  source: string,
-  type: string,
-  themeMode: DiagramThemeMode,
-): Promise<string> {
-  const res = await fetch('/api/public/diagram/render', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, source, format: 'svg', themeMode }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: 'Render failed' }));
-    throw new Error(err.detail || err.message || `Kroki error: ${res.status}`);
-  }
-
-  return res.text();
 }
 
 function extractLanguage(codeEl: Element): string | null {
