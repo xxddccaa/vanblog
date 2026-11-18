@@ -5,8 +5,8 @@ export const PUBLIC_MASK_BASE64_FIELDS_METADATA = 'vanblog:public-mask-base64-fi
 
 /**
  * Opt a public handler out of output masking. Only use this for endpoints that
- * echo caller-supplied input and never read stored content (e.g. diagram render),
- * because the admin editor relies on them returning the exact input.
+ * echo caller-supplied input and never read stored content, because callers
+ * rely on them returning the exact input.
  */
 export const SkipPublicMask = () => SetMetadata(SKIP_PUBLIC_MASK_METADATA, true);
 

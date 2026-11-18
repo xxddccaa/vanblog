@@ -12,7 +12,6 @@ const OPEN_EXACT_PATHS = new Set([
   '/api/public/site-info',
   '/api/public/private-site/access',
   '/api/public/verify-admin-token',
-  '/api/public/diagram/render',
 ]);
 
 const OPEN_PREFIXES = [

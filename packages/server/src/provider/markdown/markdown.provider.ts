@@ -12,13 +12,6 @@ import abbr from 'markdown-it-abbr';
 import multimdTable from 'markdown-it-multimd-table';
 import { bracketMath } from './bracketMath';
 
-const DIAGRAM_LANGUAGES = new Set([
-  'plantuml', 'puml', 'graphviz', 'dot', 'viz', 'd2',
-  'wavedrom', 'vegalite', 'vega-lite', 'ditaa', 'nomnoml',
-  'svgbob', 'bytefield', 'c4plantuml', 'erd',
-  'blockdiag', 'seqdiag', 'actdiag', 'nwdiag',
-]);
-
 const KATEX_MATHML_TAGS = [
   'math',
   'semantics',
@@ -63,7 +56,7 @@ const MARKDOWN_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     a: ['href', 'name', 'target', 'rel'],
     img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
     input: ['type', 'checked', 'disabled'],
-    div: ['class', 'data-type', 'data-diagram-type'],
+    div: ['class'],
     code: ['class'],
     span: ['style'],
     math: ['xmlns', 'display'],
@@ -92,9 +85,7 @@ const MARKDOWN_SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
       'border-width': [KATEX_LENGTH],
       'border-style': [/^solid$/],
       position: [/^relative$/],
-      color: [
-        /^(?:#[0-9a-f]{3,8}|[a-z]+|rgba?\(\s*[0-9.%\s,]+\))$/i,
-      ],
+      color: [/^(?:#[0-9a-f]{3,8}|[a-z]+|rgba?\(\s*[0-9.%\s,]+\))$/i],
     },
   },
   allowedSchemes: ['http', 'https', 'mailto'],
@@ -120,9 +111,6 @@ export class MarkdownProvider {
       highlight: (str, lang) => {
         if (lang == 'mermaid') {
           return `<div class="mermaid">${str}</div>`;
-        }
-        if (DIAGRAM_LANGUAGES.has(lang)) {
-          return `<div class="vb-diagram-placeholder" data-type="${lang}"><pre><code>${this.md.utils.escapeHtml(str)}</code></pre></div>`;
         }
         if (lang && hljs.getLanguage(lang)) {
           try {
@@ -162,52 +150,6 @@ export class MarkdownProvider {
   }
   renderMarkdown(content: string) {
     return sanitizeMarkdownHtml(this.md.render(content));
-  }
-
-  async renderMarkdownWithDiagrams(content: string): Promise<string> {
-    let html = this.renderMarkdown(content);
-
-    const krokiUrl = process.env.VANBLOG_KROKI_URL;
-    if (!krokiUrl) return html;
-
-    const placeholderRegex =
-      /<div class="vb-diagram-placeholder" data-type="([^"]+)"><pre><code>([^<]*)<\/code><\/pre><\/div>/g;
-
-    const matches = [...html.matchAll(placeholderRegex)];
-    for (const match of matches) {
-      const [fullMatch, type, escapedSource] = match;
-      const source = this.unescapeHtml(escapedSource);
-      const krokiType = type === 'dot' ? 'graphviz' : type;
-
-      try {
-        const res = await fetch(`${krokiUrl}/${krokiType}/svg`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: source,
-        });
-        if (res.ok) {
-          const svg = await res.text();
-          const safeSvgImage = Buffer.from(svg, 'utf8').toString('base64');
-          html = html.replace(
-            fullMatch,
-            `<div class="vb-diagram-container" data-diagram-type="${type}"><img alt="${type} diagram" src="data:image/svg+xml;base64,${safeSvgImage}"></div>`,
-          );
-        }
-      } catch {
-        // Leave placeholder if Kroki unavailable
-      }
-    }
-
-    return sanitizeMarkdownHtml(html);
-  }
-
-  private unescapeHtml(str: string): string {
-    return str
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
   }
 
   getDescription(content: string) {

@@ -22,7 +22,9 @@ describe('MarkdownProvider', () => {
   });
 
   it('keeps code examples with bracket delimiters untouched', () => {
-    const html = provider.renderMarkdown(['```ts', 'const formula = "\\(E=mc^2\\)";', '```'].join('\n'));
+    const html = provider.renderMarkdown(
+      ['```ts', 'const formula = "\\(E=mc^2\\)";', '```'].join('\n'),
+    );
 
     expect(html).toContain('\\(E=mc^2\\)');
     expect(html).not.toContain('katex');
@@ -109,5 +111,19 @@ describe('MarkdownProvider', () => {
     expect(html).toContain('style="height:');
     expect(html).not.toContain('background:');
     expect(html).not.toContain('position:fixed');
+  });
+
+  it('renders former Kroki diagram fences as plain code blocks', () => {
+    const html = provider.renderMarkdown('```plantuml\n@startuml\nA -> B\n@enduml\n```');
+
+    expect(html).toContain('<pre><code class="language-plantuml">');
+    expect(html).toContain('A -&gt; B');
+    expect(html).not.toContain('vb-diagram');
+  });
+
+  it('keeps Mermaid fences as Mermaid containers', () => {
+    const html = provider.renderMarkdown('```mermaid\ngraph TD; A-->B\n```');
+
+    expect(html).toContain('<div class="mermaid">');
   });
 });

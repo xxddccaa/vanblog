@@ -34,7 +34,9 @@ export class RssProvider {
         : article?.category
           ? [article.category]
           : [];
-    return Array.from(new Set(source.map((item: any) => String(item || '').trim()).filter(Boolean)));
+    return Array.from(
+      new Set(source.map((item: any) => String(item || '').trim()).filter(Boolean)),
+    );
   }
 
   async generateRssFeed(info?: string, delay?: number) {
@@ -71,8 +73,8 @@ export class RssProvider {
         if (!masker.active) {
           return article;
         }
-        // Mask the Markdown before rendering, so rendered HTML, the description
-        // excerpt, and diagrams inlined from Kroki all derive from masked text.
+        // Mask the Markdown before rendering, so the rendered HTML and the
+        // description excerpt both derive from masked text.
         return {
           ...article,
           content: this.publicMaskProvider.maskCached(
@@ -105,15 +107,9 @@ export class RssProvider {
         link: siteInfo.baseUrl,
       };
       const favicon =
-        siteInfo.favicon ||
-        siteInfo.siteLogo ||
-        siteInfo.authorLogo ||
-        `${siteUrl}logo.svg`;
+        siteInfo.favicon || siteInfo.siteLogo || siteInfo.authorLogo || `${siteUrl}logo.svg`;
       const siteLogo =
-        siteInfo.siteLogo ||
-        siteInfo.authorLogo ||
-        siteInfo.favicon ||
-        `${siteUrl}logo.svg`;
+        siteInfo.siteLogo || siteInfo.authorLogo || siteInfo.favicon || `${siteUrl}logo.svg`;
       const date = new Date();
       const feed = new Feed({
         title: siteInfo.siteName,
@@ -135,16 +131,15 @@ export class RssProvider {
       for (const article of articles) {
         const url = `${siteUrl}post/${article.publicPath}`;
         const categories = this.getArticleCategories(article);
-        const renderedContent = await this.markdownProvider.renderMarkdownWithDiagrams(article.content);
+        const renderedContent = this.markdownProvider.renderMarkdown(article.content);
         const html = `<div class="markdown-body rss">
       <link rel="stylesheet" href="${siteUrl}markdown.css">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.5.1/katex.min.css">
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.6.0/build/styles/default.min.css">
-      ${renderedContent
-        .replace(
-          /<div class="mermaid">/g,
-          `<div class="mermaid" style="background: #f3f3f3; padding: 8px;"> <p>Mermaid 图表 RSS 暂无法显示，具体请查看原文</p>`,
-        )}</div>`;
+      ${renderedContent.replace(
+        /<div class="mermaid">/g,
+        `<div class="mermaid" style="background: #f3f3f3; padding: 8px;"> <p>Mermaid 图表 RSS 暂无法显示，具体请查看原文</p>`,
+      )}</div>`;
         feed.addItem({
           title: article.title,
           id: url,

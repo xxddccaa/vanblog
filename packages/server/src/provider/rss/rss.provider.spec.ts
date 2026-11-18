@@ -57,7 +57,6 @@ describe('RssProvider', () => {
     };
     const markdownProvider = {
       renderMarkdown: jest.fn((value: string) => `<p>${value}</p>`),
-      renderMarkdownWithDiagrams: jest.fn(async (value: string) => `<p>${value}</p>`),
       getDescription: jest.fn((value: string) => value.slice(0, 20)),
     };
     const provider = new RssProvider(
@@ -100,10 +99,10 @@ describe('RssProvider', () => {
       expect.objectContaining({ page: 1, pageSize: -1, regMatch: false }),
       true,
     );
-    const renderedSources = markdownProvider.renderMarkdownWithDiagrams.mock.calls.map(
-      (call) => call[0],
-    );
-    expect(renderedSources).toEqual([RSS_PROTECTED_CONTENT]);
+    // Both the body and the description are rendered; neither may expose the
+    // real content of a protected article.
+    const renderedSources = markdownProvider.renderMarkdown.mock.calls.map((call) => call[0]);
+    expect(new Set(renderedSources)).toEqual(new Set([RSS_PROTECTED_CONTENT]));
   });
 
   it('masks article Markdown and links before rendering the feed', async () => {
@@ -112,7 +111,12 @@ describe('RssProvider', () => {
         value: {
           ...defaultPublicMaskSetting,
           enabled: true,
-          replacements: { custom: 'X-CUSTOM-X', secret: 'X-SECRET-X', email: 'X-EMAIL-X', ip: 'X-IP-X' },
+          replacements: {
+            custom: 'X-CUSTOM-X',
+            secret: 'X-SECRET-X',
+            email: 'X-EMAIL-X',
+            ip: 'X-IP-X',
+          },
           rules: [{ id: 'kw', enabled: true, type: 'keyword', pattern: 'acmecore' }],
         },
       }),
@@ -133,7 +137,7 @@ describe('RssProvider', () => {
 
     await provider.generateRssFeedFn('test');
 
-    expect(markdownProvider.renderMarkdownWithDiagrams).toHaveBeenCalledWith('deploy to X-CUSTOM-X');
+    expect(markdownProvider.renderMarkdown).toHaveBeenCalledWith('deploy to X-CUSTOM-X');
     const feedInstance = FeedMock.mock.results.at(-1)!.value;
     const item = feedInstance.addItem.mock.calls[0][0];
     expect(item.title).toBe('X-CUSTOM-X notes');

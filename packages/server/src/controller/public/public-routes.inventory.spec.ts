@@ -42,7 +42,6 @@ describe('public route inventory', () => {
   it('finds the public controllers registered in AppModule', () => {
     expect(publicControllers.map((controller) => controller.name).sort()).toEqual(
       expect.arrayContaining([
-        'DiagramController',
         'NavController',
         'PublicCommentController',
         'PublicController',
@@ -88,7 +87,7 @@ describe('public route inventory', () => {
     expect(routes).toEqual(['0 /', '0 /count', '0 /identity', '0 /liked', '1 /', '1 /:id/like']);
   });
 
-  it('only skips masking for the diagram echo endpoint', () => {
+  it('does not skip masking for any public endpoint', () => {
     const skipped = publicControllers
       .filter((controller) => Reflect.getMetadata(SKIP_PUBLIC_MASK_METADATA, controller))
       .map((controller) => controller.name);
@@ -97,7 +96,7 @@ describe('public route inventory', () => {
         .filter(({ handler }) => Reflect.getMetadata(SKIP_PUBLIC_MASK_METADATA, handler))
         .map(({ name }) => `${controller.name}.${name}`),
     );
-    expect(skipped).toEqual(['DiagramController']);
+    expect(skipped).toEqual([]);
     expect(skippedHandlers).toEqual([]);
   });
 });
