@@ -14,7 +14,11 @@
     "paths": {
       "@/*": ["./src/*"],
       "@@/*": ["./src/.umi/*"],
-      "umi": ["./src/.umi/core/umiExports"]
+      "umi": ["./src/.umi/core/umiExports"],
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-dom": ["./node_modules/@types/react-dom"],
+      "react-dom/*": ["./node_modules/@types/react-dom/*"]
     }
   },
   "include": ["src/**/*", "config/**/*"]
