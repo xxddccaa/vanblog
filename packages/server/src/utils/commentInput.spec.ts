@@ -273,6 +273,26 @@ describe('comment input helpers', () => {
       ).toBe('spam');
     });
 
+    it('holds any Markdown image for review in suspicious mode', () => {
+      for (const content of [
+        '![](https://tracker.example/p.gif)',
+        'look ![alt text]( https://cdn.example/a.png )',
+        'ref ![x][img]\n\n[img]: https://cdn.example/b.png',
+      ]) {
+        expect(decideCommentStatus({ ...base, content })).toBe('pending');
+      }
+      expect(
+        decideCommentStatus({ ...base, content: 'just text [a link](https://example.com)' }),
+      ).toBe('approved');
+      expect(
+        decideCommentStatus({
+          ...base,
+          moderation: 'off',
+          content: '![](https://x.example/p.gif)',
+        }),
+      ).toBe('approved');
+    });
+
     it('follows the moderation mode', () => {
       expect(decideCommentStatus({ ...base, moderation: 'all' })).toBe('pending');
       expect(decideCommentStatus({ ...base, moderation: 'off', content: 'a'.repeat(30) })).toBe(

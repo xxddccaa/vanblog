@@ -220,6 +220,13 @@ export interface CommentModerationInput {
   images: string[];
 }
 
+const MARKDOWN_IMAGE = /!\[[^\]]*\]\s*[(\[]/u;
+
+/** True when the Markdown contains an inline or reference image. */
+export function hasMarkdownImage(content: string): boolean {
+  return MARKDOWN_IMAGE.test(content);
+}
+
 /** Initial status of a new comment. */
 export function decideCommentStatus(input: CommentModerationInput): CommentStatus {
   if (input.isAdmin) return 'approved';
@@ -233,6 +240,9 @@ export function decideCommentStatus(input: CommentModerationInput): CommentStatu
   const suspicious =
     countCommentLinks(input.content) >= COMMENT_LIMITS.suspiciousLinkCount ||
     hasRepeatedCharacterRun(input.content, COMMENT_LIMITS.suspiciousRepeatedRun) ||
-    input.images.length > 0;
+    input.images.length > 0 ||
+    // External images load in every reader's browser (tracking pixels), so they
+    // are held for review just like uploads.
+    hasMarkdownImage(input.content);
   return suspicious ? 'pending' : 'approved';
 }
