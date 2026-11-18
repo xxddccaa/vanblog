@@ -336,6 +336,16 @@ test('all-in-one image keeps dependency installation ahead of source copies', ()
   );
 });
 
+test('all-in-one website build never reaches a service on the build host', () => {
+  // BUILD_PROXY releases build with --network host, where localhost:3000 can be
+  // an unrelated service; the default build-time server URL would hit it.
+  assert.match(
+    allInOneDockerfile,
+    /VAN_BLOG_SERVER_URL=http:\/\/127\.0\.0\.1:1 pnpm build:website/,
+  );
+  assert.doesNotMatch(allInOneDockerfile, /&& pnpm build:website/);
+});
+
 test('release builds only clear proxy build args when explicitly enabled', () => {
   const tempDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'vanblog-release-build-'));
   const dockerLog = nodePath.join(tempDir, 'docker.log');

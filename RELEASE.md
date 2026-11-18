@@ -222,6 +222,9 @@ BUILD_PROXY=http://127.0.0.1:10826 pnpm release:all-in-one:publish --version vX.
 - 设置 `BUILD_PROXY` 后，发布脚本会给构建命令加上 `--network host`，并把代理作为构建参数传进去。
   必须用主机网络，是因为 sing-box 只监听 `127.0.0.1`：普通构建容器里的 `127.0.0.1` 是容器自己，
   经 Docker 网桥 `172.17.0.1` 也连不上。
+- 主机网络下，构建容器能访问宿主机的所有端口。all-in-one 镜像构建前台时，已固定把服务端地址指向
+  不可达的 `127.0.0.1:1`，不会误连宿主机 `3000` 端口上的其他服务。发布 `v2.1.0` 时还没有这一处理，
+  all-in-one 在 `/tag/[tag]` 页构建失败，最后改用镜像源方案发布。
 - 走代理时直接用官方 Alpine 源，不需要再设 `ALPINE_MIRROR_HOST`。`BUILD_PROXY` 不能和
   `CLEAR_BUILD_PROXIES=true` 同时使用，脚本会直接报错退出。
 - 发布前先确认代理可用，返回 `401` 就是正常的（Docker Hub 要求登录）：

@@ -33,9 +33,13 @@ FROM dependencies AS source
 COPY . ./
 
 FROM source AS builder
+# No API server runs during the image build. Point next build at an address that
+# always refuses connections: with `--network host` (BUILD_PROXY releases) the
+# default localhost:3000 may reach an unrelated service on the build host.
+# Server-side env is read at runtime, so this value is not baked into the image.
 RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm --filter @vanblog/server build \
-    && pnpm build:website \
+    && VAN_BLOG_SERVER_URL=http://127.0.0.1:1 pnpm build:website \
     && pnpm build:admin \
     && pnpm deploy --legacy --filter @vanblog/server --prod /prod/server
 
