@@ -19,8 +19,8 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       EMAIL: ${EMAIL:-someone@example.com}
-      NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
-      no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
+      NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis
+      no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis
     volumes:
       - ${VANBLOG_LOG_DIR:-./log}:/var/log
       - ${VANBLOG_CADDY_CONFIG_DIR:-./caddy/config}:/root/.config/caddy
@@ -51,8 +51,8 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
-      NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
-      no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
+      NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis
+      no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis
       VAN_BLOG_DATABASE_URL: ${VAN_BLOG_DATABASE_URL:-postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-vanblog}}
       VAN_BLOG_REDIS_URL: ${VAN_BLOG_REDIS_URL:-redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379}
       VAN_BLOG_CADDY_MANAGE_HTTPS: ${VAN_BLOG_CADDY_MANAGE_HTTPS:-false}
@@ -62,7 +62,6 @@ services:
       VANBLOG_ISR_TOKEN: ${VANBLOG_ISR_TOKEN:-}
       VANBLOG_CADDY_API_URL: http://caddy:2019
       VANBLOG_WEBSITE_CONTROL_URL: http://website:3011
-      VANBLOG_KROKI_URL: http://kroki:8000
       VANBLOG_WEBSITE_ISR_BASE: http://website:3001/api/revalidate?path=
       VANBLOG_SHARED_SECRET: ${VANBLOG_SHARED_SECRET:-${WALINE_JWT_TOKEN:-}}
       VANBLOG_BACKUP_ENCRYPTION_KEY: ${VANBLOG_BACKUP_ENCRYPTION_KEY:-}
@@ -98,8 +97,8 @@ services:
     environment:
       TZ: ${TZ:-Asia/Shanghai}
       NODE_ENV: production
-      NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
-      no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
+      NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis
+      no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis
       PORT: 3001
       WEBSITE_CONTROL_PORT: 3011
       VAN_BLOG_SERVER_URL: http://server:3000
@@ -170,16 +169,3 @@ services:
       timeout: 10s
       retries: 10
       start_period: 10s
-
-  kroki:
-    logging: *default-logging
-    image: yuzutech/kroki
-    restart: unless-stopped
-    expose:
-      - "8000"
-    healthcheck:
-      test: ['CMD', 'wget', '-Y', 'off', '-q', '-O', '/dev/null', 'http://localhost:8000/health']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 20s

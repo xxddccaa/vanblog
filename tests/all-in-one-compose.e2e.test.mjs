@@ -418,8 +418,8 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
     const serviceNames = services.map((service) => service.Service).sort();
     assert.deepEqual(
       serviceNames,
-      ['kroki', 'vanblog'],
-      'All-in-one compose should start vanblog plus the kroki companion only',
+      ['vanblog'],
+      'All-in-one compose should start the single vanblog service only',
     );
     const vanblogService = services.find((service) => service.Service === 'vanblog');
     const publishers = vanblogService?.Publishers || [];
@@ -428,15 +428,12 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
       false,
       'Only the HTTP entrypoint should be published to the host',
     );
-    const krokiService = services.find((service) => service.Service === 'kroki');
-    const krokiPublishers = (krokiService?.Publishers || []).filter(
-      (publisher) => publisher.PublishedPort > 0,
-    );
-    assert.equal(
-      krokiPublishers.length,
-      0,
-      'Kroki must stay internal and never publish ports to the host',
-    );
+    const diagramRender = await fetch(`${baseUrl}/api/public/diagram/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'plantuml', source: '@startuml\nA -> B\n@enduml' }),
+    });
+    assert.equal(diagramRender.status, 404, 'the removed diagram render endpoint should be gone');
   } finally {
     clearInterval(keepAlive);
     runCommand(['-f', 'docker-compose.all-in-one.yml', 'down', '-v', '--remove-orphans'], {

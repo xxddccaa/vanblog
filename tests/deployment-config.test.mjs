@@ -612,11 +612,9 @@ test('docker compose wires cross-container control endpoints', () => {
     composeAllInOneImage,
     composeAllInOneLatest,
   ]) {
-    assert.match(
-      file,
-      /wget[^\n]+-Y['",\s]+off[^\n]+-q[^\n]+-O[^\n]+dev\/null[^\n]+http:\/\/localhost:8000\/health/,
-    );
-    assert.doesNotMatch(file, /wget['",\s-]+spider[^\\n]*localhost:8000\/health/);
+    // The Kroki diagram renderer was removed; no compose file may bring it back.
+    assert.doesNotMatch(file, /kroki/i);
+    assert.doesNotMatch(file, /localhost:8000\/health/);
   }
 
   assert.doesNotMatch(compose, /VAN_BLOG_FASTGPT_INTERNAL_URL/);
@@ -814,7 +812,7 @@ test('all compose files cap docker logs with json-file rotation', () => {
 });
 
 test('split services bypass injected proxies for internal traffic', () => {
-  const internalServices = 'localhost,127.0.0.1,server,website,admin,postgres,redis,kroki';
+  const internalServices = 'localhost,127.0.0.1,server,website,admin,postgres,redis';
   for (const [file, minimumMatches] of [
     [compose, 1],
     [composeImage, 3],
@@ -828,16 +826,18 @@ test('split services bypass injected proxies for internal traffic', () => {
 });
 
 test('compose healthchecks bypass injected HTTP proxies', () => {
-  for (const file of [
-    compose,
-    composeImage,
-    composeLatest,
-    composeAllInOne,
-    composeAllInOneImage,
-    composeAllInOneLatest,
+  // All-in-one files use the in-image healthcheck script and have no wget
+  // healthcheck of their own; the split files must have at least one.
+  for (const [file, minimumHealthchecks] of [
+    [compose, 1],
+    [composeImage, 1],
+    [composeLatest, 1],
+    [composeAllInOne, 0],
+    [composeAllInOneImage, 0],
+    [composeAllInOneLatest, 0],
   ]) {
     const localhostHealthchecks = file.match(/wget[^\n]+(?:127\.0\.0\.1|localhost)[^\n]+/g) || [];
-    assert.ok(localhostHealthchecks.length >= 1);
+    assert.ok(localhostHealthchecks.length >= minimumHealthchecks);
     for (const healthcheck of localhostHealthchecks) {
       assert.match(healthcheck, /(?:wget -Y off |wget['"], ['"]-Y['"], ['"]off['"])/);
     }
