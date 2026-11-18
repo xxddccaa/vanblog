@@ -258,6 +258,36 @@ describe('CommentImageProvider', () => {
       expect(calls).toEqual([]);
     });
 
+    it('rejects a tiny GIF whose first frame is far larger than its canvas', async () => {
+      // 1x1 canvas, one 65535x65535 frame with an empty LZW stream: 35 bytes
+      // that would keep the decoder busy for tens of seconds.
+      const bomb = Buffer.concat([
+        Buffer.from('GIF89a', 'ascii'),
+        Buffer.from([1, 0, 1, 0, 0x80, 0, 0]),
+        Buffer.from([0, 0, 0, 255, 255, 255]),
+        Buffer.from([0x2c, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0]),
+        Buffer.from([2, 2, 0x44, 0x01, 0]),
+        Buffer.from([0x3b]),
+      ]);
+      expect(bomb.length).toBeLessThan(40);
+      const started = Date.now();
+      const { status, body } = await responseOf(provider.store(bomb));
+      expect(status).toBe(400);
+      expect(body.code).toBe('COMMENT_IMAGE_INVALID');
+      expect(calls).toEqual([]);
+      expect(Date.now() - started).toBeLessThan(1_000);
+    });
+
+    it('rejects a GIF frame that starts outside the canvas', async () => {
+      const gif = buildGif(4, 4, [0]);
+      // Move the first frame (left=2) so it extends past the 4px-wide canvas.
+      const descriptorOffset = gif.indexOf(0x2c, 13);
+      gif.writeUInt16LE(2, descriptorOffset + 1);
+      const { status } = await responseOf(provider.store(gif));
+      expect(status).toBe(400);
+      expect(calls).toEqual([]);
+    });
+
     it('rejects a GIF that cannot be decoded', async () => {
       const { status, body } = await responseOf(provider.store(gifHeader(10, 10)));
       expect(status).toBe(400);

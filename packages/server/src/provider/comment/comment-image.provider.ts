@@ -12,6 +12,7 @@ import { defaultFormats } from 'jimp';
 import path from 'path';
 import { config } from 'src/config';
 import { COMMENT_IMAGE_DIR, COMMENT_LIMITS, CommentImageResult } from 'src/types/comment.dto';
+import { isGifFrameInsideCanvas, readFirstGifFrame } from 'src/utils/gifFrame';
 import { detectSafeImageType, safeImageSize } from 'src/utils/safeImageSize';
 import { WebpEncodeError, WebpEncoder, encodeWebpAsync } from 'src/utils/webpAsync';
 import { commentError } from './comment-request.service';
@@ -148,6 +149,15 @@ export class CommentImageProvider {
         : COMMENT_LIMITS.imageMaxPixels;
     if (size.width * size.height > maxPixels) {
       throw imageTooLarge('The image has too many pixels');
+    }
+    if (type === 'gif') {
+      // The decoder iterates over the first frame's own size, which the canvas
+      // size checked above does not bound. A frame outside the canvas is
+      // rejected before any decoding so a tiny file cannot stall the server.
+      const frame = readFirstGifFrame(buffer);
+      if (!frame || !isGifFrameInsideCanvas(frame)) {
+        throw invalidImage('The GIF image could not be read');
+      }
     }
     return { type, width: size.width, height: size.height };
   }
