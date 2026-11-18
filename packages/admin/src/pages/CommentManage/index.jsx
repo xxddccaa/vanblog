@@ -352,8 +352,9 @@ export default function CommentManage() {
         title: '内容',
         dataIndex: 'content',
         search: false,
+        width: 320,
         render: (_, record) => (
-          <div style={{ minWidth: 240, maxWidth: 520 }}>
+          <div>
             {record.replyToNick ? (
               <Text type="secondary" style={{ fontSize: 12 }}>
                 {`回复 @${record.replyToNick}`}
@@ -467,7 +468,7 @@ export default function CommentManage() {
         params={{ status }}
         cardBordered
         headerTitle="评论列表"
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1360 }}
         search={{ labelWidth: 'auto' }}
         options={{ reload: true, density: true, setting: true }}
         pagination={{
