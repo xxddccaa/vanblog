@@ -256,8 +256,39 @@ describe('CommentNotifyProvider', () => {
       expect(recipients().sort()).toEqual(['Bob@Example.com', OWNER].sort());
       const replyMail = provider.sent.find((message) => message.to === 'Bob@Example.com');
       expect(replyMail.subject).toContain('新回复');
-      expect(replyMail.text).toContain('Original words');
       expect(replyMail.text).toContain(`#comment-${reply.id}`);
+    });
+
+    it('never quotes a visitor reply, so unverified addresses cannot be sent attacker text', async () => {
+      const parent = parentOf();
+      const reply = makeComment({
+        nick: 'Win a prize at evil.example',
+        content: 'Click https://evil.example/login now',
+        parentId: parent.id,
+        rootId: parent.id,
+      });
+      await create(reply, { parent });
+      const replyMail = provider.sent.find((message) => message.to === 'Bob@Example.com');
+      for (const part of [replyMail.subject, replyMail.text, replyMail.html]) {
+        expect(part).not.toContain('evil.example');
+        expect(part).not.toContain('Original words');
+      }
+    });
+
+    it("quotes the site owner's reply", async () => {
+      const parent = parentOf();
+      await create(
+        makeComment({
+          isAdmin: true,
+          mail: '',
+          content: 'Thanks for reading',
+          parentId: parent.id,
+        }),
+        { parent },
+      );
+      const replyMail = provider.sent.find((message) => message.to === 'Bob@Example.com');
+      expect(replyMail.text).toContain('Thanks for reading');
+      expect(replyMail.text).toContain('博主');
     });
 
     it('notifies the parent about an admin reply without an owner email', async () => {
@@ -465,13 +496,20 @@ describe('CommentNotifyProvider', () => {
     });
 
     it('caps emails for the whole site per day', async () => {
-      counters.set('comment:notify:global', COMMENT_NOTIFY_LIMITS.globalDay.max);
+      counters.set('comment:notify:global:owner', COMMENT_NOTIFY_LIMITS.globalDay.max);
       await create(makeComment());
       expect(provider.sent).toEqual([]);
       expect(cacheProvider.incrementWithTtl).toHaveBeenCalledWith(
-        'comment:notify:global',
+        'comment:notify:global:owner',
         COMMENT_NOTIFY_LIMITS.globalDay.windowSeconds,
       );
+    });
+
+    it('keeps owner notifications when reply emails used up their own budget', async () => {
+      counters.set('comment:notify:global:reply', COMMENT_NOTIFY_LIMITS.globalDay.max);
+      const parent = makeComment({ mail: 'Bob@Example.com', nick: 'Bob' });
+      await create(makeComment({ parentId: parent.id, rootId: parent.id }), { parent });
+      expect(recipients()).toEqual([OWNER]);
     });
   });
 

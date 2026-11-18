@@ -314,6 +314,7 @@ export class CommentNotifyProvider implements CommentLifecycleHooks {
       parent.mail.trim(),
       buildReplyMail(env.site, context.target, comment, parent),
       `reply email for comment ${comment.id}`,
+      'reply',
     );
   }
 
@@ -323,6 +324,7 @@ export class CommentNotifyProvider implements CommentLifecycleHooks {
     to: string,
     content: CommentMailContent,
     label: string,
+    kind: 'owner' | 'reply' = 'owner',
   ) {
     const digest = createHash('sha256').update(lowerMail(to)).digest('hex');
     const { perRecipientDay, globalDay } = COMMENT_NOTIFY_LIMITS;
@@ -334,8 +336,10 @@ export class CommentNotifyProvider implements CommentLifecycleHooks {
       this.logger.warn(`Skipped ${label}: the recipient reached the daily email limit`);
       return;
     }
+    // Reply mails go to visitor-supplied addresses; their own budget keeps a
+    // flood of replies from silencing the owner's notifications.
     const global = await this.cacheProvider.incrementWithTtl(
-      'comment:notify:global',
+      `comment:notify:global:${kind}`,
       globalDay.windowSeconds,
     );
     if (global > globalDay.max) {

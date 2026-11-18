@@ -257,7 +257,14 @@ export function buildOwnerMail(
   return { subject, text, html };
 }
 
-/** Notice to the author of `parent` that `comment` replied to them. */
+/**
+ * Notice to the author of `parent` that `comment` replied to them.
+ *
+ * The recipient address is whatever the parent's author typed, which nobody
+ * verified. So a visitor's reply is never quoted: the mail only points to the
+ * thread, and the site cannot be used to deliver attacker-written text to an
+ * arbitrary inbox. Only the site owner's replies are quoted.
+ */
 export function buildReplyMail(
   site: CommentNotifySite,
   target: ResolvedCommentTarget,
@@ -265,36 +272,32 @@ export function buildReplyMail(
   parent: CommentRecord,
 ): CommentMailContent {
   const title = targetTitle(target);
-  const nick = displayNick(comment.nick);
-  const parentNick = displayNick(parent.nick);
-  const replyExcerpt = buildExcerpt(comment.content);
-  const parentExcerpt = buildExcerpt(parent.content, 200);
   const commentUrl = commentAnchorUrl(site, target, comment);
-  const greeting = `${parentNick}，你好：`;
-  const intro = `你在《${title}》的评论收到了 ${nick} 的回复：`;
+  const fromOwner = Boolean(comment.isAdmin);
+  const intro = fromOwner
+    ? `你在《${title}》的评论收到了博主的回复：`
+    : `你在《${title}》的评论收到了新回复。`;
+  const replyExcerpt = fromOwner ? buildExcerpt(comment.content) : '';
 
   const subject = `[${cleanLine(site.name)}] 你在《${title}》的评论有了新回复`;
   const text = [
-    greeting,
+    '你好：',
     '',
     intro,
-    '',
-    replyExcerpt,
-    '',
-    '你的原评论：',
-    parentExcerpt,
+    ...(replyExcerpt ? ['', replyExcerpt] : []),
     '',
     ...(commentUrl ? [`查看回复：${commentUrl}`, ''] : []),
+    '如果你没有在该网站发表过评论，请忽略这封邮件。',
+    '',
     textFooter(site.name),
   ].join('\n');
   const html = htmlDocument(
     [
-      `<p>${escapeHtml(greeting)}</p>`,
+      '<p>你好：</p>',
       `<p>${escapeHtml(intro)}</p>`,
-      htmlQuote(replyExcerpt),
-      '<p>你的原评论：</p>',
-      htmlQuote(parentExcerpt),
+      ...(replyExcerpt ? [htmlQuote(replyExcerpt)] : []),
       ...(commentUrl ? [`<p>${htmlLink(commentUrl, '查看回复')}</p>`] : []),
+      '<p>如果你没有在该网站发表过评论，请忽略这封邮件。</p>',
     ],
     site.name,
   );
