@@ -12,6 +12,6 @@ export function diagramPlugin(themeMode: DiagramThemeMode): BytemdPlugin {
   };
 }
 
-export { ALL_DIAGRAM_LANGUAGES, KROKI_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
+export { ALL_DIAGRAM_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
 export type { DiagramThemeMode } from './types';
 export { renderDiagramBlocks } from './renderDiagramBlocks';

@@ -8,10 +8,6 @@ let mermaidTheme = 'default';
 const mermaidRender = vi.fn(async (..._args: unknown[]) => ({
   svg: `<svg data-theme="${mermaidTheme}"></svg>`,
 }));
-const krokiRender = vi.fn(
-  async (...args: any[]) =>
-    `<svg xmlns="http://www.w3.org/2000/svg" data-theme="${args[2].themeMode}"></svg>`,
-);
 const waveRender = vi.fn(
   async (...args: any[]) =>
     `<svg xmlns="http://www.w3.org/2000/svg" data-theme="${args[1].themeMode}"></svg>`,
@@ -24,9 +20,6 @@ vi.mock('mermaid', () => ({
     },
     render: (...args) => mermaidRender(...args),
   },
-}));
-vi.mock('../components/Markdown/diagrams/krokiRenderer', () => ({
-  renderWithKroki: (...args) => krokiRender(...args),
 }));
 vi.mock('../components/Markdown/diagrams/wavedromRenderer', () => ({
   renderWaveDrom: (...args) => waveRender(...args),
@@ -46,7 +39,7 @@ describe('rendered diagram themes', () => {
     URL.revokeObjectURL = originalRevokeObjectURL;
   });
 
-  it('redraws Mermaid, Kroki and WaveDrom with fresh export controls while retaining code state', async () => {
+  it('redraws Mermaid and WaveDrom with fresh export controls while retaining code state', async () => {
     const { default: RenderedMarkdown } = await import('../components/RenderedMarkdown');
     const { renderMarkdownToHtml } = await import('../utils/renderMarkdown');
     const content = [
@@ -108,7 +101,9 @@ describe('rendered diagram themes', () => {
       expect(container.querySelector('.bytemd-mermaid svg')?.getAttribute('data-theme')).toBe(
         theme === 'light' ? 'default' : 'dark',
       );
-      expect(container.querySelectorAll('.vb-diagram-container')).toHaveLength(2);
+      expect(container.querySelectorAll('.vb-diagram-container')).toHaveLength(1);
+      // PlantUML is no longer rendered as a diagram; it stays ordinary code.
+      expect(container.querySelector('code.language-plantuml')?.textContent).toContain('Alice -> Bob');
       container.querySelectorAll('.vb-diagram-container').forEach((diagram) => {
         expect(diagram.getAttribute('data-vb-diagram-rendered')).toBe(theme);
         expect(diagram.querySelector('svg')?.getAttribute('data-theme')).toBe(theme);
@@ -134,7 +129,6 @@ describe('rendered diagram themes', () => {
       expect(exported).toContain(theme === 'dark' ? '#0f172a' : '#ffffff');
     }
     expect(mermaidRender).toHaveBeenCalledTimes(3);
-    expect(krokiRender).toHaveBeenCalledTimes(3);
     expect(waveRender).toHaveBeenCalledTimes(3);
   });
 });

@@ -65,7 +65,7 @@ function RenderedMarkdownEnhancer({
         }
       }
 
-      // Render non-mermaid diagrams (PlantUML, GraphViz, WaveDrom, etc.)
+      // Render non-Mermaid diagrams (WaveDrom)
       const { renderDiagramBlocks } = await import('../Markdown/diagrams/renderDiagramBlocks');
       if (!disposed && containerRef.current) {
         const diagramThemeMode = normalizeMermaidThemeMode(theme);

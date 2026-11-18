@@ -1456,7 +1456,7 @@ html.dark .markdown-body .hljs *,
   box-shadow: none !important;
 }
 
-/* ===== Diagram Containers (PlantUML, GraphViz, WaveDrom, etc.) ===== */
+/* ===== Diagram Containers (WaveDrom) ===== */
 .markdown-body .vb-diagram-container {
   --vb-diagram-surface: rgba(148, 163, 184, 0.08);
   --vb-diagram-border: rgba(148, 163, 184, 0.28);
@@ -1482,30 +1482,11 @@ html.dark .markdown-body .hljs *,
   height: auto;
 }
 
-/* Kroki SVG 统一白色圆角底板；暗色下由下面的滤镜整体转为柔和深灰。 */
+/* Rounded white backing for diagram SVGs; WaveDrom's dark skin paints its own dark background over it. */
 .markdown-body .vb-diagram-container > svg {
   border-radius: 8px;
   overflow: hidden;
   background-color: #ffffff;
-}
-
-/* 只滤直接子级：D2 等返回嵌套 <svg><svg>，后代选择器会命中两层导致双重反色（变回灰白）。 */
-.dark .markdown-body .vb-diagram-container[data-diagram-type="graphviz"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="dot"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="viz"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="d2"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="plantuml"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="puml"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="c4plantuml"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="ditaa"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="erd"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="nomnoml"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="svgbob"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="blockdiag"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="seqdiag"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="actdiag"] > svg,
-.dark .markdown-body .vb-diagram-container[data-diagram-type="nwdiag"] > svg {
-  filter: invert(0.85) saturate(0.6) brightness(1.1);
 }
 
 .markdown-body .vb-diagram-toolbar {

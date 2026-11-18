@@ -2,12 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const renderMermaid = vi.fn();
-const renderKroki = vi.fn();
+const renderWave = vi.fn();
 vi.mock('mermaid', () => ({
   default: { initialize: vi.fn(), render: (...args: unknown[]) => renderMermaid(...args) },
 }));
-vi.mock('../components/Markdown/diagrams/krokiRenderer', () => ({
-  renderWithKroki: (...args: unknown[]) => renderKroki(...args),
+vi.mock('../components/Markdown/diagrams/wavedromRenderer', () => ({
+  renderWaveDrom: (...args: unknown[]) => renderWave(...args),
 }));
 
 function deferred<T>() {
@@ -23,13 +23,13 @@ function deferred<T>() {
 describe('diagram render request ownership', () => {
   beforeEach(() => {
     renderMermaid.mockReset();
-    renderKroki.mockReset();
+    renderWave.mockReset();
   });
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
-  it.each(['mermaid', 'plantuml'])(
+  it.each(['mermaid', 'wavedrom'])(
     'commits the latest theme when %s rendering is delayed',
     async (language) => {
       const { renderMermaidBlocks } = await import('../components/Markdown/mermaidTheme');
@@ -37,7 +37,7 @@ describe('diagram render request ownership', () => {
         '../components/Markdown/diagrams/renderDiagramBlocks'
       );
       const render = language === 'mermaid' ? renderMermaidBlocks : renderDiagramBlocks;
-      const renderer = language === 'mermaid' ? renderMermaid : renderKroki;
+      const renderer = language === 'mermaid' ? renderMermaid : renderWave;
       const pack = (svg: string) => (language === 'mermaid' ? { svg } : svg);
       const old = deferred<any>();
       renderer
@@ -57,7 +57,7 @@ describe('diagram render request ownership', () => {
     },
   );
 
-  it.each(['mermaid', 'plantuml'])(
+  it.each(['mermaid', 'wavedrom'])(
     'does not commit %s output after the owning effect is disposed',
     async (language) => {
       const { renderMermaidBlocks } = await import('../components/Markdown/mermaidTheme');
@@ -65,7 +65,7 @@ describe('diagram render request ownership', () => {
         '../components/Markdown/diagrams/renderDiagramBlocks'
       );
       const render = language === 'mermaid' ? renderMermaidBlocks : renderDiagramBlocks;
-      const renderer = language === 'mermaid' ? renderMermaid : renderKroki;
+      const renderer = language === 'mermaid' ? renderMermaid : renderWave;
       const pending = deferred<any>();
       renderer.mockReturnValueOnce(pending.promise);
       document.body.innerHTML = `<pre><code class="language-${language}">old source</code></pre>`;
@@ -85,11 +85,11 @@ describe('diagram render request ownership', () => {
     const { renderDiagramBlocks } = await import(
       '../components/Markdown/diagrams/renderDiagramBlocks'
     );
-    document.body.innerHTML = '<pre><code class="language-plantuml">source</code></pre>';
-    renderKroki.mockResolvedValueOnce('<svg data-theme="light"></svg>');
+    document.body.innerHTML = '<pre><code class="language-wavedrom">source</code></pre>';
+    renderWave.mockResolvedValueOnce('<svg data-theme="light"></svg>');
     await renderDiagramBlocks(document.body, 'light');
     const pending = deferred<string>();
-    renderKroki.mockReturnValueOnce(pending.promise);
+    renderWave.mockReturnValueOnce(pending.promise);
     const dark = renderDiagramBlocks(document.body, 'dark');
     await renderDiagramBlocks(document.body, 'light');
     pending.resolve('<svg data-theme="dark"></svg>');
@@ -102,15 +102,15 @@ describe('diagram render request ownership', () => {
       '../components/Markdown/diagrams/renderDiagramBlocks'
     );
     document.body.innerHTML =
-      '<section><pre><code class="language-plantuml">first</code></pre></section>' +
-      '<section><pre><code class="language-plantuml">second</code></pre></section>';
-    renderKroki.mockRejectedValue(new Error('unavailable'));
+      '<section><pre><code class="language-wavedrom">first</code></pre></section>' +
+      '<section><pre><code class="language-wavedrom">second</code></pre></section>';
+    renderWave.mockRejectedValue(new Error('unavailable'));
     await renderDiagramBlocks(document.body, 'light');
     expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(2);
 
     const first = document.querySelector('section')!;
     const pending = deferred<string>();
-    renderKroki.mockReturnValueOnce(pending.promise);
+    renderWave.mockReturnValueOnce(pending.promise);
     const retry = renderDiagramBlocks(first, 'dark');
     expect(first.querySelector('.vb-diagram-error')).toBeNull();
     expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(1);
@@ -122,7 +122,7 @@ describe('diagram render request ownership', () => {
     const second = document.querySelectorAll('section')[1];
     await renderDiagramBlocks(second, 'dark');
     expect(second.querySelectorAll('.vb-diagram-error')).toHaveLength(1);
-    renderKroki.mockResolvedValueOnce('<svg></svg>');
+    renderWave.mockResolvedValueOnce('<svg></svg>');
     await renderDiagramBlocks(second, 'light');
     expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(0);
     expect(document.querySelectorAll('svg')).toHaveLength(2);
@@ -132,31 +132,42 @@ describe('diagram render request ownership', () => {
     const { renderDiagramBlocks } = await import(
       '../components/Markdown/diagrams/renderDiagramBlocks'
     );
-    document.body.innerHTML = '<pre><code class="language-plantuml">source</code></pre>';
-    renderKroki.mockResolvedValueOnce('<svg data-theme="light"></svg>');
+    document.body.innerHTML = '<pre><code class="language-wavedrom">source</code></pre>';
+    renderWave.mockResolvedValueOnce('<svg data-theme="light"></svg>');
     await renderDiagramBlocks(document.body, 'light');
-    renderKroki.mockRejectedValueOnce(new Error('unavailable'));
+    renderWave.mockRejectedValueOnce(new Error('unavailable'));
     await renderDiagramBlocks(document.body, 'dark');
     expect(document.querySelectorAll('.vb-diagram-error')).toHaveLength(1);
     await renderDiagramBlocks(document.body, 'light');
     expect(document.querySelector('.vb-diagram-error')).toBeNull();
     expect(document.querySelector('svg')?.getAttribute('data-theme')).toBe('light');
-    expect(renderKroki).toHaveBeenCalledTimes(2);
+    expect(renderWave).toHaveBeenCalledTimes(2);
   });
 
   it('does not restore an error from an obsolete request after a newer render succeeds', async () => {
     const { renderDiagramBlocks } = await import(
       '../components/Markdown/diagrams/renderDiagramBlocks'
     );
-    document.body.innerHTML = '<pre><code class="language-plantuml">source</code></pre>';
+    document.body.innerHTML = '<pre><code class="language-wavedrom">source</code></pre>';
     const pending = deferred<string>();
-    renderKroki.mockReturnValueOnce(pending.promise);
+    renderWave.mockReturnValueOnce(pending.promise);
     const old = renderDiagramBlocks(document.body, 'light');
-    renderKroki.mockResolvedValueOnce('<svg data-theme="dark"></svg>');
+    renderWave.mockResolvedValueOnce('<svg data-theme="dark"></svg>');
     await renderDiagramBlocks(document.body, 'dark');
     pending.reject(new Error('old failure'));
     await old;
     expect(document.querySelector('.vb-diagram-error')).toBeNull();
     expect(document.querySelector('svg')?.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('leaves former Kroki diagram fences as plain code blocks', async () => {
+    const { renderDiagramBlocks } = await import(
+      '../components/Markdown/diagrams/renderDiagramBlocks'
+    );
+    document.body.innerHTML = '<pre><code class="language-plantuml">@startuml\nA -> B\n@enduml</code></pre>';
+    await renderDiagramBlocks(document.body, 'light');
+    expect(renderWave).not.toHaveBeenCalled();
+    expect(document.querySelector('pre > code.language-plantuml')).toBeTruthy();
+    expect(document.querySelector('.vb-diagram-container, .vb-diagram-error')).toBeNull();
   });
 });

@@ -1,6 +1,5 @@
 import type { DiagramThemeMode } from './types';
-import { ALL_DIAGRAM_LANGUAGES, KROKI_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
-import { renderWithKroki } from './krokiRenderer';
+import { ALL_DIAGRAM_LANGUAGES, WAVEDROM_LANGUAGES } from './types';
 import { renderWaveDrom } from './wavedromRenderer';
 import { sanitizeDiagramSvg } from '../sanitize';
 
@@ -72,8 +71,6 @@ async function renderSingleDiagram(
 
     if (WAVEDROM_LANGUAGES.includes(language)) {
       svg = await renderWaveDrom(source, { themeMode });
-    } else if (KROKI_LANGUAGES.includes(language)) {
-      svg = await renderWithKroki(source, language, { themeMode });
     } else {
       return;
     }
