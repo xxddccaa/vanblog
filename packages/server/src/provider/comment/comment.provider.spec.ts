@@ -659,6 +659,22 @@ describe('CommentProvider', () => {
       );
     });
 
+    it('does not charge the shared budgets for invalid parents or duplicates', async () => {
+      const { provider, consume } = createHarness();
+      await codeOf(
+        provider.create({ target: 'post:1', content: 'orphan', parentId: 999 }, visitor()),
+      );
+      await provider.create({ target: 'post:1', content: 'once' }, visitor());
+      consume.mockClear();
+      expect(
+        await codeOf(provider.create({ target: 'post:1', content: 'once' }, visitor())),
+      ).toEqual(expect.objectContaining({ status: 409 }));
+      const shared = consume.mock.calls
+        .map((call) => call[0])
+        .filter((name) => name === 'createPerTargetHour' || name === 'createGlobalHour');
+      expect(shared).toEqual([]);
+    });
+
     it('rejects parents that are missing, unapproved or on another target', async () => {
       const { provider, seed } = createHarness();
       const pending = await seed({ status: 'pending' });

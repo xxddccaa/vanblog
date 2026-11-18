@@ -515,10 +515,8 @@ export class CommentProvider implements CommentTargetResolver {
       const honeypot = body.website;
       if (honeypot !== undefined && honeypot !== null && String(honeypot) !== '') {
         const parent = parentId === null ? null : await this.loadReplyParent(parentId, target);
-        return await this.pretendCreated(target, { parent, nick, link, content }, setting);
+        return await this.pretendCreated(target, { parent, nick, link, content }, setting, context);
       }
-      await this.requestService.consume('createPerTargetHour', target.key);
-      await this.requestService.consume('createGlobalHour', 'global');
     }
 
     const parent = parentId === null ? null : await this.loadReplyParent(parentId, target);
@@ -537,6 +535,12 @@ export class CommentProvider implements CommentTargetResolver {
 
     let record: StoredComment;
     try {
+      if (!admin) {
+        // Shared budgets are charged only once the request is known to be
+        // storable, so invalid parents or duplicates cannot drain them.
+        await this.requestService.consume('createPerTargetHour', target.key);
+        await this.requestService.consume('createGlobalHour', 'global');
+      }
       const images = extractCommentImages(content);
       const status = decideCommentStatus({
         isAdmin: Boolean(admin),
@@ -594,9 +598,12 @@ export class CommentProvider implements CommentTargetResolver {
     target: ResolvedCommentTarget,
     input: { parent: StoredComment | null; nick: string; link: string; content: string },
     setting: CommentSetting,
+    context: CommentWriteContext,
   ): Promise<CreateCommentResult> {
     const id = await this.structuredDataService.nextCommentId();
     const now = new Date();
+    // Same visible metadata as a stored comment, so the trap cannot be told apart.
+    const clientInfo = await this.inspectClient(context.ip, context.ua);
     const comment = this.toPublicComment(
       {
         id,
@@ -615,9 +622,7 @@ export class CommentProvider implements CommentTargetResolver {
         likes: 0,
         ip: '',
         ua: '',
-        location: '',
-        browser: '',
-        os: '',
+        ...clientInfo,
         images: [],
         createdAt: now,
         updatedAt: now,

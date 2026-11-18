@@ -116,7 +116,8 @@ describe('comment image upload', () => {
       await expect(guard.canActivate(httpContext(req))).resolves.toBe(true);
       expect(req[COMMENT_IMAGE_UPLOADER]).toEqual({ admin: false });
       const rules = [...counters.keys()].map((key) => key.split(':')[2]).sort();
-      expect(rules).toEqual(['imageGlobalHour', 'imagePerVisitorDay', 'imagePerVisitorHour']);
+      // The site-wide budget is charged later, by the controller.
+      expect(rules).toEqual(['imagePerVisitorDay', 'imagePerVisitorHour']);
     });
 
     it.each([
@@ -194,19 +195,6 @@ describe('comment image upload', () => {
       const result = await codeOf(guard.canActivate(httpContext(visitorRequest())));
       expect(result.status).toBe(429);
     });
-
-    it('limits uploads for the whole site per hour', async () => {
-      const max = COMMENT_RATE_LIMITS.imageGlobalHour.max;
-      for (let i = 0; i < max; i += 1) {
-        await guard.canActivate(
-          httpContext(visitorRequest({}, `198.51.${100 + (i >> 8)}.${i & 255}`)),
-        );
-      }
-      const result = await codeOf(
-        guard.canActivate(httpContext(visitorRequest({}, '192.0.2.200'))),
-      );
-      expect(result.status).toBe(429);
-    });
   });
 
   describe('mapMultipartError', () => {
@@ -265,6 +253,46 @@ describe('comment image upload', () => {
       expect(result.status).toBe(404);
       expect(result.code).toBe('COMMENT_TARGET_UNAVAILABLE');
       expect(images.store).not.toHaveBeenCalled();
+    });
+
+    it('charges the site-wide budget only for valid images', async () => {
+      const resolver = { resolvePublicTarget: jest.fn(async () => ({})) };
+      const images = {
+        inspect: jest.fn(() => {
+          throw commentError(400, 'COMMENT_IMAGE_INVALID', 'bad');
+        }),
+        store: jest.fn(),
+      };
+      const controller = new CommentImageController(resolver as any, images as any, requestService);
+      const req: any = { body: { target: 'post:1' }, [COMMENT_IMAGE_UPLOADER]: { admin: false } };
+      const result = await codeOf(controller.upload(req, { buffer: Buffer.from('nope') }));
+      expect(result.code).toBe('COMMENT_IMAGE_INVALID');
+      expect([...counters.keys()].some((key) => key.includes('imageGlobalHour'))).toBe(false);
+      expect(images.store).not.toHaveBeenCalled();
+    });
+
+    it('limits valid visitor uploads for the whole site per hour', async () => {
+      const resolver = { resolvePublicTarget: jest.fn(async () => ({})) };
+      const images = {
+        inspect: jest.fn(),
+        store: jest.fn(async () => ({ url: '/x', markdown: '' })),
+      };
+      const controller = new CommentImageController(resolver as any, images as any, requestService);
+      const upload = () =>
+        controller.upload(
+          { body: { target: 'post:1' }, [COMMENT_IMAGE_UPLOADER]: { admin: false } } as any,
+          { buffer: PNG_1X1 },
+        );
+      for (let i = 0; i < COMMENT_RATE_LIMITS.imageGlobalHour.max; i += 1) await upload();
+      const result = await codeOf(upload());
+      expect(result.status).toBe(429);
+      // A super admin is never limited.
+      await expect(
+        controller.upload(
+          { body: { target: 'post:1' }, [COMMENT_IMAGE_UPLOADER]: { admin: true } } as any,
+          { buffer: PNG_1X1 },
+        ),
+      ).resolves.toMatchObject({ statusCode: 200 });
     });
 
     it('requires a file', async () => {

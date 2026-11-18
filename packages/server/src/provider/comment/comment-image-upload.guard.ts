@@ -52,10 +52,11 @@ export class CommentImageUploadGuard implements CanActivate {
       if (setting.allowVisitorImage === false) {
         throw commentError(403, 'COMMENT_IMAGE_DISABLED', 'Visitor image uploads are disabled');
       }
+      // The shared site-wide budget is charged by the controller once the
+      // upload is known to be valid, so empty or broken uploads cannot drain it.
       const visitor = this.requestService.visitorKey(req);
       await this.requestService.consume('imagePerVisitorHour', visitor);
       await this.requestService.consume('imagePerVisitorDay', visitor);
-      await this.requestService.consume('imageGlobalHour', 'global');
     }
     const uploader: CommentImageUploader = { admin };
     (req as any)[COMMENT_IMAGE_UPLOADER] = uploader;

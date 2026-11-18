@@ -12,10 +12,12 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { CommentImageProvider } from 'src/provider/comment/comment-image.provider';
 import {
+  COMMENT_IMAGE_UPLOADER,
   CommentImageMultipartInterceptor,
   CommentImageUploadGuard,
+  CommentImageUploader,
 } from 'src/provider/comment/comment-image-upload.guard';
-import { commentError } from 'src/provider/comment/comment-request.service';
+import { CommentRequestService, commentError } from 'src/provider/comment/comment-request.service';
 import {
   COMMENT_TARGET_RESOLVER,
   CommentImageResult,
@@ -36,6 +38,7 @@ export class CommentImageController {
     @Inject(COMMENT_TARGET_RESOLVER)
     private readonly targetResolver: CommentTargetResolver | null,
     private readonly imageProvider: CommentImageProvider,
+    @Optional() private readonly requestService?: CommentRequestService,
   ) {}
 
   @Post('/image')
@@ -54,6 +57,15 @@ export class CommentImageController {
     );
     if (!file || !Buffer.isBuffer(file.buffer)) {
       throw commentError(400, 'COMMENT_IMAGE_INVALID', 'An image file is required');
+    }
+    // Validate the bytes first, then charge the shared site-wide budget.
+    this.imageProvider.inspect(file.buffer);
+    const uploader: CommentImageUploader | undefined = (req as any)[COMMENT_IMAGE_UPLOADER];
+    if (!uploader?.admin) {
+      if (!this.requestService) {
+        throw commentError(404, 'COMMENT_TARGET_UNAVAILABLE', 'Comments are not available');
+      }
+      await this.requestService.consume('imageGlobalHour', 'global');
     }
     const data = await this.imageProvider.store(file.buffer);
     return { statusCode: 200, data };
