@@ -263,7 +263,7 @@ export function CommentNotifyForm() {
         name="ownerEmail"
         label="博主邮箱"
         placeholder="接收新评论通知的邮箱"
-        tooltip="接收新评论通知，同时作为 RSS 中的作者邮箱"
+        tooltip="你想在哪个邮箱收到新评论提醒。可以和下面用来发信的邮箱相同。这个地址同时作为 RSS 中的作者邮箱。"
         rules={[rule(validateEmailOrEmpty)]}
       />
       <ProFormSwitch
@@ -286,11 +286,16 @@ export function CommentNotifyForm() {
       <Divider orientation="left" plain>
         SMTP 发信
       </Divider>
-      <ProFormSwitch name="smtpEnabled" label="启用邮件通知" tooltip="关闭后不会发送任何评论邮件" />
+      <ProFormSwitch
+        name="smtpEnabled"
+        label="启用邮件通知"
+        tooltip="博客借用你的一个邮箱账号代为发送提醒邮件，下面填写这个邮箱的发信（SMTP）信息，一般就填你自己的邮箱。保存后点「发送测试邮件」检查是否可用。不需要邮件提醒时保持关闭即可，评论功能不受影响。"
+      />
       <ProFormText
         name="smtpHost"
         label="SMTP 主机"
-        placeholder="例如 smtp.example.com"
+        placeholder="例如 smtp.qq.com"
+        tooltip="邮箱服务商的发信服务器地址。常见：QQ 邮箱 smtp.qq.com，163 邮箱 smtp.163.com，Gmail smtp.gmail.com；其他邮箱可在其网页版的设置或帮助中找到。"
         dependencies={['smtpEnabled']}
         rules={[
           rule(validateSmtpHost),
@@ -305,6 +310,7 @@ export function CommentNotifyForm() {
       <ProFormDigit
         name="smtpPort"
         label="SMTP 端口"
+        tooltip="一般填 465 并开启下面的 SSL/TLS；少数服务商使用 587。"
         min={1}
         max={65535}
         fieldProps={{ precision: 0 }}
@@ -319,6 +325,7 @@ export function CommentNotifyForm() {
         name="smtpUser"
         label="SMTP 用户名"
         placeholder="通常是邮箱地址"
+        tooltip="通常就是这个邮箱的完整地址，例如 123456@qq.com。"
         fieldProps={{ autoComplete: 'off' }}
         rules={[rule(validateSmtpUser)]}
       />
@@ -326,7 +333,7 @@ export function CommentNotifyForm() {
         name="smtpPass"
         label="SMTP 密码"
         placeholder={passPlaceholder}
-        tooltip="密码只写不读：保存后不会再显示"
+        tooltip="QQ、163 等邮箱这里要填「授权码」，不是登录密码：在邮箱网页版的设置里开启 SMTP 服务后即可生成。为安全起见，保存后不会再显示。"
         extra={passExtra}
         fieldProps={{ autoComplete: 'new-password', disabled: clearPassword }}
         rules={[rule(validateSmtpPass)]}
@@ -335,12 +342,14 @@ export function CommentNotifyForm() {
         name="smtpFromName"
         label="发件人名称"
         placeholder="可选，显示在邮件发件人处"
+        tooltip="收件人看到的发件人名字，例如你的博客名。留空则使用站点名称。"
         rules={[rule(validateFromName)]}
       />
       <ProFormText
         name="smtpFromEmail"
         label="发件人邮箱"
         placeholder="留空使用 SMTP 用户名"
+        tooltip="大多数情况留空即可，会使用上面的 SMTP 用户名发信。只有服务商允许用另一个地址发信时才需要填写。"
         dependencies={['smtpEnabled', 'smtpUser']}
         rules={[
           rule(validateEmailOrEmpty),
