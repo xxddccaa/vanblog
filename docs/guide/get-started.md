@@ -89,7 +89,7 @@ cp .env.release.example .env
 - `VANBLOG_RELEASE_SUFFIX`
 - `POSTGRES_PASSWORD`
 - `REDIS_PASSWORD`
-- `WALINE_JWT_TOKEN`（可选）
+- `VANBLOG_SHARED_SECRET`（可选，留空会自动生成；旧变量名 `WALINE_JWT_TOKEN` 仍然有效）
 
 ### 2. 启动服务
 
@@ -102,7 +102,7 @@ docker compose -f docker-compose.image.yml up -d
 
 ```bash
 docker compose -f docker-compose.image.yml ps
-docker compose -f docker-compose.image.yml logs -f caddy server website admin waline postgres redis
+docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 ### 4. 完成初始化
@@ -119,7 +119,7 @@ http://<你的域名或 IP>/admin/init
 
 - 前台首页：`http://<你的域名或 IP>/`
 - 后台管理：`http://<你的域名或 IP>/admin`
-- 评论管理：`http://<你的域名或 IP>/api/ui/`
+- 评论管理：`http://<你的域名或 IP>/admin/site/comment`（后台 `站点管理/评论管理`，仅超级管理员可见）
 
 默认通过 Caddy 的公网入口不会暴露 Swagger。若需查看 API 文档，请直接通过主机本地或容器内的 `server` 服务入口访问，不要依赖 `http://<你的域名或 IP>/swagger` 这个公网地址。
 

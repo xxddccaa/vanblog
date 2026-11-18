@@ -7,14 +7,7 @@
       "match": {
         "paths": [
           "/admin*",
-          "/api/admin/*",
-          "/api/comment*",
-          "/comment*",
-          "/ui*",
-          "/user*",
-          "/token*",
-          "/db*",
-          "/oauth*"
+          "/api/admin/*"
         ],
         "methods": [
           "POST",
@@ -25,7 +18,7 @@
         "notes": [
           "Bypass any request with authorization headers",
           "Bypass any request that returns Set-Cookie",
-          "Bypass Waline-related traffic"
+          "Comment writes (POST /api/public/comment*) are covered by the method match"
         ]
       },
       "action": {
@@ -68,11 +61,14 @@
         ],
         "paths": [
           "/api/public/search*",
-          "/api/public/nav/admin-data"
+          "/api/public/nav/admin-data",
+          "/api/public/comment/identity",
+          "/api/public/comment/liked"
         ],
         "notes": [
           "Keep live search out of edge cache",
-          "Keep admin nav payloads out of edge cache even though they sit under /api/public/*"
+          "Keep admin nav payloads out of edge cache even though they sit under /api/public/*",
+          "Comment identity and liked ids depend on the visitor's cookies and are sent with no-store"
         ]
       },
       "action": {

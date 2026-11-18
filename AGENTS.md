@@ -30,7 +30,7 @@ This is the independently maintained VanBlog repository, forked from `Mereithhh/
 
 Long-term conventions:
 
-- The core blog stack stays as is: `docker-compose.yml` / `docker-compose.image.yml` wire `caddy`, `server`, `website`, `admin`, `waline`, `postgres`, and `redis`, plus the `kroki` diagram renderer.
+- The core blog stack stays as is: `docker-compose.yml` / `docker-compose.image.yml` wire `caddy`, `server`, `website`, `admin`, `postgres`, and `redis`, plus the `kroki` diagram renderer.
 - The image repository is fixed to `kevinchina/deeplearning`; all release and rollback docs assume it.
 - "Single image" means the `docker-compose.all-in-one*.yml` files plus the `vanblog-all-in-one-*` tags. Do not fall back to the legacy `vanblog-latest` single-image setup.
 
@@ -42,12 +42,11 @@ Long-term conventions:
 | `server` | `packages/server` | 3000 | NestJS API, Swagger |
 | `website` | `packages/website` | 3001 / 3011 | Next.js frontend + control endpoint |
 | `admin` | `packages/admin` | 3002 | Umi admin static build, served under `/admin/` |
-| `waline` | `packages/waline` | 8360 / 8361 | Comment service + control endpoint |
 | `postgres` | — | 5432 (internal only) | Primary database |
 | `redis` | — | 6379 (internal only) | Cache / queue |
 | `kroki` | — | 8000 (internal only) | Mermaid / PlantUML diagram rendering |
 
-Default entrypoints: website `/`, admin `/admin` (308 redirect to `/admin/`), comments `/comment/`. Public `/swagger` always returns 404; API docs are only reachable host-locally or in-container at `server:3000/swagger`.
+Default entrypoints: website `/`, admin `/admin` (308 redirect to `/admin/`). Comments are native to `server` (`/api/public/comment*`, `/api/admin/comment*`); there is no separate comment service. Public `/swagger` always returns 404; API docs are only reachable host-locally or in-container at `server:3000/swagger`.
 
 `postgres`, `redis`, and the Caddy admin API `2019` must never be exposed on `0.0.0.0`. This is a hard constraint when editing compose files.
 
@@ -58,7 +57,6 @@ Core rules currently active in `docker/caddy/Caddyfile`:
 /swagger*                                    -> 404
 /admin                                       -> 308 -> /admin/
 /admin*                                      -> admin:3002
-/api/comment*, /api/ui*, /comment*, /ui*     -> waline:8360
 everything else                              -> website:3001
 ```
 
@@ -71,10 +69,9 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `packages/server`: NestJS backend; core code is in `src/`, with unit tests in `src/**/*.spec.ts` and e2e tests in `test/`.
 - `packages/admin`: Umi + Ant Design Pro admin app; pages live in `src/pages`, shared UI in `src/components`.
 - `packages/website`: Next.js frontend theme; routes live in `pages/`, shared UI in `components/`, helpers in `utils/`, and tests in `__tests__/`.
-- `packages/waline`: Waline-related wrapper/runtime code used by the comment integration and release artifacts.
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
-- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires the 7 core blog services (`caddy`, `server`, `website`, `admin`, `waline`, `postgres`, `redis`) plus the internal `kroki` diagram renderer.
+- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires the 6 core blog services (`caddy`, `server`, `website`, `admin`, `postgres`, `redis`) plus the internal `kroki` diagram renderer.
 - `docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology; pair it with `.env.release.example` for locked production deployments.
 - `docker-compose.latest.yml`: quick-start of the same top-level stack from `latest` images.
 - `docker-compose.https.yml`: overlay that adds the HTTPS configuration.
@@ -96,17 +93,20 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
   - `src/scheme/`: compatibility-layer schemas.
   - `src/storage/`: PostgreSQL access.
   - `src/**/*.spec.ts`: Jest unit tests; e2e tests live in `packages/server/test/`.
+  - Native comments: `src/types/comment.dto.ts` (shared contract), `src/provider/comment/`, `src/controller/public/comment/`, `src/controller/admin/comment/`.
 - `packages/website` (Next.js theme):
   - `pages/`: routes.
   - `api/`: SSR/SSG data-fetching wrappers.
   - `utils/loadConfig.ts`: service address resolution for the browser, build time, and container runtime. Read it before changing any SSR/SSG data fetching.
   - `utils/markdownTheme.ts`: versioned helper for `/markdown-themes/` CSS (see the Cloudflare note under Release & Deployment Notes).
+  - Native comments: `components/Comments/`, `components/CommentMarkdown/` (strict comment Markdown schema), `api/comments.ts`.
   - `__tests__/`: Vitest tests.
 - `packages/admin` (Umi + Ant Design Pro):
   - `config/config.js`: `/admin/` subpath deployment config.
   - `src/pages/`: admin pages; component directories use PascalCase with `index.tsx`.
   - `src/services/van-blog/api.js`: admin API client entrypoint.
   - `src/utils/markdownTheme.ts`: versioned helper matching the website one.
+  - Native comments: `src/pages/CommentManage/` (super admin only) and the comment settings tab in `src/pages/SystemConfig/`.
   - The build is served under `/admin/`, so every asset path must work under that subpath.
 - Top-level tests:
   - `tests/deployment-config.test.mjs`: static checks for compose, Caddy, and exposure.
@@ -138,14 +138,14 @@ Use `pnpm` at the repo root.
 - `pnpm release:images`: build all split release images with versioned tags locally.
 - `pnpm release:images:push`: build and push all split release images.
 - `pnpm release:publish`: run the full split-image release flow.
-- `pnpm release:latest`: only sync the `latest` aliases of the 5 core images.
+- `pnpm release:latest`: only sync the `latest` aliases of the 4 core images.
 - `pnpm release:all-in-one`: build the optional non-AI all-in-one image locally.
 - `pnpm release:all-in-one:push`: build and push the optional non-AI all-in-one image tags.
 - `pnpm release:all-in-one:publish`: publish the optional non-AI all-in-one immutable tag, version tag, and `latest`, then verify the remote tags.
 - `pnpm release:all-in-one:latest`: only sync and verify `kevinchina/deeplearning:vanblog-all-in-one-latest` from an existing version tag.
 - `docker compose up -d --build`: start the split runtime locally.
 - `docker compose -f docker-compose.image.yml up -d`: start from already-published images.
-- `docker compose logs -f caddy server website admin waline postgres redis`: inspect logs for the current top-level compose stack.
+- `docker compose logs -f caddy server website admin postgres redis`: inspect logs for the current top-level compose stack.
 
 ## Coding Style & Naming Conventions
 
@@ -183,14 +183,15 @@ Treat release and deployment work as documented workflows, not guesswork.
 - For production deployment tasks, read `DEPLOY.md`; the default locked release path is `docker-compose.image.yml` plus `.env.release.example`, while the optional non-AI all-in-one path uses `docker-compose.all-in-one.image.yml`.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
 - Treat `kevinchina/deeplearning` as the long-term retained image repo / backup repo in docs and release examples unless the user explicitly changes it.
-- `pnpm release:images` only publishes the 5 core VanBlog images.
+- `pnpm release:images` only publishes the 4 core VanBlog images (`caddy`, `server`, `website`, `admin`).
 - The optional non-AI `docker-compose.all-in-one.latest.yml` path depends on `kevinchina/deeplearning:vanblog-all-in-one-latest`, and that tag is published by the dedicated all-in-one release flow rather than by `pnpm release:images`.
 - For the optional non-AI all-in-one image, use `pnpm release:all-in-one:publish` for a full publish, or `pnpm release:all-in-one:latest --version vX.Y.Z --image-id <image-id>` when the version tags already exist and only the `latest` alias is missing.
-- If a pull of `docker-compose.all-in-one.latest.yml` fails with `manifest unknown`, assume `vanblog-all-in-one-latest` was not synced yet; do not try to fix it with `pnpm release:latest`, which only applies to the split 5-image release flow.
+- If a pull of `docker-compose.all-in-one.latest.yml` fails with `manifest unknown`, assume `vanblog-all-in-one-latest` was not synced yet; do not try to fix it with `pnpm release:latest`, which only applies to the split 4-image release flow.
 - When documenting deployment choices, keep `docker-compose.latest.yml`, `docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths.
 - Do not use GitHub Actions to publish Docker Hub images; release workflows are intentionally handled on this machine via local/manual commands.
 - If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.
 - For release or deployment changes, prefer validating with `pnpm test:full`; if you only need a narrower config/routing check, at minimum run `pnpm test:blog-flow`, and also run `pnpm test:deploy` for config- or routing-focused changes.
+- The site-wide shared secret is `VANBLOG_SHARED_SECRET`, persisted to `vanblog-shared.secret` in the log dir when left empty. The legacy `WALINE_JWT_TOKEN` env and an existing `waline.jwt` file are still read as fallbacks so upgrades keep their secret; do not drop those fallbacks.
 - Keep production exposure assumptions intact: public entry is through Caddy on `80/443`, `postgres` and `redis` should not gain host ports, and the Caddy admin API `2019` must stay private.
 - Any CSS served from `/markdown-themes/` must be referenced through the versioned helper in `packages/website/utils/markdownTheme.ts` or `packages/admin/src/utils/markdownTheme.ts`; do not ship bare fixed URLs for these assets, or Cloudflare may keep serving stale theme files after a release.
 
@@ -243,7 +244,7 @@ This machine now has two sanctioned `18080` debug workflows documented in `docs/
 - Host-debug reuses runtime data from `tests/manual-v1.3.0/runtime/data`
 - Host-debug long-running host processes are kept alive via `tmux` sessions
 - Host-debug exposes a host Caddy proxy on `http://127.0.0.1:18080`
-- This workflow intentionally runs `server` / `website` / `admin` / `waline` on the host while keeping `postgres` / `redis` in Docker, so hot reload stays fast but storage and service topology remain close to the real stack.
+- This workflow intentionally runs `server` / `website` / `admin` on the host while keeping `postgres` / `redis` in Docker, so hot reload stays fast but storage and service topology remain close to the real stack.
 - When the user wants fast local iteration on this machine, prefer host-debug first.
 - In host-debug mode, most edits under `packages/server`, `packages/website`, and `packages/admin` take effect automatically via dev-server reload/recompile; do not restart the whole stack unless needed.
 - If `tests/host-dev/Caddyfile`, `scripts/host-dev-up.sh`, `scripts/host-dev-down.sh`, `scripts/host-dev-env.sh`, ports, proxy rules, or startup env/args changed, restart with `pnpm host:dev:down && pnpm host:dev:up`.

@@ -40,10 +40,10 @@ docker compose exec postgres psql -U postgres -d vanblog
 可以按下面顺序排查：
 
 1. 后台入口是否访问了 `http://<域名>/admin`
-2. `caddy`、`server`、`website`、`admin`、`waline` 是否都已健康启动
+2. `caddy`、`server`、`website`、`admin` 是否都已健康启动
 3. 宿主机的 `80/443` 端口是否真的放行
 4. 是否错误地把外层反代直接指向了 `server` 或 `admin`
-5. 用 `docker compose logs -f caddy server website admin waline postgres redis` 查看报错
+5. 用 `docker compose logs -f caddy server website admin postgres redis` 查看报错
 
 ## docker 镜像拉取慢
 
@@ -74,5 +74,5 @@ docker compose exec postgres psql -U postgres -d vanblog
 
 - 使用的是 `docker-compose.yml`、`docker-compose.latest.yml` 还是 `docker-compose.image.yml`
 - `docker compose ps` 的结果
-- `docker compose logs -f caddy server website admin waline postgres redis` 中的关键错误
+- `docker compose logs -f caddy server website admin postgres redis` 中的关键错误
 - 你是否额外套了 Nginx / Caddy / CDN
