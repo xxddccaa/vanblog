@@ -196,7 +196,7 @@ kevinchina/deeplearning:vanblog-all-in-one-latest
 中的 `127.0.0.1` 代理被自动传进 BuildKit 构建容器，容器内的 `pnpm` / `apk`
 会把这个地址解释成容器自身并连接失败。
 
-这种机器上发布时保留 Docker CLI 的代理与登录配置，同时设置：
+本机发布**优先用 7.0 的宿主机代理**；代理不可用时，才保留 Docker CLI 的代理与登录配置，同时设置：
 
 ```bash
 CLEAR_BUILD_PROXIES=true pnpm release:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
@@ -205,6 +205,32 @@ CLEAR_BUILD_PROXIES=true pnpm release:all-in-one:publish --version vX.Y.Z --imag
 
 该变量只清空镜像构建阶段的标准代理 build args，不修改宿主机 Docker daemon、
 Docker Hub 登录凭据或全局代理配置。
+
+### 7.0 推荐：构建走宿主机代理（本机首选）
+
+本机 `127.0.0.1:10826` 上运行着 sing-box 代理。构建直接走它，比 Alpine 国内镜像源快，也更稳定。
+`2026-11-18` 发布 `v2.0.0` 时实测：all-in-one 运行层要装的 `caddy`、`postgresql16` 等大包，
+经代理从官方源下载约 22 秒；同一天用清华源，第一次在这一步挂住 29 分钟，重跑才成功。
+
+```bash
+BUILD_PROXY=http://127.0.0.1:10826 pnpm release:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+BUILD_PROXY=http://127.0.0.1:10826 pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
+```
+
+说明：
+
+- 设置 `BUILD_PROXY` 后，发布脚本会给构建命令加上 `--network host`，并把代理作为构建参数传进去。
+  必须用主机网络，是因为 sing-box 只监听 `127.0.0.1`：普通构建容器里的 `127.0.0.1` 是容器自己，
+  经 Docker 网桥 `172.17.0.1` 也连不上。
+- 走代理时直接用官方 Alpine 源，不需要再设 `ALPINE_MIRROR_HOST`。`BUILD_PROXY` 不能和
+  `CLEAR_BUILD_PROXIES=true` 同时使用，脚本会直接报错退出。
+- 发布前先确认代理可用，返回 `401` 就是正常的（Docker Hub 要求登录）：
+
+  ```bash
+  curl -sS -o /dev/null -w '%{http_code}\n' -x http://127.0.0.1:10826 https://registry-1.docker.io/v2/
+  ```
+
+- 代理连不上（返回 `000` 或超时）时，先在 sing-box 客户端里恢复代理；确实恢复不了，再退回下面 7.1 的镜像源方案。
 
 ### 7.1 Alpine 源选择
 
@@ -292,7 +318,7 @@ all-in-one 在镜像内从源码重新编译，构建上下文就是仓库目录
 ```bash
 git worktree add --detach /tmp/vanblog-release/wt-vX.Y.Z vX.Y.Z
 cd /tmp/vanblog-release/wt-vX.Y.Z
-ALPINE_MIRROR_HOST=<可用镜像源> CLEAR_BUILD_PROXIES=true \
+BUILD_PROXY=http://127.0.0.1:10826 \
   bash scripts/release-all-in-one-publish.sh --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds
 # 发布完成后清理
 git -C <仓库目录> worktree remove /tmp/vanblog-release/wt-vX.Y.Z
@@ -310,7 +336,7 @@ git -C <仓库目录> worktree remove /tmp/vanblog-release/wt-vX.Y.Z
 ```bash
 mkdir -p /tmp/vanblog-release
 
-nohup env ALPINE_MIRROR_HOST=mirrors.aliyun.com CLEAR_BUILD_PROXIES=true \
+nohup env BUILD_PROXY=http://127.0.0.1:10826 \
   pnpm release:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds \
   > /tmp/vanblog-release/core-vX.Y.Z.log 2>&1 &
 
@@ -321,7 +347,17 @@ grep -nE '>>> Building|pushing manifest|ERROR|CANCELED' /tmp/vanblog-release/cor
 核心镜像全部成功后，再用同样方式运行 all-in-one 发布：
 
 ```bash
-nohup env ALPINE_MIRROR_HOST=mirrors.aliyun.com CLEAR_BUILD_PROXIES=true \
+nohup env BUILD_PROXY=http://127.0.0.1:10826 \
+  pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds \
+  > /tmp/vanblog-release/all-in-one-vX.Y.Z.log 2>&1 &
+```
+
+代理不可用、改走镜像源时，把上面两条命令里的 `BUILD_PROXY=...` 换成
+`ALPINE_MIRROR_HOST=<可用镜像源> CLEAR_BUILD_PROXIES=true`，镜像源按 7.3 预检选择。
+
+```bash
+# 示例：退回镜像源方案
+nohup env ALPINE_MIRROR_HOST=mirrors.tuna.tsinghua.edu.cn CLEAR_BUILD_PROXIES=true \
   pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-tests --skip-builds \
   > /tmp/vanblog-release/all-in-one-vX.Y.Z.log 2>&1 &
 ```

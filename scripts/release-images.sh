@@ -14,6 +14,7 @@ PLATFORMS="${PLATFORMS:-linux/amd64}"
 INSTALL_ALIYUNPAN="${INSTALL_ALIYUNPAN:-false}"
 ALPINE_MIRROR_HOST="${ALPINE_MIRROR_HOST:-}"
 CLEAR_BUILD_PROXIES="${CLEAR_BUILD_PROXIES:-false}"
+BUILD_PROXY="${BUILD_PROXY:-}"
 SERVICES=(caddy server website admin)
 
 usage() {
@@ -148,6 +149,22 @@ build_service() {
     )
   fi
 
+  if [[ -n "$BUILD_PROXY" ]]; then
+    # Route build steps through a proxy on the release host. Host networking
+    # lets RUN steps reach a proxy that only listens on 127.0.0.1.
+    args+=(
+      --network host
+      --build-arg "HTTP_PROXY=${BUILD_PROXY}"
+      --build-arg "HTTPS_PROXY=${BUILD_PROXY}"
+      --build-arg "http_proxy=${BUILD_PROXY}"
+      --build-arg "https_proxy=${BUILD_PROXY}"
+      --build-arg "ALL_PROXY="
+      --build-arg "all_proxy="
+      --build-arg "NO_PROXY=localhost,127.0.0.1"
+      --build-arg "no_proxy=localhost,127.0.0.1"
+    )
+  fi
+
   if [[ -n "$ALPINE_MIRROR_HOST" && "$service" =~ ^(server|website)$ ]]; then
     args+=(--build-arg "ALPINE_MIRROR_HOST=${ALPINE_MIRROR_HOST}")
   fi
@@ -184,6 +201,11 @@ build_service() {
 }
 
 echo "Release repository : ${IMAGE_REPO}"
+if [[ -n "$BUILD_PROXY" && "$CLEAR_BUILD_PROXIES" == "true" ]]; then
+  echo "BUILD_PROXY and CLEAR_BUILD_PROXIES=true cannot be used together." >&2
+  exit 1
+fi
+
 echo "Release version    : ${VERSION}"
 echo "Release image id   : ${IMAGE_ID}"
 echo "Release suffix     : ${RELEASE_SUFFIX}"
@@ -192,6 +214,9 @@ if [[ -n "$ALPINE_MIRROR_HOST" ]]; then
   echo "Alpine mirror host : ${ALPINE_MIRROR_HOST}"
 fi
 echo "Clear build proxies : ${CLEAR_BUILD_PROXIES}"
+if [[ -n "$BUILD_PROXY" ]]; then
+  echo "Build proxy         : ${BUILD_PROXY} (host network)"
+fi
 
 for service in "${SERVICES[@]}"; do
   build_service "$service"

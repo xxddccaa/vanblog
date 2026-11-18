@@ -423,6 +423,80 @@ printf '\\n' >> "$DOCKER_LOG"
   }
 });
 
+test('release builds can route through a host proxy with host networking', () => {
+  const tempDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'vanblog-release-proxy-'));
+  const dockerLog = nodePath.join(tempDir, 'docker.log');
+  writeExecutable(
+    nodePath.join(tempDir, 'docker'),
+    `#!/bin/bash
+printf '%s' "$1" >> "$DOCKER_LOG"
+for arg in "\${@:2}"; do
+  printf '\\t%s' "$arg" >> "$DOCKER_LOG"
+done
+printf '\\n' >> "$DOCKER_LOG"
+`,
+  );
+  const proxy = 'http://127.0.0.1:10826';
+  const args = [
+    '--version',
+    'v9.9.9',
+    '--image-id',
+    'deadbeef',
+    '--repo',
+    'example/vanblog',
+    '--skip-tests',
+    '--skip-builds',
+    '--push',
+  ];
+
+  try {
+    for (const [script, expectedCalls] of [
+      ['scripts/release-images.sh', 4],
+      ['scripts/release-all-in-one.sh', 1],
+    ]) {
+      fs.writeFileSync(dockerLog, '');
+      runReleaseScript(script, args, {
+        PATH: `${tempDir}:${process.env.PATH}`,
+        DOCKER_LOG: dockerLog,
+        BUILD_PROXY: proxy,
+        CLEAR_BUILD_PROXIES: 'false',
+      });
+      const calls = read(dockerLog).trim().split('\n');
+      assert.equal(calls.length, expectedCalls);
+      for (const call of calls) {
+        assert.ok(call.includes('\t--network\thost'), call);
+        for (const name of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) {
+          assert.ok(call.includes(`\t--build-arg\t${name}=${proxy}`), `${call} should set ${name}`);
+        }
+        assert.ok(call.includes('\t--build-arg\tNO_PROXY=localhost,127.0.0.1'), call);
+      }
+
+      // Using the host proxy and clearing proxies at the same time is a mistake.
+      const conflict = spawnSync('/bin/bash', [script, ...args], {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${tempDir}:${process.env.PATH}`,
+          DOCKER_LOG: dockerLog,
+          BUILD_PROXY: proxy,
+          CLEAR_BUILD_PROXIES: 'true',
+        },
+      });
+      assert.notEqual(conflict.status, 0, `${script} should reject BUILD_PROXY with CLEAR_BUILD_PROXIES`);
+      assert.match(conflict.stderr, /cannot be used together/);
+    }
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+
+  assert.match(releaseDoc, /BUILD_PROXY=http:\/\/127\.0\.0\.1:10826 pnpm release:publish --version vX\.Y\.Z/);
+  assert.match(
+    releaseDoc,
+    /BUILD_PROXY=http:\/\/127\.0\.0\.1:10826 pnpm release:all-in-one:publish --version vX\.Y\.Z/,
+  );
+});
+
 test('publish wrappers preserve the proxy-clearing environment for build scripts', () => {
   const tempDir = fs.mkdtempSync(nodePath.join(os.tmpdir(), 'vanblog-release-publish-'));
   const wrapperLog = nodePath.join(tempDir, 'wrapper.log');

@@ -37,7 +37,7 @@ Options:
   --help                 Show this message.
 
 Environment passthrough:
-  IMAGE_REPO, PLATFORMS, ALPINE_MIRROR_HOST, CLEAR_BUILD_PROXIES
+  IMAGE_REPO, PLATFORMS, ALPINE_MIRROR_HOST, CLEAR_BUILD_PROXIES, BUILD_PROXY
 
 Validation strategy:
   The script verifies that the immutable tag, version alias, and latest alias all resolve to
