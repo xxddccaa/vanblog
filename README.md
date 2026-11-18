@@ -10,7 +10,7 @@
 
 当前项目有三个明确约定：
 
-- **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续负责 `caddy`、`server`、`website`、`admin`、`postgres`、`redis`，并配套 `kroki` 图表渲染服务；评论由 `server` 内置的原生评论系统提供，不再有独立的评论容器
+- **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续负责 `caddy`、`server`、`website`、`admin`、`postgres`、`redis`；评论由 `server` 内置的原生评论系统提供，不再有独立的评论容器
 - **可选提供非 AI 单镜像入口**：`docker-compose.all-in-one*.yml` 会把主栈和 `postgres` / `redis` 收进一个容器，适合单机部署和减少运维对象；标准生产锁版、细粒度运维和审计仍优先使用拆分多镜像
 - **镜像仓库固定使用 `kevinchina/deeplearning`**：这是当前长期保留、可回滚、可审计的备份仓库，发布与部署文档统一以它为准
 
@@ -38,7 +38,7 @@
 
 ## 核心拓扑
 
-默认公开拓扑包含下面 6 个核心博客服务，并配套 1 个仅内网访问的 Kroki 图表渲染服务：
+默认公开拓扑包含下面 6 个核心博客服务：
 
 | 服务       | 端口        | 说明                                                 |
 | ---------- | ----------- | ---------------------------------------------------- |
@@ -48,7 +48,6 @@
 | `admin`    | 3002        | Umi 构建后的后台静态页面                             |
 | `postgres` | 5432        | 主业务数据库，仅在 compose 内部网络访问              |
 | `redis`    | 6379        | 缓存与队列数据库，仅在 compose 内部网络访问          |
-| `kroki`    | 8000        | Mermaid / PlantUML 等图表渲染，仅在内部网络访问      |
 
 ## 快速开始
 
@@ -92,7 +91,7 @@ docker compose -f docker-compose.latest.yml up -d
 
 ### 2.1 单镜像 all-in-one 部署（单机少运维对象，本机生产用法）
 
-`all-in-one` 把 `caddy + server + website + admin + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是我线上博客实际使用的方式。
+`all-in-one` 把 `caddy + server + website + admin + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口。只需维护一份 compose，非常适合单机部署，也是我线上博客实际使用的方式。
 
 **约定：一个博客实例 = 一个独立目录**。目录名就是 compose 项目名，容器、网络、数据卷都按它自动隔离，所以同一台机器可以并存多个互不干扰的实例。
 

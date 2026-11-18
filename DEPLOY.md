@@ -434,8 +434,8 @@ Docker daemon 把 `HTTP_PROXY` / `HTTPS_PROXY` 注入容器，但原来的 `NO_P
 拆分 Compose 的 Caddy、server、website 均显式配置大小写两组代理例外：
 
 ```yaml
-NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
-no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis,kroki
+NO_PROXY: localhost,127.0.0.1,server,website,admin,postgres,redis
+no_proxy: localhost,127.0.0.1,server,website,admin,postgres,redis
 ```
 
 排查时使用：

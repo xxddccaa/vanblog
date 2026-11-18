@@ -4,7 +4,7 @@ icon: cubes
 order: 3
 ---
 
-本页介绍 VanBlog **all-in-one 单镜像** 的生产部署方式——把 `caddy + server + website + admin + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是作者线上博客实际使用的方式。
+本页介绍 VanBlog **all-in-one 单镜像** 的生产部署方式——把 `caddy + server + website + admin + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口。只需维护一份 compose，非常适合单机部署，也是作者线上博客实际使用的方式。
 
 <!-- more -->
 
@@ -145,4 +145,4 @@ kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id> # 不可变标签
 
 - **前台一直 502**：server 还在启动（首次带数据启动更久）。`docker logs <容器> --tail 30` 看进度；启动过程中偶发一次 `ISRProvider ... ECONNRESET` 是无害的启动竞态。
 - **`password authentication failed`**：几乎都是用了硬编码弱口令的旧 compose。换成仓库最新版、`POSTGRES_PASSWORD` 留空后重启。
-- **图表 / PlantUML**：v1.8.0 的 all-in-one 只保留 `vanblog` + `kroki` 两个容器（已去掉独立的 kroki-plantuml）。
+- **图表**：v2.1.0 起不再有 `kroki` 容器，all-in-one 只有一个 `vanblog` 容器。Mermaid、WaveDrom 在浏览器里渲染；PlantUML、Graphviz 等代码块按普通代码块显示。从旧版升级时用 `up -d --remove-orphans` 删掉遗留的 kroki 容器。

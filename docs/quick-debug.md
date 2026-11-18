@@ -9,7 +9,7 @@
 - Compose：`/root/vanblog/test-env-vanblog/docker-compose.all-in-one.latest.yml`
 - Compose project：`test-env-vanblog`
 - 入口：`http://127.0.0.1:8020`
-- 容器：`test-env-vanblog-vanblog-1` + `test-env-vanblog-kroki-1`
+- 容器：`test-env-vanblog-vanblog-1`
 
 生产栈使用 `8019` 和 `13080`。测试环境必须保留独立目录、端口和 Compose project，不要操作两个生产目录。
 
@@ -127,8 +127,6 @@ docker compose -f docker-compose.all-in-one.latest.yml \
 | 新增或升级 npm 依赖 | 否 | 重建 all-in-one 镜像 |
 | Dockerfile / Caddy / entrypoint | 否 | 重建 all-in-one 镜像 |
 | 数据库结构或容器拓扑 | 否 | 按完整测试/迁移流程处理 |
-
-Kroki 容器不受 server、website、admin 重编影响，无需重启。
 
 > 原生评论替换 Waline 时，server 新增了 npm 依赖（如 `nodemailer`、`ip2region`），all-in-one 的入口脚本、Caddy 路由和系统包（`cwebp`）也都变了。测试目录运行的镜像如果还是带 Waline 的旧版本，路径 A 只挂载新产物是跑不起来的，要先重建一次 all-in-one 镜像，或者等包含原生评论的 all-in-one 镜像发布后再用路径 A。
 

@@ -21,7 +21,7 @@ actions:
 features:
   - title: 多容器架构
     icon: cubes
-    details: 默认拆分为 caddy、server、website、admin、postgres、redis 六个核心博客服务，并配套 Kroki 图表渲染服务
+    details: 默认拆分为 caddy、server、website、admin、postgres、redis 六个核心博客服务
 
   - title: 前后台一体
     icon: window-maximize

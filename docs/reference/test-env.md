@@ -23,7 +23,6 @@ title: 本机测试环境
 这套环境通过 `docker compose` 启动以下服务：
 
 - `vanblog`：`kevinchina/deeplearning:vanblog-all-in-one-latest`（all-in-one 单镜像）
-- `kroki`：`yuzutech/kroki`（图表渲染）
 
 Caddy 对外暴露 `8020`，数据库 / redis 由 all-in-one 容器内部托管。
 
@@ -215,7 +214,6 @@ curl --noproxy '*' -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8020/
 
 - 容器重启时 PostgreSQL / redis 数据保持不变（数据在 `./data/postgres`、`./data/redis`）。
 - website 的 `bracketMath.ts` 等新文件若引入新依赖（如 `unist-util-visit`），确认该依赖已在 `packages/website/package.json` 且镜像 `node_modules` 内存在；否则运行期会报模块缺失，此时只能重建镜像。
-- `kroki` 容器不受 server/website/admin 重编影响，无需重启。
 - 原生评论替换 Waline 时，server 新增了 npm 依赖（如 `nodemailer`、`ip2region`），入口脚本、Caddy 路由和系统包（`cwebp`）也都变了。测试目录的镜像如果还是带 Waline 的旧版本，路径 A 跑不起来，需要先重建 all-in-one 镜像，或等包含原生评论的 all-in-one 镜像发布后再用。
 
 ## 与仓库自动化测试的配合

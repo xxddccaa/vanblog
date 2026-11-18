@@ -30,7 +30,7 @@ This is the independently maintained VanBlog repository, forked from `Mereithhh/
 
 Long-term conventions:
 
-- The core blog stack stays as is: `docker-compose.yml` / `docker-compose.image.yml` wire `caddy`, `server`, `website`, `admin`, `postgres`, and `redis`, plus the `kroki` diagram renderer.
+- The core blog stack stays as is: `docker-compose.yml` / `docker-compose.image.yml` wire `caddy`, `server`, `website`, `admin`, `postgres`, and `redis`.
 - The image repository is fixed to `kevinchina/deeplearning`; all release and rollback docs assume it.
 - "Single image" means the `docker-compose.all-in-one*.yml` files plus the `vanblog-all-in-one-*` tags. Do not fall back to the legacy `vanblog-latest` single-image setup.
 
@@ -44,7 +44,6 @@ Long-term conventions:
 | `admin` | `packages/admin` | 3002 | Umi admin static build, served under `/admin/` |
 | `postgres` | — | 5432 (internal only) | Primary database |
 | `redis` | — | 6379 (internal only) | Cache / queue |
-| `kroki` | — | 8000 (internal only) | Mermaid / PlantUML diagram rendering |
 
 Default entrypoints: website `/`, admin `/admin` (308 redirect to `/admin/`). Comments are native to `server` (`/api/public/comment*`, `/api/admin/comment*`); there is no separate comment service. Public `/swagger` always returns 404; API docs are only reachable host-locally or in-container at `server:3000/swagger`.
 
@@ -71,7 +70,7 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `packages/website`: Next.js frontend theme; routes live in `pages/`, shared UI in `components/`, helpers in `utils/`, and tests in `__tests__/`.
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
-- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires the 6 core blog services (`caddy`, `server`, `website`, `admin`, `postgres`, `redis`) plus the internal `kroki` diagram renderer.
+- `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires the 6 core blog services (`caddy`, `server`, `website`, `admin`, `postgres`, `redis`). Mermaid and WaveDrom diagrams render in the browser; there is no diagram rendering service.
 - `docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology; pair it with `.env.release.example` for locked production deployments.
 - `docker-compose.latest.yml`: quick-start of the same top-level stack from `latest` images.
 - `docker-compose.https.yml`: overlay that adds the HTTPS configuration.
