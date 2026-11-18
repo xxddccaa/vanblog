@@ -30,22 +30,38 @@ describe('PublicCacheMiddleware', () => {
   it('treats upper-case public paths like their canonical form', () => {
     const middleware = new PublicCacheMiddleware();
     const searchRes = createRes();
-    middleware.use({ method: 'GET', path: '/API/PUBLIC/Search' } as any, searchRes as any, jest.fn());
+    middleware.use(
+      { method: 'GET', path: '/API/PUBLIC/Search' } as any,
+      searchRes as any,
+      jest.fn(),
+    );
     expect(searchRes.headers.get('Cache-Control')).toBe('no-store');
 
     const siteInfoRes = createRes();
-    middleware.use({ method: 'GET', path: '/API/Public/site-info' } as any, siteInfoRes as any, jest.fn());
+    middleware.use(
+      { method: 'GET', path: '/API/Public/site-info' } as any,
+      siteInfoRes as any,
+      jest.fn(),
+    );
     expect(siteInfoRes.headers.get('Cache-Tag')).toContain('site-info');
 
     const customPageRes = createRes();
-    middleware.use({ method: 'GET', path: '/api/public/customPage/all' } as any, customPageRes as any, jest.fn());
+    middleware.use(
+      { method: 'GET', path: '/api/public/customPage/all' } as any,
+      customPageRes as any,
+      jest.fn(),
+    );
     expect(customPageRes.headers.get('Cache-Tag')).toContain('custom-page-list');
   });
 
   it('keeps original spelling of captured names in cache tags for upper-case routes', () => {
     const middleware = new PublicCacheMiddleware();
     const res = createRes();
-    middleware.use({ method: 'GET', path: '/API/PUBLIC/tag-articles/GoLang' } as any, res as any, jest.fn());
+    middleware.use(
+      { method: 'GET', path: '/API/PUBLIC/tag-articles/GoLang' } as any,
+      res as any,
+      jest.fn(),
+    );
     expect(res.headers.get('Cache-Tag')).toContain('tag-articles');
   });
 
@@ -95,7 +111,11 @@ describe('PublicCacheMiddleware', () => {
   it('marks admin nav payloads as no-store even though they sit under the public prefix', () => {
     const middleware = new PublicCacheMiddleware();
     const res = createRes();
-    middleware.use({ method: 'GET', path: '/api/public/nav/admin-data' } as any, res as any, jest.fn());
+    middleware.use(
+      { method: 'GET', path: '/api/public/nav/admin-data' } as any,
+      res as any,
+      jest.fn(),
+    );
     expect(res.headers.get('Cache-Control')).toBe('no-store');
     expect(res.headers.get('Cloudflare-CDN-Cache-Control')).toBe('no-store');
   });
@@ -264,11 +284,7 @@ describe('PublicCacheMiddleware', () => {
   it('keeps the public viewer aggregate on the same short cache policy as other engagement reads', () => {
     const middleware = new PublicCacheMiddleware();
     const res = createRes();
-    middleware.use(
-      { method: 'GET', path: '/api/public/viewer' } as any,
-      res as any,
-      jest.fn(),
-    );
+    middleware.use({ method: 'GET', path: '/api/public/viewer' } as any, res as any, jest.fn());
 
     expect(res.headers.get('Cache-Control')).toContain('max-age=15');
     expect(res.headers.get('CDN-Cache-Control')).toContain('s-maxage=300');
@@ -317,6 +333,34 @@ describe('PublicCacheMiddleware', () => {
       jest.fn(),
     );
     expect(res.headers.get('Cache-Tag').split(',')).toHaveLength(2 + 50);
+  });
+
+  it('switches comment thread errors to no-store before the headers are sent', () => {
+    const middleware = new PublicCacheMiddleware();
+    const res: any = createRes();
+    const writeHead = jest.fn();
+    res.writeHead = writeHead;
+    middleware.use(
+      { method: 'GET', path: '/api/public/comment', query: { target: 'post:12' } } as any,
+      res,
+      jest.fn(),
+    );
+    expect(res.headers.get('Cache-Control')).toBe('public, max-age=0, s-maxage=30');
+    res.statusCode = 429;
+    res.writeHead(429);
+    expect(writeHead).toHaveBeenCalledWith(429);
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+    expect(res.headers.get('Cloudflare-CDN-Cache-Control')).toBe('no-store');
+
+    const ok: any = createRes();
+    ok.writeHead = jest.fn();
+    middleware.use(
+      { method: 'GET', path: '/api/public/comment', query: { target: 'post:12' } } as any,
+      ok,
+      jest.fn(),
+    );
+    ok.writeHead(200);
+    expect(ok.headers.get('Cache-Control')).toBe('public, max-age=0, s-maxage=30');
   });
 
   it('never caches the per-visitor comment endpoints', () => {
@@ -624,11 +668,7 @@ describe('PublicCacheMiddleware', () => {
   it('uses a shorter dedicated cache policy for public moment feeds', () => {
     const middleware = new PublicCacheMiddleware();
     const res = createRes();
-    middleware.use(
-      { method: 'GET', path: '/api/public/moment' } as any,
-      res as any,
-      jest.fn(),
-    );
+    middleware.use({ method: 'GET', path: '/api/public/moment' } as any, res as any, jest.fn());
     expect(res.headers.get('Cache-Control')).toContain('max-age=30');
     expect(res.headers.get('Cloudflare-CDN-Cache-Control')).toContain('s-maxage=300');
     expect(res.headers.get('Cache-Tag')).toContain('moment-public');
@@ -637,11 +677,7 @@ describe('PublicCacheMiddleware', () => {
   it('uses a dedicated medium cache policy for public nav data', () => {
     const middleware = new PublicCacheMiddleware();
     const res = createRes();
-    middleware.use(
-      { method: 'GET', path: '/api/public/nav/data' } as any,
-      res as any,
-      jest.fn(),
-    );
+    middleware.use({ method: 'GET', path: '/api/public/nav/data' } as any, res as any, jest.fn());
     expect(res.headers.get('Cache-Control')).toContain('max-age=60');
     expect(res.headers.get('CDN-Cache-Control')).toContain('s-maxage=900');
     expect(res.headers.get('Cloudflare-CDN-Cache-Control')).toContain('s-maxage=900');

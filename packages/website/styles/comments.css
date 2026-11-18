@@ -2,6 +2,14 @@
    what utilities cannot express: Markdown scaling inside comments, the
    honeypot field, and the deep-link highlight. */
 
+/* Comment Markdown is untrusted. Clip anything it draws to its own box, so
+   negative KaTeX offsets (\kern, \raisebox) cannot paint over other comments
+   or the page. Wide blocks still scroll inside (see below). */
+.vb-comment-markdown {
+  overflow: hidden;
+  contain: paint;
+}
+
 .vb-comment-markdown .markdown-body {
   background-color: transparent;
   font-size: 0.9375rem;
