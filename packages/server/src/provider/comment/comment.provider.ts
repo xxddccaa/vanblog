@@ -162,7 +162,9 @@ export class CommentProvider implements CommentTargetResolver {
   }
 
   private assertEnabled(siteInfo: Record<string, any>) {
-    if (String(siteInfo?.enableComment) === 'false') {
+    // Off unless explicitly enabled, matching the website and the admin form,
+    // which both treat a never-saved switch as off.
+    if (String(siteInfo?.enableComment) !== 'true') {
       throw commentError(403, 'COMMENT_DISABLED', 'Comments are disabled on this site');
     }
   }

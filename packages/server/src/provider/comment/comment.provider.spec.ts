@@ -508,6 +508,15 @@ describe('CommentProvider', () => {
       );
     });
 
+    it('treats a never-saved comment switch as off', async () => {
+      for (const enableComment of [undefined, '', 'yes']) {
+        const { provider } = createHarness({ siteInfo: { enableComment } });
+        expect(await codeOf(provider.listPublic({ target: 'page:link' }))).toEqual(
+          expect.objectContaining({ status: 403, code: 'COMMENT_DISABLED' }),
+        );
+      }
+    });
+
     it('answers 403 COMMENT_DISABLED on every public operation when comments are off', async () => {
       const { provider, seed } = createHarness({ siteInfo: { enableComment: 'false' } });
       await seed();
