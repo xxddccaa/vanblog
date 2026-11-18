@@ -13,6 +13,7 @@ import {
 } from '../../api/comments';
 import CommentMarkdown from '../CommentMarkdown';
 import EmojiPanel from './EmojiPanel';
+import HelpTip from './HelpTip';
 import {
   clearCommentProfile,
   displayNick,
@@ -351,18 +352,20 @@ export default function CommentForm(props: CommentFormProps) {
               className={inputClass}
             />
           </div>
-          <div className="min-w-0">
-            <label
-              htmlFor={ids.mail}
-              className="mb-1 block text-xs text-gray-500 dark:text-dark-light"
-            >
-              邮箱（仅用于回复通知，不公开）
-              {config.requireMail && (
-                <span className="ml-0.5 text-red-500" aria-hidden="true">
-                  *
-                </span>
-              )}
-            </label>
+          <div className="relative min-w-0">
+            <div className="mb-1 flex items-center text-xs text-gray-500 dark:text-dark-light">
+              <label htmlFor={ids.mail}>
+                邮箱（不公开）
+                {config.requireMail && (
+                  <span className="ml-0.5 text-red-500" aria-hidden="true">
+                    *
+                  </span>
+                )}
+              </label>
+              <HelpTip label="邮箱">
+                只在有人回复你的评论时，用来给你发邮件提醒。邮箱不会显示在页面上，也不会公开给其他访客。
+              </HelpTip>
+            </div>
             <input
               id={ids.mail}
               name="mail"
@@ -378,13 +381,13 @@ export default function CommentForm(props: CommentFormProps) {
               className={inputClass}
             />
           </div>
-          <div className="min-w-0">
-            <label
-              htmlFor={ids.link}
-              className="mb-1 block text-xs text-gray-500 dark:text-dark-light"
-            >
-              网址
-            </label>
+          <div className="relative min-w-0">
+            <div className="mb-1 flex items-center text-xs text-gray-500 dark:text-dark-light">
+              <label htmlFor={ids.link}>个人网站</label>
+              <HelpTip label="个人网站">
+                选填。填写你自己的博客或主页地址后，你的昵称会变成指向它的链接，方便其他人访问。
+              </HelpTip>
+            </div>
             <input
               id={ids.link}
               name="link"
@@ -392,7 +395,7 @@ export default function CommentForm(props: CommentFormProps) {
               autoComplete="url"
               inputMode="url"
               maxLength={COMMENT_LIMITS.linkMaxLength}
-              placeholder="https://"
+              placeholder="选填，如 https://example.com"
               value={profile.link}
               onChange={(event) => setProfileField('link', event.target.value)}
               className={inputClass}
