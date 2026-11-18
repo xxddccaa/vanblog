@@ -12,11 +12,8 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 | `VANBLOG_DOCKER_REPO` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的镜像仓库 | `kevinchina/deeplearning` |
 | `VANBLOG_RELEASE_SUFFIX` | `.env` / `docker-compose.image.yml` | 锁版镜像部署使用的标签后缀，如 `vX.Y.Z-<image-id>` | 无 |
 | `VAN_BLOG_DATABASE_URL` | `server` | PostgreSQL 连接串 | `postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/vanblog` |
-| `VAN_BLOG_WALINE_DB` | `server` / `waline` / `postgres` | 评论系统独立数据库名 | `waline` |
-| `VAN_BLOG_WALINE_DATABASE_URL` | `server` | Waline 独立 PostgreSQL 连接串 | `postgresql://postgres:<POSTGRES_PASSWORD>@postgres:5432/waline` |
-| `VANBLOG_WALINE_CONTROL_URL` | `server` | Waline 控制端点 | `http://waline:8361` |
 | `VAN_BLOG_ALLOW_DOMAINS` | `website` | Next.js 允许加载的外部图片域名，多个用逗号分隔 | `pic.mereith.com` |
-| `WALINE_JWT_TOKEN` | `server` / `website` / `waline` | Waline 与内部控制面共用的 JWT 密钥；留空时镜像运行时会自动生成并落盘到日志目录中的 `waline.jwt`，也可手动指定覆盖 | 可留空自动生成 |
+| `VANBLOG_SHARED_SECRET` | `server` / `website` | 站点共享密钥，用于 ISR 刷新、website 内部请求和 website 控制端点；留空时镜像运行时会自动生成并落盘到日志目录中的 `vanblog-shared.secret`，也可手动指定覆盖。旧变量名 `WALINE_JWT_TOKEN` 仍会被读取，日志目录里已有的 `waline.jwt` 也会被沿用 | 可留空自动生成 |
 | `VANBLOG_BACKUP_ENCRYPTION_KEY` | `server` | 独立的备份加密密钥；留空时镜像生成并落盘到 `VANBLOG_SECRET_DIR/backup-encryption.key`，异地备份必须另行保管此密钥 | 可留空自动生成 |
 | `VANBLOG_HTTP_PORT` | `caddy` | 宿主机暴露的 HTTP 端口 | `80` |
 | `VANBLOG_HTTPS_PORT` | `caddy` | 使用 `docker-compose.https.yml` 时暴露的 HTTPS 端口 | `443` |
@@ -35,6 +32,15 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 - 如果是锁版镜像部署，则使用 `docker compose -f docker-compose.image.yml up -d`
 - 修改 `.env` 后需要 recreate 相关容器；单纯 `docker compose restart` 不会重新读取环境变量
 - 某些前台资源相关配置（例如 `VAN_BLOG_ALLOW_DOMAINS`）通常至少需要重启 `website` 服务
+
+## 已移除的变量
+
+评论改为 `server` 内置后，下面这些变量不再使用。旧 `.env` 里留着也没有影响，可以删掉：
+
+- `VAN_BLOG_WALINE_DB`
+- `VAN_BLOG_WALINE_DATABASE_URL`
+- `VANBLOG_WALINE_CONTROL_URL`
+- `VAN_BLOG_WALINE_API_URL`
 
 ## 注意事项
 

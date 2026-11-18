@@ -1,7 +1,7 @@
 **
 !docker/
 !docker/shared/
-!docker/shared/ensure-waline-jwt.cjs
+!docker/shared/ensure-shared-secret.cjs
 !docker/website/
 !docker/website/entrypoint.sh
 !docker/website/control-auth.cjs

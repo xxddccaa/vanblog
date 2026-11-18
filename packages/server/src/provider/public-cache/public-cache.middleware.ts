@@ -2,6 +2,8 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { createHash } from 'crypto';
 import { formatCacheTags, toCacheTag } from 'src/utils/cacheTag';
+import { COMMENT_LIMITS } from 'src/types/comment.dto';
+import { parseCommentTargetKey } from 'src/utils/commentInput';
 
 const setEdgeCacheHeaders = (res: Response, browserValue: string, cdnValue: string) => {
   res.setHeader('Cache-Control', browserValue);
@@ -11,6 +13,21 @@ const setEdgeCacheHeaders = (res: Response, browserValue: string, cdnValue: stri
 
 const setNoStoreHeaders = (res: Response) => {
   setEdgeCacheHeaders(res, 'no-store', 'no-store');
+};
+
+/**
+ * Cache headers are set before the handler runs. If the handler then fails
+ * (429 rate limit, 404 closed thread, ...), switch to no-store just before the
+ * headers are sent so a CDN never serves one visitor's error to everyone.
+ */
+const keepErrorsUncached = (res: Response) => {
+  const writeHead = res.writeHead;
+  if (typeof writeHead !== 'function') return;
+  res.writeHead = function (this: Response, ...args: any[]) {
+    const status = typeof args[0] === 'number' ? args[0] : res.statusCode;
+    if (status >= 400) setNoStoreHeaders(res);
+    return (writeHead as any).apply(this, args);
+  } as Response['writeHead'];
 };
 
 const AUTH_COOKIE_NAMES = new Set([
@@ -184,6 +201,24 @@ const toQueryValueList = (value: unknown) => {
     .filter(Boolean);
 };
 
+const COMMENT_PATH = '/api/public/comment';
+
+/** Lower-cased comment sub-path without a trailing slash, or null for other paths. */
+const getCommentRoute = (lowerPath: string) => {
+  if (lowerPath !== COMMENT_PATH && !lowerPath.startsWith(`${COMMENT_PATH}/`)) {
+    return null;
+  }
+  return lowerPath.slice(COMMENT_PATH.length).replace(/\/+$/, '') || '/';
+};
+
+/** One tag per valid comment target; the provider purges `comment:<target>` on change. */
+const getCommentTargetTags = (value: unknown) =>
+  toQueryValueList(value)
+    .slice(0, COMMENT_LIMITS.countMaxTargets)
+    .map((item) => parseCommentTargetKey(item))
+    .filter(Boolean)
+    .map((target) => toCacheTag('comment', target.key));
+
 const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) => {
   const tags = ['public-api'];
   // Express and Caddy route case-insensitively, so structural checks ignore case
@@ -198,7 +233,9 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
   const categoryArticlesMatch = path.match(/^\/api\/public\/category\/([^/]+)\/articles$/i);
   const timelineArticlesMatch = path.match(/^\/api\/public\/timeline\/([^/]+)\/articles$/i);
   const archiveMonthMatch = path.match(/^\/api\/public\/archive\/([^/]+)\/([^/]+)\/articles$/i);
-  const categoryArchiveSummaryMatch = path.match(/^\/api\/public\/category\/([^/]+)\/archive\/summary$/i);
+  const categoryArchiveSummaryMatch = path.match(
+    /^\/api\/public\/category\/([^/]+)\/archive\/summary$/i,
+  );
   const categoryArchiveMonthMatch = path.match(
     /^\/api\/public\/category\/([^/]+)\/archive\/([^/]+)\/([^/]+)\/articles$/i,
   );
@@ -214,10 +251,19 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
     tags.push('article-nav', toCacheTag('post', navMatch[1]));
   }
   if (engagementMatch) {
-    tags.push('article-engagement', toCacheTag('post', engagementMatch[1]));
+    tags.push(
+      'article-engagement',
+      toCacheTag('post', engagementMatch[1]),
+      toCacheTag('post-comments', engagementMatch[1]),
+    );
   }
   if (fragmentsMatch) {
-    tags.push('article-fragments', 'article-ranking', toCacheTag('post', fragmentsMatch[1]));
+    tags.push(
+      'article-fragments',
+      'article-ranking',
+      toCacheTag('post', fragmentsMatch[1]),
+      toCacheTag('post-comments', fragmentsMatch[1]),
+    );
   }
   if (viewerMatch) {
     tags.push('article-engagement', toCacheTag('post', viewerMatch[1]));
@@ -226,13 +272,22 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
     tags.push('tag-articles', toCacheTag('tag', decodeCacheSegment(tagArticlesMatch[1])));
   }
   if (categoryArticlesMatch) {
-    tags.push('category-articles', toCacheTag('category', decodeCacheSegment(categoryArticlesMatch[1])));
+    tags.push(
+      'category-articles',
+      toCacheTag('category', decodeCacheSegment(categoryArticlesMatch[1])),
+    );
   }
   if (timelineArticlesMatch) {
-    tags.push('timeline-articles', toCacheTag('timeline', decodeCacheSegment(timelineArticlesMatch[1])));
+    tags.push(
+      'timeline-articles',
+      toCacheTag('timeline', decodeCacheSegment(timelineArticlesMatch[1])),
+    );
   }
   if (archiveMonthMatch) {
-    tags.push('archive-month', toCacheTag('archive-month', `${archiveMonthMatch[1]}-${archiveMonthMatch[2]}`));
+    tags.push(
+      'archive-month',
+      toCacheTag('archive-month', `${archiveMonthMatch[1]}-${archiveMonthMatch[2]}`),
+    );
   }
   if (lowerPath === '/api/public/article') {
     tags.push('article-listing', 'site-stats');
@@ -273,7 +328,11 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
   }
   if (categoryArchiveSummaryMatch) {
     const category = decodeCacheSegment(categoryArchiveSummaryMatch[1]);
-    tags.push('archive-summary', toCacheTag('category-archive-summary', category), toCacheTag('category', category));
+    tags.push(
+      'archive-summary',
+      toCacheTag('category-archive-summary', category),
+      toCacheTag('category', category),
+    );
   }
   if (categoryArchiveMonthMatch) {
     const category = decodeCacheSegment(categoryArchiveMonthMatch[1]);
@@ -326,6 +385,16 @@ const getPublicCacheTags = (path: string, query: Record<string, unknown> = {}) =
   if (lowerPath.startsWith('/api/public/moment')) {
     tags.push('moment-public');
   }
+  const commentRoute = getCommentRoute(lowerPath);
+  if (commentRoute) {
+    tags.push('comment-public');
+    if (commentRoute === '/') {
+      tags.push(...getCommentTargetTags(query.target));
+    }
+    if (commentRoute === '/count') {
+      tags.push(...getCommentTargetTags(query.targets));
+    }
+  }
   return formatCacheTags(tags);
 };
 
@@ -371,9 +440,20 @@ export class PublicCacheMiddleware implements NestMiddleware {
       return next();
     }
 
-    if (
-      path.startsWith('/api/public/moment')
-    ) {
+    const commentRoute = getCommentRoute(path);
+    if (commentRoute) {
+      // Thread and count reads are identical for every visitor; a short edge TTL
+      // keeps new comments visible quickly. Everything else here is per visitor.
+      if (commentRoute === '/' || commentRoute === '/count') {
+        setEdgeCacheHeaders(res, 'public, max-age=0, s-maxage=30', 'public, s-maxage=30');
+        keepErrorsUncached(res);
+      } else {
+        setNoStoreHeaders(res);
+      }
+      return next();
+    }
+
+    if (path.startsWith('/api/public/moment')) {
       setEdgeCacheHeaders(
         res,
         'public, max-age=30, stale-while-revalidate=300',
@@ -382,9 +462,7 @@ export class PublicCacheMiddleware implements NestMiddleware {
       return next();
     }
 
-    if (
-      path.startsWith('/api/public/nav')
-    ) {
+    if (path.startsWith('/api/public/nav')) {
       setEdgeCacheHeaders(
         res,
         'public, max-age=60, stale-while-revalidate=900',
@@ -397,8 +475,7 @@ export class PublicCacheMiddleware implements NestMiddleware {
       path === '/api/public/viewer' ||
       path.startsWith('/api/public/article/viewer/') ||
       path.endsWith('/engagement') ||
-      path.endsWith('/fragments') ||
-      path.startsWith('/api/public/comment')
+      path.endsWith('/fragments')
     ) {
       setEdgeCacheHeaders(
         res,

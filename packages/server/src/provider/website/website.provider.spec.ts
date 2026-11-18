@@ -11,13 +11,17 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 describe('WebsiteProvider', () => {
   const oldControlUrl = process.env['VANBLOG_WEBSITE_CONTROL_URL'];
   const oldIsrToken = process.env['VANBLOG_ISR_TOKEN'];
-  const oldWalineToken = process.env['WALINE_JWT_TOKEN'];
+  const oldSharedSecret = process.env['VANBLOG_SHARED_SECRET'];
+  const oldLegacySharedSecret = process.env['WALINE_JWT_TOKEN'];
+  const oldWebsiteControlToken = process.env['VANBLOG_WEBSITE_CONTROL_TOKEN'];
 
   beforeEach(() => {
     mockedAxios.post.mockReset();
     process.env['VANBLOG_WEBSITE_CONTROL_URL'] = 'http://website:3011';
     delete process.env['VANBLOG_ISR_TOKEN'];
+    delete process.env['VANBLOG_SHARED_SECRET'];
     delete process.env['WALINE_JWT_TOKEN'];
+    delete process.env['VANBLOG_WEBSITE_CONTROL_TOKEN'];
   });
 
   afterAll(() => {
@@ -31,10 +35,16 @@ describe('WebsiteProvider', () => {
     } else {
       process.env['VANBLOG_ISR_TOKEN'] = oldIsrToken;
     }
-    if (oldWalineToken === undefined) {
-      delete process.env['WALINE_JWT_TOKEN'];
-    } else {
-      process.env['WALINE_JWT_TOKEN'] = oldWalineToken;
+    for (const [key, value] of [
+      ['VANBLOG_SHARED_SECRET', oldSharedSecret],
+      ['WALINE_JWT_TOKEN', oldLegacySharedSecret],
+      ['VANBLOG_WEBSITE_CONTROL_TOKEN', oldWebsiteControlToken],
+    ] as const) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
     }
   });
 
@@ -139,7 +149,7 @@ describe('WebsiteProvider', () => {
 
   it('masks website control secrets before logging runtime env', async () => {
     process.env['VANBLOG_ISR_TOKEN'] = 'website-control-secret';
-    process.env['WALINE_JWT_TOKEN'] = 'shared-waline-secret';
+    process.env['VANBLOG_SHARED_SECRET'] = 'shared-site-secret';
 
     const provider = new WebsiteProvider(
       {
@@ -164,14 +174,59 @@ describe('WebsiteProvider', () => {
     expect(logMessages.some((message) => message.includes('"VANBLOG_ISR_TOKEN": "***"'))).toBe(
       true,
     );
-    expect(logMessages.some((message) => message.includes('"WALINE_JWT_TOKEN": "***"'))).toBe(
+    expect(logMessages.some((message) => message.includes('"VANBLOG_SHARED_SECRET": "***"'))).toBe(
       true,
     );
     expect(
       logMessages.some(
         (message) =>
-          message.includes('website-control-secret') || message.includes('shared-waline-secret'),
+          message.includes('website-control-secret') || message.includes('shared-site-secret'),
       ),
     ).toBe(false);
   });
+
+  it.each([
+    [
+      { VANBLOG_SHARED_SECRET: 'shared-site-secret', WALINE_JWT_TOKEN: 'legacy-secret' },
+      'shared-site-secret',
+    ],
+    [{ WALINE_JWT_TOKEN: 'legacy-secret' }, 'legacy-secret'],
+  ])(
+    'falls back to the shared secret for website control and ISR env (%o)',
+    async (env, expected) => {
+      mockedAxios.post.mockResolvedValue({ status: 200, data: {} } as any);
+      Object.assign(process.env, env);
+
+      const provider = new WebsiteProvider(
+        {
+          getAll: jest.fn().mockResolvedValue({
+            siteInfo: { baseUrl: 'https://blog.example.com' },
+            socials: [],
+          }),
+        } as any,
+        {
+          getISRSetting: jest.fn().mockResolvedValue({ mode: 'realTime' }),
+        } as any,
+      );
+
+      await provider.run();
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        'http://website:3011/restart',
+        {
+          env: expect.objectContaining({
+            VANBLOG_ISR_TOKEN: expected,
+            VANBLOG_SHARED_SECRET: expected,
+          }),
+        },
+        {
+          headers: {
+            'x-vanblog-control-token': expected,
+          },
+        },
+      );
+      const payloadEnv = mockedAxios.post.mock.calls[0][1] as { env: Record<string, unknown> };
+      expect(payloadEnv.env).not.toHaveProperty('WALINE_JWT_TOKEN');
+    },
+  );
 });

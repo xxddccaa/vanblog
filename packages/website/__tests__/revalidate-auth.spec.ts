@@ -3,39 +3,38 @@ import {
   isRevalidateRequestAuthorized,
   isRevalidateTokenConfigured,
 } from "../utils/revalidateAuth";
+import { getInternalRequestSecret } from "../utils/loadConfig";
+
+const SECRET_KEYS = [
+  "NODE_ENV",
+  "VANBLOG_ISR_TOKEN",
+  "VANBLOG_SHARED_SECRET",
+  "WALINE_JWT_TOKEN",
+] as const;
 
 describe("revalidateAuth", () => {
-  const env = process.env as {
-    NODE_ENV?: string;
-    VANBLOG_ISR_TOKEN?: string;
-    WALINE_JWT_TOKEN?: string;
+  const env = process.env as Record<(typeof SECRET_KEYS)[number], string | undefined>;
+  const snapshot = Object.fromEntries(SECRET_KEYS.map((key) => [key, env[key]]));
+
+  const clearSecrets = () => {
+    delete env.VANBLOG_ISR_TOKEN;
+    delete env.VANBLOG_SHARED_SECRET;
+    delete env.WALINE_JWT_TOKEN;
   };
-  const oldNodeEnv = env.NODE_ENV;
-  const oldToken = env.VANBLOG_ISR_TOKEN;
-  const oldWalineToken = env.WALINE_JWT_TOKEN;
 
   afterEach(() => {
-    if (oldNodeEnv === undefined) {
-      delete env.NODE_ENV;
-    } else {
-      env.NODE_ENV = oldNodeEnv;
-    }
-    if (oldToken === undefined) {
-      delete env.VANBLOG_ISR_TOKEN;
-    } else {
-      env.VANBLOG_ISR_TOKEN = oldToken;
-    }
-    if (oldWalineToken === undefined) {
-      delete env.WALINE_JWT_TOKEN;
-    } else {
-      env.WALINE_JWT_TOKEN = oldWalineToken;
+    for (const key of SECRET_KEYS) {
+      if (snapshot[key] === undefined) {
+        delete env[key];
+      } else {
+        env[key] = snapshot[key];
+      }
     }
   });
 
   it("allows development revalidate requests when no token is configured", () => {
     env.NODE_ENV = "development";
-    delete env.VANBLOG_ISR_TOKEN;
-    delete env.WALINE_JWT_TOKEN;
+    clearSecrets();
 
     expect(isRevalidateTokenConfigured()).toBe(false);
     expect(isRevalidateRequestAuthorized(null)).toBe(true);
@@ -43,6 +42,7 @@ describe("revalidateAuth", () => {
 
   it("requires a configured token in production", () => {
     env.NODE_ENV = "production";
+    clearSecrets();
     env.VANBLOG_ISR_TOKEN = "isr-secret";
 
     expect(isRevalidateTokenConfigured()).toBe(true);
@@ -50,13 +50,58 @@ describe("revalidateAuth", () => {
     expect(isRevalidateRequestAuthorized("isr-secret")).toBe(true);
   });
 
-  it("falls back to WALINE_JWT_TOKEN when a dedicated ISR token is absent", () => {
+  it("rejects every request in production when no secret is configured", () => {
     env.NODE_ENV = "production";
-    delete env.VANBLOG_ISR_TOKEN;
-    env.WALINE_JWT_TOKEN = "waline-shared-secret";
+    clearSecrets();
+
+    expect(isRevalidateTokenConfigured()).toBe(false);
+    expect(isRevalidateRequestAuthorized("")).toBe(false);
+    expect(isRevalidateRequestAuthorized(null)).toBe(false);
+  });
+
+  it("falls back to VANBLOG_SHARED_SECRET when a dedicated ISR token is absent", () => {
+    env.NODE_ENV = "production";
+    clearSecrets();
+    env.VANBLOG_SHARED_SECRET = "shared-secret";
+    env.WALINE_JWT_TOKEN = "legacy-secret";
 
     expect(isRevalidateTokenConfigured()).toBe(true);
-    expect(isRevalidateRequestAuthorized("waline-shared-secret")).toBe(true);
+    expect(isRevalidateRequestAuthorized("shared-secret")).toBe(true);
+    expect(isRevalidateRequestAuthorized("legacy-secret")).toBe(false);
+  });
+
+  it("keeps the legacy WALINE_JWT_TOKEN as the last fallback", () => {
+    env.NODE_ENV = "production";
+    clearSecrets();
+    env.WALINE_JWT_TOKEN = "legacy-secret";
+
+    expect(isRevalidateTokenConfigured()).toBe(true);
+    expect(isRevalidateRequestAuthorized("legacy-secret")).toBe(true);
     expect(isRevalidateRequestAuthorized("different")).toBe(false);
+  });
+
+  it("prefers the ISR token over both shared secret names", () => {
+    env.NODE_ENV = "production";
+    clearSecrets();
+    env.VANBLOG_ISR_TOKEN = "isr-secret";
+    env.VANBLOG_SHARED_SECRET = "shared-secret";
+    env.WALINE_JWT_TOKEN = "legacy-secret";
+
+    expect(isRevalidateRequestAuthorized("isr-secret")).toBe(true);
+    expect(isRevalidateRequestAuthorized("shared-secret")).toBe(false);
+  });
+
+  it("uses the same precedence for internal server-side requests", () => {
+    clearSecrets();
+    expect(getInternalRequestSecret()).toBe("");
+
+    env.WALINE_JWT_TOKEN = "legacy-secret";
+    expect(getInternalRequestSecret()).toBe("legacy-secret");
+
+    env.VANBLOG_SHARED_SECRET = "shared-secret";
+    expect(getInternalRequestSecret()).toBe("shared-secret");
+
+    env.VANBLOG_ISR_TOKEN = "isr-secret";
+    expect(getInternalRequestSecret()).toBe("isr-secret");
   });
 });

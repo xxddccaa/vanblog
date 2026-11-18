@@ -11,13 +11,13 @@ VanBlog 提供后台日志查看，同时也可以直接从 compose 层面查看
 源码部署：
 
 ```bash
-docker compose logs -f caddy server website admin waline postgres redis
+docker compose logs -f caddy server website admin postgres redis
 ```
 
 镜像部署：
 
 ```bash
-docker compose -f docker-compose.image.yml logs -f caddy server website admin waline postgres redis
+docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 ## 宿主机日志目录
@@ -40,8 +40,6 @@ docker compose -f docker-compose.image.yml logs -f caddy server website admin wa
 - **Redis 降噪**：`REDIS_LOGLEVEL`（默认 `warning`）压掉每 5 分钟的 RDB 存盘流水。
 - **docker logs 落盘封顶**：所有 compose 的每个服务都配了 `json-file` 轮转（`max-size 10m` × `max-file 3`），长期运行不会涨爆磁盘。
 - **stdio 镜像文件上限**：`vanblog-stdio.log`（后台「系统日志」数据源）超过 10MB 自动滚动一份，不再无限增长。
-
-> all-in-one 单容器部署下，`VAN_BLOG_WALINE_API_URL` 默认已指向本机 `http://127.0.0.1:8360`，修复了历史上评论数取不到、并每次访问刷 `ENOTFOUND waline` 的问题——一般无需改动。
 
 ## 后台日志管理
 

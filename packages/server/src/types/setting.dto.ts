@@ -1,5 +1,6 @@
 import { MenuItem } from './menu.dto';
 import type { PublicMaskSetting } from 'src/utils/publicMask/types';
+import type { CommentSetting } from './comment.dto';
 
 export const defaultStaticSetting: StaticSetting = {
   storageType: 'local',
@@ -13,7 +14,6 @@ export const defaultStaticSetting: StaticSetting = {
 export type SettingType =
   | 'static'
   | 'https'
-  | 'waline'
   | 'layout'
   | 'login'
   | 'menu'
@@ -25,12 +25,12 @@ export type SettingType =
   | 'music'
   | 'font'
   | 'aiTagging'
-  | 'publicMask';
+  | 'publicMask'
+  | 'comment';
 
 export type SettingValue =
   | StaticSetting
   | HttpsSetting
-  | WalineSetting
   | LayoutSetting
   | VersionSetting
   | ISRSetting
@@ -40,6 +40,7 @@ export type SettingValue =
   | MusicSetting
   | FontSetting
   | PublicMaskSetting
+  | CommentSetting
   | Record<string, any>;
 
 export interface ISRSetting {
@@ -121,20 +122,6 @@ export interface HeadTag {
   name: string;
   props: Record<string, string>;
   conent: string;
-}
-
-export interface WalineSetting {
-  'smtp.enabled': boolean;
-  'smtp.port': number;
-  'smtp.host': string;
-  'smtp.user': string;
-  'smtp.password': string;
-  'sender.name': string;
-  'sender.email': string;
-  authorEmail: string;
-  webhook?: string;
-  forceLoginComment: boolean;
-  otherConfig?: string;
 }
 
 export interface HttpsSetting {

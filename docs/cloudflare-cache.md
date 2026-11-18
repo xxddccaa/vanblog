@@ -43,14 +43,11 @@ Match:
 
 - `/admin*`
 - `/api/admin/*`
-- `/api/comment*`
-- `/comment*`
-- `/ui*`
-- `/user*`
-- `/token*`
-- `/db*`
-- `/oauth*`
-- all non-`GET` and non-`HEAD` requests
+- all non-`GET` and non-`HEAD` requests (this covers every comment write: posting, liking and image upload under `/api/public/comment*`)
+
+Notes:
+
+- Older versions served Waline under `/api/comment*`, `/comment*`, `/ui*`, `/user*`, `/token*`, `/db*` and `/oauth*`, and the earlier version of this rule bypassed them. Waline is gone: comments are native to `server` under `/api/public/comment*`. `/api/comment*` and `/api/ui*` now reach `server` and return `404`, and the other old paths fall through to the website. Remove those path matches from existing zones.
 
 Action:
 
@@ -83,6 +80,8 @@ Match:
 
 - `/api/public/search*`
 - `/api/public/nav/admin-data`
+- `/api/public/comment/identity`
+- `/api/public/comment/liked`
 
 Action:
 
@@ -92,6 +91,7 @@ Action:
 Notes:
 
 - these endpoints live under `/api/public/*`, but they are not edge-cacheable public fragments
+- the comment identity and liked endpoints depend on the visitor's cookies; the origin already sends `no-store`, and this rule makes the intent explicit
 
 ### 4. Cache public JSON fragments
 
@@ -154,7 +154,7 @@ That Worker template:
 
 - Enable `Tiered Cache`.
 - Enable `Respect Strong ETags`.
-- Use `Cache Analytics` to watch `/`, `/post/*`, `/api/public/article/*/engagement`, and Waline-related traffic after rollout.
+- Use `Cache Analytics` to watch `/`, `/post/*`, `/api/public/article/*/engagement`, and `/api/public/comment*` after rollout.
 
 ## Origin Contract in This Repo
 
@@ -162,6 +162,7 @@ That Worker template:
 - `packages/website/next.config.js` defines shorter listing TTL for `/`, `/archive`, `/archive/:year`, `/category*`, `/tag*`, and `/timeline`, while month archive pages get the stable long-HTML TTL and legacy `/page/*` routes are redirected away from content pages.
 - `packages/server/src/provider/public-cache/public-cache.middleware.ts` defines fragment TTL for `/api/public/article/:id/nav`, `/api/public/article/:id/engagement`, `/api/public/site-stats`, `/api/public/timeline/summary`, `/api/public/category/summary`.
 - `packages/server/src/provider/public-cache/public-cache.middleware.ts` defines dedicated shorter TTL for `/api/public/moment*` and medium TTL for `/api/public/nav*`.
+- `packages/server/src/provider/public-cache/public-cache.middleware.ts` defines a short edge-only TTL for comment threads and counts, and `no-store` for the per-visitor comment endpoints.
 - `packages/server/src/main.ts` defines static artifact TTL for `/static/search-index.json`, `/rss/*`, and `/sitemap/*`.
 - `docker/caddy/Caddyfile` and `docker/caddy/Caddyfile.https` expose the user-facing artifact aliases `/feed.xml`, `/feed.json`, `/atom.xml`, and `/sitemap.xml` by rewriting them to the generated static files on the server.
 - `packages/server/src/provider/cloudflare-cache/cloudflare-cache.provider.ts` converts purge file paths to absolute URLs with `siteInfo.baseUrl`; when `baseUrl` is missing it skips file purge, logs the reason, and leaves tag purge plus TTL expiry as the fallback.
@@ -174,8 +175,10 @@ That Worker template:
 - Dynamic HTML (`/moment`, `/nav`) uses `Cache-Control: public, max-age=0, must-revalidate` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=300, stale-while-revalidate=600`.
 - Stable public JSON (`/api/public/site-stats`, `/api/public/timeline/summary`, `/api/public/category/summary`, article shell reads, and article nav reads) uses `Cache-Control: public, max-age=60, stale-while-revalidate=86400` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`.
 - Medium-churn public nav JSON (`/api/public/nav*`, excluding `/api/public/nav/admin-data`) uses `Cache-Control: public, max-age=60, stale-while-revalidate=900` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=900, stale-while-revalidate=900`.
-- High-churn public JSON (`/api/public/article/*/engagement`, `/api/public/article/*/fragments`, `/api/public/article/viewer/*`, `/api/public/comment*`) uses `Cache-Control: public, max-age=15, stale-while-revalidate=300` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=300, stale-while-revalidate=300`.
+- High-churn public JSON (`/api/public/article/*/engagement`, `/api/public/article/*/fragments`, `/api/public/article/viewer/*`) uses `Cache-Control: public, max-age=15, stale-while-revalidate=300` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=300, stale-while-revalidate=300`.
 - Public viewer aggregate reads (`/api/public/viewer`) also stay on the same short-TTL contract, while the corresponding write path remains a non-cacheable browser-side beacon/fetch call.
+- Public comment threads and counts (`GET /api/public/comment` and `GET /api/public/comment/count`) use `Cache-Control: public, max-age=0, s-maxage=30` plus `CDN-Cache-Control` / `Cloudflare-CDN-Cache-Control: public, s-maxage=30`. Browsers do not reuse them; the edge keeps them for at most 30 seconds. Every visitor gets the same payload, which never contains email addresses, IPs or user agents.
+- Per-visitor comment reads (`/api/public/comment/identity`, `/api/public/comment/liked`) use `no-store`. Comment writes (`POST /api/public/comment`, `POST /api/public/comment/:id/like`, `POST /api/public/comment/image`) are never cached, like every non-`GET` request.
 - Public moment JSON (`/api/public/moment*`) uses `Cache-Control: public, max-age=30, stale-while-revalidate=300` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=300, stale-while-revalidate=300`.
 - `/static/search-index.json` uses `Cache-Control: public, max-age=300, stale-while-revalidate=86400` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`.
 - `/rss/*` and `/sitemap/*` use `Cache-Control: public, max-age=300, stale-while-revalidate=86400` plus `Cloudflare-CDN-Cache-Control: public, s-maxage=86400, stale-while-revalidate=86400`.
@@ -189,6 +192,7 @@ That Worker template:
 - Entity-scoped fragments and purge targets use normalized tags like `post:{id}`, `post:{pathname}`, `tag:{name}`, `category:{name}`, `timeline:{year}`, and `site-stats`.
 - Summary or overview fragments use dedicated tags like `category-summary`, `timeline-summary`, `tag-hot`, `tag-list`, `category-list`, and `timeline-list`.
 - Generated artifacts use `artifact:feed`, `artifact:sitemap`, and `artifact:search-index`.
+- Comment reads carry `comment-public` plus one `comment:{target}` tag per thread, such as `comment:post-12` or `comment:page-link`. Article engagement and fragment reads also carry `post-comments:{id}` (and the pathname variant). When a comment's public state changes, `server` purges these tags through the Cloudflare integration and drops the matching server-side cached engagement and fragment entries.
 - `packages/server/src/provider/isr/isr.provider.ts` computes tag and URL purge scopes after article mutations, and `packages/server/src/provider/cloudflare-cache/cloudflare-cache.provider.ts` sends the final Cloudflare tag or file purge requests.
 
 ## Current Limits

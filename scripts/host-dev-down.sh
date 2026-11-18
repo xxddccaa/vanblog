@@ -20,11 +20,11 @@ kill_port() {
   fi
 }
 
-for port in 18080 3002 3001 3011 8360 8361 3000; do
+for port in 18080 3002 3001 3011 3000; do
   kill_port "${port}"
 done
 
-for name in proxy admin server website waline; do
+for name in proxy admin server website; do
   tmux kill-session -t "$(session_name "${name}")" 2>/dev/null || true
 done
 

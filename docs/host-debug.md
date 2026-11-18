@@ -50,6 +50,7 @@ docker compose -f tests/manual-v1.3.0/docker-compose.yaml -p vanblog-manual-v130
 说明：
 
 - 这套 compose 使用的是 `tests/manual-v1.3.0/docker-compose.yaml`
+- 它是固定在 v1.3.0 镜像上的历史验收夹具，仍然带 `waline` 服务，所以上面的日志命令里保留了 `waline`；它不能用来验收原生评论，验收当前代码请用下面的源码构建方式
 - 它固定把 `caddy` 暴露到宿主机 `18080`
 - 这套方式最接近镜像实际运行形态，适合做最终验收
 - 当前运行数据目录在 `tests/manual-v1.3.0/runtime/`
@@ -66,7 +67,7 @@ VANBLOG_HTTP_PORT=18080 docker compose up -d --build
 
 ## 设计原则
 
-- `server`、`website`、`admin`、`waline` 运行在宿主机，便于热更新和直接调试
+- `server`、`website`、`admin` 运行在宿主机，便于热更新和直接调试
 - `postgres`、`redis` 继续跑在 Docker 里，避免宿主机环境漂移
 - 端口、数据库地址、控制接口地址与正式 compose 保持同一套命名和职责
 - 默认复用 `tests/manual-v1.3.0/runtime/data` 这套数据目录，方便直接试当前博客内容
@@ -81,8 +82,6 @@ VANBLOG_HTTP_PORT=18080 docker compose up -d --build
 | website | `3001` | Next.js 前台 |
 | website control | `3011` | 供 server 同步 ISR / 运行时配置 |
 | admin | `3002` | Umi 后台开发服务 |
-| waline | `8360` | 评论服务 |
-| waline control | `8361` | 供 server 同步 Waline 配置 |
 | host proxy | `18080` | 供你直接按原试用入口访问 |
 | postgres | `15432` | Docker 依赖，仅本机调试使用 |
 | redis | `16379` | Docker 依赖，仅本机调试使用 |
@@ -113,7 +112,6 @@ pnpm host:dev:status
 tmux attach -t vanblog-host-server
 tmux attach -t vanblog-host-website
 tmux attach -t vanblog-host-admin
-tmux attach -t vanblog-host-waline
 ```
 
 退出附着但不停止服务：
@@ -124,7 +122,7 @@ Ctrl+b 然后按 d
 
 ## 改完代码后什么时候会生效
 
-宿主机调试模式之所以快，是因为 `server` / `website` / `admin` / `waline` 直接跑在宿主机开发态，不需要反复重建 Docker 镜像。
+宿主机调试模式之所以快，是因为 `server` / `website` / `admin` 直接跑在宿主机开发态，不需要反复重建 Docker 镜像。
 
 通常可以按下面这条经验判断：
 
@@ -144,9 +142,7 @@ Ctrl+b 然后按 d
   - 当前通过 Umi dev server 运行
   - 页面、组件、样式改动一般会自动重新编译
   - 所以多数后台 UI 修复，不需要手动重启整套链路
-- `packages/waline`
-  - 当前由宿主机 runner 托管
-  - 普通代码改动如果没被 runner 自动接管，优先看 `tests/host-dev/runtime/log/waline.log`
+- 评论是 `packages/server` 的一部分，评论相关的前后台改动按上面 server / website / admin 的规则生效
 
 ## 哪些情况必须重启 host-debug
 
@@ -187,9 +183,8 @@ pnpm host:dev:up
 - Docker 依赖编排：`tests/host-dev/docker-compose.yaml`
 - 宿主机反向代理：`tests/host-dev/Caddyfile`
 - 宿主机环境变量：`scripts/host-dev-env.sh`
-- 数据库/Waline 初始化：`scripts/ensure-host-dev-db.mjs`
+- 数据库初始化：`scripts/ensure-host-dev-db.mjs`
 - Website 控制器：`scripts/host-website-runner.cjs`
-- Waline 控制器：`scripts/host-waline-runner.cjs`
 - 启停脚本：`scripts/host-dev-up.sh`、`scripts/host-dev-down.sh`
 - 日志目录：`tests/host-dev/runtime/log`
 - 宿主机常驻进程通过 `tmux` 会话托管，避免 CLI 命令结束后子进程被回收
@@ -199,12 +194,11 @@ pnpm host:dev:up
 - 数据源仍然是 PostgreSQL + Redis，而不是宿主机随意装的本地服务
 - `server` 仍通过：
   - `VANBLOG_WEBSITE_CONTROL_URL=http://127.0.0.1:3011`
-  - `VANBLOG_WALINE_CONTROL_URL=http://127.0.0.1:8361`
   - `VANBLOG_WEBSITE_ISR_BASE=http://127.0.0.1:3001/api/revalidate?path=`
-  来驱动前台和评论服务
-- `http://127.0.0.1:18080` 由宿主机 Caddy 反向代理到 host 上的 website/admin/server/waline，路由规则与 Docker 版保持一致
+  来驱动前台
+- `http://127.0.0.1:18080` 由宿主机 Caddy 反向代理到 host 上的 website/admin/server，路由规则与 Docker 版保持一致
 - `website` 与 `admin` 开发态仍然把 `/api` 转发给 `http://127.0.0.1:3000`
-- `waline` 仍然使用与 Docker 一致的 PostgreSQL 数据库 `waline`
+- 评论数据和博客内容一样存放在 PostgreSQL 的 `vanblog` 库中
 
 ## 与 Docker 不同的点
 

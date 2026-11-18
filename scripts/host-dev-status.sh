@@ -35,7 +35,6 @@ show_service() {
 
 printf '%-12s %-8s %-8s\n' "service" "pid" "state"
 show_service proxy 18080 "http://127.0.0.1:18080"
-show_service waline 8360 "http://127.0.0.1:8360/comment?type=count&url=%2F__host-dev__"
 show_service website 3001 "http://127.0.0.1:3001"
 show_service server 3000 "http://127.0.0.1:3000/swagger"
 show_service admin 3002 "http://127.0.0.1:3002/"

@@ -30,10 +30,10 @@ kill_port() {
 }
 
 reset_host_processes() {
-  for name in proxy admin server website waline; do
+  for name in proxy admin server website; do
     tmux kill-session -t "$(session_name "${name}")" 2>/dev/null || true
   done
-  for port in 18080 3000 3001 3002 3011 8360 8361; do
+  for port in 18080 3000 3001 3002 3011; do
     kill_port "${port}"
   done
 }
@@ -97,10 +97,8 @@ post_restart() {
   local payload="${3:-{}}"
   echo "[host-dev] requesting ${name} restart"
   local curl_args=(-fsS -X POST "${url}" -H 'content-type: application/json')
-  if [[ "${name}" == "waline" ]]; then
-    curl_args+=(-H "x-vanblog-control-token: ${WALINE_JWT_TOKEN}")
-  elif [[ "${name}" == "website" ]]; then
-    curl_args+=(-H "x-vanblog-control-token: ${VANBLOG_ISR_TOKEN:-${WALINE_JWT_TOKEN}}")
+  if [[ "${name}" == "website" ]]; then
+    curl_args+=(-H "x-vanblog-control-token: ${VANBLOG_ISR_TOKEN:-${VANBLOG_SHARED_SECRET}}")
   fi
   curl "${curl_args[@]}" \
     -d "${payload}" >/dev/null
@@ -115,11 +113,6 @@ echo "[host-dev] stopping manual docker stack on ${MANUAL_COMPOSE_FILE}"
 VAN_BLOG_DEBUG_SUPER_TOKEN="${VAN_BLOG_DEBUG_SUPER_TOKEN}" \
   docker compose -f "${MANUAL_COMPOSE_FILE}" -p "${MANUAL_PROJECT_NAME}" down >/dev/null 2>&1 || true
 node "${ROOT_DIR}/scripts/ensure-host-dev-db.mjs"
-
-start_tmux waline env PORT=8360 HOST_RUNNER_AUTO_START=false node "${ROOT_DIR}/scripts/host-waline-runner.cjs"
-wait_http "http://127.0.0.1:8361/health" "waline control"
-post_restart "http://127.0.0.1:8361/restart" "waline"
-wait_http "http://127.0.0.1:8360/comment?type=count&url=%2F__host-dev__" "waline"
 
 start_tmux website env PORT=3001 WEBSITE_CONTROL_PORT=3011 HOST_RUNNER_AUTO_START=false node "${ROOT_DIR}/scripts/host-website-runner.cjs"
 wait_http "http://127.0.0.1:3011/health" "website control"
@@ -141,6 +134,5 @@ cat <<EOF
 - server:  http://127.0.0.1:3000
 - website: http://127.0.0.1:3001
 - admin:   http://127.0.0.1:3002
-- waline:  http://127.0.0.1:8360
 - logs:    ${HOST_LOG_DIR}
 EOF

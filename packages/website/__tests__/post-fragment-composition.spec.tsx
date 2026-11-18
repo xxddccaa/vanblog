@@ -27,8 +27,8 @@ vi.mock("../components/UnLockCard", () => ({
   default: () => React.createElement("div", null, "unlock-card"),
 }));
 
-vi.mock("../components/WaLine", () => ({
-  default: () => React.createElement("div", null, "waline"),
+vi.mock("../components/Comments", () => ({
+  default: () => React.createElement("div", null, "comments"),
 }));
 
 vi.mock("../components/TocMobile", () => ({

@@ -90,11 +90,8 @@ export class RssProvider {
           : String(article.pathname || article.id),
       }));
       const meta = await this.metaProvider.getAll();
-      const walineSetting = await this.settingProvider.getWalineSetting();
-      let email = process.env.EMAIL;
-      if (walineSetting && walineSetting?.authorEmail) {
-        email = walineSetting?.authorEmail;
-      }
+      const commentSetting = await this.settingProvider.getCommentSetting();
+      let email = commentSetting?.notify?.ownerEmail || process.env.EMAIL;
       email = email ? masker.mask(email) : email;
       const siteInfo: any = maskPublicPayload(meta?.siteInfo || {}, masker);
       const siteUrl = washUrl(siteInfo.baseUrl || '');

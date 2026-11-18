@@ -9,7 +9,6 @@ import {
   MenuSetting,
   StaticSetting,
   VersionSetting,
-  WalineSetting,
   defaultStaticSetting,
   AdminLayoutSetting,
   defaultAdminLayoutSetting,
@@ -28,6 +27,12 @@ import { defaultMenu, MenuItem } from 'src/types/menu.dto';
 import { MetaProvider } from '../meta/meta.provider';
 import { parseHtmlToHeadTagArr } from 'src/utils/htmlParser';
 import { StructuredDataService } from 'src/storage/structured-data.service';
+import { AdminCommentSetting, CommentSetting } from 'src/types/comment.dto';
+import {
+  applyCommentSettingUpdate,
+  maskCommentSetting,
+  normalizeStoredCommentSetting,
+} from 'src/utils/commentSetting';
 import {
   normalizePublicMaskSetting,
   PublicMaskSetting,
@@ -1701,19 +1706,6 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
   }
 `;
   }
-  async getWalineSetting(): Promise<WalineSetting> {
-    const res = await this.findSettingRecord('waline');
-    if (res) {
-      return (
-        (res?.value as any) || {
-          email: process.env.EMAIL || undefined,
-          'smtp.enabled': false,
-          forceLoginComment: false,
-        }
-      );
-    }
-    return null;
-  }
   async updateLoginSetting(dto: LoginSetting) {
     const oldValue = await this.getLoginSetting();
     const newValue = { ...oldValue, ...dto };
@@ -1725,11 +1717,6 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     return await this.upsertSettingValue('version', newValue);
   }
 
-  async updateWalineSetting(dto: WalineSetting) {
-    const oldValue = await this.getWalineSetting();
-    const newValue = { ...oldValue, ...dto };
-    return await this.upsertSettingValue('waline', newValue);
-  }
   async updateLayoutSetting(dto: LayoutSetting) {
     const oldValue = await this.getLayoutSetting();
     const newValue = { ...(oldValue || {}), ...dto };
@@ -1856,6 +1843,23 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
     const res = await this.upsertSettingValue('font', newValue);
     this.logger.log(existingSetting ? '字体设置已更新' : '字体设置已创建');
     return res;
+  }
+
+  async getCommentSetting(): Promise<CommentSetting> {
+    const res = await this.findSettingRecord('comment');
+    return normalizeStoredCommentSetting(res?.value);
+  }
+
+  /** Same as getCommentSetting but safe to return to the admin UI. */
+  async getAdminCommentSetting(): Promise<AdminCommentSetting> {
+    return maskCommentSetting(await this.getCommentSetting());
+  }
+
+  /** Validates and merges a partial update. Throws BadRequestException on invalid input. */
+  async updateCommentSetting(input: unknown): Promise<AdminCommentSetting> {
+    const next = applyCommentSettingUpdate(await this.getCommentSetting(), input);
+    await this.upsertSettingValue('comment', next);
+    return maskCommentSetting(next);
   }
 
   async getPublicMaskSetting(): Promise<PublicMaskSetting> {

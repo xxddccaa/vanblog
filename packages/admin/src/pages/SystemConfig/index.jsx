@@ -3,7 +3,8 @@ import useAdminResponsive from '@/services/van-blog/useAdminResponsive';
 import { useTab } from '@/services/van-blog/useTab';
 import { PageContainer } from '@ant-design/pro-layout';
 import { Spin } from 'antd';
-import { lazy, Suspense } from 'react';
+import { history } from '@umijs/max';
+import { lazy, Suspense, useEffect } from 'react';
 import thinstyle from '../Welcome/index.less';
 
 const SiteInfo = lazy(() => import('./tabs/SiteInfo'));
@@ -13,7 +14,7 @@ const Backup = lazy(() => import('./tabs/Backup'));
 const AutoBackup = lazy(() => import('./tabs/AutoBackup'));
 const User = lazy(() => import('./tabs/User'));
 const ImgTab = lazy(() => import('./tabs/ImgTab'));
-const WalineTab = lazy(() => import('./tabs/WalineTab'));
+const CommentTab = lazy(() => import('./tabs/CommentTab'));
 const PublicMask = lazy(() => import('./tabs/PublicMask'));
 const Advance = lazy(() => import('./tabs/Advance'));
 const Token = lazy(() => import('./tabs/Token'));
@@ -27,18 +28,32 @@ const tabComponentMap = {
   autoBackup: AutoBackup,
   user: User,
   img: ImgTab,
-  waline: WalineTab,
+  comment: CommentTab,
   publicMask: PublicMask,
   advance: Advance,
   token: Token,
   adminLayout: AdminLayout,
 };
 
+// Old links such as `?tab=waline` keep opening the comment settings.
+const legacyTabAliases = {
+  waline: 'comment',
+};
+
 export default function () {
   const { mobile } = useAdminResponsive();
-  const tabKeys = Object.keys(tabComponentMap);
-  const [tab, setTab] = useTab('siteInfo', 'tab', tabKeys);
+  const tabKeys = [...Object.keys(tabComponentMap), ...Object.keys(legacyTabAliases)];
+  const [rawTab, setTab] = useTab('siteInfo', 'tab', tabKeys);
+  const tab = legacyTabAliases[rawTab] || rawTab;
   const ActiveTab = tabComponentMap[tab] || SiteInfo;
+
+  useEffect(() => {
+    if (legacyTabAliases[rawTab]) {
+      const search = new URLSearchParams(history.location.search || '');
+      search.set('tab', legacyTabAliases[rawTab]);
+      history.replace({ search: `?${search.toString()}` });
+    }
+  }, [rawTab]);
   const tabs = [
     {
       label: '站点配置',
@@ -68,7 +83,7 @@ export default function () {
     {
       label: '评论设置',
       shortLabel: '评论',
-      key: 'waline',
+      key: 'comment',
     },
     {
       label: '前台屏蔽',

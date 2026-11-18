@@ -10,7 +10,7 @@
 
 当前项目有三个明确约定：
 
-- **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续负责 `caddy`、`server`、`website`、`admin`、`waline`、`postgres`、`redis`，并配套 `kroki` 图表渲染服务
+- **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续负责 `caddy`、`server`、`website`、`admin`、`postgres`、`redis`，并配套 `kroki` 图表渲染服务；评论由 `server` 内置的原生评论系统提供，不再有独立的评论容器
 - **可选提供非 AI 单镜像入口**：`docker-compose.all-in-one*.yml` 会把主栈和 `postgres` / `redis` 收进一个容器，适合单机部署和减少运维对象；标准生产锁版、细粒度运维和审计仍优先使用拆分多镜像
 - **镜像仓库固定使用 `kevinchina/deeplearning`**：这是当前长期保留、可回滚、可审计的备份仓库，发布与部署文档统一以它为准
 
@@ -38,15 +38,14 @@
 
 ## 核心拓扑
 
-默认公开拓扑包含下面 7 个核心博客服务，并配套 1 个仅内网访问的 Kroki 图表渲染服务：
+默认公开拓扑包含下面 6 个核心博客服务，并配套 1 个仅内网访问的 Kroki 图表渲染服务：
 
 | 服务       | 端口        | 说明                                                 |
 | ---------- | ----------- | ---------------------------------------------------- |
-| `caddy`    | 80 / 443    | 对外统一入口，负责 `/`、`/admin`、`/api`、评论等转发 |
-| `server`   | 3000        | NestJS API、站点管理接口                             |
+| `caddy`    | 80 / 443    | 对外统一入口，负责 `/`、`/admin`、`/api` 等转发      |
+| `server`   | 3000        | NestJS API、站点管理接口、原生评论                   |
 | `website`  | 3001 / 3011 | Next.js 前台站点与控制端点                           |
 | `admin`    | 3002        | Umi 构建后的后台静态页面                             |
-| `waline`   | 8360 / 8361 | 评论服务与控制端点                                   |
 | `postgres` | 5432        | 主业务数据库，仅在 compose 内部网络访问              |
 | `redis`    | 6379        | 缓存与队列数据库，仅在 compose 内部网络访问          |
 | `kroki`    | 8000        | Mermaid / PlantUML 等图表渲染，仅在内部网络访问      |
@@ -67,7 +66,7 @@ docker compose up -d --build
 查看日志：
 
 ```bash
-docker compose logs -f caddy server website admin waline postgres redis
+docker compose logs -f caddy server website admin postgres redis
 ```
 
 首次启动后，请打开：
@@ -89,11 +88,11 @@ docker compose -f docker-compose.latest.yml up -d
 
 - PostgreSQL 与 Redis 密码必须通过 `.env` 显式提供，避免共享默认凭证
 - 默认使用当前目录下的 `./data`、`./log`、`./caddy` 等挂载路径
-- 首次启动时会自动生成 Waline 共享 JWT，并写入 `log/waline.jwt`
+- 首次启动时会自动生成站点共享密钥，并写入 `log/vanblog-shared.secret`；从旧版本升级时会沿用已有的 `log/waline.jwt`，密钥保持不变
 
 ### 2.1 单镜像 all-in-one 部署（单机少运维对象，本机生产用法）
 
-`all-in-one` 把 `caddy + server + website + admin + waline + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是我线上博客实际使用的方式。
+`all-in-one` 把 `caddy + server + website + admin + postgres + redis` 全部收进一个容器，对外只暴露一个 HTTP 端口，配套一个 `kroki` 容器负责图表渲染。只需维护一份 compose，非常适合单机部署，也是我线上博客实际使用的方式。
 
 **约定：一个博客实例 = 一个独立目录**。目录名就是 compose 项目名，容器、网络、数据卷都按它自动隔离，所以同一台机器可以并存多个互不干扰的实例。
 
@@ -164,7 +163,7 @@ cp .env.release.example .env
 - `VANBLOG_RELEASE_SUFFIX`
 - `POSTGRES_PASSWORD`
 - `REDIS_PASSWORD`
-- `WALINE_JWT_TOKEN`（可留空，首次启动会自动生成并写入 `log/waline.jwt`）
+- `VANBLOG_SHARED_SECRET`（可留空，首次启动会自动生成并写入 `log/vanblog-shared.secret`；旧变量名 `WALINE_JWT_TOKEN` 和旧文件 `log/waline.jwt` 仍会被读取）
 
 启动：
 
@@ -221,7 +220,7 @@ pnpm host:dev:status
 
 当前推荐使用 **多镜像发布**；仓库同时补充了一个可选的 all-in-one 单镜像入口，但它和旧的 `kevinchina/deeplearning:vanblog-latest` 遗留方案不是一回事。
 
-核心镜像会发布到长期保留仓库：
+4 个核心镜像（`caddy`、`server`、`website`、`admin`）会发布到长期保留仓库：
 
 ```text
 kevinchina/deeplearning
@@ -234,7 +233,6 @@ kevinchina/deeplearning:vanblog-caddy-vX.Y.Z-<image-id>
 kevinchina/deeplearning:vanblog-server-vX.Y.Z-<image-id>
 kevinchina/deeplearning:vanblog-website-vX.Y.Z-<image-id>
 kevinchina/deeplearning:vanblog-admin-vX.Y.Z-<image-id>
-kevinchina/deeplearning:vanblog-waline-vX.Y.Z-<image-id>
 ```
 
 单镜像 all-in-one 入口则额外发布下面这组标签（每次发版会同步 `-latest`）：

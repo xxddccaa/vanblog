@@ -3,6 +3,7 @@ import axios from 'axios';
 import { ChildProcess, spawn } from 'node:child_process';
 import path from 'node:path';
 import { withRetry } from 'src/utils/retry';
+import { getSharedSecret } from 'src/utils/sharedSecret';
 import { MetaProvider } from '../meta/meta.provider';
 import { SettingProvider } from '../setting/setting.provider';
 
@@ -49,9 +50,10 @@ export class WebsiteProvider {
         : {
             VAN_BLOG_REVALIDATE: 'false',
           };
+    const sharedSecret = getSharedSecret();
     const sharedIsrEnv = {
-      VANBLOG_ISR_TOKEN: process.env['VANBLOG_ISR_TOKEN'] || process.env['WALINE_JWT_TOKEN'] || '',
-      WALINE_JWT_TOKEN: process.env['WALINE_JWT_TOKEN'] || '',
+      VANBLOG_ISR_TOKEN: process.env['VANBLOG_ISR_TOKEN'] || sharedSecret,
+      VANBLOG_SHARED_SECRET: sharedSecret,
     };
     if (!meta?.siteInfo) return { ...sharedIsrEnv, ...isrEnv };
     const siteinfo = meta.siteInfo;
@@ -134,8 +136,7 @@ export class WebsiteProvider {
     return (
       process.env['VANBLOG_WEBSITE_CONTROL_TOKEN'] ||
       process.env['VANBLOG_ISR_TOKEN'] ||
-      process.env['WALINE_JWT_TOKEN'] ||
-      ''
+      getSharedSecret()
     );
   }
   private async postToExternalControl(pathname: string, payload: Record<string, any> = {}) {

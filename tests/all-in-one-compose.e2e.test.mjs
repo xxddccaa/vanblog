@@ -5,6 +5,7 @@ import path from 'node:path';
 import net from 'node:net';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { assertNativeCommentFlow, assertWalineRoutesRemoved } from './native-comment-smoke.mjs';
 
 const repoRoot = process.cwd();
 const projectName = `vanblog-all-in-one-${Date.now().toString(36)}`;
@@ -305,20 +306,6 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
     });
     assert.equal(swagger.status, 404);
 
-    const walineAdmin = await waitFor(async () => {
-      try {
-        const response = await fetchText(`${baseUrl}/api/ui/`);
-        return response.status === 200 ? response : false;
-      } catch {
-        return false;
-      }
-    }, {
-      timeoutMs: 90 * 1000,
-      intervalMs: 3000,
-      label: 'waline admin to be reachable',
-    });
-    assert.match(walineAdmin.text, /Waline Management System/i);
-
     const adminRedirect = await fetchText(`${baseUrl}/admin`, {
       redirect: 'manual',
     });
@@ -361,7 +348,7 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
           enableCustomizing: 'true',
           showRSS: 'true',
           openArticleLinksInNewWindow: 'false',
-          enableComment: 'false',
+          enableComment: 'true',
           showSubMenu: 'false',
           homePageSize: 5,
         },
@@ -420,6 +407,9 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
     await waitForHtml(baseUrl, `/post/${articlePathname}`, articleTitle);
     await waitForHtml(baseUrl, `/post/${articlePathname}`, draftContent);
     await waitForHtml(baseUrl, `/post/${articlePathname}`, publishedBody);
+
+    await assertWalineRoutesRemoved(baseUrl);
+    await assertNativeCommentFlow(baseUrl, waitFor);
 
     const psResult = runCommand(['-f', 'docker-compose.all-in-one.yml', 'ps', '--format', 'json'], {
       env: composeEnv,

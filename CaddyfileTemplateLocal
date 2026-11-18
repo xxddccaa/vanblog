@@ -10,10 +10,6 @@
 	}
   
 }
-(h) {
-  trusted_proxies private_ranges
-}
-
 
 (van) {
   encode zstd gzip
@@ -61,42 +57,6 @@
 		reverse_proxy 127.0.0.1:3000
 	}
 
-  handle /api/user* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-    handle /api/db* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-    handle /api/comment* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/token* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/oauth* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
-  handle /api/ui* {
-    uri strip_prefix /api
-    reverse_proxy 127.0.0.1:8360 {
-      import h
-    }
-  }
   
 	handle /api/* {
 		reverse_proxy 127.0.0.1:3000

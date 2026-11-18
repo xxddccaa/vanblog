@@ -28,8 +28,9 @@ vi.mock("../components/Markdown", () => ({
   default: ({ content }: { content: string }) => React.createElement("div", null, content),
 }));
 
-vi.mock("../components/WaLine", () => ({
-  default: ({ enable }: { enable: string }) => React.createElement("div", null, `waline-${enable}`),
+vi.mock("../components/Comments", () => ({
+  default: ({ enable, target }: { enable: string; target: string }) =>
+    React.createElement("div", { "data-comments": target }, `comments-${enable}`),
 }));
 
 vi.mock("../components/ArchiveSummaryPage", () => ({
@@ -257,6 +258,7 @@ describe("static content and archive detail page cache shells", () => {
     expect(linkHtml).toContain("友情链接");
     expect(linkHtml).toContain("link-card-Edge Cache");
     expect(linkHtml).not.toContain("正在加载文章碎片");
+    expect(linkHtml).toContain('data-comments="page:link"');
   });
 
   it("renders the moment page with the public-facing 动态 title", async () => {

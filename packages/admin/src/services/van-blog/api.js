@@ -75,15 +75,66 @@ export async function updateFontSetting(body) {
     data: body,
   });
 }
-export async function getWalineConfig() {
-  return request('/api/admin/setting/waline', {
+const COMMENT_ADMIN_BASE = '/api/admin/comment';
+const commentPath = (id, suffix = '') =>
+  `${COMMENT_ADMIN_BASE}/${encodeURIComponent(String(id))}${suffix}`;
+
+export async function getComments(params, options) {
+  return request(COMMENT_ADMIN_BASE, {
+    method: 'GET',
+    params,
+    ...(options || {}),
+  });
+}
+export async function getCommentStats(options) {
+  return request(`${COMMENT_ADMIN_BASE}/stats`, {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+export async function updateComment(id, body) {
+  return request(commentPath(id), {
+    method: 'PATCH',
+    data: body,
+  });
+}
+export async function batchUpdateComments(ids, action) {
+  return request(`${COMMENT_ADMIN_BASE}/batch`, {
+    method: 'POST',
+    data: { ids, action },
+  });
+}
+export async function deleteComment(id) {
+  return request(commentPath(id), {
+    method: 'DELETE',
+  });
+}
+export async function purgeComment(id) {
+  return request(commentPath(id, '/purge'), {
+    method: 'DELETE',
+  });
+}
+export async function replyComment(id, content) {
+  return request(commentPath(id, '/reply'), {
+    method: 'POST',
+    data: { content },
+  });
+}
+export async function getCommentSetting() {
+  return request(`${COMMENT_ADMIN_BASE}/setting`, {
     method: 'GET',
   });
 }
-export async function updateWalineConfig(body) {
-  return request('/api/admin/setting/waline', {
+export async function updateCommentSetting(body) {
+  return request(`${COMMENT_ADMIN_BASE}/setting`, {
     method: 'PUT',
     data: body,
+  });
+}
+export async function sendCommentTestMail(to) {
+  return request(`${COMMENT_ADMIN_BASE}/notify/test`, {
+    method: 'POST',
+    data: { to },
   });
 }
 export async function getISRConfig() {

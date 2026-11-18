@@ -30,9 +30,6 @@ describe('InitProvider', () => {
   const createProvider = (options: { existingAdmin?: any; existingMeta?: any } = {}) => {
     const userState = createStatefulModel(options.existingAdmin ?? null);
     const metaState = createStatefulModel(options.existingMeta ?? null);
-    const walineProvider = {
-      init: jest.fn().mockResolvedValue(undefined),
-    };
     const settingProvider = {
       updateMenuSetting: jest.fn().mockResolvedValue(undefined),
       getStaticSetting: jest.fn().mockResolvedValue(null),
@@ -61,7 +58,6 @@ describe('InitProvider', () => {
       userState.model as any,
       {} as any,
       {} as any,
-      walineProvider as any,
       settingProvider as any,
       cacheProvider as any,
       websiteProvider as any,
@@ -72,7 +68,6 @@ describe('InitProvider', () => {
       provider,
       userState,
       metaState,
-      walineProvider,
       settingProvider,
       cacheProvider,
       websiteProvider,
@@ -85,7 +80,6 @@ describe('InitProvider', () => {
       provider,
       userState,
       metaState,
-      walineProvider,
       settingProvider,
       websiteProvider,
       structuredDataService,
@@ -130,7 +124,6 @@ describe('InitProvider', () => {
         siteInfo: expect.objectContaining({ siteName: 'Dong Blog' }),
       }),
     );
-    expect(walineProvider.init).toHaveBeenCalled();
     expect(websiteProvider.restart).toHaveBeenCalledWith('初始化');
   });
 

@@ -8,7 +8,7 @@ import CopyRight from '../CopyRight';
 import Reward from '../Reward';
 import TopPinIcon from '../TopPinIcon';
 import UnLockCard from '../UnLockCard';
-import WaLine from '../WaLine';
+import Comments from '../Comments';
 import { PostBottom } from '../PostCard/bottom';
 import PostFragments from '../PostCard/fragments';
 import { SubTitle, Title } from '../PostCard/title';
@@ -17,13 +17,17 @@ import TocMobile from '../TocMobile';
 import { hasToc } from '../../utils/hasToc';
 import { encodeQuerystring } from '../../utils/encode';
 import RenderedMarkdown from '../RenderedMarkdown';
+import { buildPostCommentTarget } from '../../api/comments';
 
 const MarkdownClient = dynamic(() => import('../Markdown'), {
   ssr: false,
 });
 
 export default function RichPostCard(props: {
+  /** Article pathname or id, used for links and fragments. */
   id: number | string;
+  /** Numeric article id; comment threads are always keyed by it. */
+  articleId?: number;
   title: string;
   updatedAt: Date;
   createdAt: Date;
@@ -202,7 +206,11 @@ export default function RichPostCard(props: {
           }}
         />
       </div>
-      <WaLine enable={props.enableComment} visible={props.type !== 'about'} />
+      <Comments
+        // Password-protected articles never accept comments (the server answers 404).
+        enable={props.type === 'article' && props.private ? 'false' : props.enableComment}
+        target={props.type === 'about' ? 'page:about' : buildPostCommentTarget(props.articleId ?? props.id)}
+      />
     </div>
   );
 }

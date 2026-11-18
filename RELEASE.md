@@ -8,17 +8,17 @@
 - 明确多镜像发布规范，避免再回到单镜像 `kevinchina/deeplearning:vanblog-latest` 的不可追踪模式
 - 保留一个可选的 all-in-one 单镜像发布入口，方便只维护一个 VanBlog 容器
 
-当前代码基线已经推进到 `v1.9.1`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
+当前代码基线已经推进到 `v2.0.0`，默认镜像仓库继续固定为长期保留的 `kevinchina/deeplearning`。
 
 ## 1. 发布边界
 
 先明确当前仓库的发布边界：
 
-- VanBlog 核心发布物是 5 个镜像：`caddy`、`server`、`website`、`admin`、`waline`
+- VanBlog 核心发布物是 4 个镜像：`caddy`、`server`、`website`、`admin`（评论已内置到 `server`，不再发布 `waline` 镜像）
 - 数据库和缓存继续使用运行时官方镜像：`postgres:16-alpine`、`redis:7-alpine`
-- `vanblog-all-in-one` 是**必发**发布物：它把主栈和 `postgres` / `redis` 收进同一个容器，每次发版都必须随 5 个核心镜像一起发布并同步 `latest`
-- `pnpm release:images` / `pnpm release:images:push` 只负责 5 个核心镜像
-- `pnpm release:publish` 只负责发布 5 个核心镜像，不会发布 `vanblog-all-in-one-latest`
+- `vanblog-all-in-one` 是**必发**发布物：它把主栈和 `postgres` / `redis` 收进同一个容器，每次发版都必须随 4 个核心镜像一起发布并同步 `latest`
+- `pnpm release:images` / `pnpm release:images:push` 只负责 4 个核心镜像
+- `pnpm release:publish` 只负责发布 4 个核心镜像，不会发布 `vanblog-all-in-one-latest`
 - `pnpm release:all-in-one` / `pnpm release:all-in-one:push` / `pnpm release:all-in-one:publish` 只发布 `vanblog-all-in-one-*` 单镜像标签
 
 ## 2. 发布机制建议
@@ -38,10 +38,10 @@
 3. 确认根目录 `package.json` 的版本号正确，例如 `1.6.2`，并统一成发布标签 `vX.Y.Z`。
 4. 补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案。
 5. 给当前代码打版本 tag，并推送到 GitHub。
-6. 先执行 `pnpm release:publish` 发布 5 个核心镜像。
+6. 先执行 `pnpm release:publish` 发布 4 个核心镜像。
 7. **必做**：紧接着执行 `pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>`，发布 `vanblog-all-in-one-*` 并把 `kevinchina/deeplearning:vanblog-all-in-one-latest` 同步到同一版本。all-in-one 每次发版都要发，不再是可选步骤。
 8. 确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
-9. 记录本次版本号、Git tag、镜像 id、5 个核心镜像发布结果，以及 all-in-one（版本标签 + latest）发布结果。
+9. 记录本次版本号、Git tag、镜像 id、4 个核心镜像发布结果，以及 all-in-one（版本标签 + latest）发布结果。
 10. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署；单镜像部署使用 `docker-compose.all-in-one.image.yml` 或已经同步的 `docker-compose.all-in-one.latest.yml`。
 
 ## 3. 镜像命名规范
@@ -62,7 +62,7 @@ kevinchina/deeplearning:vanblog-<service>-latest
 
 其中：
 
-- `<service>`：固定为 `caddy`、`server`、`website`、`admin`、`waline`
+- `<service>`：固定为 `caddy`、`server`、`website`、`admin`
 - `<version>`：来自根目录 `package.json`，格式统一成 `vX.Y.Z`
 - `<image-id>`：镜像唯一 id，默认使用 Git 短 SHA，例如 `git rev-parse --short=8 HEAD`
 
@@ -130,7 +130,7 @@ bash scripts/release-images.sh
 - 自动读取 `package.json` 版本，例如 `1.6.2`，并规范成 `v1.6.2`
 - 自动读取当前 Git 短 SHA 作为 `image-id`
 - 自动执行 `pnpm test:blog-flow`
-- 为 5 个服务构建镜像
+- 为 4 个服务构建镜像
 
 ### 6.2 正式推送发布
 
@@ -176,7 +176,7 @@ pnpm release:all-in-one:publish
 pnpm release:all-in-one:latest --version vX.Y.Z --image-id <id>
 ```
 
-正式发版在 5 个核心镜像发布成功后，紧接着执行：
+正式发版在 4 个核心镜像发布成功后，紧接着执行：
 
 ```bash
 pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>
@@ -260,7 +260,7 @@ pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id> --skip-te
   `if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALPINE_MIRROR_HOST}/g" /etc/apk/repositories; fi`
 - `tests/deployment-config.test.mjs` 会逐个阶段检查这条约定，`pnpm test:deploy`
   会在发版前拦下遗漏的阶段。
-- `scripts/release-images.sh` 只给 `server`、`website`、`waline` 传
+- `scripts/release-images.sh` 只给 `server`、`website` 传
   `ALPINE_MIRROR_HOST`；如果 `caddy` 或 `admin` 将来也需要 `apk add`，要同步扩展脚本里的服务列表。
 
 ### 7.3 构建卡住时的判断与处理
@@ -304,7 +304,7 @@ git -C <仓库目录> worktree remove /tmp/vanblog-release/wt-vX.Y.Z
 
 ### 7.4 在后台运行发布命令
 
-5 个核心镜像加 all-in-one 通常需要几十分钟。发布命令必须脱离当前终端或 AI 会话运行，
+4 个核心镜像加 all-in-one 通常需要几十分钟。发布命令必须脱离当前终端或 AI 会话运行，
 日志写入文件，这样会话中断时构建不会被一起杀掉，之后也能从日志接着判断进度：
 
 ```bash

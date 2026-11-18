@@ -1,3 +1,5 @@
+import { resolveSharedSecret } from "./sharedSecret";
+
 const normalizeURL = (url: string) => {
   if (url === "/") {
     return "/";
@@ -50,8 +52,7 @@ export const config = {
 export const INTERNAL_REQUEST_HEADER = "x-vanblog-internal-token";
 
 /** Shared secret with the API server (same source as the ISR token). */
-export const getInternalRequestSecret = () =>
-  process.env.VANBLOG_ISR_TOKEN || process.env.WALINE_JWT_TOKEN || "";
+export const getInternalRequestSecret = resolveSharedSecret;
 
 // Lets server-side rendering read content while the private site switch is on.
 const withInternalAuth = (init: NextFetchOptions): NextFetchOptions => {

@@ -63,7 +63,6 @@ import { CaddyProvider } from './provider/caddy/caddy.provider';
 import { LogProvider } from './provider/log/log.provider';
 import { LogController } from './controller/admin/log/log.controller';
 import { ISRProvider } from './provider/isr/isr.provider';
-import { WalineProvider } from './provider/waline/waline.provider';
 import { CacheProvider } from './provider/cache/cache.provider';
 import { LoginGuard } from './provider/auth/login.guard';
 import { AccessGuard } from './provider/access/access.guard';
@@ -94,6 +93,18 @@ import { Moment, MomentSchema } from './scheme/moment.schema';
 import { MomentProvider } from './provider/moment/moment.provider';
 import { MomentController } from './controller/admin/moment/moment.controller';
 import { PublicMomentController } from './controller/public/moment/moment.controller';
+import { Comment, CommentSchema } from './scheme/comment.schema';
+import { CommentLike, CommentLikeSchema } from './scheme/commentLike.schema';
+import { CommentRequestService } from './provider/comment/comment-request.service';
+import { CommentProvider } from './provider/comment/comment.provider';
+import { CommentController } from './controller/admin/comment/comment.controller';
+import { PublicCommentController } from './controller/public/comment/comment.controller';
+import { CommentClientInfoProvider } from './provider/comment/client-info.provider';
+import { CommentNotifyProvider } from './provider/comment/comment-notify.provider';
+import { CommentNotifyController } from './controller/admin/comment/comment-notify.controller';
+import { CommentImageProvider } from './provider/comment/comment-image.provider';
+import { CommentImageController } from './controller/public/comment/comment-image.controller';
+import { CommentImageCleanupTask } from './schedule/comment-image-cleanup.task';
 import { Icon, IconSchema } from './scheme/icon.schema';
 import { IconProvider } from './provider/icon/icon.provider';
 import { IconController } from './controller/admin/icon/icon.controller';
@@ -125,6 +136,11 @@ import { SearchController } from './controller/admin/search/search.controller';
 import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
 import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-cache.provider';
 import { PrivateSiteProvider } from './provider/private-site/private-site.provider';
+import {
+  COMMENT_CLIENT_INFO,
+  COMMENT_LIFECYCLE_HOOKS,
+  COMMENT_TARGET_RESOLVER,
+} from './types/comment.dto';
 
 @Module({
   imports: [
@@ -151,6 +167,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
       { name: NavCategory.name, schema: NavCategorySchema },
       { name: Document.name, schema: DocumentSchema },
       { name: MindMap.name, schema: MindMapSchema },
+      { name: Comment.name, schema: CommentSchema },
+      { name: CommentLike.name, schema: CommentLikeSchema },
     ]),
     JwtModule.registerAsync({
       useFactory: async () => {
@@ -203,6 +221,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     TokenController,
     MomentController,
     PublicMomentController,
+    CommentController,
+    PublicCommentController,
     IconController,
     NavToolController,
     NavCategoryController,
@@ -215,6 +235,8 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     MindMapController,
     SearchController,
     DiagramController,
+    CommentNotifyController,
+    CommentImageController,
   ],
   providers: [
     // Applies to every handler; it only acts on /api/public controllers.
@@ -242,7 +264,6 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     CaddyProvider,
     LogProvider,
     ISRProvider,
-    WalineProvider,
     CacheProvider,
     LoginGuard,
     AccessGuard,
@@ -256,6 +277,15 @@ import { PrivateSiteProvider } from './provider/private-site/private-site.provid
     WebsiteProvider,
     PipelineProvider,
     MomentProvider,
+    CommentRequestService,
+    CommentProvider,
+    { provide: COMMENT_TARGET_RESOLVER, useExisting: CommentProvider },
+    CommentClientInfoProvider,
+    { provide: COMMENT_CLIENT_INFO, useExisting: CommentClientInfoProvider },
+    CommentNotifyProvider,
+    { provide: COMMENT_LIFECYCLE_HOOKS, useExisting: CommentNotifyProvider },
+    CommentImageProvider,
+    CommentImageCleanupTask,
     IconProvider,
     NavToolProvider,
     NavCategoryProvider,

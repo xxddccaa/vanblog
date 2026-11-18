@@ -149,7 +149,9 @@ export const decryptBackupBuffer = (buffer: Buffer, secret?: string) => {
     : [
         process.env.VANBLOG_BACKUP_ENCRYPTION_KEY,
         // Read-only compatibility for backups created before the dedicated
-        // key migration. New backups never use either fallback.
+        // key migration. New backups never use these fallbacks. The shared
+        // secret is tried under its current and its pre-rename name.
+        process.env.VANBLOG_SHARED_SECRET,
         process.env.WALINE_JWT_TOKEN,
         (global as any).jwtSecret,
       ]

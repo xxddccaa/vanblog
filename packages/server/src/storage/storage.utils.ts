@@ -1,6 +1,8 @@
 const IRREGULAR_COLLECTIONS: Record<string, string> = {
   Article: 'articles',
   Category: 'categories',
+  Comment: 'comments',
+  CommentLike: 'comment_likes',
   CustomPage: 'custompages',
   Document: 'documents',
   Draft: 'drafts',

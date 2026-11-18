@@ -104,6 +104,10 @@ describe("cache key normalization", () => {
     expect(shouldNormalizePublicHtmlPath("/atom.xml")).toBe(false);
     expect(shouldNormalizePublicHtmlPath("/sitemap.xml")).toBe(false);
     expect(shouldNormalizePublicHtmlPath("/robots.txt")).toBe(false);
+    // Former Waline routes are not public HTML pages and are never normalized.
+    expect(shouldNormalizePublicHtmlPath("/comment")).toBe(false);
+    expect(shouldNormalizePublicHtmlPath("/ui/login")).toBe(false);
+    expect(shouldNormalizePublicHtmlPath("/api/public/comment")).toBe(false);
   });
 
   it("strips tracking params while preserving real pagination or filtering params", () => {

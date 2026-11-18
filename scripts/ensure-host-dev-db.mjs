@@ -50,87 +50,11 @@ const ensureDatabase = async (client, databaseName) => {
   }
 };
 
-const ensureWalineSchema = async (client, prefix) => {
-  const safePrefix = prefix.replace(/[^A-Za-z0-9_]/g, '');
-  if (!safePrefix) {
-    throw new Error('Invalid Waline table prefix');
-  }
-
-  const sql = `
-CREATE SEQUENCE IF NOT EXISTS ${safePrefix}comment_seq;
-CREATE TABLE IF NOT EXISTS ${safePrefix}comment (
-  id integer NOT NULL DEFAULT nextval('${safePrefix}comment_seq'::regclass),
-  user_id integer,
-  insertedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  ip text,
-  link text,
-  mail text,
-  nick text NOT NULL,
-  pid integer,
-  rid integer,
-  "like" integer DEFAULT 0,
-  comment text,
-  status text,
-  sticky boolean DEFAULT FALSE,
-  ua text,
-  url text,
-  objectId text,
-  createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  avatar text,
-  label text,
-  type text DEFAULT '',
-  PRIMARY KEY (id)
-);
-
-CREATE SEQUENCE IF NOT EXISTS ${safePrefix}counter_seq;
-CREATE TABLE IF NOT EXISTS ${safePrefix}counter (
-  id integer NOT NULL DEFAULT nextval('${safePrefix}counter_seq'::regclass),
-  time integer DEFAULT 0,
-  url text,
-  objectId text,
-  createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
-);
-
-CREATE SEQUENCE IF NOT EXISTS ${safePrefix}users_seq;
-CREATE TABLE IF NOT EXISTS ${safePrefix}users (
-  id integer NOT NULL DEFAULT nextval('${safePrefix}users_seq'::regclass),
-  display_name text,
-  email text,
-  github text,
-  insertedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  label text,
-  link text,
-  objectId text,
-  password text,
-  type text DEFAULT 'user',
-  avatar text,
-  createdAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  updatedAt timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  ip text,
-  token text,
-  uid text,
-  url text,
-  verified text,
-  nick text,
-  mail text,
-  "2fa" text,
-  PRIMARY KEY (id)
-);
-`;
-  await client.query(sql);
-  console.log('[host-dev-db] ensured waline schema');
-};
-
 const main = async () => {
   await loadShellEnv();
 
   const appUrl = new URL(process.env.VAN_BLOG_DATABASE_URL);
-  const walineUrl = new URL(process.env.VAN_BLOG_WALINE_DATABASE_URL);
   const maintenanceDb = process.env.PG_BOOTSTRAP_DATABASE || 'postgres';
-  const walinePrefix = process.env.PG_PREFIX || process.env.POSTGRES_PREFIX || 'wl_';
 
   const bootstrapClient = new Client({
     host: appUrl.hostname,
@@ -143,24 +67,8 @@ const main = async () => {
   await bootstrapClient.connect();
   try {
     await ensureDatabase(bootstrapClient, appUrl.pathname.replace(/^\/+/, '') || 'vanblog');
-    await ensureDatabase(bootstrapClient, walineUrl.pathname.replace(/^\/+/, '') || 'waline');
   } finally {
     await bootstrapClient.end();
-  }
-
-  const walineClient = new Client({
-    host: walineUrl.hostname,
-    port: Number(walineUrl.port || 5432),
-    user: decodeURIComponent(walineUrl.username || 'postgres'),
-    password: decodeURIComponent(walineUrl.password || ''),
-    database: walineUrl.pathname.replace(/^\/+/, '') || 'waline',
-  });
-
-  await walineClient.connect();
-  try {
-    await ensureWalineSchema(walineClient, walinePrefix);
-  } finally {
-    await walineClient.end();
   }
 };
 

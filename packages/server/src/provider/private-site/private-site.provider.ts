@@ -3,6 +3,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { CloudflareCacheProvider } from 'src/provider/cloudflare-cache/cloudflare-cache.provider';
 import { MetaProvider } from 'src/provider/meta/meta.provider';
 import { TokenProvider } from 'src/provider/token/token.provider';
+import { getSharedSecret } from 'src/utils/sharedSecret';
 
 /** Cookie the admin sets on login so the browser carries the session to site pages. */
 export const PRIVATE_SITE_ACCESS_COOKIE = 'vanblog_token';
@@ -16,7 +17,7 @@ const MAX_TOKEN_CACHE_ENTRIES = 1_000;
 
 /** Shared secret between the server and the website container. */
 export const resolveInternalRequestSecret = () =>
-  process.env.VANBLOG_ISR_TOKEN || process.env.WALINE_JWT_TOKEN || '';
+  process.env.VANBLOG_ISR_TOKEN || getSharedSecret();
 
 const readHeader = (req: any, name: string): string => {
   const value = req?.headers?.[name];
@@ -103,7 +104,7 @@ export class PrivateSiteProvider {
       if (!this.warnedMissingSecret) {
         this.warnedMissingSecret = true;
         this.logger.warn(
-          'No internal request secret (VANBLOG_ISR_TOKEN / WALINE_JWT_TOKEN); the website cannot render a private site.',
+          'No internal request secret (VANBLOG_ISR_TOKEN / VANBLOG_SHARED_SECRET); the website cannot render a private site.',
         );
       }
       return false;

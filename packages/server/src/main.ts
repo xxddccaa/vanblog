@@ -8,7 +8,6 @@ import { config as globalConfig } from './config/index';
 import { checkOrCreate } from './utils/checkFolder';
 import * as path from 'path';
 import { ISRProvider } from './provider/isr/isr.provider';
-import { WalineProvider } from './provider/waline/waline.provider';
 import { InitProvider } from './provider/init/init.provider';
 import { json } from 'express';
 import { UserProvider } from './provider/user/user.provider';
@@ -228,10 +227,7 @@ async function bootstrap() {
     settingProvider.washDefaultMenu();
     const metaProvider = app.get(MetaProvider);
     metaProvider.updateTotalWords('首次启动');
-    const walineProvider = app.get(WalineProvider);
-    walineProvider.init();
     process.on('SIGINT', async () => {
-      await walineProvider.stop();
       await websiteProvider.stop();
       console.log('检测到关闭信号，优雅退出！');
       process.exit();

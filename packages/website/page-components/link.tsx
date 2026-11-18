@@ -6,7 +6,7 @@ import AuthorCard, { AuthorCardProps } from '../components/AuthorCard';
 import Layout from '../components/Layout';
 import LinkCard from '../components/LinkCard';
 import RenderedMarkdown from '../components/RenderedMarkdown';
-import WaLine from '../components/WaLine';
+import Comments from '../components/Comments';
 import { LayoutProps } from '../utils/getLayoutProps';
 import { resolveLinkRequirementHtml } from '../utils/linkRequirement';
 
@@ -68,7 +68,7 @@ export default function LinkPage(props: LinkPageProps) {
           </div>
         </div>
       </div>
-      <WaLine enable={props.layoutProps.enableComment} visible={true} />
+      <Comments enable={props.layoutProps.enableComment} target="page:link" />
     </Layout>
   );
 }

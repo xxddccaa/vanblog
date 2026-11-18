@@ -60,6 +60,7 @@ const PostPages = (props: PostPagesProps) => {
         customCopyRight={props.article.copyright || null}
         top={props.article.top || 0}
         id={getArticlePath(props.article)}
+        articleId={props.article.id}
         key={props.article.title}
         title={props.article.title}
         updatedAt={new Date(props.article.updatedAt)}

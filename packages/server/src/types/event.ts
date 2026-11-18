@@ -65,6 +65,19 @@ export const VanblogSystemEvents: VanblogEventItem[] = [
     passive: true,
   },
   {
+    eventName: 'afterCommentCreate',
+    eventNameChinese: '新评论之后',
+    eventDescription:
+      '访客或博主发表评论之后（含待审核和疑似垃圾评论），传入评论与所属页面信息，不含邮箱、IP 和 UA',
+    passive: true,
+  },
+  {
+    eventName: 'afterCommentApprove',
+    eventNameChinese: '评论审核通过之后',
+    eventDescription: '待审核或垃圾评论被审核通过之后，传入评论与所属页面信息，不含邮箱、IP 和 UA',
+    passive: true,
+  },
+  {
     eventName: 'manualTriggerEvent',
     eventNameChinese: '手动触发事件',
     eventDescription: '手动触发事件事件',
@@ -83,4 +96,6 @@ export type VanblogSystemEvent =
   | 'afterUpdateDraft'
   | 'deleteDraft'
   | 'updateSiteInfo'
+  | 'afterCommentCreate'
+  | 'afterCommentApprove'
   | 'manualTriggerEvent';

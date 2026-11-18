@@ -43,6 +43,7 @@ import { MindMapProvider } from 'src/provider/mindmap/mindmap.provider';
 import { MongoBackupProvider } from 'src/provider/mongo-backup/mongo-backup.provider';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 import { BackupImportJobProvider } from 'src/provider/backup-import-job/backup-import-job.provider';
+import { CommentProvider } from 'src/provider/comment/comment.provider';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { parseBackupBuffer, writeEncryptedBackupFile } from 'src/utils/backupCrypto';
@@ -75,7 +76,18 @@ interface PreparedImportPayload {
   icons: any[];
   documents: any[];
   mindMaps: any[];
+  /** Raw `comments` and `comment_likes` records; only present in backups that contain them. */
+  comments: any[];
+  commentLikes: any[];
 }
+
+type StructuredImportCollection =
+  | 'articles'
+  | 'drafts'
+  | 'documents'
+  | 'moments'
+  | 'comments'
+  | 'commentLikes';
 
 @ApiTags('backup')
 @UseGuards(...AdminGuard)
@@ -108,12 +120,10 @@ export class BackupController {
     private readonly mongoBackupProvider: MongoBackupProvider,
     private readonly structuredDataService: StructuredDataService,
     private readonly backupImportJobProvider: BackupImportJobProvider,
+    private readonly commentProvider: CommentProvider,
   ) {}
 
-  private async refreshStructuredData(
-    reason: string,
-    collections?: Array<'articles' | 'drafts' | 'documents' | 'moments'>,
-  ) {
+  private async refreshStructuredData(reason: string, collections?: StructuredImportCollection[]) {
     try {
       if (collections?.length) {
         await this.structuredDataService.refreshCollectionsFromRecordStore(collections, reason);
@@ -221,6 +231,8 @@ export class BackupController {
         moments: prepared.moments.length,
         documents: prepared.documents.length,
         mindMaps: prepared.mindMaps.length,
+        comments: prepared.comments.length,
+        commentLikes: prepared.commentLikes.length,
         settings: prepared.settings?.length || 0,
         staticItems: prepared.staticItems.length,
         tokens: prepared.tokens.length,
@@ -314,13 +326,16 @@ export class BackupController {
     if (prepared.mindMaps.length > 0) {
       stages.push({ key: 'mindMaps', label: '恢复思维导图', total: prepared.mindMaps.length });
     }
+    if (prepared.comments.length > 0) {
+      stages.push({ key: 'comments', label: '恢复评论', total: prepared.comments.length });
+    }
     stages.push({ key: 'structuredData', label: '同步结构化数据', total: 1 });
     stages.push({ key: 'syncTags', label: '同步标签与前台缓存', total: 1 });
     return stages;
   }
 
   private getStructuredCollectionsForImport(prepared: PreparedImportPayload) {
-    const collections: Array<'articles' | 'drafts' | 'documents' | 'moments'> = [];
+    const collections: StructuredImportCollection[] = [];
     if (prepared.articles.length > 0) {
       collections.push('articles');
     }
@@ -332,6 +347,9 @@ export class BackupController {
     }
     if (prepared.documents.length > 0) {
       collections.push('documents');
+    }
+    if (prepared.comments.length > 0) {
+      collections.push('comments', 'commentLikes');
     }
     return collections;
   }
@@ -381,6 +399,11 @@ export class BackupController {
             return payload;
           })
         : [],
+      comments: Array.isArray(data.comments) ? data.comments : [],
+      commentLikes:
+        Array.isArray(data.comments) && data.comments.length && Array.isArray(data.commentLikes)
+          ? data.commentLikes
+          : [],
     };
 
     if (prepared.setting?.static) {
@@ -562,6 +585,8 @@ export class BackupController {
             aiTaggingConfig: aiTaggingConfig ? 1 : 0,
             documents: documents?.length || 0,
             mindMaps: mindMaps?.length || 0,
+            comments: rawCollectionCounts.comments || 0,
+            commentLikes: rawCollectionCounts.comment_likes || 0,
           },
           rawCollectionCounts,
           mongoCollectionCounts: rawCollectionCounts,
@@ -758,6 +783,8 @@ export class BackupController {
         users: 0,
         settings: 0,
         mindMaps: 0,
+        comments: 0,
+        commentLikes: 0,
         other: 0,
       };
 
@@ -867,7 +894,9 @@ export class BackupController {
 
       if (prepared.navCategories.length > 0) {
         await startStage('navCategories', '正在恢复导航分类');
-        importResults.navCategories = await this.importNavCategoriesEnhanced(prepared.navCategories);
+        importResults.navCategories = await this.importNavCategoriesEnhanced(
+          prepared.navCategories,
+        );
         this.logger.log(`导航分类导入完成: ${importResults.navCategories} 条`);
         await completeStage('navCategories', `已恢复 ${importResults.navCategories} 个导航分类`);
       }
@@ -974,6 +1003,21 @@ export class BackupController {
         await completeStage('mindMaps', `已恢复 ${importResults.mindMaps} 个思维导图`);
       }
 
+      if (prepared.comments.length > 0) {
+        await startStage('comments', `正在恢复 ${prepared.comments.length} 条评论`);
+        const restored = await this.commentProvider.importRecords(
+          prepared.comments,
+          prepared.commentLikes,
+        );
+        importResults.comments = restored.comments;
+        importResults.commentLikes = restored.likes;
+        if (restored.skipped) {
+          this.logger.warn(`Skipped ${restored.skipped} malformed comment or like records`);
+        }
+        this.logger.log(`Comments restored: ${restored.comments}, likes: ${restored.likes}`);
+        await completeStage('comments', `已恢复 ${restored.comments} 条评论`);
+      }
+
       if (!prepared.includeAnalytics) {
         await skipStage(
           'analytics',
@@ -1070,6 +1114,7 @@ export class BackupController {
         visit: 0,
         tokens: 0,
         documents: 0,
+        comments: 0,
       };
 
       // 1. 清空内容数据 - 使用物理删除
@@ -1127,6 +1172,14 @@ export class BackupController {
         this.logger.log(`清空动态数据完成: ${clearResults.moments} 条`);
       } catch (error) {
         this.logger.error('清空动态数据失败:', error.message);
+      }
+
+      try {
+        clearResults.comments = await this.commentProvider.deleteAllRecords();
+        await this.refreshStructuredData('clear-all-comments', ['comments', 'commentLikes']);
+        this.logger.log(`Comments cleared: ${clearResults.comments}`);
+      } catch (error) {
+        this.logger.error(`Failed to clear comments: ${error.message}`);
       }
 
       // 2. 清空自定义页面
@@ -1361,7 +1414,9 @@ export class BackupController {
         successCount++;
       } catch (error) {
         this.logger.warn(`分类 ${category} 导入失败: ${error.message}`);
-        failures.push(typeof category === 'string' ? category : category?.name || JSON.stringify(category));
+        failures.push(
+          typeof category === 'string' ? category : category?.name || JSON.stringify(category),
+        );
       }
     }
     this.throwIfImportFailures('分类', failures);
@@ -1667,6 +1722,7 @@ export class BackupController {
       navCategories,
       documents,
       mindMaps,
+      comments,
     ] = await Promise.all([
       this.articleProvider.getTotalNum(true),
       this.draftProvider.getAll().then((items) => items.length),
@@ -1679,6 +1735,7 @@ export class BackupController {
       this.navCategoryProvider.getAllCategories(),
       this.documentProvider.getByOption({ page: 1, pageSize: 1 }).then((result) => result.total),
       this.mindMapProvider.getByOption({ page: 1, pageSize: 1 }).then((result) => result.total),
+      this.commentProvider.countAll(),
     ]);
 
     return (
@@ -1690,7 +1747,8 @@ export class BackupController {
       (navTools?.length || 0) === 0 &&
       (navCategories?.length || 0) === 0 &&
       (documents || 0) === 0 &&
-      (mindMaps || 0) === 0
+      (mindMaps || 0) === 0 &&
+      (comments || 0) === 0
     );
   }
 
@@ -1720,6 +1778,7 @@ export class BackupController {
       this.tokenProvider['tokenModel']?.deleteMany?.({}),
       this.documentProvider['documentModel']?.deleteMany?.({}),
       this.mindMapProvider['mindMapModel']?.deleteMany?.({}),
+      this.commentProvider.deleteAllRecords(),
       this.settingProvider['settingModel']?.deleteMany?.({}),
       this.metaProvider['metaModel']?.deleteMany?.({}),
       keepAdminId === undefined
@@ -2075,6 +2134,10 @@ export class BackupController {
       aiTaggingConfig: data?.aiTaggingConfig ?? this.findSettingValue(settings, 'aiTagging'),
       documents: data?.documents ?? this.getCollection(mongoCollections, ['documents']),
       mindMaps: data?.mindMaps ?? this.getCollection(mongoCollections, ['mindmaps', 'mindMaps']),
+      comments: data?.comments ?? this.getCollection(mongoCollections, ['comments']),
+      commentLikes:
+        data?.commentLikes ??
+        this.getCollection(mongoCollections, ['comment_likes', 'commentLikes']),
     };
   }
 

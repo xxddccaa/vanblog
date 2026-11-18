@@ -83,7 +83,6 @@ test(
         'packages/server/package.json',
         'packages/website/package.json',
         'packages/admin/package.json',
-        'packages/waline/package.json',
         'packages/cli/package.json',
       ]) {
         copyIntoContext(contextRoot, relativePath);

@@ -1,5 +1,6 @@
-const resolveExpectedToken = () =>
-  process.env.VANBLOG_ISR_TOKEN || process.env.WALINE_JWT_TOKEN || '';
+import { resolveSharedSecret } from './sharedSecret';
+
+const resolveExpectedToken = resolveSharedSecret;
 
 export function isRevalidateRequestAuthorized(providedToken?: string | null) {
   const expectedToken = resolveExpectedToken();
