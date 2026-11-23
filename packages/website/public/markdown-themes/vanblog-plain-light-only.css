@@ -18,9 +18,12 @@ html:not(.dark) .markdown-body {
 }
 html:not(.dark) .markdown-body :is(p, li, dd, td, th, summary, figcaption, label) { color: #24292f !important; }
 html:not(.dark) .markdown-body :is(h1, h2, h3, h4, h5, h6) { color: #1f2328 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; text-shadow: none !important; transform: none !important; }
-html:not(.dark) .markdown-body h1 { font-size: 2.25em; padding: 0.75em 0; border-bottom: 2px solid #d0d7de !important; }
-html:not(.dark) .markdown-body h2 { font-size: 1.75em; padding: 0.5em 0; }
-html:not(.dark) .markdown-body h3 { font-size: 1.5em; }
+html:not(.dark) .markdown-body h1 { font-size: 1.75em; line-height: 1.3; padding: 0.75em 0; border-bottom: 2px solid #d0d7de !important; }
+html:not(.dark) .markdown-body h2 { font-size: 1.5em; line-height: 1.35; padding: 0.5em 0; }
+html:not(.dark) .markdown-body h3 { font-size: 1.25em; line-height: 1.4; }
+html:not(.dark) .markdown-body h4 { font-size: 1.125em; }
+html:not(.dark) .markdown-body h5,
+html:not(.dark) .markdown-body h6 { font-size: 1em; }
 html:not(.dark) .markdown-body blockquote { padding: 0.2em 15px; color: #57606a !important; background: #f6f8fa !important; border-left: 4px solid #d0d7de !important; }
 html:not(.dark) .markdown-body a { color: #0969da !important; border: 0 !important; }
 html:not(.dark) .markdown-body a:hover { color: #0550ae !important; text-decoration: underline !important; background: transparent !important; }

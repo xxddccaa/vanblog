@@ -58,7 +58,7 @@ html:not(.dark) .markdown-body h1 {
   border-bottom: 3px double var(--vb-border);
   padding: 16px 0;
   margin: 1.5em 0 1.2em;
-  font-size: 2.2rem;
+  font-size: 1.75rem;
   font-weight: 900;
   letter-spacing: 0.08em;
   position: relative;
