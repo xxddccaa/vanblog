@@ -19,7 +19,7 @@ import { SearchStaticOption } from 'src/types/setting.dto';
 import { AdminGuard } from 'src/provider/auth/auth.guard';
 import { StaticProvider } from 'src/provider/static/static.provider';
 import { config } from 'src/config';
-import { checkTrue } from 'src/utils/checkTrue';
+import { isTrue } from 'src/utils/isTrue';
 import { ApiToken } from 'src/provider/swagger/token';
 
 @ApiTags('img')
@@ -52,9 +52,9 @@ export class ImgController {
     }
     // 只有这里开启水印，并且设置里也开启水印，才能触发水印，双保险。避免后台某些表单上传图片也触发了水印。
     const updateConfig = {
-      withWaterMark: checkTrue(withWaterMark),
+      withWaterMark: isTrue(withWaterMark),
       waterMarkText,
-      skipCompress: checkTrue(skipCompress),
+      skipCompress: isTrue(skipCompress),
     };
     const res = await this.staticProvider.upload(file, 'img', isFavicon, undefined, updateConfig);
     return {

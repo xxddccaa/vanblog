@@ -1,4 +1,4 @@
-import { checkJsonString } from '@/services/van-blog/checkJson';
+import { checkJsonString } from './checkJson';
 import { ModalForm, ProFormTextArea } from '@ant-design/pro-form';
 import { triggerPipelineById } from '@/services/van-blog/api';
 import { message, Modal } from 'antd';

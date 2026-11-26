@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { capitalize } from "../utils/capitalize";
+import { capitalize } from "../components/SocialIcon/capitalize";
 
 describe("capitalize", () => {
   it("Should capitalize content", () => {

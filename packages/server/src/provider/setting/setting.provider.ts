@@ -25,7 +25,7 @@ import { SettingDocument } from 'src/scheme/setting.schema';
 import { encode } from 'js-base64';
 import { defaultMenu, MenuItem } from 'src/types/menu.dto';
 import { MetaProvider } from '../meta/meta.provider';
-import { parseHtmlToHeadTagArr } from 'src/utils/htmlParser';
+import { parseHtmlToHeadTagArr } from './htmlParser';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 import { AdminCommentSetting, CommentSetting } from 'src/types/comment.dto';
 import {

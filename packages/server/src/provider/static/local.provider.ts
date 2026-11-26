@@ -5,12 +5,12 @@ import * as path from 'path';
 import { config } from 'src/config';
 import { formatBytes } from 'src/utils/size';
 import { ImgMeta } from 'src/types/img';
-import { isProd } from 'src/utils/isProd';
+import { isProd } from './isProd';
 import dayjs from 'dayjs';
 import { checkOrCreate, checkOrCreateByFilePath } from 'src/utils/checkFolder';
-import { rmDir } from 'src/utils/deleteFolder';
-import { readDirs } from 'src/utils/readFileList';
-import { checkOrCreateFile } from 'src/utils/checkFile';
+import { rmDir } from './deleteFolder';
+import { readDirs } from './readFileList';
+import { checkOrCreateFile } from './checkFile';
 import { getSafeUploadFileName } from 'src/utils/uploadFileName';
 import { safeImageSize } from 'src/utils/safeImageSize';
 @Injectable()

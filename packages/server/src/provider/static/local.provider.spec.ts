@@ -7,7 +7,7 @@ jest.mock('src/config', () => ({
   },
 }));
 
-jest.mock('src/utils/checkFile', () => ({
+jest.mock('./checkFile', () => ({
   checkOrCreateFile: jest.fn(),
 }));
 
@@ -16,7 +16,7 @@ jest.mock('src/utils/checkFolder', () => ({
   checkOrCreateByFilePath: jest.fn(),
 }));
 
-jest.mock('src/utils/readFileList', () => ({
+jest.mock('./readFileList', () => ({
   readDirs: jest.fn(),
 }));
 
@@ -25,13 +25,13 @@ jest.mock('fs', () => ({
   writeFileSync: jest.fn(),
 }));
 
-const { checkOrCreateFile } = jest.requireMock('src/utils/checkFile') as {
+const { checkOrCreateFile } = jest.requireMock('./checkFile') as {
   checkOrCreateFile: jest.Mock;
 };
 const { checkOrCreate } = jest.requireMock('src/utils/checkFolder') as {
   checkOrCreate: jest.Mock;
 };
-const { readDirs } = jest.requireMock('src/utils/readFileList') as {
+const { readDirs } = jest.requireMock('./readFileList') as {
   readDirs: jest.Mock;
 };
 const fs = jest.requireMock('fs') as {

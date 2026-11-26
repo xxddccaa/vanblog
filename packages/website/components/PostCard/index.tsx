@@ -17,7 +17,7 @@ import TocMobile from "../TocMobile";
 import { hasToc } from "../../utils/hasToc";
 import Markdown from "../Markdown";
 import { encodeQuerystring } from "../../utils/encode";
-import { getOverviewPreview } from "../../utils/getOverviewPreview";
+import { getOverviewPreview } from "./getOverviewPreview";
 import { buildPostCommentTarget } from "../../api/comments";
 
 export default function (props: {

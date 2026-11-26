@@ -16,7 +16,7 @@ import os from 'os';
 import path from 'path';
 import { config } from 'src/config';
 import { COMMENT_LIMITS } from 'src/types/comment.dto';
-import { WebpEncodeError, WebpEncodeOptions } from 'src/utils/webpAsync';
+import { WebpEncodeError, WebpEncodeOptions } from './webpAsync';
 import {
   COMMENT_IMAGE_MAX_EDGE,
   CommentImageProvider,

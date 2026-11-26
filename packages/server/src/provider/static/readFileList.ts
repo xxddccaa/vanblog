@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { checkOrCreate } from './checkFolder';
+import { checkOrCreate } from 'src/utils/checkFolder';
 enum FileType {
   'directory',
   'file',

@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { checkOrCreateByFilePath } from './checkFolder';
+import { checkOrCreateByFilePath } from 'src/utils/checkFolder';
 
 export const checkOrCreateFile = (p: string) => {
   checkOrCreateByFilePath(p);

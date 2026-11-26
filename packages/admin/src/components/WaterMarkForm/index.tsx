@@ -1,5 +1,5 @@
 import { getStaticSetting, updateStaticSetting } from '@/services/van-blog/api';
-import { checkNoChinese } from '@/services/van-blog/checkString';
+import { checkNoChinese } from './checkString';
 import { ProForm, ProFormSelect, ProFormText } from '@ant-design/pro-components';
 import { message, Modal } from 'antd';
 import { useState } from 'react';

@@ -4,7 +4,7 @@ jest.mock('src/config', () => ({
   },
 }));
 
-jest.mock('src/utils/watermark', () => ({
+jest.mock('src/provider/static/watermark', () => ({
   addWaterMarkToIMG: jest.fn(),
 }));
 

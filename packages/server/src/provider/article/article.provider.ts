@@ -3,7 +3,7 @@ import { InjectModel } from 'src/storage/mongoose-compat';
 import { Model } from 'src/storage/mongoose-compat';
 import { CreateArticleDto, SearchArticleOption, UpdateArticleDto } from 'src/types/article.dto';
 import { Article, ArticleDocument } from 'src/scheme/article.schema';
-import { parseImgLinksOfMarkdown } from 'src/utils/parseImgOfMarkdown';
+import { parseImgLinksOfMarkdown } from './parseImgOfMarkdown';
 import { wordCount } from 'src/utils/wordCount';
 import { MetaProvider } from '../meta/meta.provider';
 import { VisitProvider } from '../visit/visit.provider';

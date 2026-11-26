@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from './index.module.scss';
-import globalMusicPlayer from '../../utils/globalMusicPlayer';
+import globalMusicPlayer from './globalMusicPlayer';
 
 interface MusicFile {
   sign: string;

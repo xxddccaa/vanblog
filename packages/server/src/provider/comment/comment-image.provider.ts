@@ -12,9 +12,9 @@ import { defaultFormats } from 'jimp';
 import path from 'path';
 import { config } from 'src/config';
 import { COMMENT_IMAGE_DIR, COMMENT_LIMITS, CommentImageResult } from 'src/types/comment.dto';
-import { isGifFrameInsideCanvas, readFirstGifFrame } from 'src/utils/gifFrame';
+import { isGifFrameInsideCanvas, readFirstGifFrame } from './gifFrame';
 import { detectSafeImageType, safeImageSize } from 'src/utils/safeImageSize';
-import { WebpEncodeError, WebpEncoder, encodeWebpAsync } from 'src/utils/webpAsync';
+import { WebpEncodeError, WebpEncoder, encodeWebpAsync } from './webpAsync';
 import { commentError } from './comment-request.service';
 
 /** Optional injection token to replace the cwebp runner (tests, other encoders). */

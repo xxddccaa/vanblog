@@ -10,7 +10,7 @@ describe('watermark', () => {
         '-e',
         `
           const { Jimp, JimpMime } = require('jimp');
-          const { addWaterMarkToIMG } = require('./src/utils/watermark');
+          const { addWaterMarkToIMG } = require('./src/provider/static/watermark');
           (async () => {
             const source = await new Jimp({
               width: 640,

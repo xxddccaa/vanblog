@@ -18,8 +18,8 @@ import { ImgMeta } from 'src/types/img';
 import { formatBytes } from 'src/utils/size';
 import axios from 'axios';
 import { UploadConfig } from 'src/types/upload';
-import { addWaterMarkToIMG } from 'src/utils/watermark';
-import { checkTrue } from 'src/utils/checkTrue';
+import { addWaterMarkToIMG } from './watermark';
+import { isTrue } from 'src/utils/isTrue';
 import { compressImgToWebp } from 'src/utils/webp';
 import { StructuredDataService } from 'src/storage/structured-data.service';
 import { config } from 'src/config';
@@ -134,7 +134,7 @@ export class StaticProvider {
         if (updateConfig && updateConfig.withWaterMark && detectedType != 'gif') {
           // 双保险，只有这里开启水印并且设置中也开启了才有效。
           const waterMarkConfigInDB = staticConfigInDB;
-          if (waterMarkConfigInDB && checkTrue(waterMarkConfigInDB?.enableWaterMark)) {
+          if (waterMarkConfigInDB && isTrue(waterMarkConfigInDB?.enableWaterMark)) {
             const waterMarkText = updateConfig.waterMarkText || waterMarkConfigInDB.waterMarkText;
             if (waterMarkText && waterMarkText.trim() !== '') {
               buf = await addWaterMarkToIMG(buffer, waterMarkText);
@@ -146,7 +146,7 @@ export class StaticProvider {
         // console.log(err);
       }
 
-      if (checkTrue(staticConfigInDB.enableWebp) && !updateConfig?.skipCompress) {
+      if (isTrue(staticConfigInDB.enableWebp) && !updateConfig?.skipCompress) {
         try {
           buf = await compressImgToWebp(buf);
           currentSign = encryptFileMD5(buf);
@@ -191,7 +191,7 @@ export class StaticProvider {
     }
     if (
       type == 'img' &&
-      checkTrue(staticConfigInDB.enableWebp) &&
+      isTrue(staticConfigInDB.enableWebp) &&
       compressSuccess &&
       !updateConfig?.skipCompress
     ) {

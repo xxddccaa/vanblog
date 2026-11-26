@@ -2,7 +2,7 @@ import { useContext, useMemo, useState } from "react";
 import { SocialItem, IconItem } from "../../api/getAllData";
 import { getIcon } from "../../utils/getIcon";
 import { Popover, ArrowContainer } from "react-tiny-popover";
-import { capitalize } from "../../utils/capitalize";
+import { capitalize } from "./capitalize";
 import { ThemeContext } from "../../utils/themeContext";
 import ImageBox from "../ImageBox";
 
