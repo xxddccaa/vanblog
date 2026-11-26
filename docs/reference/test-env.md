@@ -41,6 +41,10 @@ Caddy 对外暴露 `8020`，数据库 / redis 由 all-in-one 容器内部托管�
 
 > 与生产发版的区别：生产发版时，4 个核心拆分镜像的 `website`/`admin` 也是"宿主机预编译产物直接进镜像"（见 `docker/website.Dockerfile`、`docker/admin.Dockerfile`）；但 **all-in-one 镜像是镜像内重编**，不享用主机产物。测试环境这里反过来——复用 all-in-one 镜像，靠挂载把主机产物覆盖进去，从而跳过重编。详见 `RELEASE.md`。
 
+## 登录账号
+
+8020 后台的账号和密码记在仓库根目录的 `.env.credentials`（已加入 `.gitignore`，只存在于本机），调试令牌在测试目录的 `.env`。忘记密码时不必改数据库：用调试令牌换一个 JWT，再调 `PUT /api/admin/auth` 改密码。请求体里的密码必须先按 `packages/admin/src/services/van-blog/encryptPwd.js` 的规则计算，改完后把新密码写回 `.env.credentials`。
+
 ## 首次启动
 
 测试目录中的 compose 是在仓库原版基础上增加了四项源码产物 bind mount 的**本机专用副本**。已有测试目录直接使用现有文件，不要再用仓库原版覆盖，否则路径 A 会失效。首次搭建时应从当前正常工作的测试目录模板复制，或复制仓库原版后按上文表格手动补齐四项挂载。

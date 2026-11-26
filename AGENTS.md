@@ -34,6 +34,15 @@ Long-term conventions:
 - The image repository is fixed to `kevinchina/deeplearning`; all release and rollback docs assume it.
 - "Single image" means the `docker-compose.all-in-one*.yml` files plus the `vanblog-all-in-one-*` tags. Do not fall back to the legacy `vanblog-latest` single-image setup.
 
+## Project Notes (`.agent-forge/`)
+
+`.agent-forge/` holds the living project notes: current state, architecture, data model, per-module constraints, decision records, and in-flight change folders. It is git-ignored and exists only on the owner's machine; if it is absent, skip this section. This file remains the source of truth for rules and wins on any conflict.
+
+- At the start of a session, read `.agent-forge/STATE.md`, then `.agent-forge/specs/architecture.md`. Read `specs/domains/<module>.md` only for the module you are changing.
+- Size each change first. L0 (single bug fix or style tweak; no data, API, or module-boundary change): write a failing test, then the minimal fix. L1 (new endpoint, rule change, compatible schema change, local refactor): keep `proposal.md` / `design.md` / `tasks.md` under `.agent-forge/changes/active/<date>-<slug>/`. L2 (storage engine, breaking API, auth model, module split): get the owner's sign-off on the design before writing code.
+- When an L1/L2 change lands, update the affected `specs/` files, add a `decisions/` record for any significant choice, move the change folder to `changes/archive/`, and update `STATE.md`.
+- Never record tokens or passwords in `.agent-forge/`; local logins belong in the git-ignored `.env.credentials`.
+
 ## Service Topology & Routing
 
 | Service | Source | Container ports | Role |

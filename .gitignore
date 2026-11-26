@@ -68,6 +68,10 @@ typings/
 # dotenv environment variables file
 .env
 .env.test
+# Local credentials for this machine (test-env logins etc.); never commit
+.env.credentials
+# Local agent-forge project notes; kept on the owner's machine only
+.agent-forge/
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
