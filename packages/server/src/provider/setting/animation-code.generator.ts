@@ -1,32 +1,32 @@
 export function generateAnimationCode(animations: any): { css: string; script: string } {
-    let css = '';
-    let script = '';
+  let css = '';
+  let script = '';
 
-    if (animations.snowflake?.enabled) {
-      css += generateSnowflakeCSS(animations.snowflake);
-      script += generateSnowflakeJS(animations.snowflake);
-    }
-
-    if (animations.particles?.enabled) {
-      css += generateParticlesCSS(animations.particles);
-      script += generateParticlesJS(animations.particles);
-    }
-
-    if (animations.heartClick?.enabled) {
-      css += generateHeartClickCSS(animations.heartClick);
-      script += generateHeartClickJS(animations.heartClick);
-    }
-
-    if (animations.mouseDrag?.enabled) {
-      css += generateMouseDragCSS(animations.mouseDrag);
-      script += generateMouseDragJS(animations.mouseDrag);
-    }
-
-    return { css, script };
+  if (animations.snowflake?.enabled) {
+    css += generateSnowflakeCSS(animations.snowflake);
+    script += generateSnowflakeJS(animations.snowflake);
   }
 
+  if (animations.particles?.enabled) {
+    css += generateParticlesCSS(animations.particles);
+    script += generateParticlesJS(animations.particles);
+  }
+
+  if (animations.heartClick?.enabled) {
+    css += generateHeartClickCSS(animations.heartClick);
+    script += generateHeartClickJS(animations.heartClick);
+  }
+
+  if (animations.mouseDrag?.enabled) {
+    css += generateMouseDragCSS(animations.mouseDrag);
+    script += generateMouseDragJS(animations.mouseDrag);
+  }
+
+  return { css, script };
+}
+
 function generateSnowflakeCSS(config: any): string {
-    return `
+  return `
 .snow-container {
   position: fixed;
   top: 0;
@@ -48,10 +48,10 @@ function generateSnowflakeCSS(config: any): string {
   color: ${config.color};
 }
 `;
-  }
+}
 
 function generateSnowflakeJS(config: any): string {
-    return `
+  return `
 const shouldDisableVanblogMotionEffects = () => {
   try {
     return Boolean(
@@ -257,14 +257,14 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
   });
 }
 `;
-  }
+}
 
 function generateParticlesCSS(config: any): string {
-    // 根据主题模式设置不同的默认颜色
-    const lightColor = config.color || '0,0,0';
-    const darkColor = config.darkColor || '255,255,255';
+  // 根据主题模式设置不同的默认颜色
+  const lightColor = config.color || '0,0,0';
+  const darkColor = config.darkColor || '255,255,255';
 
-    return `
+  return `
 .particles-container {
   position: fixed;
   top: 0;
@@ -281,43 +281,43 @@ function generateParticlesCSS(config: any): string {
   height: 100%;
 }
 `;
-  }
+}
 
 function generateParticlesJS(config: any): string {
-    // 颜色转换函数：十六进制转RGB
-    const hexToRgb = (hex: string): string => {
-      if (!hex) return '0,0,0';
+  // 颜色转换函数：十六进制转RGB
+  const hexToRgb = (hex: string): string => {
+    if (!hex) return '0,0,0';
 
-      // 移除#号和空格
-      let cleanHex = hex.replace(/[#\s]/g, '');
+    // 移除#号和空格
+    let cleanHex = hex.replace(/[#\s]/g, '');
 
-      // 处理3位十六进制颜色（如#fff）
-      if (cleanHex.length === 3) {
-        cleanHex = cleanHex
-          .split('')
-          .map((char) => char + char)
-          .join('');
-      }
+    // 处理3位十六进制颜色（如#fff）
+    if (cleanHex.length === 3) {
+      cleanHex = cleanHex
+        .split('')
+        .map((char) => char + char)
+        .join('');
+    }
 
-      // 确保是6位十六进制
-      if (cleanHex.length !== 6 || !/^[0-9A-Fa-f]{6}$/.test(cleanHex)) {
-        console.warn(`Invalid hex color: ${hex}, using default`);
-        return '0,0,0';
-      }
+    // 确保是6位十六进制
+    if (cleanHex.length !== 6 || !/^[0-9A-Fa-f]{6}$/.test(cleanHex)) {
+      console.warn(`Invalid hex color: ${hex}, using default`);
+      return '0,0,0';
+    }
 
-      // 解析RGB值
-      const r = parseInt(cleanHex.substring(0, 2), 16);
-      const g = parseInt(cleanHex.substring(2, 4), 16);
-      const b = parseInt(cleanHex.substring(4, 6), 16);
+    // 解析RGB值
+    const r = parseInt(cleanHex.substring(0, 2), 16);
+    const g = parseInt(cleanHex.substring(2, 4), 16);
+    const b = parseInt(cleanHex.substring(4, 6), 16);
 
-      return `${r},${g},${b}`;
-    };
+    return `${r},${g},${b}`;
+  };
 
-    // 转换颜色配置
-    const lightColor = hexToRgb(config.color || '#000000');
-    const darkColor = hexToRgb(config.darkColor || '#ffffff');
+  // 转换颜色配置
+  const lightColor = hexToRgb(config.color || '#000000');
+  const darkColor = hexToRgb(config.darkColor || '#ffffff');
 
-    return `
+  return `
 // Canvas-nest.js 粒子连线动画 - 修复版本
 (function() {
   'use strict';
@@ -787,10 +787,10 @@ function generateParticlesJS(config: any): string {
   window.CANVAS_NEST_CLEANUP = cleanup;
 })();
 `;
-  }
+}
 
 function generateHeartClickCSS(config: any): string {
-    return `
+  return `
 /* 心形点击爆炸效果样式 */
 .heart {
   width: 12px;
@@ -842,10 +842,10 @@ function generateHeartClickCSS(config: any): string {
   z-index: 9998;
 }
 `;
-  }
+}
 
 function generateHeartClickJS(config: any): string {
-    return `
+  return `
 // 心形点击爆炸效果系统 - 增强版粒子爆炸
 (function(window, document, undefined) {
   'use strict';
@@ -1098,10 +1098,10 @@ function generateHeartClickJS(config: any): string {
   
 })(window, document);
 `;
-  }
+}
 
 function generateMouseDragCSS(config: any): string {
-    return `
+  return `
 .mouse-drag-canvas {
   position: fixed;
   top: 0;
@@ -1113,10 +1113,10 @@ function generateMouseDragCSS(config: any): string {
   opacity: ${config.opacity || 0.8};
 }
 `;
-  }
+}
 
 function generateMouseDragJS(config: any): string {
-    return `
+  return `
 const shouldDisableVanblogMotionEffects = () => {
   try {
     return Boolean(
@@ -1325,4 +1325,4 @@ if (typeof window !== 'undefined' && !shouldDisableVanblogMotionEffects()) {
   });
   }
 `;
-  }
+}

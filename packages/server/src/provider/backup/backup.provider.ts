@@ -92,7 +92,6 @@ export class BackupProvider {
     }
   }
 
-
   private async prepareImportPayload(
     file: Express.Multer.File,
     includeAnalytics = false,
@@ -381,7 +380,6 @@ export class BackupProvider {
       });
     }
   }
-
 
   async importAll(file: Express.Multer.File, body: any) {
     if (config?.demo == true || config?.demo == 'true') {
@@ -1184,18 +1182,14 @@ export class BackupProvider {
       }
 
       let processedCount = 0;
-      await runWithConcurrency(
-        payloads,
-        getImportConcurrency(payloads.length),
-        async (payload) => {
-          const newDraft = new this.draftProvider['draftModel'](payload);
-          await newDraft.save();
-          processedCount++;
-          if (onProgress && shouldReportProgress(processedCount, payloads.length)) {
-            await onProgress(processedCount, payload.title);
-          }
-        },
-      );
+      await runWithConcurrency(payloads, getImportConcurrency(payloads.length), async (payload) => {
+        const newDraft = new this.draftProvider['draftModel'](payload);
+        await newDraft.save();
+        processedCount++;
+        if (onProgress && shouldReportProgress(processedCount, payloads.length)) {
+          await onProgress(processedCount, payload.title);
+        }
+      });
 
       this.logger.log(`草稿快速恢复完成: 创建 ${payloads.length} 个, 重新分配ID ${newIdCount} 个`);
     } catch (error) {
@@ -1239,18 +1233,14 @@ export class BackupProvider {
       }
 
       let processedCount = 0;
-      await runWithConcurrency(
-        payloads,
-        getImportConcurrency(payloads.length),
-        async (payload) => {
-          const newMoment = new this.momentProvider['momentModel'](payload);
-          await newMoment.save();
-          processedCount++;
-          if (onProgress && shouldReportProgress(processedCount, payloads.length)) {
-            await onProgress(processedCount, payload.content?.substring(0, 30));
-          }
-        },
-      );
+      await runWithConcurrency(payloads, getImportConcurrency(payloads.length), async (payload) => {
+        const newMoment = new this.momentProvider['momentModel'](payload);
+        await newMoment.save();
+        processedCount++;
+        if (onProgress && shouldReportProgress(processedCount, payloads.length)) {
+          await onProgress(processedCount, payload.content?.substring(0, 30));
+        }
+      });
 
       this.logger.log(`动态快速恢复完成: 创建 ${payloads.length} 个, 重新分配ID ${newIdCount} 个`);
     } catch (error) {
@@ -1610,18 +1600,14 @@ export class BackupProvider {
       }
 
       let processedCount = 0;
-      await runWithConcurrency(
-        payloads,
-        getImportConcurrency(payloads.length),
-        async (payload) => {
-          const newArticle = new this.articleProvider['articleModel'](payload);
-          await newArticle.save();
-          processedCount++;
-          if (onProgress && shouldReportProgress(processedCount, payloads.length)) {
-            await onProgress(processedCount, payload.title);
-          }
-        },
-      );
+      await runWithConcurrency(payloads, getImportConcurrency(payloads.length), async (payload) => {
+        const newArticle = new this.articleProvider['articleModel'](payload);
+        await newArticle.save();
+        processedCount++;
+        if (onProgress && shouldReportProgress(processedCount, payloads.length)) {
+          await onProgress(processedCount, payload.title);
+        }
+      });
 
       this.logger.log(`文章快速恢复完成: 创建 ${payloads.length} 篇, 重新分配ID ${newIdCount} 篇`);
       await this.metaProvider.updateTotalWords('增量导入文章');
@@ -1823,5 +1809,4 @@ export class BackupProvider {
       throw error;
     }
   }
-
 }

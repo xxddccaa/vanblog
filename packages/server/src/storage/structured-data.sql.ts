@@ -1,7 +1,7 @@
 import { SearchArticleOption } from 'src/types/article.dto';
 
 export function getArticleSelectSql() {
-    return `
+  return `
       SELECT
         a.id,
         a.title,
@@ -32,10 +32,10 @@ export function getArticleSelectSql() {
         ) AS tags
       FROM vanblog_articles a
     `;
-  }
+}
 
 export function getArticleSummarySelectSql() {
-    return `
+  return `
       SELECT
         a.id,
         a.title,
@@ -66,10 +66,10 @@ export function getArticleSummarySelectSql() {
         ) AS tags
       FROM vanblog_articles a
     `;
-  }
+}
 
 export function getDraftSelectSql() {
-    return `
+  return `
       SELECT
         id,
         title,
@@ -83,10 +83,10 @@ export function getDraftSelectSql() {
         source_record_id
       FROM vanblog_drafts
     `;
-  }
+}
 
 export function getDraftSummarySelectSql() {
-    return `
+  return `
       SELECT
         id,
         title,
@@ -100,10 +100,10 @@ export function getDraftSummarySelectSql() {
         source_record_id
       FROM vanblog_drafts
     `;
-  }
+}
 
 export function getDocumentSelectSql() {
-    return `
+  return `
       SELECT
         id,
         title,
@@ -120,10 +120,10 @@ export function getDocumentSelectSql() {
         source_record_id
       FROM vanblog_documents
     `;
-  }
+}
 
 export function getDocumentSummarySelectSql() {
-    return `
+  return `
       SELECT
         id,
         title,
@@ -140,10 +140,10 @@ export function getDocumentSummarySelectSql() {
         source_record_id
       FROM vanblog_documents
     `;
-  }
+}
 
 export function getCustomPageSelectSql() {
-    return `
+  return `
       SELECT
         path,
         name,
@@ -154,10 +154,10 @@ export function getCustomPageSelectSql() {
         source_record_id
       FROM vanblog_custom_pages
     `;
-  }
+}
 
 export function getCustomPageSummarySelectSql() {
-    return `
+  return `
       SELECT
         path,
         name,
@@ -168,105 +168,103 @@ export function getCustomPageSummarySelectSql() {
         source_record_id
       FROM vanblog_custom_pages
     `;
-  }
+}
 
 export function getTsQuerySql(paramRef: string) {
-    return `websearch_to_tsquery('simple', ${paramRef})`;
-  }
+  return `websearch_to_tsquery('simple', ${paramRef})`;
+}
 
 export function buildWeightedSearchVectorSql(
-    parts: Array<{ expr: string; weight: 'A' | 'B' | 'C' | 'D' }>,
-  ) {
-    return parts
-      .map(
-        (part) => `setweight(to_tsvector('simple', COALESCE(${part.expr}, '')), '${part.weight}')`,
-      )
-      .join(' || ');
-  }
+  parts: Array<{ expr: string; weight: 'A' | 'B' | 'C' | 'D' }>,
+) {
+  return parts
+    .map((part) => `setweight(to_tsvector('simple', COALESCE(${part.expr}, '')), '${part.weight}')`)
+    .join(' || ');
+}
 
 export function getArticleSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return `${prefix}search_vector`;
-  }
+  const prefix = alias ? `${alias}.` : '';
+  return `${prefix}search_vector`;
+}
 
 export function getArticleSearchVectorValueSql(fields: {
-    title: string;
-    categories: string;
-    category: string;
-    author: string;
-    content: string;
-  }) {
-    return buildWeightedSearchVectorSql([
-      { expr: fields.title, weight: 'A' },
-      { expr: `array_to_string(${fields.categories}, ' ')`, weight: 'B' },
-      { expr: fields.category, weight: 'B' },
-      { expr: fields.author, weight: 'C' },
-      { expr: fields.content, weight: 'D' },
-    ]);
-  }
+  title: string;
+  categories: string;
+  category: string;
+  author: string;
+  content: string;
+}) {
+  return buildWeightedSearchVectorSql([
+    { expr: fields.title, weight: 'A' },
+    { expr: `array_to_string(${fields.categories}, ' ')`, weight: 'B' },
+    { expr: fields.category, weight: 'B' },
+    { expr: fields.author, weight: 'C' },
+    { expr: fields.content, weight: 'D' },
+  ]);
+}
 
 export function getDraftSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return buildWeightedSearchVectorSql([
-      { expr: `${prefix}title`, weight: 'A' },
-      { expr: `${prefix}category`, weight: 'B' },
-      { expr: `${prefix}author`, weight: 'C' },
-      { expr: `array_to_string(${prefix}tags, ' ')`, weight: 'C' },
-      { expr: `${prefix}content`, weight: 'D' },
-    ]);
-  }
+  const prefix = alias ? `${alias}.` : '';
+  return buildWeightedSearchVectorSql([
+    { expr: `${prefix}title`, weight: 'A' },
+    { expr: `${prefix}category`, weight: 'B' },
+    { expr: `${prefix}author`, weight: 'C' },
+    { expr: `array_to_string(${prefix}tags, ' ')`, weight: 'C' },
+    { expr: `${prefix}content`, weight: 'D' },
+  ]);
+}
 
 export function getDocumentSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return buildWeightedSearchVectorSql([
-      { expr: `${prefix}title`, weight: 'A' },
-      { expr: `${prefix}author`, weight: 'C' },
-      { expr: `${prefix}content`, weight: 'D' },
-    ]);
-  }
+  const prefix = alias ? `${alias}.` : '';
+  return buildWeightedSearchVectorSql([
+    { expr: `${prefix}title`, weight: 'A' },
+    { expr: `${prefix}author`, weight: 'C' },
+    { expr: `${prefix}content`, weight: 'D' },
+  ]);
+}
 
 export function getMomentSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return buildWeightedSearchVectorSql([{ expr: `${prefix}content`, weight: 'A' }]);
-  }
+  const prefix = alias ? `${alias}.` : '';
+  return buildWeightedSearchVectorSql([{ expr: `${prefix}content`, weight: 'A' }]);
+}
 
 export function getMindMapSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return buildWeightedSearchVectorSql([
-      { expr: `${prefix}title`, weight: 'A' },
-      { expr: `${prefix}description`, weight: 'B' },
-      { expr: `${prefix}author`, weight: 'C' },
-      { expr: `${prefix}content`, weight: 'D' },
-    ]);
-  }
+  const prefix = alias ? `${alias}.` : '';
+  return buildWeightedSearchVectorSql([
+    { expr: `${prefix}title`, weight: 'A' },
+    { expr: `${prefix}description`, weight: 'B' },
+    { expr: `${prefix}author`, weight: 'C' },
+    { expr: `${prefix}content`, weight: 'D' },
+  ]);
+}
 
 export function buildArticleWhere(filters: {
-    includeHidden?: boolean;
-    includeDelete?: boolean;
-    category?: string;
-    tags?: string;
-    title?: string;
-    regMatch?: boolean;
-    startTime?: string;
-    endTime?: string;
-    archiveYear?: number;
-    archiveMonth?: number;
-    author?: string;
-  }) {
-    const params: any[] = [];
-    const clauses: string[] = [];
-    const regMatch = filters.regMatch !== false;
+  includeHidden?: boolean;
+  includeDelete?: boolean;
+  category?: string;
+  tags?: string;
+  title?: string;
+  regMatch?: boolean;
+  startTime?: string;
+  endTime?: string;
+  archiveYear?: number;
+  archiveMonth?: number;
+  author?: string;
+}) {
+  const params: any[] = [];
+  const clauses: string[] = [];
+  const regMatch = filters.regMatch !== false;
 
-    if (!filters.includeDelete) {
-      clauses.push('a.deleted = FALSE');
-    }
-    if (!filters.includeHidden) {
-      clauses.push('a.hidden = FALSE');
-    }
-    if (filters.category) {
-      if (regMatch) {
-        params.push(`%${filters.category}%`);
-        clauses.push(`
+  if (!filters.includeDelete) {
+    clauses.push('a.deleted = FALSE');
+  }
+  if (!filters.includeHidden) {
+    clauses.push('a.hidden = FALSE');
+  }
+  if (filters.category) {
+    if (regMatch) {
+      params.push(`%${filters.category}%`);
+      clauses.push(`
           (
             a.category ILIKE $${params.length}
             OR EXISTS (
@@ -276,31 +274,31 @@ export function buildArticleWhere(filters: {
             )
           )
         `);
-      } else {
-        params.push(filters.category);
-        clauses.push(`(a.category = $${params.length} OR $${params.length} = ANY(a.categories))`);
-      }
+    } else {
+      params.push(filters.category);
+      clauses.push(`(a.category = $${params.length} OR $${params.length} = ANY(a.categories))`);
     }
-    if (filters.title) {
-      params.push(`%${filters.title}%`);
-      clauses.push(`a.title ILIKE $${params.length}`);
-    }
-    if (filters.author) {
-      params.push(regMatch ? `%${filters.author}%` : filters.author);
-      clauses.push(`a.author ${regMatch ? 'ILIKE' : '='} $${params.length}`);
-    }
-    if (filters.tags) {
-      const tagList = filters.tags
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-      if (tagList.length) {
-        if (regMatch) {
-          const tagClauses = tagList.map((tag) => {
-            params.push(`%${tag}%`);
-            return `t.tag_name ILIKE $${params.length}`;
-          });
-          clauses.push(`
+  }
+  if (filters.title) {
+    params.push(`%${filters.title}%`);
+    clauses.push(`a.title ILIKE $${params.length}`);
+  }
+  if (filters.author) {
+    params.push(regMatch ? `%${filters.author}%` : filters.author);
+    clauses.push(`a.author ${regMatch ? 'ILIKE' : '='} $${params.length}`);
+  }
+  if (filters.tags) {
+    const tagList = filters.tags
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (tagList.length) {
+      if (regMatch) {
+        const tagClauses = tagList.map((tag) => {
+          params.push(`%${tag}%`);
+          return `t.tag_name ILIKE $${params.length}`;
+        });
+        clauses.push(`
             EXISTS (
               SELECT 1
               FROM vanblog_article_tags t
@@ -308,9 +306,9 @@ export function buildArticleWhere(filters: {
                 AND (${tagClauses.join(' OR ')})
             )
           `);
-        } else {
-          params.push(tagList);
-          clauses.push(`
+      } else {
+        params.push(tagList);
+        clauses.push(`
             EXISTS (
               SELECT 1
               FROM vanblog_article_tags t
@@ -318,49 +316,49 @@ export function buildArticleWhere(filters: {
                 AND t.tag_name = ANY($${params.length}::text[])
             )
           `);
-        }
       }
     }
-    if (filters.startTime) {
-      params.push(new Date(filters.startTime));
-      clauses.push(`a.created_at >= $${params.length}`);
-    }
-    if (filters.endTime) {
-      params.push(new Date(filters.endTime));
-      clauses.push(`a.created_at <= $${params.length}`);
-    }
-    // 归档按月筛选：用与 getArchiveSummary 分桶相同的 EXTRACT（会话时区）口径，
-    // 避免汇总按本地月分桶、详情按 UTC 边界过滤导致月份边界文章丢失/错位。
-    if (filters.archiveYear && filters.archiveMonth) {
-      params.push(filters.archiveYear);
-      clauses.push(`EXTRACT(YEAR FROM a.created_at)::int = $${params.length}`);
-      params.push(filters.archiveMonth);
-      clauses.push(`EXTRACT(MONTH FROM a.created_at)::int = $${params.length}`);
-    }
-
-    return {
-      params,
-      whereSql: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
-    };
+  }
+  if (filters.startTime) {
+    params.push(new Date(filters.startTime));
+    clauses.push(`a.created_at >= $${params.length}`);
+  }
+  if (filters.endTime) {
+    params.push(new Date(filters.endTime));
+    clauses.push(`a.created_at <= $${params.length}`);
+  }
+  // 归档按月筛选：用与 getArchiveSummary 分桶相同的 EXTRACT（会话时区）口径，
+  // 避免汇总按本地月分桶、详情按 UTC 边界过滤导致月份边界文章丢失/错位。
+  if (filters.archiveYear && filters.archiveMonth) {
+    params.push(filters.archiveYear);
+    clauses.push(`EXTRACT(YEAR FROM a.created_at)::int = $${params.length}`);
+    params.push(filters.archiveMonth);
+    clauses.push(`EXTRACT(MONTH FROM a.created_at)::int = $${params.length}`);
   }
 
-export function buildArticleOrderSql(option: SearchArticleOption, isPublic: boolean) {
-    let baseOrder = 'a.created_at DESC';
-    if (option.sortViewer) {
-      baseOrder = `a.viewer ${option.sortViewer === 'asc' ? 'ASC' : 'DESC'}, a.created_at DESC`;
-    } else if (option.sortCreatedAt === 'asc') {
-      baseOrder = 'a.created_at ASC';
-    } else if (option.sortTop) {
-      baseOrder = `a.top_value ${option.sortTop === 'asc' ? 'ASC' : 'DESC'}, a.created_at DESC`;
-    }
+  return {
+    params,
+    whereSql: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
+  };
+}
 
-    if (isPublic) {
-      return `
+export function buildArticleOrderSql(option: SearchArticleOption, isPublic: boolean) {
+  let baseOrder = 'a.created_at DESC';
+  if (option.sortViewer) {
+    baseOrder = `a.viewer ${option.sortViewer === 'asc' ? 'ASC' : 'DESC'}, a.created_at DESC`;
+  } else if (option.sortCreatedAt === 'asc') {
+    baseOrder = 'a.created_at ASC';
+  } else if (option.sortTop) {
+    baseOrder = `a.top_value ${option.sortTop === 'asc' ? 'ASC' : 'DESC'}, a.created_at DESC`;
+  }
+
+  if (isPublic) {
+    return `
         CASE WHEN a.top_value > 0 THEN 0 ELSE 1 END ASC,
         CASE WHEN a.top_value > 0 THEN a.top_value END DESC NULLS LAST,
         ${baseOrder}
       `;
-    }
-
-    return baseOrder;
   }
+
+  return baseOrder;
+}

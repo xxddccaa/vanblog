@@ -83,7 +83,9 @@ export async function reorderArticleIds(
         if (newReferencedId && newReferencedId !== oldReferencedId) {
           contentChanged = true;
           updatedReferences++;
-          console.log(`更新引用链接: ${match} -> /post/${newReferencedId} (在文章 ${article.id} 中)`);
+          console.log(
+            `更新引用链接: ${match} -> /post/${newReferencedId} (在文章 ${article.id} 中)`,
+          );
           return `/post/${newReferencedId}`;
         }
         return match;
