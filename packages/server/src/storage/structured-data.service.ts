@@ -1,6 +1,52 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PostgresStoreService } from './postgres-store.service';
 import { SearchArticleOption } from 'src/types/article.dto';
+import { NUMERIC_ID_SEQUENCES, ensureStructuredDataSchema } from './structured-data.schema';
+import {
+  asDate,
+  normalizeNumericId,
+  normalizeArticleCategories,
+  mapUserRow,
+  mapSettingRow,
+  mapMetaRow,
+  mapViewerRow,
+  mapVisitRow,
+  mapArticleRow,
+  mapTagRow,
+  mapDraftRow,
+  mapCustomPageRow,
+  mapNavCategoryRow,
+  mapNavToolRow,
+  mapIconRow,
+  mapPipelineRow,
+  mapTokenRow,
+  mapStaticRow,
+  mapCategoryRow,
+  mapDocumentRow,
+  mapMomentRow,
+  mapMindMapRow,
+  dedupeRecords,
+} from './structured-data.mappers';
+import {
+  getArticleSelectSql,
+  getArticleSummarySelectSql,
+  getDraftSelectSql,
+  getDraftSummarySelectSql,
+  getDocumentSelectSql,
+  getDocumentSummarySelectSql,
+  getCustomPageSelectSql,
+  getCustomPageSummarySelectSql,
+  getTsQuerySql,
+  buildWeightedSearchVectorSql,
+  getArticleSearchVectorSql,
+  getArticleSearchVectorValueSql,
+  getDraftSearchVectorSql,
+  getDocumentSearchVectorSql,
+  getMomentSearchVectorSql,
+  getMindMapSearchVectorSql,
+  buildArticleWhere,
+  buildArticleOrderSql,
+} from './structured-data.sql';
 
 @Injectable()
 export class StructuredDataService implements OnModuleInit {
@@ -8,16 +54,6 @@ export class StructuredDataService implements OnModuleInit {
   private initialized = false;
   private articleRefreshQueue: Promise<void> = Promise.resolve();
   private tagAggregateQueue: Promise<void> = Promise.resolve();
-  private readonly numericIdSequences = [
-    { name: 'vanblog_users_id_seq', table: 'vanblog_users', column: 'id' },
-    { name: 'vanblog_articles_id_seq', table: 'vanblog_articles', column: 'id' },
-    { name: 'vanblog_drafts_id_seq', table: 'vanblog_drafts', column: 'id' },
-    { name: 'vanblog_pipelines_id_seq', table: 'vanblog_pipelines', column: 'id' },
-    { name: 'vanblog_categories_id_seq', table: 'vanblog_categories', column: 'id' },
-    { name: 'vanblog_documents_id_seq', table: 'vanblog_documents', column: 'id' },
-    { name: 'vanblog_moments_id_seq', table: 'vanblog_moments', column: 'id' },
-    { name: 'vanblog_comments_id_seq', table: 'vanblog_comments', column: 'id' },
-  ] as const;
 
   constructor(private readonly store: PostgresStoreService) {}
 
@@ -45,517 +81,7 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   async ensureSchema() {
-    await this.store.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
-    for (const sequence of this.numericIdSequences) {
-      await this.store.query(
-        `CREATE SEQUENCE IF NOT EXISTS ${sequence.name} START WITH 1 INCREMENT BY 1`,
-      );
-    }
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_users (
-        id BIGINT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        user_type TEXT NOT NULL,
-        nickname TEXT,
-        permissions JSONB,
-        salt TEXT NOT NULL,
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_settings (
-        setting_type TEXT PRIMARY KEY,
-        setting_value JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_meta (
-        singleton_key TEXT PRIMARY KEY,
-        links JSONB NOT NULL DEFAULT '[]'::jsonb,
-        socials JSONB NOT NULL DEFAULT '[]'::jsonb,
-        menus JSONB NOT NULL DEFAULT '[]'::jsonb,
-        rewards JSONB NOT NULL DEFAULT '[]'::jsonb,
-        about JSONB NOT NULL DEFAULT '{}'::jsonb,
-        site_info JSONB NOT NULL DEFAULT '{}'::jsonb,
-        viewer INTEGER NOT NULL DEFAULT 0,
-        visited INTEGER NOT NULL DEFAULT 0,
-        categories JSONB NOT NULL DEFAULT '[]'::jsonb,
-        total_word_count INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_viewers (
-        date TEXT PRIMARY KEY,
-        viewer INTEGER NOT NULL DEFAULT 0,
-        visited INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_visits (
-        date TEXT NOT NULL,
-        pathname TEXT NOT NULL,
-        viewer INTEGER NOT NULL DEFAULT 0,
-        visited INTEGER NOT NULL DEFAULT 0,
-        last_visited_time TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE,
-        PRIMARY KEY (date, pathname)
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_articles (
-        id BIGINT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL DEFAULT '',
-        category TEXT,
-        categories TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
-        categories_text TEXT NOT NULL DEFAULT '',
-        search_vector TSVECTOR NOT NULL DEFAULT ''::tsvector,
-        top_value INTEGER NOT NULL DEFAULT 0,
-        hidden BOOLEAN NOT NULL DEFAULT FALSE,
-        private_flag BOOLEAN NOT NULL DEFAULT FALSE,
-        deleted BOOLEAN NOT NULL DEFAULT FALSE,
-        viewer INTEGER NOT NULL DEFAULT 0,
-        visited INTEGER NOT NULL DEFAULT 0,
-        author TEXT,
-        password TEXT,
-        pathname TEXT,
-        copyright TEXT,
-        last_visited_time TIMESTAMPTZ,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_article_tags (
-        article_id BIGINT NOT NULL REFERENCES vanblog_articles(id) ON DELETE CASCADE,
-        tag_name TEXT NOT NULL,
-        PRIMARY KEY (article_id, tag_name)
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_tags (
-        name TEXT PRIMARY KEY,
-        article_count INTEGER NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_drafts (
-        id BIGINT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL DEFAULT '',
-        tags TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
-        author TEXT,
-        category TEXT,
-        deleted BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_custom_pages (
-        path TEXT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        page_type TEXT NOT NULL DEFAULT 'file',
-        html TEXT NOT NULL DEFAULT '',
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_nav_categories (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        description TEXT,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        hide BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_nav_tools (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        url TEXT NOT NULL,
-        logo TEXT,
-        category_id TEXT NOT NULL,
-        description TEXT,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        hide BOOLEAN NOT NULL DEFAULT FALSE,
-        use_custom_icon BOOLEAN NOT NULL DEFAULT FALSE,
-        custom_icon TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_icons (
-        name TEXT PRIMARY KEY,
-        icon_type TEXT NOT NULL,
-        usage TEXT NOT NULL DEFAULT 'social',
-        icon_url TEXT NOT NULL,
-        icon_url_dark TEXT,
-        preset_icon_type TEXT,
-        description TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_pipelines (
-        id BIGINT PRIMARY KEY,
-        name TEXT NOT NULL,
-        event_type TEXT,
-        description TEXT,
-        enabled BOOLEAN NOT NULL DEFAULT FALSE,
-        deps TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
-        event_name TEXT NOT NULL,
-        script TEXT NOT NULL DEFAULT '',
-        deleted BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_tokens (
-        token TEXT PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        name TEXT,
-        expires_in BIGINT NOT NULL DEFAULT 0,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        disabled BOOLEAN NOT NULL DEFAULT FALSE,
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_statics (
-        sign TEXT PRIMARY KEY,
-        static_type TEXT NOT NULL,
-        storage_type TEXT NOT NULL,
-        file_type TEXT,
-        real_path TEXT NOT NULL,
-        meta JSONB,
-        name TEXT NOT NULL,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_categories (
-        id BIGINT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        category_type TEXT NOT NULL DEFAULT 'category',
-        private_flag BOOLEAN NOT NULL DEFAULT FALSE,
-        password TEXT,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        meta JSONB,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_documents (
-        id BIGINT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL DEFAULT '',
-        author TEXT,
-        parent_id BIGINT,
-        library_id BIGINT,
-        document_type TEXT NOT NULL DEFAULT 'document',
-        path JSONB NOT NULL DEFAULT '[]'::jsonb,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        deleted BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_moments (
-        id BIGINT PRIMARY KEY,
-        content TEXT NOT NULL,
-        deleted BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_mindmaps (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content TEXT NOT NULL DEFAULT '',
-        author TEXT,
-        description TEXT NOT NULL DEFAULT '',
-        viewer INTEGER NOT NULL DEFAULT 0,
-        deleted BOOLEAN NOT NULL DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT UNIQUE
-      )
-    `);
-
-    await this.ensureCommentSchema();
-
-    await this.store.query(
-      `ALTER TABLE vanblog_articles ADD COLUMN IF NOT EXISTS categories TEXT[] NOT NULL DEFAULT ARRAY[]::text[]`,
-    );
-    await this.store.query(
-      `ALTER TABLE vanblog_articles ADD COLUMN IF NOT EXISTS categories_text TEXT NOT NULL DEFAULT ''`,
-    );
-    await this.store.query(
-      `ALTER TABLE vanblog_articles ADD COLUMN IF NOT EXISTS search_vector TSVECTOR NOT NULL DEFAULT ''::tsvector`,
-    );
-    await this.store.query(
-      `UPDATE vanblog_articles SET categories = ARRAY[category]::text[] WHERE category IS NOT NULL AND category <> '' AND cardinality(categories) = 0`,
-    );
-    await this.store.query(`
-      UPDATE vanblog_articles
-      SET
-        categories_text = array_to_string(categories, ' '),
-        search_vector = ${this.getArticleSearchVectorValueSql({
-          title: 'title',
-          categories: 'categories',
-          category: 'category',
-          author: 'author',
-          content: 'content',
-        })}
-      WHERE
-        categories_text IS DISTINCT FROM array_to_string(categories, ' ')
-        OR search_vector IS DISTINCT FROM ${this.getArticleSearchVectorValueSql({
-          title: 'title',
-          categories: 'categories',
-          category: 'category',
-          author: 'author',
-          content: 'content',
-        })}
-    `);
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_created_at ON vanblog_articles (created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_viewers_created_at ON vanblog_viewers (created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_visits_path_date ON vanblog_visits (pathname, date DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_visits_last_visited ON vanblog_visits (last_visited_time DESC NULLS LAST)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_visits_path_last_seen ON vanblog_visits (pathname, last_visited_time DESC NULLS LAST, date DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_public_list ON vanblog_articles (deleted, hidden, top_value DESC, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_pathname ON vanblog_articles (pathname)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_category ON vanblog_articles (category)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_categories ON vanblog_articles USING GIN (categories)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_title_lower ON vanblog_articles (LOWER(title))',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_last_visited ON vanblog_articles (last_visited_time DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_article_tags_name ON vanblog_article_tags (tag_name, article_id)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_tags_hot ON vanblog_tags (article_count DESC, updated_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_categories_sort ON vanblog_categories (sort_order ASC, id ASC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_created_at ON vanblog_drafts (deleted, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_updated_at ON vanblog_drafts (deleted, updated_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_title_lower ON vanblog_drafts (LOWER(title))',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_tags ON vanblog_drafts USING GIN (tags)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_custom_pages_name_lower ON vanblog_custom_pages (LOWER(name))',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_nav_categories_sort ON vanblog_nav_categories (sort_order ASC, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_nav_tools_category_sort ON vanblog_nav_tools (category_id, sort_order ASC, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_icons_usage_created ON vanblog_icons (usage, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_pipelines_event_name ON vanblog_pipelines (event_name, deleted, enabled)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_pipelines_created ON vanblog_pipelines (deleted, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_tokens_user_disabled ON vanblog_tokens (user_id, disabled, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_tokens_record_id ON vanblog_tokens (source_record_id)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_statics_type_updated ON vanblog_statics (static_type, updated_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_statics_storage_updated ON vanblog_statics (storage_type, updated_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_title_trgm ON vanblog_articles USING GIN (title gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_content_trgm ON vanblog_articles USING GIN (content gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_search_vector ON vanblog_articles USING GIN (search_vector)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_category_trgm ON vanblog_articles USING GIN (category gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_categories_text_trgm ON vanblog_articles USING GIN (categories_text gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_articles_author_trgm ON vanblog_articles USING GIN (author gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_article_tags_name_trgm ON vanblog_article_tags USING GIN (tag_name gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_title_trgm ON vanblog_drafts USING GIN (title gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_content_trgm ON vanblog_drafts USING GIN (content gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_drafts_category_trgm ON vanblog_drafts USING GIN (category gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_custom_pages_name_trgm ON vanblog_custom_pages USING GIN (name gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_custom_pages_path_trgm ON vanblog_custom_pages USING GIN (path gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_nav_categories_name_trgm ON vanblog_nav_categories USING GIN (name gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_nav_tools_name_trgm ON vanblog_nav_tools USING GIN (name gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_nav_tools_desc_trgm ON vanblog_nav_tools USING GIN (description gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_icons_name_trgm ON vanblog_icons USING GIN (name gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_icons_desc_trgm ON vanblog_icons USING GIN (description gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_pipelines_name_trgm ON vanblog_pipelines USING GIN (name gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_pipelines_desc_trgm ON vanblog_pipelines USING GIN (description gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_statics_name_trgm ON vanblog_statics USING GIN (name gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_statics_path_trgm ON vanblog_statics USING GIN (real_path gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_documents_title_trgm ON vanblog_documents USING GIN (title gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_documents_content_trgm ON vanblog_documents USING GIN (content gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_documents_tree_active ON vanblog_documents (deleted, library_id, parent_id, sort_order ASC, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_moments_content_trgm ON vanblog_moments USING GIN (content gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_moments_active_created ON vanblog_moments (deleted, created_at DESC)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_mindmaps_title_trgm ON vanblog_mindmaps USING GIN (title gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_mindmaps_desc_trgm ON vanblog_mindmaps USING GIN (description gin_trgm_ops)',
-    );
-    await this.store.query(
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_mindmaps_active_updated ON vanblog_mindmaps (deleted, updated_at DESC)',
-    );
-    // Full-text queries already work without dedicated expression indexes.
-    // We defer these until the search vectors are materialized into columns,
-    // which avoids PostgreSQL immutability limits during bootstrap.
-  }
-
-  private asDate(value: any) {
-    if (!value) {
-      return new Date().toISOString();
-    }
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return new Date().toISOString();
-    }
-    return parsed.toISOString();
+    await ensureStructuredDataSchema(this.store);
   }
 
   private dedupeRecords<T>(
@@ -563,736 +89,9 @@ export class StructuredDataService implements OnModuleInit {
     label: string,
     getKey: (record: T) => string | null | undefined,
   ): T[] {
-    const deduped = new Map<string, T>();
-    for (const record of records || []) {
-      const key = getKey(record);
-      if (!key) {
-        continue;
-      }
-      deduped.set(String(key), record);
-    }
-    if (deduped.size !== (records || []).length) {
-      this.logger.warn(
-        `检测到重复${label}，已按最新记录覆盖旧记录: ${(records || []).length - deduped.size} 条`,
-      );
-    }
-    return Array.from(deduped.values());
-  }
-
-  private normalizeNumericId(value: any) {
-    if (value === undefined || value === null) {
-      return null;
-    }
-    if (typeof value === 'string' && value.trim() === '') {
-      return null;
-    }
-    const normalized = Number(value);
-    return Number.isFinite(normalized) ? normalized : null;
-  }
-
-  private normalizeArticleCategories(categories?: any, category?: string) {
-    const rawCategories = Array.isArray(categories) ? categories : [];
-    const source = rawCategories.length ? rawCategories : category ? [category] : [];
-    return [...new Set(source.map((item) => String(item || '').trim()).filter(Boolean))];
-  }
-
-  private mapUserRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      id: Number(row.id),
-      name: row.name,
-      password: row.password,
-      createdAt: row.created_at,
-      type: row.user_type,
-      nickname: row.nickname || undefined,
-      permissions: row.permissions ?? undefined,
-      salt: row.salt,
-    };
-  }
-
-  private mapSettingRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      type: row.setting_type,
-      value: row.setting_value,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapMetaRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      links: row.links || [],
-      socials: row.socials || [],
-      menus: row.menus || [],
-      rewards: row.rewards || [],
-      about: row.about || {},
-      siteInfo: row.site_info || {},
-      viewer: Number(row.viewer || 0),
-      visited: Number(row.visited || 0),
-      categories: row.categories || [],
-      totalWordCount: Number(row.total_word_count || 0),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapViewerRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      visited: Number(row.visited || 0),
-      viewer: Number(row.viewer || 0),
-      date: row.date,
-      createdAt: row.created_at,
-    };
-  }
-
-  private mapVisitRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      visited: Number(row.visited || 0),
-      viewer: Number(row.viewer || 0),
-      date: row.date,
-      pathname: row.pathname,
-      lastVisitedTime: row.last_visited_time || undefined,
-      createdAt: row.created_at,
-    };
-  }
-
-  private mapArticleRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      id: Number(row.id),
-      title: row.title,
-      content: row.content || '',
-      tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
-      category: row.category || undefined,
-      categories: this.normalizeArticleCategories(row.categories, row.category || undefined),
-      top: Number(row.top_value || 0),
-      hidden: Boolean(row.hidden),
-      private: Boolean(row.private_flag),
-      deleted: Boolean(row.deleted),
-      viewer: Number(row.viewer || 0),
-      visited: Number(row.visited || 0),
-      author: row.author || undefined,
-      password: row.password || undefined,
-      pathname: row.pathname || undefined,
-      copyright: row.copyright || undefined,
-      lastVisitedTime: row.last_visited_time || undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapTagRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      name: row.name,
-      articleCount: Number(row.article_count || 0),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapDraftRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      id: Number(row.id),
-      title: row.title,
-      content: row.content || '',
-      tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
-      author: row.author || undefined,
-      category: row.category || undefined,
-      deleted: Boolean(row.deleted),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapCustomPageRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      name: row.name,
-      path: row.path,
-      type: row.page_type,
-      html: row.html || '',
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapNavCategoryRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.id || row.source_record_id,
-      name: row.name,
-      description: row.description || undefined,
-      sort: Number(row.sort_order || 0),
-      hide: Boolean(row.hide),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      toolCount:
-        row.tool_count === undefined || row.tool_count === null
-          ? undefined
-          : Number(row.tool_count),
-    };
-  }
-
-  private mapNavToolRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.id || row.source_record_id,
-      name: row.name,
-      url: row.url,
-      logo: row.logo || undefined,
-      categoryId: row.category_id,
-      categoryName: row.category_name || undefined,
-      description: row.description || undefined,
-      sort: Number(row.sort_order || 0),
-      hide: Boolean(row.hide),
-      useCustomIcon: Boolean(row.use_custom_icon),
-      customIcon: row.custom_icon || undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapIconRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      name: row.name,
-      type: row.icon_type,
-      usage: row.usage || 'social',
-      iconUrl: row.icon_url,
-      iconUrlDark: row.icon_url_dark || undefined,
-      presetIconType: row.preset_icon_type || undefined,
-      description: row.description || undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapPipelineRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      id: Number(row.id),
-      name: row.name,
-      eventType: row.event_type || undefined,
-      description: row.description || undefined,
-      enabled: Boolean(row.enabled),
-      deps: Array.isArray(row.deps) ? row.deps.filter(Boolean) : [],
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      eventName: row.event_name,
-      script: row.script || '',
-      deleted: Boolean(row.deleted),
-    };
-  }
-
-  private mapTokenRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      userId: Number(row.user_id || 0),
-      token: row.token,
-      name: row.name || undefined,
-      expiresIn: Number(row.expires_in || 0),
-      createdAt: row.created_at,
-      disabled: Boolean(row.disabled),
-    };
-  }
-
-  private mapStaticRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      staticType: row.static_type,
-      storageType: row.storage_type,
-      fileType: row.file_type || undefined,
-      realPath: row.real_path,
-      meta: row.meta ?? undefined,
-      name: row.name,
-      sign: row.sign,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapCategoryRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      id: Number(row.id),
-      name: row.name,
-      type: row.category_type,
-      private: Boolean(row.private_flag),
-      password: row.password || undefined,
-      sort: Number(row.sort_order || 0),
-      meta: row.meta ?? undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapDocumentRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      id: Number(row.id),
-      title: row.title,
-      content: row.content || '',
-      author: row.author || undefined,
-      parent_id:
-        row.parent_id === null || row.parent_id === undefined ? null : Number(row.parent_id),
-      library_id:
-        row.library_id === null || row.library_id === undefined ? null : Number(row.library_id),
-      type: row.document_type,
-      path: Array.isArray(row.path) ? row.path.map((item: any) => Number(item)) : [],
-      sort_order: Number(row.sort_order || 0),
-      deleted: Boolean(row.deleted),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapMomentRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.source_record_id || undefined,
-      id: Number(row.id),
-      content: row.content,
-      deleted: Boolean(row.deleted),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private mapMindMapRow(row: any) {
-    if (!row) {
-      return null;
-    }
-    return {
-      _id: row.id || row.source_record_id,
-      title: row.title,
-      content: row.content || '',
-      author: row.author || undefined,
-      description: row.description || '',
-      viewer: Number(row.viewer || 0),
-      deleted: Boolean(row.deleted),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    };
-  }
-
-  private getArticleSelectSql() {
-    return `
-      SELECT
-        a.id,
-        a.title,
-        a.content,
-        a.category,
-        a.categories,
-        a.top_value,
-        a.hidden,
-        a.private_flag,
-        a.deleted,
-        a.viewer,
-        a.visited,
-        a.author,
-        a.password,
-        a.pathname,
-        a.copyright,
-        a.last_visited_time,
-        a.created_at,
-        a.updated_at,
-        a.source_record_id,
-        COALESCE(
-          (
-            SELECT array_agg(t.tag_name ORDER BY t.tag_name)
-            FROM vanblog_article_tags t
-            WHERE t.article_id = a.id
-          ),
-          ARRAY[]::text[]
-        ) AS tags
-      FROM vanblog_articles a
-    `;
-  }
-
-  private getArticleSummarySelectSql() {
-    return `
-      SELECT
-        a.id,
-        a.title,
-        ''::text AS content,
-        a.category,
-        a.categories,
-        a.top_value,
-        a.hidden,
-        a.private_flag,
-        a.deleted,
-        a.viewer,
-        a.visited,
-        a.author,
-        NULL::text AS password,
-        a.pathname,
-        a.copyright,
-        a.last_visited_time,
-        a.created_at,
-        a.updated_at,
-        a.source_record_id,
-        COALESCE(
-          (
-            SELECT array_agg(t.tag_name ORDER BY t.tag_name)
-            FROM vanblog_article_tags t
-            WHERE t.article_id = a.id
-          ),
-          ARRAY[]::text[]
-        ) AS tags
-      FROM vanblog_articles a
-    `;
-  }
-
-  private getDraftSelectSql() {
-    return `
-      SELECT
-        id,
-        title,
-        content,
-        tags,
-        author,
-        category,
-        deleted,
-        created_at,
-        updated_at,
-        source_record_id
-      FROM vanblog_drafts
-    `;
-  }
-
-  private getDraftSummarySelectSql() {
-    return `
-      SELECT
-        id,
-        title,
-        ''::text AS content,
-        tags,
-        author,
-        category,
-        deleted,
-        created_at,
-        updated_at,
-        source_record_id
-      FROM vanblog_drafts
-    `;
-  }
-
-  private getDocumentSelectSql() {
-    return `
-      SELECT
-        id,
-        title,
-        content,
-        author,
-        parent_id,
-        library_id,
-        document_type,
-        path,
-        sort_order,
-        deleted,
-        created_at,
-        updated_at,
-        source_record_id
-      FROM vanblog_documents
-    `;
-  }
-
-  private getDocumentSummarySelectSql() {
-    return `
-      SELECT
-        id,
-        title,
-        ''::text AS content,
-        author,
-        parent_id,
-        library_id,
-        document_type,
-        path,
-        sort_order,
-        deleted,
-        created_at,
-        updated_at,
-        source_record_id
-      FROM vanblog_documents
-    `;
-  }
-
-  private getCustomPageSelectSql() {
-    return `
-      SELECT
-        path,
-        name,
-        page_type,
-        html,
-        created_at,
-        updated_at,
-        source_record_id
-      FROM vanblog_custom_pages
-    `;
-  }
-
-  private getCustomPageSummarySelectSql() {
-    return `
-      SELECT
-        path,
-        name,
-        page_type,
-        ''::text AS html,
-        created_at,
-        updated_at,
-        source_record_id
-      FROM vanblog_custom_pages
-    `;
-  }
-
-  private getTsQuerySql(paramRef: string) {
-    return `websearch_to_tsquery('simple', ${paramRef})`;
-  }
-
-  private buildWeightedSearchVectorSql(
-    parts: Array<{ expr: string; weight: 'A' | 'B' | 'C' | 'D' }>,
-  ) {
-    return parts
-      .map(
-        (part) => `setweight(to_tsvector('simple', COALESCE(${part.expr}, '')), '${part.weight}')`,
-      )
-      .join(' || ');
-  }
-
-  private getArticleSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return `${prefix}search_vector`;
-  }
-
-  private getArticleSearchVectorValueSql(fields: {
-    title: string;
-    categories: string;
-    category: string;
-    author: string;
-    content: string;
-  }) {
-    return this.buildWeightedSearchVectorSql([
-      { expr: fields.title, weight: 'A' },
-      { expr: `array_to_string(${fields.categories}, ' ')`, weight: 'B' },
-      { expr: fields.category, weight: 'B' },
-      { expr: fields.author, weight: 'C' },
-      { expr: fields.content, weight: 'D' },
-    ]);
-  }
-
-  private getDraftSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return this.buildWeightedSearchVectorSql([
-      { expr: `${prefix}title`, weight: 'A' },
-      { expr: `${prefix}category`, weight: 'B' },
-      { expr: `${prefix}author`, weight: 'C' },
-      { expr: `array_to_string(${prefix}tags, ' ')`, weight: 'C' },
-      { expr: `${prefix}content`, weight: 'D' },
-    ]);
-  }
-
-  private getDocumentSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return this.buildWeightedSearchVectorSql([
-      { expr: `${prefix}title`, weight: 'A' },
-      { expr: `${prefix}author`, weight: 'C' },
-      { expr: `${prefix}content`, weight: 'D' },
-    ]);
-  }
-
-  private getMomentSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return this.buildWeightedSearchVectorSql([{ expr: `${prefix}content`, weight: 'A' }]);
-  }
-
-  private getMindMapSearchVectorSql(alias = '') {
-    const prefix = alias ? `${alias}.` : '';
-    return this.buildWeightedSearchVectorSql([
-      { expr: `${prefix}title`, weight: 'A' },
-      { expr: `${prefix}description`, weight: 'B' },
-      { expr: `${prefix}author`, weight: 'C' },
-      { expr: `${prefix}content`, weight: 'D' },
-    ]);
-  }
-
-  private buildArticleWhere(filters: {
-    includeHidden?: boolean;
-    includeDelete?: boolean;
-    category?: string;
-    tags?: string;
-    title?: string;
-    regMatch?: boolean;
-    startTime?: string;
-    endTime?: string;
-    archiveYear?: number;
-    archiveMonth?: number;
-    author?: string;
-  }) {
-    const params: any[] = [];
-    const clauses: string[] = [];
-    const regMatch = filters.regMatch !== false;
-
-    if (!filters.includeDelete) {
-      clauses.push('a.deleted = FALSE');
-    }
-    if (!filters.includeHidden) {
-      clauses.push('a.hidden = FALSE');
-    }
-    if (filters.category) {
-      if (regMatch) {
-        params.push(`%${filters.category}%`);
-        clauses.push(`
-          (
-            a.category ILIKE $${params.length}
-            OR EXISTS (
-              SELECT 1
-              FROM unnest(a.categories) AS category_name
-              WHERE category_name ILIKE $${params.length}
-            )
-          )
-        `);
-      } else {
-        params.push(filters.category);
-        clauses.push(`(a.category = $${params.length} OR $${params.length} = ANY(a.categories))`);
-      }
-    }
-    if (filters.title) {
-      params.push(`%${filters.title}%`);
-      clauses.push(`a.title ILIKE $${params.length}`);
-    }
-    if (filters.author) {
-      params.push(regMatch ? `%${filters.author}%` : filters.author);
-      clauses.push(`a.author ${regMatch ? 'ILIKE' : '='} $${params.length}`);
-    }
-    if (filters.tags) {
-      const tagList = filters.tags
-        .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-      if (tagList.length) {
-        if (regMatch) {
-          const tagClauses = tagList.map((tag) => {
-            params.push(`%${tag}%`);
-            return `t.tag_name ILIKE $${params.length}`;
-          });
-          clauses.push(`
-            EXISTS (
-              SELECT 1
-              FROM vanblog_article_tags t
-              WHERE t.article_id = a.id
-                AND (${tagClauses.join(' OR ')})
-            )
-          `);
-        } else {
-          params.push(tagList);
-          clauses.push(`
-            EXISTS (
-              SELECT 1
-              FROM vanblog_article_tags t
-              WHERE t.article_id = a.id
-                AND t.tag_name = ANY($${params.length}::text[])
-            )
-          `);
-        }
-      }
-    }
-    if (filters.startTime) {
-      params.push(new Date(filters.startTime));
-      clauses.push(`a.created_at >= $${params.length}`);
-    }
-    if (filters.endTime) {
-      params.push(new Date(filters.endTime));
-      clauses.push(`a.created_at <= $${params.length}`);
-    }
-    // 归档按月筛选：用与 getArchiveSummary 分桶相同的 EXTRACT（会话时区）口径，
-    // 避免汇总按本地月分桶、详情按 UTC 边界过滤导致月份边界文章丢失/错位。
-    if (filters.archiveYear && filters.archiveMonth) {
-      params.push(filters.archiveYear);
-      clauses.push(`EXTRACT(YEAR FROM a.created_at)::int = $${params.length}`);
-      params.push(filters.archiveMonth);
-      clauses.push(`EXTRACT(MONTH FROM a.created_at)::int = $${params.length}`);
-    }
-
-    return {
-      params,
-      whereSql: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
-    };
-  }
-
-  private buildArticleOrderSql(option: SearchArticleOption, isPublic: boolean) {
-    let baseOrder = 'a.created_at DESC';
-    if (option.sortViewer) {
-      baseOrder = `a.viewer ${option.sortViewer === 'asc' ? 'ASC' : 'DESC'}, a.created_at DESC`;
-    } else if (option.sortCreatedAt === 'asc') {
-      baseOrder = 'a.created_at ASC';
-    } else if (option.sortTop) {
-      baseOrder = `a.top_value ${option.sortTop === 'asc' ? 'ASC' : 'DESC'}, a.created_at DESC`;
-    }
-
-    if (isPublic) {
-      return `
-        CASE WHEN a.top_value > 0 THEN 0 ELSE 1 END ASC,
-        CASE WHEN a.top_value > 0 THEN a.top_value END DESC NULLS LAST,
-        ${baseOrder}
-      `;
-    }
-
-    return baseOrder;
+    return dedupeRecords(records, label, getKey, (count) => {
+      this.logger.warn(`检测到重复${label}，已按最新记录覆盖旧记录: ${count} 条`);
+    });
   }
 
   private async replaceArticleTags(articleId: number, tags: string[] = []) {
@@ -1320,12 +119,12 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceUsers(users: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_users RESTART IDENTITY CASCADE');
     for (const user of this.dedupeRecords(users, '用户 ID', (user) =>
-      String(this.normalizeNumericId(user?.id) ?? ''),
+      String(normalizeNumericId(user?.id) ?? ''),
     )) {
       if (user?.id === undefined || !user?.name) {
         continue;
       }
-      const userId = this.normalizeNumericId(user.id);
+      const userId = normalizeNumericId(user.id);
       if (userId === null) {
         continue;
       }
@@ -1339,7 +138,7 @@ export class StructuredDataService implements OnModuleInit {
           userId,
           user.name,
           user.password || '',
-          this.asDate(user.createdAt),
+          asDate(user.createdAt),
           user.type || 'admin',
           user.nickname || null,
           JSON.stringify(user.permissions || null),
@@ -1365,8 +164,8 @@ export class StructuredDataService implements OnModuleInit {
         [
           setting.type,
           JSON.stringify(setting.value ?? null),
-          this.asDate(setting.createdAt),
-          this.asDate(setting.updatedAt),
+          asDate(setting.createdAt),
+          asDate(setting.updatedAt),
           setting._id || null,
         ],
       );
@@ -1400,8 +199,8 @@ export class StructuredDataService implements OnModuleInit {
         meta.visited || 0,
         JSON.stringify(meta.categories || []),
         meta.totalWordCount || 0,
-        this.asDate(meta.createdAt),
-        this.asDate(meta.updatedAt),
+        asDate(meta.createdAt),
+        asDate(meta.updatedAt),
         meta._id || null,
       ],
     );
@@ -1423,7 +222,7 @@ export class StructuredDataService implements OnModuleInit {
           viewer.date,
           viewer.viewer || 0,
           viewer.visited || 0,
-          this.asDate(viewer.createdAt),
+          asDate(viewer.createdAt),
           viewer._id || null,
         ],
       );
@@ -1449,8 +248,8 @@ export class StructuredDataService implements OnModuleInit {
           visit.pathname,
           visit.viewer || 0,
           visit.visited || 0,
-          visit.lastVisitedTime ? this.asDate(visit.lastVisitedTime) : null,
-          this.asDate(visit.createdAt),
+          visit.lastVisitedTime ? asDate(visit.lastVisitedTime) : null,
+          asDate(visit.createdAt),
           visit._id || null,
         ],
       );
@@ -1460,12 +259,12 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceCategories(categories: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_categories CASCADE');
     for (const category of this.dedupeRecords(categories, '分类 ID', (category) =>
-      String(this.normalizeNumericId(category?.id) ?? ''),
+      String(normalizeNumericId(category?.id) ?? ''),
     )) {
       if (category?.id === undefined || !category?.name) {
         continue;
       }
-      const categoryId = this.normalizeNumericId(category.id);
+      const categoryId = normalizeNumericId(category.id);
       if (categoryId === null) {
         continue;
       }
@@ -1484,8 +283,8 @@ export class StructuredDataService implements OnModuleInit {
           category.password || null,
           category.sort || 0,
           JSON.stringify(category.meta || null),
-          this.asDate(category.createdAt),
-          this.asDate(category.updatedAt),
+          asDate(category.createdAt),
+          asDate(category.updatedAt),
           category._id || null,
         ],
       );
@@ -1496,16 +295,16 @@ export class StructuredDataService implements OnModuleInit {
     await this.store.query('TRUNCATE TABLE vanblog_article_tags');
     await this.store.query('TRUNCATE TABLE vanblog_articles CASCADE');
     for (const article of this.dedupeRecords(articles, '文章 ID', (article) =>
-      String(this.normalizeNumericId(article?.id) ?? ''),
+      String(normalizeNumericId(article?.id) ?? ''),
     )) {
       if (article?.id === undefined || !article?.title) {
         continue;
       }
-      const articleId = this.normalizeNumericId(article.id);
+      const articleId = normalizeNumericId(article.id);
       if (articleId === null) {
         continue;
       }
-      const categories = this.normalizeArticleCategories(article.categories, article.category);
+      const categories = normalizeArticleCategories(article.categories, article.category);
       const category = categories[0] || article.category || null;
       await this.store.query(
         `
@@ -1516,7 +315,7 @@ export class StructuredDataService implements OnModuleInit {
             last_visited_time, created_at, updated_at, source_record_id
           ) VALUES (
             $1,$2,$3,$4,$5::text[],array_to_string($5::text[], ' '),
-            ${this.getArticleSearchVectorValueSql({
+            ${getArticleSearchVectorValueSql({
               title: '$2',
               categories: '$5::text[]',
               category: '$4',
@@ -1544,9 +343,9 @@ export class StructuredDataService implements OnModuleInit {
           article.password || null,
           article.pathname || null,
           article.copyright || null,
-          article.lastVisitedTime ? this.asDate(article.lastVisitedTime) : null,
-          this.asDate(article.createdAt),
-          this.asDate(article.updatedAt),
+          article.lastVisitedTime ? asDate(article.lastVisitedTime) : null,
+          asDate(article.createdAt),
+          asDate(article.updatedAt),
           article._id || null,
         ],
       );
@@ -1563,12 +362,12 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceDrafts(drafts: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_drafts CASCADE');
     for (const draft of this.dedupeRecords(drafts, '草稿 ID', (draft) =>
-      String(this.normalizeNumericId(draft?.id) ?? ''),
+      String(normalizeNumericId(draft?.id) ?? ''),
     )) {
       if (draft?.id === undefined || !draft?.title) {
         continue;
       }
-      const draftId = this.normalizeNumericId(draft.id);
+      const draftId = normalizeNumericId(draft.id);
       if (draftId === null) {
         continue;
       }
@@ -1587,8 +386,8 @@ export class StructuredDataService implements OnModuleInit {
           draft.author || null,
           draft.category || null,
           Boolean(draft.deleted),
-          this.asDate(draft.createdAt),
-          this.asDate(draft.updatedAt),
+          asDate(draft.createdAt),
+          asDate(draft.updatedAt),
           draft._id || null,
         ],
       );
@@ -1612,8 +411,8 @@ export class StructuredDataService implements OnModuleInit {
           page.name,
           page.type || 'file',
           page.html || '',
-          this.asDate(page.createdAt),
-          this.asDate(page.updatedAt),
+          asDate(page.createdAt),
+          asDate(page.updatedAt),
           page._id || null,
         ],
       );
@@ -1641,8 +440,8 @@ export class StructuredDataService implements OnModuleInit {
           category.description || null,
           category.sort || 0,
           Boolean(category.hide),
-          this.asDate(category.createdAt),
-          this.asDate(category.updatedAt),
+          asDate(category.createdAt),
+          asDate(category.updatedAt),
           category._id || null,
         ],
       );
@@ -1676,8 +475,8 @@ export class StructuredDataService implements OnModuleInit {
           Boolean(tool.hide),
           Boolean(tool.useCustomIcon),
           tool.customIcon || null,
-          this.asDate(tool.createdAt),
-          this.asDate(tool.updatedAt),
+          asDate(tool.createdAt),
+          asDate(tool.updatedAt),
           tool._id || null,
         ],
       );
@@ -1705,8 +504,8 @@ export class StructuredDataService implements OnModuleInit {
           icon.iconUrlDark || null,
           icon.presetIconType || null,
           icon.description || null,
-          this.asDate(icon.createdAt),
-          this.asDate(icon.updatedAt),
+          asDate(icon.createdAt),
+          asDate(icon.updatedAt),
           icon._id || null,
         ],
       );
@@ -1716,12 +515,12 @@ export class StructuredDataService implements OnModuleInit {
   private async replacePipelines(pipelines: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_pipelines CASCADE');
     for (const pipeline of this.dedupeRecords(pipelines, '流水线 ID', (pipeline) =>
-      String(this.normalizeNumericId(pipeline?.id) ?? ''),
+      String(normalizeNumericId(pipeline?.id) ?? ''),
     )) {
       if (pipeline?.id === undefined || !pipeline?.name || !pipeline?.eventName) {
         continue;
       }
-      const pipelineId = this.normalizeNumericId(pipeline.id);
+      const pipelineId = normalizeNumericId(pipeline.id);
       if (pipelineId === null) {
         continue;
       }
@@ -1742,8 +541,8 @@ export class StructuredDataService implements OnModuleInit {
           pipeline.eventName,
           pipeline.script || '',
           Boolean(pipeline.deleted),
-          this.asDate(pipeline.createdAt),
-          this.asDate(pipeline.updatedAt),
+          asDate(pipeline.createdAt),
+          asDate(pipeline.updatedAt),
           pipeline._id || null,
         ],
       );
@@ -1774,7 +573,7 @@ export class StructuredDataService implements OnModuleInit {
           token.userId || 0,
           token.name || null,
           token.expiresIn || 0,
-          this.asDate(token.createdAt),
+          asDate(token.createdAt),
           Boolean(token.disabled),
           token._id || null,
         ],
@@ -1802,7 +601,7 @@ export class StructuredDataService implements OnModuleInit {
           item.realPath,
           JSON.stringify(item.meta ?? null),
           item.name,
-          this.asDate(item.updatedAt),
+          asDate(item.updatedAt),
           item._id || null,
         ],
       );
@@ -1812,12 +611,12 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceDocuments(documents: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_documents CASCADE');
     for (const document of this.dedupeRecords(documents, '文档 ID', (document) =>
-      String(this.normalizeNumericId(document?.id) ?? ''),
+      String(normalizeNumericId(document?.id) ?? ''),
     )) {
       if (document?.id === undefined || !document?.title) {
         continue;
       }
-      const documentId = this.normalizeNumericId(document.id);
+      const documentId = normalizeNumericId(document.id);
       if (documentId === null) {
         continue;
       }
@@ -1839,8 +638,8 @@ export class StructuredDataService implements OnModuleInit {
           JSON.stringify(document.path || []),
           document.sort_order || 0,
           Boolean(document.deleted),
-          this.asDate(document.createdAt),
-          this.asDate(document.updatedAt),
+          asDate(document.createdAt),
+          asDate(document.updatedAt),
           document._id || null,
         ],
       );
@@ -1850,12 +649,12 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceMoments(moments: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_moments CASCADE');
     for (const moment of this.dedupeRecords(moments, '动态 ID', (moment) =>
-      String(this.normalizeNumericId(moment?.id) ?? ''),
+      String(normalizeNumericId(moment?.id) ?? ''),
     )) {
       if (moment?.id === undefined || !moment?.content) {
         continue;
       }
-      const momentId = this.normalizeNumericId(moment.id);
+      const momentId = normalizeNumericId(moment.id);
       if (momentId === null) {
         continue;
       }
@@ -1869,8 +668,8 @@ export class StructuredDataService implements OnModuleInit {
           momentId,
           moment.content,
           Boolean(moment.deleted),
-          this.asDate(moment.createdAt),
-          this.asDate(moment.updatedAt),
+          asDate(moment.createdAt),
+          asDate(moment.updatedAt),
           moment._id || null,
         ],
       );
@@ -1901,8 +700,8 @@ export class StructuredDataService implements OnModuleInit {
           mindMap.description || '',
           mindMap.viewer || 0,
           Boolean(mindMap.deleted),
-          this.asDate(mindMap.createdAt),
-          this.asDate(mindMap.updatedAt),
+          asDate(mindMap.createdAt),
+          asDate(mindMap.updatedAt),
           mindMap._id || null,
         ],
       );
@@ -2104,7 +903,7 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   private async syncNumericIdSequences() {
-    for (const sequence of this.numericIdSequences) {
+    for (const sequence of NUMERIC_ID_SEQUENCES) {
       await this.syncSequence(sequence.name, sequence.table, sequence.column);
     }
   }
@@ -2210,7 +1009,7 @@ export class StructuredDataService implements OnModuleInit {
         user.id,
         user.name,
         user.password || '',
-        this.asDate(user.createdAt),
+        asDate(user.createdAt),
         user.type || 'admin',
         user.nickname || null,
         JSON.stringify(user.permissions || null),
@@ -2325,8 +1124,8 @@ export class StructuredDataService implements OnModuleInit {
         meta.visited || 0,
         JSON.stringify(meta.categories || []),
         meta.totalWordCount || 0,
-        this.asDate(meta.createdAt),
-        this.asDate(meta.updatedAt),
+        asDate(meta.createdAt),
+        asDate(meta.updatedAt),
         meta._id || null,
       ],
     );
@@ -2351,7 +1150,7 @@ export class StructuredDataService implements OnModuleInit {
         viewer.date,
         viewer.viewer || 0,
         viewer.visited || 0,
-        this.asDate(viewer.createdAt),
+        asDate(viewer.createdAt),
         viewer._id || null,
       ],
     );
@@ -2367,7 +1166,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [date],
     );
-    return this.mapViewerRow(result.rows[0]);
+    return mapViewerRow(result.rows[0]);
   }
 
   async listViewers() {
@@ -2378,7 +1177,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY date ASC
       `,
     );
-    return result.rows.map((row) => this.mapViewerRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapViewerRow(row)).filter(Boolean);
   }
 
   async getViewerSeries(dateFrom: string, dateTo: string) {
@@ -2391,7 +1190,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [dateFrom, dateTo],
     );
-    return result.rows.map((row) => this.mapViewerRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapViewerRow(row)).filter(Boolean);
   }
 
   async upsertVisit(visit: any) {
@@ -2415,8 +1214,8 @@ export class StructuredDataService implements OnModuleInit {
         visit.pathname,
         visit.viewer || 0,
         visit.visited || 0,
-        visit.lastVisitedTime ? this.asDate(visit.lastVisitedTime) : null,
-        this.asDate(visit.createdAt),
+        visit.lastVisitedTime ? asDate(visit.lastVisitedTime) : null,
+        asDate(visit.createdAt),
         visit._id || null,
       ],
     );
@@ -2432,7 +1231,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [date, pathname],
     );
-    return this.mapVisitRow(result.rows[0]);
+    return mapVisitRow(result.rows[0]);
   }
 
   async getLastVisitByPath(pathname: string) {
@@ -2446,7 +1245,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [pathname],
     );
-    return this.mapVisitRow(result.rows[0]);
+    return mapVisitRow(result.rows[0]);
   }
 
   async getLastVisitItem() {
@@ -2459,7 +1258,7 @@ export class StructuredDataService implements OnModuleInit {
         LIMIT 1
       `,
     );
-    return this.mapVisitRow(result.rows[0]);
+    return mapVisitRow(result.rows[0]);
   }
 
   async listVisits() {
@@ -2470,7 +1269,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY date ASC, pathname ASC
       `,
     );
-    return result.rows.map((row) => this.mapVisitRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapVisitRow(row)).filter(Boolean);
   }
 
   async upsertArticle(article: any) {
@@ -2478,7 +1277,7 @@ export class StructuredDataService implements OnModuleInit {
       return;
     }
     await this.ensureSequenceAtLeast('vanblog_articles_id_seq', article.id);
-    const categories = this.normalizeArticleCategories(article.categories, article.category);
+    const categories = normalizeArticleCategories(article.categories, article.category);
     const category = categories[0] || article.category || null;
     await this.store.query(
       `
@@ -2489,7 +1288,7 @@ export class StructuredDataService implements OnModuleInit {
           last_visited_time, created_at, updated_at, source_record_id
         ) VALUES (
           $1,$2,$3,$4,$5::text[],array_to_string($5::text[], ' '),
-          ${this.getArticleSearchVectorValueSql({
+          ${getArticleSearchVectorValueSql({
             title: '$2',
             categories: '$5::text[]',
             category: '$4',
@@ -2538,9 +1337,9 @@ export class StructuredDataService implements OnModuleInit {
         article.password || null,
         article.pathname || null,
         article.copyright || null,
-        article.lastVisitedTime ? this.asDate(article.lastVisitedTime) : null,
-        this.asDate(article.createdAt),
-        this.asDate(article.updatedAt),
+        article.lastVisitedTime ? asDate(article.lastVisitedTime) : null,
+        asDate(article.createdAt),
+        asDate(article.updatedAt),
         article._id || null,
       ],
     );
@@ -2580,8 +1379,8 @@ export class StructuredDataService implements OnModuleInit {
         draft.author || null,
         draft.category || null,
         Boolean(draft.deleted),
-        this.asDate(draft.createdAt),
-        this.asDate(draft.updatedAt),
+        asDate(draft.createdAt),
+        asDate(draft.updatedAt),
         draft._id || null,
       ],
     );
@@ -2609,8 +1408,8 @@ export class StructuredDataService implements OnModuleInit {
         page.name,
         page.type || 'file',
         page.html || '',
-        this.asDate(page.createdAt),
-        this.asDate(page.updatedAt),
+        asDate(page.createdAt),
+        asDate(page.updatedAt),
         page._id || null,
       ],
     );
@@ -2626,20 +1425,20 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [path],
     );
-    return this.mapCustomPageRow(result.rows[0]);
+    return mapCustomPageRow(result.rows[0]);
   }
 
   async listCustomPages(includeHtml = false) {
     const selectSql = includeHtml
-      ? this.getCustomPageSelectSql()
-      : this.getCustomPageSummarySelectSql();
+      ? getCustomPageSelectSql()
+      : getCustomPageSummarySelectSql();
     const result = await this.store.query(
       `
         ${selectSql}
         ORDER BY created_at DESC, path ASC
       `,
     );
-    return result.rows.map((row) => this.mapCustomPageRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapCustomPageRow(row)).filter(Boolean);
   }
 
   async deleteCustomPageByPath(path: string) {
@@ -2671,8 +1470,8 @@ export class StructuredDataService implements OnModuleInit {
         category.description || null,
         category.sort || 0,
         Boolean(category.hide),
-        this.asDate(category.createdAt),
-        this.asDate(category.updatedAt),
+        asDate(category.createdAt),
+        asDate(category.updatedAt),
         category._id || null,
       ],
     );
@@ -2692,7 +1491,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id],
     );
-    return this.mapNavCategoryRow(result.rows[0]);
+    return mapNavCategoryRow(result.rows[0]);
   }
 
   async getNavCategoryByName(name: string) {
@@ -2705,7 +1504,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [name],
     );
-    return this.mapNavCategoryRow(result.rows[0]);
+    return mapNavCategoryRow(result.rows[0]);
   }
 
   async listNavCategories() {
@@ -2720,7 +1519,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY c.sort_order ASC, c.created_at DESC
       `,
     );
-    return result.rows.map((row) => this.mapNavCategoryRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapNavCategoryRow(row)).filter(Boolean);
   }
 
   async getNavCategoriesPaginated(page: number, pageSize: number) {
@@ -2742,7 +1541,7 @@ export class StructuredDataService implements OnModuleInit {
     );
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      categories: result.rows.map((row) => this.mapNavCategoryRow(row)).filter(Boolean),
+      categories: result.rows.map((row) => mapNavCategoryRow(row)).filter(Boolean),
     };
   }
 
@@ -2764,7 +1563,7 @@ export class StructuredDataService implements OnModuleInit {
           SET sort_order = $2, updated_at = $3
           WHERE id = $1
         `,
-        [category.id, category.sort || 0, this.asDate(updatedAt)],
+        [category.id, category.sort || 0, asDate(updatedAt)],
       );
     }
   }
@@ -2817,8 +1616,8 @@ export class StructuredDataService implements OnModuleInit {
         Boolean(tool.hide),
         Boolean(tool.useCustomIcon),
         tool.customIcon || null,
-        this.asDate(tool.createdAt),
-        this.asDate(tool.updatedAt),
+        asDate(tool.createdAt),
+        asDate(tool.updatedAt),
         tool._id || null,
       ],
     );
@@ -2837,7 +1636,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id],
     );
-    return this.mapNavToolRow(result.rows[0]);
+    return mapNavToolRow(result.rows[0]);
   }
 
   async listNavTools() {
@@ -2851,7 +1650,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY t.sort_order ASC, t.created_at DESC
       `,
     );
-    return result.rows.map((row) => this.mapNavToolRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapNavToolRow(row)).filter(Boolean);
   }
 
   async getNavToolsPaginated(page: number, pageSize: number) {
@@ -2872,7 +1671,7 @@ export class StructuredDataService implements OnModuleInit {
     );
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      tools: result.rows.map((row) => this.mapNavToolRow(row)).filter(Boolean),
+      tools: result.rows.map((row) => mapNavToolRow(row)).filter(Boolean),
     };
   }
 
@@ -2889,7 +1688,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [categoryId],
     );
-    return result.rows.map((row) => this.mapNavToolRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapNavToolRow(row)).filter(Boolean);
   }
 
   async deleteNavToolById(id: string) {
@@ -2907,7 +1706,7 @@ export class StructuredDataService implements OnModuleInit {
           SET sort_order = $2, updated_at = $3
           WHERE id = $1
         `,
-        [tool.id, tool.sort || 0, this.asDate(updatedAt)],
+        [tool.id, tool.sort || 0, asDate(updatedAt)],
       );
     }
   }
@@ -2941,8 +1740,8 @@ export class StructuredDataService implements OnModuleInit {
         icon.iconUrlDark || null,
         icon.presetIconType || null,
         icon.description || null,
-        this.asDate(icon.createdAt),
-        this.asDate(icon.updatedAt),
+        asDate(icon.createdAt),
+        asDate(icon.updatedAt),
         icon._id || null,
       ],
     );
@@ -2958,7 +1757,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [name],
     );
-    return this.mapIconRow(result.rows[0]);
+    return mapIconRow(result.rows[0]);
   }
 
   async listIcons(usage?: 'nav' | 'social') {
@@ -2976,7 +1775,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       params,
     );
-    return result.rows.map((row) => this.mapIconRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapIconRow(row)).filter(Boolean);
   }
 
   async getIconsPaginated(page: number, pageSize: number, usage?: 'nav' | 'social') {
@@ -3004,7 +1803,7 @@ export class StructuredDataService implements OnModuleInit {
     );
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      icons: result.rows.map((row) => this.mapIconRow(row)).filter(Boolean),
+      icons: result.rows.map((row) => mapIconRow(row)).filter(Boolean),
     };
   }
 
@@ -3050,8 +1849,8 @@ export class StructuredDataService implements OnModuleInit {
         pipeline.eventName,
         pipeline.script || '',
         Boolean(pipeline.deleted),
-        this.asDate(pipeline.createdAt),
-        this.asDate(pipeline.updatedAt),
+        asDate(pipeline.createdAt),
+        asDate(pipeline.updatedAt),
         pipeline._id || null,
       ],
     );
@@ -3071,7 +1870,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id],
     );
-    return this.mapPipelineRow(result.rows[0]);
+    return mapPipelineRow(result.rows[0]);
   }
 
   async getMaxPipelineId() {
@@ -3091,7 +1890,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY created_at DESC, id DESC
       `,
     );
-    return result.rows.map((row) => this.mapPipelineRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapPipelineRow(row)).filter(Boolean);
   }
 
   async getPipelinesByEvent(eventName: string) {
@@ -3104,7 +1903,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [eventName],
     );
-    return result.rows.map((row) => this.mapPipelineRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapPipelineRow(row)).filter(Boolean);
   }
 
   async deletePipelineById(id: number) {
@@ -3140,7 +1939,7 @@ export class StructuredDataService implements OnModuleInit {
         tokenItem.userId || 0,
         tokenItem.name || null,
         tokenItem.expiresIn || 0,
-        this.asDate(tokenItem.createdAt),
+        asDate(tokenItem.createdAt),
         Boolean(tokenItem.disabled),
         tokenItem._id || null,
       ],
@@ -3172,7 +1971,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       params,
     );
-    return result.rows.map((row) => this.mapTokenRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapTokenRow(row)).filter(Boolean);
   }
 
   async getTokenByToken(token: string) {
@@ -3185,7 +1984,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [token],
     );
-    return this.mapTokenRow(result.rows[0]);
+    return mapTokenRow(result.rows[0]);
   }
 
   async getTokenByRecordId(recordId: string) {
@@ -3198,7 +1997,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [recordId],
     );
-    return this.mapTokenRow(result.rows[0]);
+    return mapTokenRow(result.rows[0]);
   }
 
   async updateTokenDisabledByToken(token: string, disabled: boolean) {
@@ -3286,7 +2085,7 @@ export class StructuredDataService implements OnModuleInit {
         item.realPath,
         JSON.stringify(item.meta ?? null),
         item.name,
-        this.asDate(item.updatedAt),
+        asDate(item.updatedAt),
         item._id || null,
       ],
     );
@@ -3302,7 +2101,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [sign],
     );
-    return this.mapStaticRow(result.rows[0]);
+    return mapStaticRow(result.rows[0]);
   }
 
   async listStatics(staticType?: string) {
@@ -3320,7 +2119,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       params,
     );
-    return result.rows.map((row) => this.mapStaticRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapStaticRow(row)).filter(Boolean);
   }
 
   async exportStatics() {
@@ -3359,7 +2158,7 @@ export class StructuredDataService implements OnModuleInit {
     );
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      items: result.rows.map((row) => this.mapStaticRow(row)).filter(Boolean),
+      items: result.rows.map((row) => mapStaticRow(row)).filter(Boolean),
     };
   }
 
@@ -3374,38 +2173,38 @@ export class StructuredDataService implements OnModuleInit {
   async getArticleById(id: number) {
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
+        ${getArticleSelectSql()}
         WHERE a.id = $1 AND a.deleted = FALSE
         LIMIT 1
       `,
       [id],
     );
-    return this.mapArticleRow(result.rows[0]);
+    return mapArticleRow(result.rows[0]);
   }
 
   async getArticleByPathname(pathname: string) {
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
+        ${getArticleSelectSql()}
         WHERE a.pathname = $1 AND a.deleted = FALSE
         LIMIT 1
       `,
       [decodeURIComponent(pathname)],
     );
-    return this.mapArticleRow(result.rows[0]);
+    return mapArticleRow(result.rows[0]);
   }
 
   async getArticleByTitle(title: string) {
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
+        ${getArticleSelectSql()}
         WHERE a.title = $1
         ORDER BY a.updated_at DESC
         LIMIT 1
       `,
       [title],
     );
-    return this.mapArticleRow(result.rows[0]);
+    return mapArticleRow(result.rows[0]);
   }
 
   async incrementArticleViewer(id: number, isNewVisitor: boolean) {
@@ -3487,7 +2286,7 @@ export class StructuredDataService implements OnModuleInit {
     const idComparator = direction === 'prev' ? '<' : '>';
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
+        ${getArticleSelectSql()}
         WHERE a.deleted = FALSE
           AND ($3::boolean OR a.hidden = FALSE)
           AND (
@@ -3497,9 +2296,9 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY a.created_at ${orderDirection}, a.id ${orderDirection}
         LIMIT 1
       `,
-      [this.asDate(article.createdAt), article.id, includeHidden],
+      [asDate(article.createdAt), article.id, includeHidden],
     );
-    return this.mapArticleRow(result.rows[0]);
+    return mapArticleRow(result.rows[0]);
   }
 
   async getMaxArticleId(maxExclusive = 50000) {
@@ -3524,7 +2323,7 @@ export class StructuredDataService implements OnModuleInit {
       includeContent?: boolean;
     } = {},
   ) {
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden: options.includeHidden,
       includeDelete: options.includeDelete,
     });
@@ -3532,8 +2331,8 @@ export class StructuredDataService implements OnModuleInit {
     const limitSql = options.limit && options.limit > 0 ? `LIMIT ${Math.trunc(options.limit)}` : '';
     const selectSql =
       options.includeContent === false
-        ? this.getArticleSummarySelectSql()
-        : this.getArticleSelectSql();
+        ? getArticleSummarySelectSql()
+        : getArticleSelectSql();
     const result = await this.store.query(
       `
         ${selectSql}
@@ -3543,7 +2342,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       params,
     );
-    return result.rows.map((row) => this.mapArticleRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapArticleRow(row)).filter(Boolean);
   }
 
   async getRecentVisitedArticles(limit: number) {
@@ -3735,12 +2534,12 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id, safeLimit],
     );
-    return result.rows.map((row) => this.mapArticleRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapArticleRow(row)).filter(Boolean);
   }
 
   async getAnalysisViewerSnapshot(limit: number) {
     const safeLimit = Math.max(1, Math.trunc(limit || 1));
-    const articleSummarySql = this.getArticleSummarySelectSql();
+    const articleSummarySql = getArticleSummarySelectSql();
     const result = await this.store.query(
       `
         SELECT
@@ -3853,13 +2652,13 @@ export class StructuredDataService implements OnModuleInit {
     );
     const row: any = result.rows[0] || {};
     const topViewer = Array.isArray(row.top_viewer)
-      ? row.top_viewer.map((item: any) => this.mapArticleRow(item)).filter(Boolean)
+      ? row.top_viewer.map((item: any) => mapArticleRow(item)).filter(Boolean)
       : [];
     const topVisited = Array.isArray(row.top_visited)
-      ? row.top_visited.map((item: any) => this.mapArticleRow(item)).filter(Boolean)
+      ? row.top_visited.map((item: any) => mapArticleRow(item)).filter(Boolean)
       : [];
     const recentVisitArticles = Array.isArray(row.recent_visit_articles)
-      ? row.recent_visit_articles.map((item: any) => this.mapArticleRow(item)).filter(Boolean)
+      ? row.recent_visit_articles.map((item: any) => mapArticleRow(item)).filter(Boolean)
       : [];
     const totalStats = row.total_stats || {};
     const lastVisit = row.last_visit || {};
@@ -3963,7 +2762,7 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   async getTotalArticles(includeHidden: boolean) {
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden,
       includeDelete: false,
     });
@@ -3979,7 +2778,7 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   async getTimelineSummaryPayload(includeHidden: boolean) {
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden,
       includeDelete: false,
     });
@@ -4020,7 +2819,7 @@ export class StructuredDataService implements OnModuleInit {
       tag?: string;
     },
   ) {
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden,
       includeDelete: false,
       category: filter?.category,
@@ -4143,7 +2942,7 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   async getTimelineArticlesGrouped(includeHidden: boolean) {
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden,
       includeDelete: false,
     });
@@ -4193,7 +2992,7 @@ export class StructuredDataService implements OnModuleInit {
 
     return result.rows.reduce<Record<string, any[]>>((acc, row: any) => {
       acc[String(row.year)] = (row.articles || []).map((article: any) =>
-        this.mapArticleRow(article),
+        mapArticleRow(article),
       );
       return acc;
     }, {});
@@ -4206,7 +3005,7 @@ export class StructuredDataService implements OnModuleInit {
       pageSize: option.pageSize ?? -1,
       regMatch: option.regMatch !== false,
     };
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden: !isPublic,
       includeDelete: false,
       category: normalizedOption.category,
@@ -4234,8 +3033,8 @@ export class StructuredDataService implements OnModuleInit {
       normalizedOption.toListView &&
       !normalizedOption.withPreviewContent &&
       !normalizedOption.withWordCount
-        ? this.getArticleSummarySelectSql()
-        : this.getArticleSelectSql();
+        ? getArticleSummarySelectSql()
+        : getArticleSelectSql();
     if (normalizedOption.pageSize !== -1) {
       queryParams.push(normalizedOption.pageSize);
       queryParams.push(normalizedOption.pageSize * (normalizedOption.page - 1));
@@ -4246,7 +3045,7 @@ export class StructuredDataService implements OnModuleInit {
       `
         ${selectSql}
         ${whereSql}
-        ORDER BY ${this.buildArticleOrderSql(normalizedOption, isPublic)}
+        ORDER BY ${buildArticleOrderSql(normalizedOption, isPublic)}
         ${limitSql}
       `,
       queryParams,
@@ -4254,7 +3053,7 @@ export class StructuredDataService implements OnModuleInit {
 
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      articles: result.rows.map((row) => this.mapArticleRow(row)).filter(Boolean),
+      articles: result.rows.map((row) => mapArticleRow(row)).filter(Boolean),
     };
   }
 
@@ -4268,7 +3067,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [name],
     );
-    return this.mapTagRow(result.rows[0]);
+    return mapTagRow(result.rows[0]);
   }
 
   async listTagNames() {
@@ -4290,7 +3089,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY name ASC
       `,
     );
-    return result.rows.map((row) => this.mapTagRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapTagRow(row)).filter(Boolean);
   }
 
   private async refreshTagAggregates(tagNames: string[]) {
@@ -4392,7 +3191,7 @@ export class StructuredDataService implements OnModuleInit {
     );
 
     return {
-      tags: result.rows.map((row) => this.mapTagRow(row)).filter(Boolean),
+      tags: result.rows.map((row) => mapTagRow(row)).filter(Boolean),
       total: Number(countResult.rows[0]?.total || 0),
     };
   }
@@ -4407,7 +3206,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [limit],
     );
-    return result.rows.map((row) => this.mapTagRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapTagRow(row)).filter(Boolean);
   }
 
   async searchTags(keyword: string, limit: number) {
@@ -4421,7 +3220,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [`%${keyword}%`, limit],
     );
-    return result.rows.map((row) => this.mapTagRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapTagRow(row)).filter(Boolean);
   }
 
   async searchArticles(keyword: string, includeHidden: boolean, limit = 200) {
@@ -4429,14 +3228,14 @@ export class StructuredDataService implements OnModuleInit {
     if (!normalizedKeyword) {
       return [];
     }
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden,
       includeDelete: false,
     });
     const keywordParamIndex = params.length + 1;
     const limitParamIndex = params.length + 2;
-    const tsQuerySql = this.getTsQuerySql(`$${keywordParamIndex}`);
-    const searchVectorSql = this.getArticleSearchVectorSql('a');
+    const tsQuerySql = getTsQuerySql(`$${keywordParamIndex}`);
+    const searchVectorSql = getArticleSearchVectorSql('a');
     const fuzzyScoreSql = `
       GREATEST(
         similarity(COALESCE(a.title, ''), $${keywordParamIndex}),
@@ -4494,7 +3293,7 @@ export class StructuredDataService implements OnModuleInit {
           FROM vanblog_article_tags t
           WHERE t.tag_name ILIKE '%' || $${keywordParamIndex} || '%'
         )
-        ${this.getArticleSelectSql()}
+        ${getArticleSelectSql()}
         INNER JOIN candidate_ids c ON c.id = a.id
         CROSS JOIN search_query q
         ${whereSql}
@@ -4507,7 +3306,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       queryParams,
     );
-    return result.rows.map((row) => this.mapArticleRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapArticleRow(row)).filter(Boolean);
   }
 
   async getDraftById(id: number, includeDeleted = false) {
@@ -4525,7 +3324,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       params,
     );
-    return this.mapDraftRow(result.rows[0]);
+    return mapDraftRow(result.rows[0]);
   }
 
   async findDraftByTitle(title: string) {
@@ -4539,7 +3338,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [title],
     );
-    return this.mapDraftRow(result.rows[0]);
+    return mapDraftRow(result.rows[0]);
   }
 
   async getMaxDraftId() {
@@ -4562,7 +3361,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY created_at DESC, id DESC
       `,
     );
-    return result.rows.map((row) => this.mapDraftRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapDraftRow(row)).filter(Boolean);
   }
 
   async queryDrafts(option: {
@@ -4639,8 +3438,8 @@ export class StructuredDataService implements OnModuleInit {
     }
 
     const selectSql = option.toListView
-      ? this.getDraftSummarySelectSql()
-      : this.getDraftSelectSql();
+      ? getDraftSummarySelectSql()
+      : getDraftSelectSql();
 
     const result = await this.store.query(
       `
@@ -4654,7 +3453,7 @@ export class StructuredDataService implements OnModuleInit {
 
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      drafts: result.rows.map((row) => this.mapDraftRow(row)).filter(Boolean),
+      drafts: result.rows.map((row) => mapDraftRow(row)).filter(Boolean),
     };
   }
 
@@ -4663,8 +3462,8 @@ export class StructuredDataService implements OnModuleInit {
     if (!normalizedKeyword) {
       return [];
     }
-    const searchVectorSql = this.getDraftSearchVectorSql();
-    const tsQuerySql = this.getTsQuerySql('$1');
+    const searchVectorSql = getDraftSearchVectorSql();
+    const tsQuerySql = getTsQuerySql('$1');
     const result = await this.store.query(
       `
         SELECT *
@@ -4695,7 +3494,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [normalizedKeyword, limit],
     );
-    return result.rows.map((row) => this.mapDraftRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapDraftRow(row)).filter(Boolean);
   }
 
   async upsertDocument(document: any) {
@@ -4734,8 +3533,8 @@ export class StructuredDataService implements OnModuleInit {
         JSON.stringify(document.path || []),
         document.sort_order || 0,
         Boolean(document.deleted),
-        this.asDate(document.createdAt),
-        this.asDate(document.updatedAt),
+        asDate(document.createdAt),
+        asDate(document.updatedAt),
         document._id || null,
       ],
     );
@@ -4751,7 +3550,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id],
     );
-    return this.mapDocumentRow(result.rows[0]);
+    return mapDocumentRow(result.rows[0]);
   }
 
   async getDocumentsByIds(ids: number[]) {
@@ -4767,7 +3566,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [ids],
     );
-    return result.rows.map((row) => this.mapDocumentRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapDocumentRow(row)).filter(Boolean);
   }
 
   async getDocumentSubtree(rootId: number, includeDeleted = false) {
@@ -4784,7 +3583,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [rootId],
     );
-    return result.rows.map((row) => this.mapDocumentRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapDocumentRow(row)).filter(Boolean);
   }
 
   async markDocumentsDeleted(ids: number[], updatedAt = new Date()) {
@@ -4797,7 +3596,7 @@ export class StructuredDataService implements OnModuleInit {
         SET deleted = TRUE, updated_at = $2
         WHERE id = ANY($1::bigint[])
       `,
-      [ids, this.asDate(updatedAt)],
+      [ids, asDate(updatedAt)],
     );
   }
 
@@ -4869,8 +3668,8 @@ export class StructuredDataService implements OnModuleInit {
       limitSql = `LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`;
     }
     const selectSql = option.toListView
-      ? this.getDocumentSummarySelectSql()
-      : this.getDocumentSelectSql();
+      ? getDocumentSummarySelectSql()
+      : getDocumentSelectSql();
     const result = await this.store.query(
       `
         ${selectSql}
@@ -4882,7 +3681,7 @@ export class StructuredDataService implements OnModuleInit {
     );
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      documents: result.rows.map((row) => this.mapDocumentRow(row)).filter(Boolean),
+      documents: result.rows.map((row) => mapDocumentRow(row)).filter(Boolean),
     };
   }
 
@@ -4909,8 +3708,8 @@ export class StructuredDataService implements OnModuleInit {
     }
     const whereSql = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const selectSql = options.includeContent
-      ? this.getDocumentSelectSql()
-      : this.getDocumentSummarySelectSql();
+      ? getDocumentSelectSql()
+      : getDocumentSummarySelectSql();
     const result = await this.store.query(
       `
         ${selectSql}
@@ -4919,7 +3718,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       params,
     );
-    return result.rows.map((row) => this.mapDocumentRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapDocumentRow(row)).filter(Boolean);
   }
 
   async searchDocuments(keyword: string) {
@@ -4927,8 +3726,8 @@ export class StructuredDataService implements OnModuleInit {
     if (!normalizedKeyword) {
       return [];
     }
-    const searchVectorSql = this.getDocumentSearchVectorSql();
-    const tsQuerySql = this.getTsQuerySql('$1');
+    const searchVectorSql = getDocumentSearchVectorSql();
+    const tsQuerySql = getTsQuerySql('$1');
     const result = await this.store.query(
       `
         SELECT *
@@ -4951,7 +3750,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [normalizedKeyword],
     );
-    return result.rows.map((row) => this.mapDocumentRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapDocumentRow(row)).filter(Boolean);
   }
 
   async upsertMoment(moment: any) {
@@ -4975,8 +3774,8 @@ export class StructuredDataService implements OnModuleInit {
         moment.id,
         moment.content,
         Boolean(moment.deleted),
-        this.asDate(moment.createdAt),
-        this.asDate(moment.updatedAt),
+        asDate(moment.createdAt),
+        asDate(moment.updatedAt),
         moment._id || null,
       ],
     );
@@ -5032,7 +3831,7 @@ export class StructuredDataService implements OnModuleInit {
     );
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      moments: result.rows.map((row) => this.mapMomentRow(row)).filter(Boolean),
+      moments: result.rows.map((row) => mapMomentRow(row)).filter(Boolean),
     };
   }
 
@@ -5046,7 +3845,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id],
     );
-    return this.mapMomentRow(result.rows[0]);
+    return mapMomentRow(result.rows[0]);
   }
 
   async getTotalMoments() {
@@ -5061,8 +3860,8 @@ export class StructuredDataService implements OnModuleInit {
     if (!normalizedKeyword) {
       return [];
     }
-    const searchVectorSql = this.getMomentSearchVectorSql();
-    const tsQuerySql = this.getTsQuerySql('$1');
+    const searchVectorSql = getMomentSearchVectorSql();
+    const tsQuerySql = getTsQuerySql('$1');
     const result = await this.store.query(
       `
         SELECT *
@@ -5080,7 +3879,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [normalizedKeyword, limit],
     );
-    return result.rows.map((row) => this.mapMomentRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapMomentRow(row)).filter(Boolean);
   }
 
   async upsertMindMap(mindMap: any) {
@@ -5113,8 +3912,8 @@ export class StructuredDataService implements OnModuleInit {
         mindMap.description || '',
         mindMap.viewer || 0,
         Boolean(mindMap.deleted),
-        this.asDate(mindMap.createdAt),
-        this.asDate(mindMap.updatedAt),
+        asDate(mindMap.createdAt),
+        asDate(mindMap.updatedAt),
         mindMap._id || null,
       ],
     );
@@ -5175,7 +3974,7 @@ export class StructuredDataService implements OnModuleInit {
     );
     return {
       total: Number(countResult.rows[0]?.total || 0),
-      mindMaps: result.rows.map((row) => this.mapMindMapRow(row)).filter(Boolean),
+      mindMaps: result.rows.map((row) => mapMindMapRow(row)).filter(Boolean),
     };
   }
 
@@ -5193,7 +3992,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id],
     );
-    return this.mapMindMapRow(result.rows[0]);
+    return mapMindMapRow(result.rows[0]);
   }
 
   async searchMindMaps(keyword: string, limit = 50) {
@@ -5201,8 +4000,8 @@ export class StructuredDataService implements OnModuleInit {
     if (!normalizedKeyword) {
       return [];
     }
-    const searchVectorSql = this.getMindMapSearchVectorSql();
-    const tsQuerySql = this.getTsQuerySql('$1');
+    const searchVectorSql = getMindMapSearchVectorSql();
+    const tsQuerySql = getTsQuerySql('$1');
     const result = await this.store.query(
       `
         SELECT *
@@ -5227,7 +4026,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [normalizedKeyword, limit],
     );
-    return result.rows.map((row) => this.mapMindMapRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapMindMapRow(row)).filter(Boolean);
   }
 
   async getMeta() {
@@ -5239,7 +4038,7 @@ export class StructuredDataService implements OnModuleInit {
         LIMIT 1
       `,
     );
-    return this.mapMetaRow(result.rows[0]);
+    return mapMetaRow(result.rows[0]);
   }
 
   async incrementMetaViewer(isNewVisitor: boolean) {
@@ -5255,7 +4054,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [isNewVisitor ? 1 : 0],
     );
-    return this.mapMetaRow(result.rows[0]);
+    return mapMetaRow(result.rows[0]);
   }
 
   async upsertCategory(category: any) {
@@ -5288,8 +4087,8 @@ export class StructuredDataService implements OnModuleInit {
         category.password || null,
         category.sort || 0,
         JSON.stringify(category.meta || null),
-        this.asDate(category.createdAt),
-        this.asDate(category.updatedAt),
+        asDate(category.createdAt),
+        asDate(category.updatedAt),
         category._id || null,
       ],
     );
@@ -5303,7 +4102,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY sort_order ASC, id ASC
       `,
     );
-    return result.rows.map((row) => this.mapCategoryRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapCategoryRow(row)).filter(Boolean);
   }
 
   async getCategoryByName(name: string) {
@@ -5316,7 +4115,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [name],
     );
-    return this.mapCategoryRow(result.rows[0]);
+    return mapCategoryRow(result.rows[0]);
   }
 
   async getCategoriesByNames(names: string[]) {
@@ -5333,7 +4132,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [normalizedNames],
     );
-    return result.rows.map((row) => this.mapCategoryRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapCategoryRow(row)).filter(Boolean);
   }
 
   async renameCategoryInArticles(oldName: string, newName: string) {
@@ -5434,7 +4233,7 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   async getArticlesByCategory(name: string, includeHidden: boolean) {
-    const { params, whereSql } = this.buildArticleWhere({
+    const { params, whereSql } = buildArticleWhere({
       includeHidden,
       includeDelete: false,
       category: name,
@@ -5442,13 +4241,13 @@ export class StructuredDataService implements OnModuleInit {
     });
     const result = await this.store.query(
       `
-        ${this.getArticleSelectSql()}
+        ${getArticleSelectSql()}
         ${whereSql}
         ORDER BY a.created_at DESC
       `,
       params,
     );
-    return result.rows.map((row) => this.mapArticleRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapArticleRow(row)).filter(Boolean);
   }
 
   async listMindMaps(includeDelete = false) {
@@ -5460,7 +4259,7 @@ export class StructuredDataService implements OnModuleInit {
         ORDER BY updated_at DESC
       `,
     );
-    return result.rows.map((row) => this.mapMindMapRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapMindMapRow(row)).filter(Boolean);
   }
 
   async getUserById(id: number) {
@@ -5473,7 +4272,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [id],
     );
-    return this.mapUserRow(result.rows[0]);
+    return mapUserRow(result.rows[0]);
   }
 
   async getUserByName(name: string) {
@@ -5486,7 +4285,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [name],
     );
-    return this.mapUserRow(result.rows[0]);
+    return mapUserRow(result.rows[0]);
   }
 
   async getUsersByType(type: string) {
@@ -5499,7 +4298,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [type],
     );
-    return result.rows.map((row) => this.mapUserRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapUserRow(row)).filter(Boolean);
   }
 
   async listUsers() {
@@ -5508,7 +4307,7 @@ export class StructuredDataService implements OnModuleInit {
       FROM vanblog_users
       ORDER BY id ASC
     `);
-    return result.rows.map((row) => this.mapUserRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapUserRow(row)).filter(Boolean);
   }
 
   async getMaxUserId() {
@@ -5532,7 +4331,7 @@ export class StructuredDataService implements OnModuleInit {
       `,
       [type],
     );
-    return this.mapSettingRow(result.rows[0]);
+    return mapSettingRow(result.rows[0]);
   }
 
   async listSettings() {
@@ -5541,7 +4340,7 @@ export class StructuredDataService implements OnModuleInit {
       FROM vanblog_settings
       ORDER BY setting_type ASC
     `);
-    return result.rows.map((row) => this.mapSettingRow(row)).filter(Boolean);
+    return result.rows.map((row) => mapSettingRow(row)).filter(Boolean);
   }
 
   isInitialized() {
@@ -5573,57 +4372,6 @@ export class StructuredDataService implements OnModuleInit {
     )
   )`;
 
-  private async ensureCommentSchema() {
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_comments (
-        id BIGINT PRIMARY KEY,
-        target_type TEXT NOT NULL,
-        target_id TEXT NOT NULL,
-        parent_id BIGINT,
-        root_id BIGINT,
-        reply_to_nick TEXT,
-        nick TEXT NOT NULL DEFAULT '',
-        mail TEXT NOT NULL DEFAULT '',
-        link TEXT NOT NULL DEFAULT '',
-        content TEXT NOT NULL DEFAULT '',
-        status TEXT NOT NULL DEFAULT 'pending',
-        is_admin BOOLEAN NOT NULL DEFAULT FALSE,
-        pinned BOOLEAN NOT NULL DEFAULT FALSE,
-        likes INTEGER NOT NULL DEFAULT 0,
-        ip TEXT NOT NULL DEFAULT '',
-        ua TEXT NOT NULL DEFAULT '',
-        location TEXT NOT NULL DEFAULT '',
-        browser TEXT NOT NULL DEFAULT '',
-        os TEXT NOT NULL DEFAULT '',
-        images TEXT[] NOT NULL DEFAULT ARRAY[]::text[],
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT
-      )
-    `);
-    await this.store.query(`
-      CREATE TABLE IF NOT EXISTS vanblog_comment_likes (
-        comment_id BIGINT NOT NULL,
-        actor_hash TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        source_record_id TEXT,
-        PRIMARY KEY (comment_id, actor_hash)
-      )
-    `);
-    const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_comments_thread ON vanblog_comments (target_type, target_id, status, root_id, created_at)',
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_comments_status_created ON vanblog_comments (status, created_at DESC)',
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_comments_root ON vanblog_comments (root_id)',
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_comments_parent ON vanblog_comments (parent_id)',
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_comments_created ON vanblog_comments (created_at DESC, id DESC)',
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_comments_content_trgm ON vanblog_comments USING GIN (content gin_trgm_ops)',
-      'CREATE INDEX IF NOT EXISTS idx_vanblog_comments_nick_trgm ON vanblog_comments USING GIN (nick gin_trgm_ops)',
-    ];
-    for (const sql of indexes) {
-      await this.store.query(sql);
-    }
-  }
-
   private normalizeCommentImages(images: any): string[] {
     if (!Array.isArray(images)) {
       return [];
@@ -5632,7 +4380,7 @@ export class StructuredDataService implements OnModuleInit {
   }
 
   private normalizeOptionalCommentId(value: any) {
-    const normalized = this.normalizeNumericId(value);
+    const normalized = normalizeNumericId(value);
     return normalized === null || normalized <= 0 ? null : normalized;
   }
 
@@ -5660,14 +4408,14 @@ export class StructuredDataService implements OnModuleInit {
       String(comment.browser ?? ''),
       String(comment.os ?? ''),
       this.normalizeCommentImages(comment.images),
-      this.asDate(comment.createdAt),
-      this.asDate(comment.updatedAt || comment.createdAt),
+      asDate(comment.createdAt),
+      asDate(comment.updatedAt || comment.createdAt),
       comment._id || null,
     ];
   }
 
   private isStorableComment(comment: any) {
-    const id = this.normalizeNumericId(comment?.id);
+    const id = normalizeNumericId(comment?.id);
     return (
       id !== null &&
       id > 0 &&
@@ -5718,7 +4466,7 @@ export class StructuredDataService implements OnModuleInit {
   private async replaceComments(comments: any[]) {
     await this.store.query('TRUNCATE TABLE vanblog_comments CASCADE');
     for (const comment of this.dedupeRecords(comments, 'comment ids', (comment) =>
-      String(this.normalizeNumericId(comment?.id) ?? ''),
+      String(normalizeNumericId(comment?.id) ?? ''),
     )) {
       if (!this.isStorableComment(comment)) {
         continue;
@@ -5726,7 +4474,7 @@ export class StructuredDataService implements OnModuleInit {
       await this.store.query(
         `INSERT INTO vanblog_comments (${StructuredDataService.COMMENT_COLUMNS})
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20::text[],$21,$22,$23)`,
-        this.toCommentRowParams(comment, this.normalizeNumericId(comment.id)!),
+        this.toCommentRowParams(comment, normalizeNumericId(comment.id)!),
       );
     }
   }
@@ -5744,7 +4492,7 @@ export class StructuredDataService implements OnModuleInit {
       await this.store.query(
         `INSERT INTO vanblog_comment_likes (comment_id, actor_hash, created_at, source_record_id)
          VALUES ($1,$2,$3,$4)`,
-        [commentId, String(like.actorHash), this.asDate(like.createdAt), like._id || null],
+        [commentId, String(like.actorHash), asDate(like.createdAt), like._id || null],
       );
     }
   }
@@ -5781,7 +4529,7 @@ export class StructuredDataService implements OnModuleInit {
           updated_at = EXCLUDED.updated_at,
           source_record_id = EXCLUDED.source_record_id
       `,
-      this.toCommentRowParams(comment, this.normalizeNumericId(comment.id)!),
+      this.toCommentRowParams(comment, normalizeNumericId(comment.id)!),
     );
   }
 
@@ -5807,7 +4555,7 @@ export class StructuredDataService implements OnModuleInit {
         ON CONFLICT (comment_id, actor_hash) DO UPDATE SET
           source_record_id = EXCLUDED.source_record_id
       `,
-      [commentId, String(like.actorHash), this.asDate(like.createdAt), like._id || null],
+      [commentId, String(like.actorHash), asDate(like.createdAt), like._id || null],
     );
   }
 
