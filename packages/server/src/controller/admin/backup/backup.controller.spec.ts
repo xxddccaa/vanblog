@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { tmpdir } from 'os';
 import { BackupController } from './backup.controller';
+import { BackupProvider } from 'src/provider/backup/backup.provider';
 import { parseBackupBuffer } from 'src/utils/backupCrypto';
 
 describe('BackupController import mode', () => {
@@ -274,7 +275,7 @@ describe('BackupController import mode', () => {
       ...overrides.backupImportJobProvider,
     };
 
-    const controller = new BackupController(
+    const backupProvider = new BackupProvider(
       articleProvider as any,
       categoryProvider as any,
       tagProvider as any,
@@ -301,6 +302,7 @@ describe('BackupController import mode', () => {
       backupImportJobProvider as any,
       commentProvider as any,
     );
+    const controller = new BackupController(backupProvider);
 
     return {
       controller,

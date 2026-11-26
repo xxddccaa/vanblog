@@ -133,6 +133,7 @@ import { MongoBackupProvider } from './provider/mongo-backup/mongo-backup.provid
 import { PublicDataCacheProvider } from './provider/public-data-cache/public-data-cache.provider';
 import { SearchController } from './controller/admin/search/search.controller';
 import { BackupImportJobProvider } from './provider/backup-import-job/backup-import-job.provider';
+import { BackupProvider } from './provider/backup/backup.provider';
 import { CloudflareCacheProvider } from './provider/cloudflare-cache/cloudflare-cache.provider';
 import { PrivateSiteProvider } from './provider/private-site/private-site.provider';
 import {
@@ -298,6 +299,7 @@ import {
     CloudflareCacheProvider,
     PrivateSiteProvider,
     BackupImportJobProvider,
+    BackupProvider,
   ],
 })
 export class AppModule implements NestModule {
