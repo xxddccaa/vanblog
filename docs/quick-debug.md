@@ -21,12 +21,13 @@
 volumes:
   - /root/vanblog/github_repo/vanblog/packages/server/dist:/app/server/dist
   - /root/vanblog/github_repo/vanblog/packages/website/.next/standalone/packages/website/.next:/app/website/packages/website/.next
+  - /root/vanblog/github_repo/vanblog/packages/website/.next/static:/app/website/packages/website/.next/static:ro
   - /root/vanblog/github_repo/vanblog/packages/admin/dist:/usr/share/nginx/html/admin:ro
 ```
 
 因此普通代码修改无需重建 all-in-one 镜像，只需在宿主机编译对应产物，再重启测试容器。
 
-> 不要用仓库原版 `docker-compose.all-in-one.latest.yml` 覆盖测试目录里的文件。仓库原版没有上述三项调试挂载，覆盖后路径 A 会失效。
+> 不要用仓库原版 `docker-compose.all-in-one.latest.yml` 覆盖测试目录里的文件。仓库原版没有上述四项调试挂载，覆盖后路径 A 会失效。
 
 ## 推荐：多处改动一次编译、一次重启
 
@@ -35,7 +36,8 @@ cd /root/vanblog/github_repo/vanblog
 
 pnpm build:server
 pnpm build:website
-# Next.js 不会自动把 static 放进 standalone；先删除旧目录，避免 static/static。
+# Next.js 不会自动把 static 放进 standalone。compose 单独挂载了 .next/static 时这两行可省略；
+# 保留也无害，先删除旧目录是为了避免 static/static。
 rm -rf packages/website/.next/standalone/packages/website/.next/static
 cp -a packages/website/.next/static \
   packages/website/.next/standalone/packages/website/.next/static
@@ -122,7 +124,7 @@ docker compose -f docker-compose.all-in-one.latest.yml \
 | 改动类型 | 是否适用 | 处理方式 |
 | --- | --- | --- |
 | `packages/server` 普通代码 | 是 | build server + restart |
-| `packages/website` 普通代码 | 是 | build website + 同步 static + restart |
+| `packages/website` 普通代码 | 是 | build website + restart（没有单独挂载 static 时还要同步 static） |
 | `packages/admin` 普通代码 | 是 | build admin；通常无需 restart |
 | 新增或升级 npm 依赖 | 否 | 重建 all-in-one 镜像 |
 | Dockerfile / Caddy / entrypoint | 否 | 重建 all-in-one 镜像 |

@@ -34,6 +34,7 @@ Caddy 对外暴露 `8020`，数据库 / redis 由 all-in-one 容器内部托管�
 |------|-----------|------|
 | `packages/server/dist` | `/app/server/dist` | node 进程加载，覆盖镜像内 server 产物 |
 | `packages/website/.next/standalone/packages/website/.next` | `/app/website/packages/website/.next` | Next.js standalone 运行时加载 |
+| `packages/website/.next/static` | `/app/website/packages/website/.next/static`（`:ro`） | 前台 CSS/JS；`next build` 不会把它放进 standalone，所以单独挂载 |
 | `packages/admin/dist` | `/usr/share/nginx/html/admin`（`:ro`） | nginx 直接服务的静态产物 |
 
 这样改代码后**只需宿主机重编 + 重启容器**（约 1 分钟），无需重建 all-in-one 镜像（镜像内重编要 8-12 分钟）。
@@ -42,12 +43,12 @@ Caddy 对外暴露 `8020`，数据库 / redis 由 all-in-one 容器内部托管�
 
 ## 首次启动
 
-测试目录中的 compose 是在仓库原版基础上增加了三项源码产物 bind mount 的**本机专用副本**。已有测试目录直接使用现有文件，不要再用仓库原版覆盖，否则路径 A 会失效。首次搭建时应从当前正常工作的测试目录模板复制，或复制仓库原版后按上文表格手动补齐三项挂载。
+测试目录中的 compose 是在仓库原版基础上增加了四项源码产物 bind mount 的**本机专用副本**。已有测试目录直接使用现有文件，不要再用仓库原版覆盖，否则路径 A 会失效。首次搭建时应从当前正常工作的测试目录模板复制，或复制仓库原版后按上文表格手动补齐四项挂载。
 
 ```bash
 TESTDIR=/root/vanblog/test-env-vanblog
 mkdir -p "$TESTDIR" && cd "$TESTDIR"
-# 确认 compose 已包含上文三项源码产物 bind mount 后，再创建 .env。
+# 确认 compose 已包含上文四项源码产物 bind mount 后，再创建 .env。
 
 cat > "$TESTDIR/.env" <<'ENV'
 VANBLOG_HTTP_PORT=8020
@@ -94,7 +95,8 @@ docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
 ```bash
 cd /root/vanblog/github_repo/vanblog
 pnpm build:website
-# next build 不会把 static 拷进 standalone，必须手动补，否则前台样式/脚本缺失
+# next build 不会把 static 拷进 standalone。compose 已单独挂载 .next/static 时，下面两行可省略，保留也无害；
+# 没有这项挂载时必须执行，否则前台样式/脚本全部 404
 rm -rf packages/website/.next/standalone/packages/website/.next/static
 cp -a packages/website/.next/static \
       packages/website/.next/standalone/packages/website/.next/static
@@ -138,7 +140,7 @@ docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
 |------|-----------|----------|------------------|
 | server dist | `/app/server/dist`（volume 挂载） | node 进程 | ✅ 必须（inode + 内存） |
 | website .next | `/app/website/packages/website/.next` | Next.js standalone | ✅ 必须（内存） |
-| website static | `/app/website/packages/website/.next/static` | 随 .next 挂载 | 随 website 一起 |
+| website static | `/app/website/packages/website/.next/static`（`:ro`，单独挂载） | Next.js standalone | ✅ 必须（重编会换 inode，Next 启动时缓存 static 是否存在） |
 | admin 静态产物 | `/usr/share/nginx/html/admin/`（`:ro`） | nginx | ❌ 无需（实时读目录） |
 | Caddyfile | `/etc/caddy/Caddyfile` | caddy | ❌ 本方式不适用，需重建镜像 |
 
@@ -207,7 +209,7 @@ curl --noproxy '*' -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8020/
 | 改动类型 | 路径 A 是否适用 | 说明 |
 |----------|----------------|------|
 | `packages/server` 代码 | ✅ | 宿主机 `pnpm build:server` + restart |
-| `packages/website` 代码 | ✅ | 宿主机 `pnpm build:website` + 手动补 standalone 的 `static` + restart |
+| `packages/website` 代码 | ✅ | 宿主机 `pnpm build:website` + restart（没有单独挂载 `static` 时还要手动补进 standalone） |
 | `packages/admin` 代码 | ✅ | 宿主机 `pnpm build:admin`，无需 restart |
 | 新增 npm 依赖 | ❌ | node_modules 在镜像内，路径 A 不生效，需重建 all-in-one 镜像 |
 | Dockerfile / Caddy / entrypoint 改动 | ❌ | 需重建 all-in-one 镜像 |
