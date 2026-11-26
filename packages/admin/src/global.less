@@ -126,6 +126,15 @@ body .dark-switch {
   .ant-pro-page-container-children-container {
     margin: 0 !important;
   }
+  // Give the editor the width ProLayout's default 40px side padding would take.
+  .ant-pro-page-container-children-container {
+    padding-inline: 12px !important;
+  }
+  // The sider collapse button overhangs the content by 13px at title height, so the
+  // header keeps enough start padding to clear it.
+  .ant-pro-page-container-warp-page-header {
+    padding-inline: 28px 12px !important;
+  }
   .ant-pro-grid-content,
   .ant-pro-grid-content-children,
   .ant-pro-page-container-children-content,
@@ -145,6 +154,19 @@ body .dark-switch {
 }
 .ant-pro-grid-content.wide {
   max-width: 50000px !important;
+}
+// Applied for one synchronous read by AdminSiderWidthSync to get each entry's natural width.
+body.admin-sider-measuring .ant-pro-sider {
+  .ant-menu-title-content,
+  .ant-pro-base-menu-inline-item-title,
+  .ant-pro-base-menu-inline-item-text,
+  [data-testid='admin-sider-logo'] {
+    flex: none !important;
+    width: max-content !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
 }
 .t-24 .ant-pro-grid-content.wide {
   transform: translateY(-24px);

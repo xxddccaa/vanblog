@@ -1,6 +1,7 @@
 import Footer from '@/components/Footer';
 import { CommentPendingSync, renderAdminMenuItem } from '@/components/CommentMenuBadge';
 import FontSync from '@/components/FontSync';
+import AdminSiderWidthSync from '@/components/AdminSiderWidthSync';
 import { logoutAndRedirect } from '@/components/LogoutButton';
 import { applyAdminFavicon, resolveAdminBrandLogo } from '@/utils/adminBranding';
 import {
@@ -10,6 +11,7 @@ import {
   isAuthExpiredResponse,
   syncAdminAccessCookie,
 } from '@/utils/adminSession';
+import { getInitialSiderWidth } from '@/utils/adminSiderWidth';
 import { getStoredUser } from '@/utils/getStoredUser';
 import {
   HomeOutlined,
@@ -619,6 +621,12 @@ export const layout = ({ initialState, setInitialState }) => {
   const themeMode = getResolvedThemeMode(initialState);
   const adminLogo = resolveAdminBrandLogo(initialState);
   const siderHeaderColor = themeMode === 'dark' ? '#f8fafc' : 'rgba(0, 0, 0, 0.88)';
+  const siderWidth = getInitialSiderWidth(initialState?.adminSiderWidth);
+  const handleSiderWidthChange = (width) => {
+    setInitialState((state) =>
+      state?.adminSiderWidth === width ? state : { ...state, adminSiderWidth: width },
+    );
+  };
 
   // 动态菜单渲染函数
   const menuDataRender = (menuList) => {
@@ -725,6 +733,7 @@ export const layout = ({ initialState, setInitialState }) => {
           />
           <AdminBrandSync siteInfo={initialState} />
           <SiderCollapseSync />
+          <AdminSiderWidthSync currentWidth={siderWidth} onChange={handleSiderWidthChange} />
           <AdminViewportSync />
           <CommentPendingSync enabled={sessionUser?.id == 0} />
           <FontSync />
@@ -736,6 +745,8 @@ export const layout = ({ initialState, setInitialState }) => {
     defaultCollapsed: false,
     ...initialState?.settings,
     logo: adminLogo,
+    // Overrides the generated layout's fixed 256px with a width fitted to the menu.
+    siderWidth,
   };
 };
 export const request = {
