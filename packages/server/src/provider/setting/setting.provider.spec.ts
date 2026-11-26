@@ -1,5 +1,6 @@
 import { SettingProvider } from './setting.provider';
 import { defaultAdminThemeSetting } from 'src/types/setting.dto';
+import { decode } from 'js-base64';
 
 describe('SettingProvider adminTheme', () => {
   const createProvider = () => {
@@ -114,6 +115,71 @@ describe('SettingProvider adminTheme', () => {
       darkPrimaryColor: '#abc123',
       lightBackgroundColor: '#fafbfc',
       darkBackgroundColor: '#101820',
+    });
+  });
+
+  describe('encodeLayoutSetting animations', () => {
+    it('generates and appends css and script for all enabled animation types', () => {
+      const { provider } = createProvider();
+
+      const encoded = provider.encodeLayoutSetting({
+        css: '.custom { color: red; }',
+        script: 'console.log("custom");',
+        animations: {
+          enabled: true,
+          snowflake: { enabled: true, count: 20 },
+          particles: { enabled: true, count: 30 },
+          heartClick: { enabled: true },
+          mouseDrag: { enabled: true },
+        },
+      } as any);
+
+      const css = decode(encoded.css);
+      const script = decode(encoded.script);
+
+      expect(css).toContain('.custom { color: red; }');
+      expect(css).toContain('.snow-container');
+      expect(css).toContain('.particles-canvas');
+      expect(css).toContain('.heart-particle');
+      expect(css).toContain('.mouse-drag-canvas');
+
+      expect(script).toContain('console.log("custom");');
+      expect(script).toContain('class SnowflakeSystem');
+      expect(script).toContain('class CanvasNest');
+      expect(script).toContain('heart-particle');
+      expect(script).toContain('class MouseDragSystem');
+    });
+
+    it('creates css and script fields when animations are enabled without existing css/script', () => {
+      const { provider } = createProvider();
+
+      const encoded = provider.encodeLayoutSetting({
+        animations: {
+          snowflake: { enabled: true },
+        },
+      } as any);
+
+      expect(decode(encoded.css)).toContain('.snow-container');
+      expect(decode(encoded.script)).toContain('class SnowflakeSystem');
+    });
+
+    it('omits animation code when all animations are disabled', () => {
+      const { provider } = createProvider();
+
+      const encoded = provider.encodeLayoutSetting({
+        css: '.only-custom {}',
+        script: 'window.__x = 1;',
+        animations: {
+          enabled: false,
+          snowflake: { enabled: false },
+          particles: { enabled: false },
+          heartClick: { enabled: false },
+          mouseDrag: { enabled: false },
+        },
+      } as any);
+
+      expect(decode(encoded.css)).toBe('.only-custom {}');
+      expect(decode(encoded.script)).toBe('window.__x = 1;');
     });
   });
 });
