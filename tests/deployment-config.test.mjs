@@ -23,9 +23,6 @@ const caddyfile = read('docker/caddy/Caddyfile');
 const caddyfileHttps = read('docker/caddy/Caddyfile.https');
 const allInOneCaddyfile = read('docker/all-in-one/Caddyfile');
 const hostDevCaddyfile = read('tests/host-dev/Caddyfile');
-const legacyCaddyfileTemplate = read('CaddyfileTemplate');
-const legacyCaddyfileTemplateLocal = read('CaddyfileTemplateLocal');
-const legacyCaddyJsonTemplate = read('caddyTemplate.json');
 
 const serverDockerfile = read('docker/server.Dockerfile');
 const serverDockerignore = read('docker/server.Dockerfile.dockerignore');
@@ -34,8 +31,6 @@ const websiteDockerfile = read('docker/website.Dockerfile');
 const websiteDockerignore = read('docker/website.Dockerfile.dockerignore');
 const websiteEntrypoint = read('docker/website/entrypoint.sh');
 const websiteControlAuth = require('../docker/website/control-auth.cjs');
-const rootDockerfile = read('Dockerfile');
-const rootEntrypoint = read('entrypoint.sh');
 const releaseImagesScript = read('scripts/release-images.sh');
 const releasePublishScript = read('scripts/release-publish.sh');
 const auditProductionScript = read('scripts/audit-production.mjs');
@@ -114,13 +109,9 @@ test('host, CI, packages, and Docker builds stay on Node 22', () => {
   assert.match(read('.github/workflows/ci.yml'), /node-version: 22\.22\.2/);
 
   for (const path of [
-    'Dockerfile',
     'docker/server.Dockerfile',
     'docker/website.Dockerfile',
     'docker/all-in-one.Dockerfile',
-    'packages/admin/Dockerfile',
-    'packages/server/Dockerfile',
-    'packages/website/Dockerfile',
   ]) {
     const dockerfile = read(path);
     assert.match(dockerfile, /^FROM node:22\.22\.2(?:-alpine)?(?:\s|$)/m);
@@ -904,9 +895,6 @@ const allCaddyConfigs = [
   ['docker/caddy/Caddyfile.https', caddyfileHttps],
   ['docker/all-in-one/Caddyfile', allInOneCaddyfile],
   ['tests/host-dev/Caddyfile', hostDevCaddyfile],
-  ['CaddyfileTemplate', legacyCaddyfileTemplate],
-  ['CaddyfileTemplateLocal', legacyCaddyfileTemplateLocal],
-  ['caddyTemplate.json', legacyCaddyJsonTemplate],
 ];
 
 // The only Waline name allowed to survive is the legacy fallback of the shared secret.
@@ -960,6 +948,34 @@ test('Waline images, package, patch, and scripts are removed', () => {
   ]) {
     assert.equal(exists(path), false, `${path} should be removed`);
   }
+});
+
+test('legacy single-image Dockerfiles, Caddy templates, and upstream scripts are removed', () => {
+  for (const path of [
+    'Dockerfile',
+    'entrypoint.sh',
+    'CaddyfileTemplate',
+    'CaddyfileTemplateLocal',
+    'caddyTemplate.json',
+    'packages/admin/Dockerfile',
+    'packages/server/Dockerfile',
+    'packages/website/Dockerfile',
+    'scripts/start.js',
+    'scripts/docker.sh',
+    'scripts/vanblog.sh',
+    'scripts/dev.js',
+    'scripts/check.js',
+    'scripts/kill-all.sh',
+    'scripts/releaseDoc.js',
+    'scripts/releaseNote.js',
+    'scripts/sync-aliyuncs.sh',
+    'scripts/webhook.js',
+  ]) {
+    assert.equal(exists(path), false, `${path} should be removed`);
+  }
+});
+
+test('remaining runtime configs do not reference Waline', () => {
   assert.deepEqual(Object.keys(packageJson.pnpm.patchedDependencies), ['headroom.js@0.12.0']);
   for (const [label, content] of [
     ['docker/all-in-one.Dockerfile', allInOneDockerfile],
@@ -969,8 +985,6 @@ test('Waline images, package, patch, and scripts are removed', () => {
     ['docker/server.Dockerfile.dockerignore', serverDockerignore],
     ['docker/website.Dockerfile', websiteDockerfile],
     ['docker/website.Dockerfile.dockerignore', websiteDockerignore],
-    ['Dockerfile', rootDockerfile],
-    ['entrypoint.sh', rootEntrypoint],
     ['scripts/audit-production.mjs', auditProductionScript],
     ['scripts/release-images.sh', releaseImagesScript],
     ['scripts/release-publish.sh', releasePublishScript],

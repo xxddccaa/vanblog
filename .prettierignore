@@ -6,5 +6,4 @@ packages/admin/dist/
 # TODO: Introduce prettier v3
 packages/website/
 
-caddyTemplate.json
 pnpm-lock.yaml
