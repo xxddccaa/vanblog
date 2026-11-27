@@ -87,6 +87,7 @@
     "release:all-in-one:latest": "bash scripts/release-all-in-one-publish.sh sync-latest"
   },
   "standard-version": {
+    "infile": "docs/CHANGELOG.md",
     "header": "# Changelog",
     "commitUrlFormat": "{{host}}/{{owner}}/{{repository}}/commit/{{hash}}",
     "types": [

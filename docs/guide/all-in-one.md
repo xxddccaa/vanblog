@@ -9,7 +9,7 @@ order: 3
 <!-- more -->
 
 ::: tip 需要多容器？
-想分别维护 `caddy` / `server` / `website` / `admin` / `postgres` / `redis`，请看 [快速上手](/guide/get-started.md) 与仓库根的 [`DEPLOY.md`](https://github.com/xxddccaa/vanblog/blob/master/DEPLOY.md)。本页只讲单镜像。
+想分别维护 `caddy` / `server` / `website` / `admin` / `postgres` / `redis`，请看 [快速上手](/guide/get-started.md) 与 [`docs/DEPLOY.md`](https://github.com/xxddccaa/vanblog/blob/master/docs/DEPLOY.md)。本页只讲单镜像。
 :::
 
 ## 一句话结论

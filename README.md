@@ -244,6 +244,6 @@ kevinchina/deeplearning:vanblog-all-in-one-latest
 
 ## 相关文档
 
-- [`DEPLOY.md`](./DEPLOY.md)
-- [`RELEASE.md`](./RELEASE.md)
+- [`docs/DEPLOY.md`](./docs/DEPLOY.md)
+- [`docs/RELEASE.md`](./docs/RELEASE.md)
 - [`docs/README.md`](./docs/README.md)

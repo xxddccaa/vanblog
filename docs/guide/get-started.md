@@ -127,4 +127,4 @@ http://<你的域名或 IP>/admin/init
 
 - 如果你要做服务器准备，可以继续看 [从零开始](./head.md)
 - 如果你已经完成安装，建议继续看 [初始化](./init.md)
-- 如果你准备上线生产环境，建议优先阅读根目录的 `DEPLOY.md` 与 `RELEASE.md`
+- 如果你准备上线生产环境，建议优先阅读 `docs/DEPLOY.md` 与 `docs/RELEASE.md`

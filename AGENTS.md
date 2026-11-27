@@ -22,11 +22,11 @@ All code must be written in English. No Chinese characters are allowed in code.
 - This applies to identifiers, code comments, JSDoc/TSDoc, log messages, developer-facing error messages, test names and descriptions, script output, and config comments.
 - This rule is forward-only. It applies to the new code and comments you write. Do not translate or rewrite existing Chinese code or comments, even in files you touch, unless the owner asks.
 - User-facing UI copy (the Chinese labels and messages shown in the website and admin) is product content, not code comments. Keep it consistent with the existing interface language unless the owner says otherwise.
-- Prose documents (`README.md`, `docs/`, `RELEASE.md`, `DEPLOY.md`) and commit subjects keep their current language conventions.
+- Prose documents (`README.md`, `docs/`) and commit subjects keep their current language conventions.
 
 ## Repository Overview
 
-This is the independently maintained VanBlog repository, forked from `Mereithhh/vanblog`. It is a `pnpm` monorepo on Node 22 / pnpm 10. The baseline version is tracked in the root `package.json#version` and in `RELEASE.md`. The default deployment is a multi-container Docker Compose stack routed by Caddy, with an optional non-AI all-in-one single-image entrypoint.
+This is the independently maintained VanBlog repository, forked from `Mereithhh/vanblog`. It is a `pnpm` monorepo on Node 22 / pnpm 10. The baseline version is tracked in the root `package.json#version` and in `docs/RELEASE.md`. The default deployment is a multi-container Docker Compose stack routed by Caddy, with an optional non-AI all-in-one single-image entrypoint.
 
 Long-term conventions:
 
@@ -86,8 +86,8 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `deploy/docker-compose.all-in-one.yml`: optional source-build single-container entrypoint for the non-AI main stack.
 - `deploy/docker-compose.all-in-one.latest.yml`: optional latest-tag single-container quick-start for the non-AI main stack.
 - `deploy/docker-compose.all-in-one.image.yml`: optional locked single-container deployment entrypoint for the non-AI main stack.
-- `RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
-- `DEPLOY.md`: production deployment guide for pulling published images with `deploy/.env.release.example`.
+- `docs/RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
+- `docs/DEPLOY.md`: production deployment guide for pulling published images with `deploy/.env.release.example`.
 - `deploy/.env.release.example`: server-side environment template for image deployments.
 - `tests/`: deployment and blog-flow integration tests for the compose stack.
 - `docs/`: Markdown documentation.
@@ -187,8 +187,8 @@ Add or update tests for each behavior change; there is no visible repo-wide cove
 
 Treat release and deployment work as documented workflows, not guesswork.
 
-- For image publishing or versioned rollout tasks, read `RELEASE.md` first; it is the canonical guide for image naming, release commands, and rollback expectations.
-- For production deployment tasks, read `DEPLOY.md`; the default locked release path is `deploy/docker-compose.image.yml` plus `deploy/.env.release.example`, while the optional non-AI all-in-one path uses `deploy/docker-compose.all-in-one.image.yml`.
+- For image publishing or versioned rollout tasks, read `docs/RELEASE.md` first; it is the canonical guide for image naming, release commands, and rollback expectations.
+- For production deployment tasks, read `docs/DEPLOY.md`; the default locked release path is `deploy/docker-compose.image.yml` plus `deploy/.env.release.example`, while the optional non-AI all-in-one path uses `deploy/docker-compose.all-in-one.image.yml`.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
 - Treat `kevinchina/deeplearning` as the long-term retained image repo / backup repo in docs and release examples unless the user explicitly changes it.
 - `pnpm release:images` only publishes the 4 core VanBlog images (`caddy`, `server`, `website`, `admin`).
@@ -197,7 +197,7 @@ Treat release and deployment work as documented workflows, not guesswork.
 - If a pull of `deploy/docker-compose.all-in-one.latest.yml` fails with `manifest unknown`, assume `vanblog-all-in-one-latest` was not synced yet; do not try to fix it with `pnpm release:latest`, which only applies to the split 4-image release flow.
 - When documenting deployment choices, keep `deploy/docker-compose.latest.yml`, `deploy/docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths.
 - Do not use GitHub Actions to publish Docker Hub images; release workflows are intentionally handled on this machine via local/manual commands.
-- If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the `docker-compose.yml` and `deploy/docker-compose.*.yml` files as the source of truth for the currently wired runtime stack.
+- If release artifacts and compose topology appear different, treat `docs/RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the `docker-compose.yml` and `deploy/docker-compose.*.yml` files as the source of truth for the currently wired runtime stack.
 - For release or deployment changes, prefer validating with `pnpm test:full`; if you only need a narrower config/routing check, at minimum run `pnpm test:blog-flow`, and also run `pnpm test:deploy` for config- or routing-focused changes.
 - The site-wide shared secret is `VANBLOG_SHARED_SECRET`, persisted to `vanblog-shared.secret` in the log dir when left empty. The legacy `WALINE_JWT_TOKEN` env and an existing `waline.jwt` file are still read as fallbacks so upgrades keep their secret; do not drop those fallbacks.
 - Keep production exposure assumptions intact: public entry is through Caddy on `80/443`, `postgres` and `redis` should not gain host ports, and the Caddy admin API `2019` must stay private.

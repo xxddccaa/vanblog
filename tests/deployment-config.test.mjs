@@ -45,8 +45,8 @@ const allInOneDockerfile = read('docker/all-in-one.Dockerfile');
 const allInOneEntrypoint = read('docker/all-in-one/entrypoint.sh');
 const allInOneHealthcheck = read('docker/all-in-one/healthcheck.sh');
 const readmeDoc = read('README.md');
-const deployDoc = read('DEPLOY.md');
-const releaseDoc = read('RELEASE.md');
+const deployDoc = read('docs/DEPLOY.md');
+const releaseDoc = read('docs/RELEASE.md');
 const agentsDoc = read('AGENTS.md');
 const claudeDoc = read('CLAUDE.md');
 const docsHomeDoc = read('docs/README.md');
@@ -711,8 +711,8 @@ test('manual compose fixture stays on the split runtime topology', () => {
 test('current top-level docs no longer mention removed admin AI workspace', () => {
   for (const [label, content] of [
     ['README.md', readmeDoc],
-    ['DEPLOY.md', deployDoc],
-    ['RELEASE.md', releaseDoc],
+    ['docs/DEPLOY.md', deployDoc],
+    ['docs/RELEASE.md', releaseDoc],
     ['AGENTS.md', agentsDoc],
     ['CLAUDE.md', claudeDoc],
     ['docs/README.md', docsHomeDoc],
@@ -984,6 +984,9 @@ test('legacy single-image Dockerfiles, Caddy templates, and upstream scripts are
     'docker-compose.all-in-one.image.yml',
     'docker-compose.all-in-one.latest.yml',
     '.env.release.example',
+    'DEPLOY.md',
+    'RELEASE.md',
+    'CHANGELOG.md',
   ]) {
     assert.equal(exists(path), false, `${path} should be removed`);
   }

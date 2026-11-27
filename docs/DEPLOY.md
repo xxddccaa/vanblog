@@ -2,7 +2,7 @@
 
 这份文档面向需要把已经发布好的 VanBlog 多镜像部署到服务器的人类维护者和 AI 代理。
 
-如果你要做的是“构建并发布镜像”，请看 `RELEASE.md`；如果你要做的是“把已经发布好的镜像部署到服务器”，请看这份文档。
+如果你要做的是“构建并发布镜像”，请看 `docs/RELEASE.md`；如果你要做的是“把已经发布好的镜像部署到服务器”，请看这份文档。
 
 当前代码基线已经推进到 `v1.9.1`，生产部署文档也统一以 `kevinchina/deeplearning` 这套长期保留镜像仓库为准。
 
@@ -302,7 +302,7 @@ docker run -d \
 
 ## 7. 发版前检查与故障处理
 
-正式的版本、tag 与镜像发布规范仍以 `RELEASE.md` 为准。本节记录本机实际发布 `v1.8.3` 时遇到的问题和已经验证过的处理方法，供后续发版直接复用。
+正式的版本、tag 与镜像发布规范仍以 `docs/RELEASE.md` 为准。本节记录本机实际发布 `v1.8.3` 时遇到的问题和已经验证过的处理方法，供后续发版直接复用。
 
 ### 7.1 推荐的完整发版顺序
 
@@ -320,7 +320,7 @@ git log -5 --oneline
 推荐顺序：
 
 1. 整理本次发布范围，排除本机技能、内部台账、临时日志和无关生成物。
-2. 更新 `package.json`、`deploy/.env.release.example`、`CHANGELOG.md`、`README.md`、`RELEASE.md`、`DEPLOY.md`、`docs/releases/README.md` 和本次 `docs/releases/vX.Y.Z.md`。
+2. 更新 `package.json`、`deploy/.env.release.example`、`docs/CHANGELOG.md`、`README.md`、`docs/RELEASE.md`、`docs/DEPLOY.md`、`docs/releases/README.md` 和本次 `docs/releases/vX.Y.Z.md`。
 3. 执行最终门禁：
 
    ```bash

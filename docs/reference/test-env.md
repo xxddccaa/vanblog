@@ -39,7 +39,7 @@ Caddy 对外暴露 `8020`，数据库 / redis 由 all-in-one 容器内部托管�
 
 这样改代码后**只需宿主机重编 + 重启容器**（约 1 分钟），无需重建 all-in-one 镜像（镜像内重编要 8-12 分钟）。
 
-> 与生产发版的区别：生产发版时，4 个核心拆分镜像的 `website`/`admin` 也是"宿主机预编译产物直接进镜像"（见 `docker/website.Dockerfile`、`docker/admin.Dockerfile`）；但 **all-in-one 镜像是镜像内重编**，不享用主机产物。测试环境这里反过来——复用 all-in-one 镜像，靠挂载把主机产物覆盖进去，从而跳过重编。详见 `RELEASE.md`。
+> 与生产发版的区别：生产发版时，4 个核心拆分镜像的 `website`/`admin` 也是"宿主机预编译产物直接进镜像"（见 `docker/website.Dockerfile`、`docker/admin.Dockerfile`）；但 **all-in-one 镜像是镜像内重编**，不享用主机产物。测试环境这里反过来——复用 all-in-one 镜像，靠挂载把主机产物覆盖进去，从而跳过重编。详见 `docs/RELEASE.md`。
 
 ## 登录账号
 
