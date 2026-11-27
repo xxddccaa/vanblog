@@ -108,4 +108,4 @@ index: true
 32. 再看 [`v1.6.3`](./v1.6.3.md)，确认前台顶端越界滚动已经被限制，自定义背景图不会在顶部上拉时独占视口
 33. 再看 [`v1.6.4`](./v1.6.4.md)，确认后台编辑器文字颜色工具、emoji 弹层修复与 `/swagger` 入口策略
 34. 再看 [`v1.6.5`](./v1.6.5.md)，确认前台背景图只挂在 body 上，越界回弹空白只显示纯色 canvas
-35. 最后结合根目录 [`RELEASE.md`](../../RELEASE.md)、[`DEPLOY.md`](../../DEPLOY.md) 执行发布或上线
+35. 最后结合 [`docs/RELEASE.md`](../RELEASE.md)、[`docs/DEPLOY.md`](../DEPLOY.md) 执行发布或上线

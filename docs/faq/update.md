@@ -17,8 +17,8 @@ order: 3
 把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后执行：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml pull
-docker compose -f deploy/docker-compose.image.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.image.yml pull
+docker compose --project-directory . -f deploy/docker-compose.image.yml up -d
 ```
 
 ### 源码部署

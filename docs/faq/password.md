@@ -22,7 +22,7 @@ docker compose logs -f server
 镜像部署：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml logs -f server
+docker compose --project-directory . -f deploy/docker-compose.image.yml logs -f server
 ```
 
 ### 2. 查看挂载出来的日志目录
@@ -46,5 +46,5 @@ docker compose exec server cat /var/log/restore.key
 镜像部署：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml exec server cat /var/log/restore.key
+docker compose --project-directory . -f deploy/docker-compose.image.yml exec server cat /var/log/restore.key
 ```

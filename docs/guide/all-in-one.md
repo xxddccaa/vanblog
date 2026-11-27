@@ -29,7 +29,7 @@ order: 3
 mkdir -p /srv/vanblog && cd /srv/vanblog
 
 # 2) 取来 all-in-one compose（务必用仓库里的版本，不要用别处的旧副本）
-curl -fsSL -o deploy/docker-compose.all-in-one.latest.yml \
+curl -fsSL -o docker-compose.all-in-one.latest.yml \
   https://raw.githubusercontent.com/xxddccaa/vanblog/master/deploy/docker-compose.all-in-one.latest.yml
 
 # 3) 写 .env：至少钉死对外端口；密码留空即可
@@ -38,14 +38,14 @@ VANBLOG_HTTP_PORT=8019
 ENV
 
 # 4) 拉取并启动
-docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
-docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
+docker compose -f docker-compose.all-in-one.latest.yml pull
+docker compose -f docker-compose.all-in-one.latest.yml up -d
 ```
 
 首次启动约 40–60 秒内变为 `healthy`：
 
 ```bash
-docker compose -f deploy/docker-compose.all-in-one.latest.yml ps        # 等到 healthy
+docker compose -f docker-compose.all-in-one.latest.yml ps        # 等到 healthy
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8019/  # 期望 200
 ```
 
@@ -70,7 +70,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8019/  # 期望 200
 
 ```text
 /srv/vanblog/
-├─ deploy/docker-compose.all-in-one.latest.yml
+├─ docker-compose.all-in-one.latest.yml
 ├─ .env
 ├─ data/        # postgres、redis、静态图床
 ├─ log/         # 运行日志 + vanblog-secrets/（自动生成的密码）
@@ -94,11 +94,11 @@ docker exec "$(docker compose ps -q vanblog)" sh -c 'su-exec postgres pg_dumpall
 
 ```bash
 mkdir -p /srv/vanblog-b && cd /srv/vanblog-b
-curl -fsSL -o deploy/docker-compose.all-in-one.latest.yml \
+curl -fsSL -o docker-compose.all-in-one.latest.yml \
   https://raw.githubusercontent.com/xxddccaa/vanblog/master/deploy/docker-compose.all-in-one.latest.yml
 printf 'VANBLOG_HTTP_PORT=13080\n' > .env
-docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
-docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
+docker compose -f docker-compose.all-in-one.latest.yml pull
+docker compose -f docker-compose.all-in-one.latest.yml up -d
 ```
 
 ## 升级到新版本
@@ -109,23 +109,23 @@ docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
 cd /srv/vanblog
 
 # 1) 升级前备份
-cp deploy/docker-compose.all-in-one.latest.yml deploy/docker-compose.all-in-one.latest.yml.bak
+cp docker-compose.all-in-one.latest.yml docker-compose.all-in-one.latest.yml.bak
 docker exec "$(docker compose ps -q vanblog)" sh -c 'su-exec postgres pg_dumpall' > pg_dumpall.$(date +%Y%m%d).sql
 
 # 2) 从旧版本升级时，务必把 compose 换成仓库最新版（旧副本可能仍硬编码弱口令，见上）
-curl -fsSL -o deploy/docker-compose.all-in-one.latest.yml \
+curl -fsSL -o docker-compose.all-in-one.latest.yml \
   https://raw.githubusercontent.com/xxddccaa/vanblog/master/deploy/docker-compose.all-in-one.latest.yml
 # 如需保持原端口，确认 .env 里的 VANBLOG_HTTP_PORT 仍是你要的值
 
 # 3) 拉新镜像并重启
-docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
-docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
+docker compose -f docker-compose.all-in-one.latest.yml pull
+docker compose -f docker-compose.all-in-one.latest.yml up -d
 ```
 
 - `./data` 会被复用，博客内容不受影响。
 - 从旧版首次升到 v1.8.0 时，PostgreSQL 密码会被轮换为随机强口令，属预期行为，可自愈。
 - 从带 Waline 的旧版本升级时，容器里不再启动 Waline，评论改由 server 内置提供。旧的 Waline 评论不会迁移，PostgreSQL 里的 `waline` 库原样保留；`log/waline.jwt` 会被沿用为站点共享密钥，`.env` 不用改。详见 [评论](../features/comment.md)。
-- 回滚：把 `deploy/docker-compose.all-in-one.latest.yml.bak` 覆盖回去，或把 `image:` 指到某个具体版本标签（如 `kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id>`），再 `up -d`。
+- 回滚：把 `docker-compose.all-in-one.latest.yml.bak` 覆盖回去，或把 `image:` 指到某个具体版本标签（如 `kevinchina/deeplearning:vanblog-all-in-one-vX.Y.Z-<image-id>`），再 `up -d`。
 
 ## 锁定具体版本
 

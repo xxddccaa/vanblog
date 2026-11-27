@@ -1260,3 +1260,71 @@ test('ensure-shared-secret never turns the legacy shared secret into the backup 
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
+
+test('deploy/ compose files resolve project root paths and HTTPS overlays consistently', () => {
+  const repoRoot = process.cwd();
+  const expectedProjectName = nodePath.basename(repoRoot).toLowerCase();
+  const composeCheck = spawnSync('docker', ['compose', 'version'], { encoding: 'utf8' });
+  if (composeCheck.status !== 0) {
+    return;
+  }
+
+  const parseComposeConfig = (args) => {
+    const result = spawnSync('docker', ['compose', ...args, 'config', '--format', 'json'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        POSTGRES_PASSWORD: 'test-postgres-password',
+        REDIS_PASSWORD: 'test-redis-password',
+      },
+    });
+    assert.equal(
+      result.status,
+      0,
+      `docker compose ${args.join(' ')} failed:\n${result.stderr || result.stdout}`,
+    );
+    return JSON.parse(result.stdout);
+  };
+
+  const imageConfig = parseComposeConfig([
+    '--project-directory',
+    '.',
+    '-f',
+    'deploy/docker-compose.image.yml',
+  ]);
+  assert.equal(imageConfig.name, expectedProjectName);
+  assert.ok(
+    imageConfig.services.postgres.volumes.some(
+      (volume) => volume.source === nodePath.join(repoRoot, 'data', 'postgres'),
+    ),
+    'deploy/docker-compose.image.yml should mount ./data/postgres at repo root',
+  );
+
+  const allInOneConfig = parseComposeConfig([
+    '--project-directory',
+    '.',
+    '-f',
+    'deploy/docker-compose.all-in-one.yml',
+  ]);
+  assert.equal(allInOneConfig.services.vanblog.build.context, repoRoot);
+  assert.equal(allInOneConfig.services.vanblog.build.dockerfile, 'docker/all-in-one.Dockerfile');
+  assert.ok(
+    allInOneConfig.services.vanblog.volumes.some(
+      (volume) => volume.source === nodePath.join(repoRoot, 'data', 'postgres'),
+    ),
+    'deploy/docker-compose.all-in-one.yml should mount ./data/postgres at repo root',
+  );
+
+  const expectedHttpsCaddyfile = nodePath.join(repoRoot, 'docker', 'caddy', 'Caddyfile.https');
+  for (const args of [
+    ['--project-directory', '.', '-f', 'deploy/docker-compose.image.yml', '-f', 'deploy/docker-compose.https.yml'],
+    ['-f', 'docker-compose.yml', '-f', 'deploy/docker-compose.https.yml'],
+  ]) {
+    const config = parseComposeConfig(args);
+    assert.ok(
+      config.services.caddy.volumes.some((volume) => volume.source === expectedHttpsCaddyfile),
+      `${args.join(' ')} should mount ${expectedHttpsCaddyfile}`,
+    );
+  }
+});

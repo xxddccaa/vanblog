@@ -66,7 +66,7 @@ docker compose up -d --build
 镜像部署：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.image.yml up -d
 ```
 
 ## 额外提醒

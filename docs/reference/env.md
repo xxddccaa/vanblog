@@ -28,8 +28,8 @@ VanBlog 当前主要通过 compose 文件中的环境变量控制各个服务。
 ## 修改后如何生效
 
 - 修改 compose 文件后，重新执行 `docker compose up -d`
-- 如果是 latest 镜像部署，则使用 `docker compose -f deploy/docker-compose.latest.yml up -d`
-- 如果是锁版镜像部署，则使用 `docker compose -f deploy/docker-compose.image.yml up -d`
+- 如果是 latest 镜像部署，则使用 `docker compose --project-directory . -f deploy/docker-compose.latest.yml up -d`
+- 如果是锁版镜像部署，则使用 `docker compose --project-directory . -f deploy/docker-compose.image.yml up -d`
 - 修改 `.env` 后需要 recreate 相关容器；单纯 `docker compose restart` 不会重新读取环境变量
 - 某些前台资源相关配置（例如 `VAN_BLOG_ALLOW_DOMAINS`）通常至少需要重启 `website` 服务
 

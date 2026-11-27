@@ -12,7 +12,7 @@
 
 | 目标 | 推荐文件 | 适用情况 |
 | --- | --- | --- |
-| 本机快速验证未发布代码 | 独立测试目录的 `deploy/docker-compose.all-in-one.latest.yml`（额外挂载本机编译产物） | **仅本机测试**；重编后约 1 分钟生效，不重建镜像 |
+| 本机快速验证未发布代码 | 独立测试目录的 `docker-compose.all-in-one.latest.yml`（额外挂载本机编译产物） | **仅本机测试**；重编后约 1 分钟生效，不重建镜像 |
 | 本地开发 / 改代码 | `docker-compose.yml` | 从源码构建，适合调试与联调 |
 | latest 快速部署 | `deploy/docker-compose.latest.yml` + `.env` | 拉取 `latest` 主栈并显式配置数据库随机密码 |
 | 锁定某个正式版本 | `deploy/docker-compose.image.yml` + `deploy/.env.release.example` | 生产推荐；精确回滚、审计、复现线上版本 |
@@ -71,7 +71,7 @@ cp -a packages/website/.next/static \
 pnpm build:admin
 
 cd /root/vanblog/test-env-vanblog
-docker compose -f deploy/docker-compose.all-in-one.latest.yml restart vanblog
+docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
 ```
 
 `pnpm build:server` 会删除并重建 `dist`，原 bind mount 可能仍指向旧 inode；`restart` 会重新绑定它。website 也需要重启 Node 进程才会加载新产物。admin 由 nginx 直接读取只读挂载，重编后通常立即生效，但与前两者一起重启一次最便于统一验收。
@@ -91,7 +91,7 @@ docker logs test-env-vanblog-vanblog-1 --tail 50
 
 首次启动或 PostgreSQL 初始化约需 40–60 秒。前台持续 `502`、日志出现 `MODULE_NOT_FOUND` 或容器无法变为 `healthy` 时，停止验证并排查，不要碰 `vanblog`（8019）或 `vanblog-cc`（13080）生产目录。
 
-> 若仅修改测试目录 `.env`，`restart` 不会重新读取环境变量，应执行 `docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d --force-recreate vanblog`。这会重建**测试容器**但保留测试目录的数据卷。
+> 若仅修改测试目录 `.env`，`restart` 不会重新读取环境变量，应执行 `docker compose -f docker-compose.all-in-one.latest.yml up -d --force-recreate vanblog`。这会重建**测试容器**但保留测试目录的数据卷。
 
 更完整的本机测试说明见 `docs/reference/test-env.md`。
 
@@ -164,8 +164,8 @@ cp deploy/.env.release.example .env
 ```bash
 printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
   "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
-docker compose -f deploy/docker-compose.latest.yml pull
-docker compose -f deploy/docker-compose.latest.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.latest.yml pull
+docker compose --project-directory . -f deploy/docker-compose.latest.yml up -d
 ```
 
 这个模板的特点：
@@ -177,8 +177,8 @@ docker compose -f deploy/docker-compose.latest.yml up -d
 ### 5.2 锁版部署：版本化镜像
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml pull
-docker compose -f deploy/docker-compose.image.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.image.yml pull
+docker compose --project-directory . -f deploy/docker-compose.image.yml up -d
 ```
 
 说明：
@@ -189,8 +189,8 @@ docker compose -f deploy/docker-compose.image.yml up -d
 查看状态：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml ps
-docker compose -f deploy/docker-compose.image.yml logs -f caddy server website admin postgres redis
+docker compose --project-directory . -f deploy/docker-compose.image.yml ps
+docker compose --project-directory . -f deploy/docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 首次启动后，访问：
@@ -206,8 +206,8 @@ http://<你的域名或 IP>/admin/init
 如果你不打算在外层再套自己的 Caddy / Nginx，而是希望直接使用 VanBlog 内置 Caddy 申请和管理证书，可改用：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml -f deploy/docker-compose.https.yml pull
-docker compose -f deploy/docker-compose.image.yml -f deploy/docker-compose.https.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.image.yml -f deploy/docker-compose.https.yml pull
+docker compose --project-directory . -f deploy/docker-compose.image.yml -f deploy/docker-compose.https.yml up -d
 ```
 
 同时请确认：
@@ -221,15 +221,15 @@ docker compose -f deploy/docker-compose.image.yml -f deploy/docker-compose.https
 如果你希望线上只维护一个容器，可以使用：
 
 ```bash
-docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
-docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 或锁版：
 
 ```bash
-docker compose -f deploy/docker-compose.all-in-one.image.yml pull
-docker compose -f deploy/docker-compose.all-in-one.image.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.image.yml pull
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.image.yml up -d
 ```
 
 这个路径仍然会把 PostgreSQL、Redis、Caddy、server、website、admin 都收进一个容器，但数据目录仍走宿主机挂载。
@@ -557,4 +557,4 @@ VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>
 
 1. 生产推荐 `deploy/docker-compose.image.yml` + `deploy/.env.release.example`
 2. 快速试跑用 `deploy/docker-compose.latest.yml`
-3. 想少维护一个容器时，用 `docker-compose.all-in-one*.yml`
+3. 想少维护一个容器时，用 `deploy/docker-compose.all-in-one*.yml`

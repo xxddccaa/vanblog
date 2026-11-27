@@ -215,5 +215,5 @@ Recommended deploy env:
   VANBLOG_RELEASE_SUFFIX=${RELEASE_SUFFIX}
 
 Example deploy command:
-  VANBLOG_DOCKER_REPO=${IMAGE_REPO} VANBLOG_RELEASE_SUFFIX=${RELEASE_SUFFIX} docker compose -f deploy/docker-compose.all-in-one.image.yml up -d
+  VANBLOG_DOCKER_REPO=${IMAGE_REPO} VANBLOG_RELEASE_SUFFIX=${RELEASE_SUFFIX} docker compose --project-directory . -f deploy/docker-compose.all-in-one.image.yml up -d
 SUMMARY

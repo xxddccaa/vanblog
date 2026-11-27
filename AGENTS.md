@@ -152,7 +152,7 @@ Use `pnpm` at the repo root.
 - `pnpm release:all-in-one:publish`: publish the optional non-AI all-in-one immutable tag, version tag, and `latest`, then verify the remote tags.
 - `pnpm release:all-in-one:latest`: only sync and verify `kevinchina/deeplearning:vanblog-all-in-one-latest` from an existing version tag.
 - `docker compose up -d --build`: start the split runtime locally.
-- `docker compose -f deploy/docker-compose.image.yml up -d`: start from already-published images.
+- `docker compose --project-directory . -f deploy/docker-compose.image.yml up -d`: start from already-published images.
 - `docker compose logs -f caddy server website admin postgres redis`: inspect logs for the current top-level compose stack.
 
 ## Coding Style & Naming Conventions

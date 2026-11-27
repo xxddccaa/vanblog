@@ -43,15 +43,15 @@ docker compose up -d --build
 ## latest 镜像部署升级
 
 ```bash
-docker compose -f deploy/docker-compose.latest.yml pull
-docker compose -f deploy/docker-compose.latest.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.latest.yml pull
+docker compose --project-directory . -f deploy/docker-compose.latest.yml up -d
 ```
 
 ## latest 单镜像升级
 
 ```bash
-docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
-docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 ## 锁版镜像部署升级
@@ -66,8 +66,8 @@ VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>
 2. 拉取并启动新版本：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml pull
-docker compose -f deploy/docker-compose.image.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.image.yml pull
+docker compose --project-directory . -f deploy/docker-compose.image.yml up -d
 ```
 
 ## 如何回滚
@@ -83,8 +83,8 @@ docker compose -f deploy/docker-compose.image.yml up -d
 把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后重新执行：
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml pull
-docker compose -f deploy/docker-compose.image.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.image.yml pull
+docker compose --project-directory . -f deploy/docker-compose.image.yml up -d
 ```
 
 ### 源码部署回滚

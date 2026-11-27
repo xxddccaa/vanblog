@@ -35,15 +35,15 @@ order: 1
 ```bash
 printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
   "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
-docker compose -f deploy/docker-compose.latest.yml pull
-docker compose -f deploy/docker-compose.latest.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.latest.yml pull
+docker compose --project-directory . -f deploy/docker-compose.latest.yml up -d
 ```
 
 ### 2. 一份文件使用单镜像
 
 ```bash
-docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
-docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose --project-directory . -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 > 生产用法（独立目录 + `.env` 钉端口 + 密码自动生成 + 多实例隔离 + 升级步骤）详见 [单镜像 all-in-one 部署](/guide/all-in-one.md)。
@@ -94,15 +94,15 @@ cp deploy/.env.release.example .env
 ### 2. 启动服务
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml pull
-docker compose -f deploy/docker-compose.image.yml up -d
+docker compose --project-directory . -f deploy/docker-compose.image.yml pull
+docker compose --project-directory . -f deploy/docker-compose.image.yml up -d
 ```
 
 ### 3. 查看状态与日志
 
 ```bash
-docker compose -f deploy/docker-compose.image.yml ps
-docker compose -f deploy/docker-compose.image.yml logs -f caddy server website admin postgres redis
+docker compose --project-directory . -f deploy/docker-compose.image.yml ps
+docker compose --project-directory . -f deploy/docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 ### 4. 完成初始化
