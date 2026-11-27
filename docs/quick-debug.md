@@ -1,6 +1,6 @@
 # 快速调试工作流（all-in-one 产物挂载）
 
-本文档是 `docs/reference/test-env.md` 的简化操作版，说明如何用当前机器的独立测试环境快速验证还未发布的 server、website 和 admin 源码改动。
+本文档是 `docs/test-env.md` 的简化操作版，说明如何用当前机器的独立测试环境快速验证还未发布的 server、website 和 admin 源码改动。
 
 ## 当前环境
 
@@ -141,4 +141,4 @@ docker compose -f docker-compose.all-in-one.latest.yml \
 | split Docker 源码构建 | `18080` 或自定义端口 | Caddy、依赖、Dockerfile、拆分服务链路验收 |
 | 完整 all-in-one 重建 | 自定义端口 | 发版前验证 all-in-one Dockerfile 和依赖图 |
 
-完整说明、debug-token 配置和首次搭建注意事项见 `docs/reference/test-env.md`。
+完整说明、debug-token 配置和首次搭建注意事项见 `docs/test-env.md`。

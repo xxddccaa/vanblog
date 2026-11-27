@@ -93,7 +93,7 @@ docker logs test-env-vanblog-vanblog-1 --tail 50
 
 > 若仅修改测试目录 `.env`，`restart` 不会重新读取环境变量，应执行 `docker compose -f docker-compose.all-in-one.latest.yml up -d --force-recreate vanblog`。这会重建**测试容器**但保留测试目录的数据卷。
 
-更完整的本机测试说明见 `docs/reference/test-env.md`。
+更完整的本机测试说明见 `docs/test-env.md`。
 
 ## 3. 服务器准备
 
@@ -320,7 +320,7 @@ git log -5 --oneline
 推荐顺序：
 
 1. 整理本次发布范围，排除本机技能、内部台账、临时日志和无关生成物。
-2. 更新 `package.json`、`deploy/.env.release.example`、`docs/CHANGELOG.md`、`README.md`、`docs/RELEASE.md`、`docs/DEPLOY.md`、`docs/releases/README.md` 和本次 `docs/releases/vX.Y.Z.md`。
+2. 更新 `package.json`、`deploy/.env.release.example`、`docs/CHANGELOG.md`、`README.md`、`docs/RELEASE.md`、`docs/DEPLOY.md`。
 3. 执行最终门禁：
 
    ```bash

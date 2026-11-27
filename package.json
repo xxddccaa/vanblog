@@ -68,8 +68,6 @@
     "test:blog-flow": "pnpm build:website && pnpm build:admin && node --test tests/deployment-config.test.mjs && node --test tests/blog-compose.e2e.test.mjs",
     "test:blog-flow:all-in-one": "node --test tests/deployment-config.test.mjs && node --test --test-force-exit tests/all-in-one-compose.e2e.test.mjs",
     "test:full": "pnpm --filter @vanblog/server test && pnpm --filter @vanblog/theme-default exec vitest run && pnpm --filter @vanblog/admin tsc && pnpm build:website && pnpm build:admin && pnpm test:deploy && node --test tests/blog-compose.e2e.test.mjs",
-    "docs:build": "pnpm run -r docs:build",
-    "docs:dev": "pnpm run -r docs:dev",
     "release": "standard-version",
     "release-major": "standard-version --release-as major",
     "release-minor": "standard-version --release-as minor",

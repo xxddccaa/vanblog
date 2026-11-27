@@ -49,17 +49,9 @@ const deployDoc = read('docs/DEPLOY.md');
 const releaseDoc = read('docs/RELEASE.md');
 const agentsDoc = read('AGENTS.md');
 const claudeDoc = read('CLAUDE.md');
-const docsHomeDoc = read('docs/README.md');
-const introDoc = read('docs/intro.md');
-const guideGetStartedDoc = read('docs/guide/get-started.md');
-const guideUpdateDoc = read('docs/guide/update.md');
-const guideDockerSnippetDoc = read('docs/guide/docker.snippet.md');
-const faqReadmeDoc = read('docs/faq/README.md');
-const faqDeployDoc = read('docs/faq/deploy.md');
-const faqUpdateDoc = read('docs/faq/update.md');
-const referenceEnvDoc = read('docs/reference/env.md');
-const referenceDirDoc = read('docs/reference/dir.md');
-const referenceLogDoc = read('docs/reference/log.md');
+const hostDebugDoc = read('docs/host-debug.md');
+const quickDebugDoc = read('docs/quick-debug.md');
+const testEnvDoc = read('docs/test-env.md');
 const releaseEnv = read('deploy/.env.release.example');
 const packageJson = JSON.parse(read('package.json'));
 const cloudflareDoc = read('docs/cloudflare-cache.md');
@@ -715,17 +707,10 @@ test('current top-level docs no longer mention removed admin AI workspace', () =
     ['docs/RELEASE.md', releaseDoc],
     ['AGENTS.md', agentsDoc],
     ['CLAUDE.md', claudeDoc],
-    ['docs/README.md', docsHomeDoc],
-    ['docs/intro.md', introDoc],
-    ['docs/guide/get-started.md', guideGetStartedDoc],
-    ['docs/guide/update.md', guideUpdateDoc],
-    ['docs/guide/docker.snippet.md', guideDockerSnippetDoc],
-    ['docs/faq/README.md', faqReadmeDoc],
-    ['docs/faq/deploy.md', faqDeployDoc],
-    ['docs/faq/update.md', faqUpdateDoc],
-    ['docs/reference/env.md', referenceEnvDoc],
-    ['docs/reference/dir.md', referenceDirDoc],
-    ['docs/reference/log.md', referenceLogDoc],
+    ['docs/cloudflare-cache.md', cloudflareDoc],
+    ['docs/host-debug.md', hostDebugDoc],
+    ['docs/quick-debug.md', quickDebugDoc],
+    ['docs/test-env.md', testEnvDoc],
     ['deploy/.env.release.example', releaseEnv],
   ]) {
     assertNoAiContent(content, label);
@@ -741,7 +726,6 @@ test('docs still describe supported deployment paths', () => {
   assert.match(deployDoc, /docker-compose\.image\.yml/);
   assert.match(deployDoc, /docker-compose\.all-in-one\.latest\.yml/);
   assert.match(deployDoc, /docker run -d/);
-  assert.match(guideGetStartedDoc, /docker run -d/);
 
   assert.match(releaseDoc, /docker-compose\.latest\.yml/);
   assert.match(releaseDoc, /docker-compose\.image\.yml/);
@@ -787,10 +771,8 @@ test('deployment docs still point to admin and init entrypoints', () => {
   assert.match(readmeDoc, /\/admin/);
   assert.match(readmeDoc, /\/admin\/init/);
   assert.match(deployDoc, /\/admin\/init/);
-  assert.match(guideGetStartedDoc, /\/admin\/init/);
   assert.doesNotMatch(readmeDoc, /\/admin\/ai/);
   assert.doesNotMatch(deployDoc, /\/admin\/ai/);
-  assert.doesNotMatch(guideGetStartedDoc, /\/admin\/ai/);
 });
 
 test('all compose files cap docker logs with json-file rotation', () => {

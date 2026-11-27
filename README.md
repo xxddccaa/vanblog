@@ -246,4 +246,5 @@ kevinchina/deeplearning:vanblog-all-in-one-latest
 
 - [`docs/DEPLOY.md`](./docs/DEPLOY.md)
 - [`docs/RELEASE.md`](./docs/RELEASE.md)
-- [`docs/README.md`](./docs/README.md)
+- [`docs/CHANGELOG.md`](./docs/CHANGELOG.md)
+- [`docs/cloudflare-cache.md`](./docs/cloudflare-cache.md)

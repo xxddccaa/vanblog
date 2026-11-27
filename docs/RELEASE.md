@@ -36,7 +36,7 @@
 1. 在 `master` 上整理代码并提交。
 2. 运行完整测试，优先通过 `pnpm test:full`。
 3. 确认根目录 `package.json` 的版本号正确，例如 `1.6.2`，并统一成发布标签 `vX.Y.Z`。
-4. 补齐本次版本对应的仓库文档：`docs/releases/vX.Y.Z.md`、GitHub Wiki、GitHub Release 草稿文案。
+4. 补齐本次版本对应的变更记录：`docs/CHANGELOG.md`、GitHub Release 文案。
 5. 给当前代码打版本 tag，并推送到 GitHub。
 6. 先执行 `pnpm release:publish` 发布 4 个核心镜像。
 7. **必做**：紧接着执行 `pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>`，发布 `vanblog-all-in-one-*` 并把 `kevinchina/deeplearning:vanblog-all-in-one-latest` 同步到同一版本。all-in-one 每次发版都要发，不再是可选步骤。
