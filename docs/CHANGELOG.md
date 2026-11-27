@@ -1,4 +1,19 @@
 # Changelog
+
+### [2.1.2](https://github.com/xxddccaa/vanblog/compare/v2.1.1...v2.1.2) (2026-11-27)
+
+### 功能与体验
+
+* **admin:** 后台侧边栏宽度按菜单内容自适应，文章编辑页收窄正文两侧留白，提升可用编辑区宽度
+
+### 结构整理与重构
+
+* **server:** 从 `BackupController` 抽离 `BackupProvider` 与负载规范化模块，消除全仓唯一 `controller → storage` 越层依赖
+* **server:** 从 `SettingProvider`、`StructuredDataService`、`ArticleProvider` 拆出动画代码生成器、schema DDL、行映射、SQL 构造、评论存储仓储与文章 ID 维护辅助模块，并补齐单元测试
+* **server / website / admin:** 合并 `checkTrue` 到 `isTrue`，将单域工具文件内聚回所属业务模块，拆分后台 Social 图标管理子组件并清理零引用死代码与旧路由模块
+* **repo:** 清理根目录孤儿文件、破损 gitlink、废弃旧版单镜像配置、旧上游脚本及旧版 VuePress 文档站残余；将变体 Compose 编排与发布环境模板统一收拢至 `deploy/`，核心说明文档收拢至 `docs/`，补齐 `docker compose config` 路径解析断言
+* **docker:** 收紧 `all-in-one` 构建忽略规则，排除本地凭据、日志与非构建目录
+
 ### [1.9.1](https://github.com/xxddccaa/vanblog/compare/v1.9.0...v1.9.1) (2026-11-17)
 
 ### 安全修复
