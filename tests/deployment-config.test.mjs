@@ -103,7 +103,6 @@ const runReleaseScript = (script, args, env) => {
 
 test('host, CI, packages, and Docker builds stay on Node 22', () => {
   assert.equal(read('.nvmrc').trim(), '22.22.2');
-  assert.equal(read('.node-version').trim(), '22.22.2');
   assert.equal(packageJson.engines.node, '>=22 <23');
   assert.equal(JSON.parse(read('packages/admin/package.json')).engines.node, '>=22 <23');
   assert.match(read('.github/workflows/ci.yml'), /node-version: 22\.22\.2/);
@@ -300,7 +299,7 @@ test('all-in-one image keeps dependency installation ahead of source copies', ()
 
   const dependencySection = allInOneDockerfile.slice(0, installIndex);
   for (const manifest of [
-    'package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json',
+    'package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json',
     'patches ./patches',
     'packages/server/package.json ./packages/server/',
     'packages/website/package.json ./packages/website/',
@@ -970,6 +969,14 @@ test('legacy single-image Dockerfiles, Caddy templates, and upstream scripts are
     'scripts/releaseNote.js',
     'scripts/sync-aliyuncs.sh',
     'scripts/webhook.js',
+    '.dockerignore',
+    'packages/admin/.dockerignore',
+    'packages/server/.dockerignore',
+    'packages/website/.dockerignore',
+    '.eslintignore',
+    '.node-version',
+    '.versionrc.js',
+    'tsconfig.base.json',
   ]) {
     assert.equal(exists(path), false, `${path} should be removed`);
   }

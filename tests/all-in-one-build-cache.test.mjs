@@ -78,7 +78,7 @@ test(
         'package.json',
         'pnpm-lock.yaml',
         'pnpm-workspace.yaml',
-        'tsconfig.base.json',
+        'tsconfig.json',
         'patches',
         'packages/server/package.json',
         'packages/website/package.json',

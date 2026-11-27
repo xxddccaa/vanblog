@@ -20,7 +20,7 @@ RUN if [ -n "$ALPINE_MIRROR_HOST" ]; then sed -i "s/dl-cdn.alpinelinux.org/${ALP
     && pnpm config set fetch-retries 20 -g \
     && pnpm config set fetch-timeout 600000 -g
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY patches ./patches
 COPY packages/server/package.json ./packages/server/
 COPY packages/website/package.json ./packages/website/
