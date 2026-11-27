@@ -1,5 +1,13 @@
 .git
 .github
+.agent-forge
+.claude
+.codex
+.codex-run
+.env
+.env.*
+docs
+secrets
 node_modules
 packages/*/node_modules
 packages/*/dist

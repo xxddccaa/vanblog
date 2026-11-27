@@ -76,7 +76,7 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 
 - `packages/server`: NestJS backend; core code is in `src/`, with unit tests in `src/**/*.spec.ts` and e2e tests in `test/`.
 - `packages/admin`: Umi + Ant Design Pro admin app; pages live in `src/pages`, shared UI in `src/components`.
-- `packages/website`: Next.js frontend theme; routes live in `pages/`, shared UI in `components/`, helpers in `utils/`, and tests in `__tests__/`.
+- `packages/website`: Next.js App Router frontend theme; routes live in `app/`, page implementations in `page-components/` and `page-modules/`, shared UI in `components/`, helpers in `utils/`, and tests in `__tests__/`.
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
 - `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires the 6 core blog services (`caddy`, `server`, `website`, `admin`, `postgres`, `redis`). Mermaid and WaveDrom diagrams render in the browser; there is no diagram rendering service.
@@ -86,11 +86,14 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `deploy/docker-compose.all-in-one.yml`: optional source-build single-container entrypoint for the non-AI main stack.
 - `deploy/docker-compose.all-in-one.latest.yml`: optional latest-tag single-container quick-start for the non-AI main stack.
 - `deploy/docker-compose.all-in-one.image.yml`: optional locked single-container deployment entrypoint for the non-AI main stack.
-- `docs/RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
+- `docs/RELEASE.md`: canonical release guide for image naming, manual releases, and rollback.
 - `docs/DEPLOY.md`: production deployment guide for pulling published images with `deploy/.env.release.example`.
+- `docs/CHANGELOG.md`: version changelog maintained via `package.json#standard-version`.
+- `docs/cloudflare-cache.md`: Cloudflare edge cache rules (`docs/cloudflare-cache-rules.example.json`) and URL-normalizing worker (`docs/cloudflare-worker-cache-normalize.js`).
+- `docs/host-debug.md`, `docs/quick-debug.md`, `docs/test-env.md`: local host-debug (`18080`) and dedicated `test-env-vanblog` (`8020`) guides.
+- `docs/skills/vanblog-publish-article.md`: HTTP API publishing guide using a long-lived admin token.
 - `deploy/.env.release.example`: server-side environment template for image deployments.
 - `tests/`: deployment and blog-flow integration tests for the compose stack.
-- `docs/`: Markdown documentation.
 - `mind-map/`: auxiliary mind-map tooling; treat it as a separate subproject unless your change targets it directly.
 
 ## Code Map
@@ -103,7 +106,7 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
   - `src/**/*.spec.ts`: Jest unit tests; e2e tests live in `packages/server/test/`.
   - Native comments: `src/types/comment.dto.ts` (shared contract), `src/provider/comment/`, `src/controller/public/comment/`, `src/controller/admin/comment/`.
 - `packages/website` (Next.js theme):
-  - `pages/`: routes.
+  - `app/`, `page-components/`, `page-modules/`: App Router routes and page components.
   - `api/`: SSR/SSG data-fetching wrappers.
   - `utils/loadConfig.ts`: service address resolution for the browser, build time, and container runtime. Read it before changing any SSR/SSG data fetching.
   - `utils/markdownTheme.ts`: versioned helper for `/markdown-themes/` CSS (see the Cloudflare note under Release & Deployment Notes).
@@ -207,7 +210,7 @@ Treat release and deployment work as documented workflows, not guesswork.
 
 This machine now has two sanctioned `18080` debug workflows documented in `docs/host-debug.md`.
 
-- There is also a separate machine-local Docker test environment documented in `docs/reference/test-env.md`; when the task refers to the dedicated `test-env-vanblog` stack, read that doc first for its absolute path, startup commands, and `/api/admin/auth/debug-token` setup.
+- There is also a separate machine-local Docker test environment documented in `docs/test-env.md`; when the task refers to the dedicated `test-env-vanblog` stack, read that doc first for its absolute path, startup commands, and `/api/admin/auth/debug-token` setup.
 
 - The dedicated test-env directory is `/root/vanblog/test-env-vanblog` (entry `http://127.0.0.1:8020`; also see `docs/quick-debug.md`). Its `docker-compose.all-in-one.latest.yml` is a machine-local copy with four extra bind mounts: `packages/server/dist` → `/app/server/dist`, the website standalone `.next` → `/app/website/packages/website/.next`, `packages/website/.next/static` → `/app/website/packages/website/.next/static:ro`, and `packages/admin/dist` → `/usr/share/nginx/html/admin:ro`. Never overwrite it with the repo's original compose file, or the mounts are lost.
 - Typical iteration flow for the test env:
@@ -226,7 +229,7 @@ This machine now has two sanctioned `18080` debug workflows documented in `docs/
   ```
 
 - `pnpm build:server` recreates `dist` with a new inode, so always restart the container after server changes. This flow covers ordinary source changes only; new npm dependencies or changes to the Dockerfile, Caddy config, or entrypoint require rebuilding the image.
-- Deploying to the dedicated `test-env-vanblog` stack (`http://127.0.0.1:8020`, path A in `docs/reference/test-env.md`) has two traps that have already broken the front page once:
+- Deploying to the dedicated `test-env-vanblog` stack (`http://127.0.0.1:8020`, path A in `docs/test-env.md`) has two traps that have already broken the front page once:
   - `next build` does not put `static` into the standalone output. The test-env compose therefore mounts `packages/website/.next/static` read-only on top of it, so `/_next/static/**` no longer depends on a manual copy. The copy (`rm -rf packages/website/.next/standalone/packages/website/.next/static && cp -a packages/website/.next/static packages/website/.next/standalone/packages/website/.next/static`) is only required for a compose copy without that mount; keeping it in the flow is harmless.
   - The running Next.js process caches the presence of `.next/static` at startup: adding or replacing that directory without restarting the container leaves `/_next/static/**` returning `404` even though the files exist on disk inside the container. Always `docker compose -f docker-compose.all-in-one.latest.yml restart vanblog` after `.next` changes, then verify a referenced asset returns `200`.
   - Symptom to recognize: the front page returns `200` HTML but renders unstyled/乱码 because every `/_next/static/**` asset is missing. Confirm with `curl --noproxy '*' -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8020/<asset-from-view-source>` before blaming the page itself.
