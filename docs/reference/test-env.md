@@ -12,7 +12,7 @@ title: 本机测试环境
 
 - 仓库源码目录：`/root/vanblog/github_repo/vanblog`
 - 测试环境目录：`/root/vanblog/test-env-vanblog`
-- Compose 文件：`/root/vanblog/test-env-vanblog/docker-compose.all-in-one.latest.yml`（从仓库根目录复制过来）
+- Compose 文件：`/root/vanblog/test-env-vanblog/docker-compose.all-in-one.latest.yml`（从仓库 `deploy/` 目录复制过来）
 - Compose project name：`test-env-vanblog`
 - 外部入口：`http://127.0.0.1:8020`
 

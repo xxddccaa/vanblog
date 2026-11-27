@@ -277,5 +277,5 @@ Latest aliases verified for:
   ${SERVICES[*]}
 
 Example deploy command:
-  VANBLOG_DOCKER_REPO=${IMAGE_REPO} VANBLOG_RELEASE_SUFFIX=${RELEASE_SUFFIX} docker compose -f docker-compose.image.yml up -d
+  VANBLOG_DOCKER_REPO=${IMAGE_REPO} VANBLOG_RELEASE_SUFFIX=${RELEASE_SUFFIX} docker compose -f deploy/docker-compose.image.yml up -d
 SUMMARY

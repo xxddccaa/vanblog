@@ -19,7 +19,7 @@ A machine-readable starter config is also available at [docs/cloudflare-cache-ru
 - Browser-side pageview writes are split away from route rendering: `packages/website/pages/_app.tsx` delegates to `packages/website/utils/pageviewLifecycle.ts`, which records pageviews through `navigator.sendBeacon()` when available and falls back to `fetch(..., { keepalive: true })`.
 - Article create, update, and delete flows refresh `search-index`, RSS, sitemap, and targeted Cloudflare purge payloads.
 - `packages/server/src/provider/cloudflare-cache/cloudflare-cache.provider.ts` always prefers tag purge when credentials are configured, and only sends URL purge after it can resolve absolute URLs from `siteInfo.baseUrl`.
-- `docker-compose.yml` and `docker-compose.image.yml` now pass `VAN_BLOG_CLOUDFLARE_API_TOKEN` and `VAN_BLOG_CLOUDFLARE_ZONE_ID` through to the `server` container so image deployments can actually use the purge integration.
+- `docker-compose.yml` and `deploy/docker-compose.image.yml` now pass `VAN_BLOG_CLOUDFLARE_API_TOKEN` and `VAN_BLOG_CLOUDFLARE_ZONE_ID` through to the `server` container so image deployments can actually use the purge integration.
 
 ### Requires Cloudflare dashboard rollout
 

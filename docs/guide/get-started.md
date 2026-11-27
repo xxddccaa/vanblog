@@ -20,9 +20,9 @@ order: 1
 | 方式 | 文件 | 适用情况 |
 | --- | --- | --- |
 | 源码部署 | `docker-compose.yml` | 本地调试、二次开发、需要从当前代码直接构建 |
-| latest 快速部署 | `docker-compose.latest.yml` | 使用 latest 拆分镜像，并快速生成必需的数据库密码 `.env` |
-| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 单机快速部署、减少运维对象（详见 [单镜像 all-in-one 部署](/guide/all-in-one.md)） |
-| 锁版镜像部署 | `docker-compose.image.yml` + `.env.release.example` | 标准生产上线、精确回滚、审计线上版本 |
+| latest 快速部署 | `deploy/docker-compose.latest.yml` | 使用 latest 拆分镜像，并快速生成必需的数据库密码 `.env` |
+| latest 单镜像 | `deploy/docker-compose.all-in-one.latest.yml` | 单机快速部署、减少运维对象（详见 [单镜像 all-in-one 部署](/guide/all-in-one.md)） |
+| 锁版镜像部署 | `deploy/docker-compose.image.yml` + `deploy/.env.release.example` | 标准生产上线、精确回滚、审计线上版本 |
 
 ## 方式一：源码部署
 
@@ -35,15 +35,15 @@ order: 1
 ```bash
 printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
   "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
-docker compose -f docker-compose.latest.yml pull
-docker compose -f docker-compose.latest.yml up -d
+docker compose -f deploy/docker-compose.latest.yml pull
+docker compose -f deploy/docker-compose.latest.yml up -d
 ```
 
 ### 2. 一份文件使用单镜像
 
 ```bash
-docker compose -f docker-compose.all-in-one.latest.yml pull
-docker compose -f docker-compose.all-in-one.latest.yml up -d
+docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 > 生产用法（独立目录 + `.env` 钉端口 + 密码自动生成 + 多实例隔离 + 升级步骤）详见 [单镜像 all-in-one 部署](/guide/all-in-one.md)。
@@ -79,7 +79,7 @@ docker run -d \
 ### 1. 准备环境变量
 
 ```bash
-cp .env.release.example .env
+cp deploy/.env.release.example .env
 ```
 
 然后至少修改这些变量：
@@ -94,15 +94,15 @@ cp .env.release.example .env
 ### 2. 启动服务
 
 ```bash
-docker compose -f docker-compose.image.yml pull
-docker compose -f docker-compose.image.yml up -d
+docker compose -f deploy/docker-compose.image.yml pull
+docker compose -f deploy/docker-compose.image.yml up -d
 ```
 
 ### 3. 查看状态与日志
 
 ```bash
-docker compose -f docker-compose.image.yml ps
-docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
+docker compose -f deploy/docker-compose.image.yml ps
+docker compose -f deploy/docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 ### 4. 完成初始化

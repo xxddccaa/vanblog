@@ -12,18 +12,18 @@
 
 | 目标 | 推荐文件 | 适用情况 |
 | --- | --- | --- |
-| 本机快速验证未发布代码 | 独立测试目录的 `docker-compose.all-in-one.latest.yml`（额外挂载本机编译产物） | **仅本机测试**；重编后约 1 分钟生效，不重建镜像 |
+| 本机快速验证未发布代码 | 独立测试目录的 `deploy/docker-compose.all-in-one.latest.yml`（额外挂载本机编译产物） | **仅本机测试**；重编后约 1 分钟生效，不重建镜像 |
 | 本地开发 / 改代码 | `docker-compose.yml` | 从源码构建，适合调试与联调 |
-| latest 快速部署 | `docker-compose.latest.yml` + `.env` | 拉取 `latest` 主栈并显式配置数据库随机密码 |
-| 锁定某个正式版本 | `docker-compose.image.yml` + `.env.release.example` | 生产推荐；精确回滚、审计、复现线上版本 |
-| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像 |
-| 锁版单镜像 | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚 |
+| latest 快速部署 | `deploy/docker-compose.latest.yml` + `.env` | 拉取 `latest` 主栈并显式配置数据库随机密码 |
+| 锁定某个正式版本 | `deploy/docker-compose.image.yml` + `deploy/.env.release.example` | 生产推荐；精确回滚、审计、复现线上版本 |
+| latest 单镜像 | `deploy/docker-compose.all-in-one.latest.yml` | 只想维护一个主栈镜像 |
+| 锁版单镜像 | `deploy/docker-compose.all-in-one.image.yml` + `deploy/.env.release.example` | 需要单镜像回滚 |
 
 双轨说明：
 
-- `docker-compose.latest.yml` 适合快速部署、个人维护、先把服务跑起来
-- `docker-compose.image.yml` + `.env.release.example` 是生产首选，适合锁版、回滚、审计
-- `docker-compose.all-in-one.latest.yml` / `docker-compose.all-in-one.image.yml` 适合希望线上只维护一个 VanBlog 容器的场景
+- `deploy/docker-compose.latest.yml` 适合快速部署、个人维护、先把服务跑起来
+- `deploy/docker-compose.image.yml` + `deploy/.env.release.example` 是生产首选，适合锁版、回滚、审计
+- `deploy/docker-compose.all-in-one.latest.yml` / `deploy/docker-compose.all-in-one.image.yml` 适合希望线上只维护一个 VanBlog 容器的场景
 - 下文的“本机快速测试”复用 all-in-one 镜像，但会挂载未发布的宿主机产物；它与生产部署隔离，**绝不能拿测试 compose 或测试目录部署生产**
 
 ## 2. 本机快速测试未发布代码（路径 A）
@@ -51,7 +51,7 @@ ss -ltn | grep ':8020' || true
 - /root/vanblog/github_repo/vanblog/packages/admin/dist:/usr/share/nginx/html/admin:ro
 ```
 
-因此快速验证流程是“**宿主机编译 → 重启测试容器 → 验证**”，而不是 `docker compose build`。不要用仓库原版 `docker-compose.all-in-one.latest.yml` 覆盖测试目录的 compose：原版没有上述三项产物挂载。
+因此快速验证流程是“**宿主机编译 → 重启测试容器 → 验证**”，而不是 `docker compose build`。不要用仓库原版 `deploy/docker-compose.all-in-one.latest.yml` 覆盖测试目录的 compose：原版没有上述三项产物挂载。
 
 该方式适用于 `packages/server`、`packages/website`、`packages/admin` 的普通源码改动；新增 / 升级 npm 依赖，以及 Dockerfile、Caddy、entrypoint 改动，都必须改用完整 all-in-one 镜像重建。
 
@@ -71,7 +71,7 @@ cp -a packages/website/.next/static \
 pnpm build:admin
 
 cd /root/vanblog/test-env-vanblog
-docker compose -f docker-compose.all-in-one.latest.yml restart vanblog
+docker compose -f deploy/docker-compose.all-in-one.latest.yml restart vanblog
 ```
 
 `pnpm build:server` 会删除并重建 `dist`，原 bind mount 可能仍指向旧 inode；`restart` 会重新绑定它。website 也需要重启 Node 进程才会加载新产物。admin 由 nginx 直接读取只读挂载，重编后通常立即生效，但与前两者一起重启一次最便于统一验收。
@@ -91,7 +91,7 @@ docker logs test-env-vanblog-vanblog-1 --tail 50
 
 首次启动或 PostgreSQL 初始化约需 40–60 秒。前台持续 `502`、日志出现 `MODULE_NOT_FOUND` 或容器无法变为 `healthy` 时，停止验证并排查，不要碰 `vanblog`（8019）或 `vanblog-cc`（13080）生产目录。
 
-> 若仅修改测试目录 `.env`，`restart` 不会重新读取环境变量，应执行 `docker compose -f docker-compose.all-in-one.latest.yml up -d --force-recreate vanblog`。这会重建**测试容器**但保留测试目录的数据卷。
+> 若仅修改测试目录 `.env`，`restart` 不会重新读取环境变量，应执行 `docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d --force-recreate vanblog`。这会重建**测试容器**但保留测试目录的数据卷。
 
 更完整的本机测试说明见 `docs/reference/test-env.md`。
 
@@ -107,12 +107,12 @@ docker logs test-env-vanblog-vanblog-1 --tail 50
 
 把仓库中的这些文件带到服务器：
 
-- `docker-compose.latest.yml`
-- `docker-compose.image.yml`
-- `docker-compose.all-in-one.latest.yml`
-- `docker-compose.all-in-one.image.yml`
-- `docker-compose.https.yml`
-- `.env.release.example`
+- `deploy/docker-compose.latest.yml`
+- `deploy/docker-compose.image.yml`
+- `deploy/docker-compose.all-in-one.latest.yml`
+- `deploy/docker-compose.all-in-one.image.yml`
+- `deploy/docker-compose.https.yml`
+- `deploy/.env.release.example`
 - 如有自定义配置，可额外带上自己的 `.env`
 
 注意：
@@ -120,7 +120,7 @@ docker logs test-env-vanblog-vanblog-1 --tail 50
 - 不要把 `postgres`、`redis` 单独映射到宿主机端口
 - 不要把 Caddy admin API `2019` 暴露到公网
 - 默认 HTTP-only 模式只需要暴露 `80`
-- 如果叠加 `docker-compose.https.yml`，再额外暴露 `443`
+- 如果叠加 `deploy/docker-compose.https.yml`，再额外暴露 `443`
 - 评论由 `server` 内置提供，没有独立的评论容器，也不需要额外开放评论端口
 - 默认镜像拓扑会把站点共享密钥落盘到日志目录中的 `vanblog-shared.secret`；从旧版本升级时会沿用已有的 `waline.jwt`
 
@@ -129,7 +129,7 @@ docker logs test-env-vanblog-vanblog-1 --tail 50
 先复制模板：
 
 ```bash
-cp .env.release.example .env
+cp deploy/.env.release.example .env
 ```
 
 然后至少修改这些内容：
@@ -164,8 +164,8 @@ cp .env.release.example .env
 ```bash
 printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
   "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
-docker compose -f docker-compose.latest.yml pull
-docker compose -f docker-compose.latest.yml up -d
+docker compose -f deploy/docker-compose.latest.yml pull
+docker compose -f deploy/docker-compose.latest.yml up -d
 ```
 
 这个模板的特点：
@@ -177,8 +177,8 @@ docker compose -f docker-compose.latest.yml up -d
 ### 5.2 锁版部署：版本化镜像
 
 ```bash
-docker compose -f docker-compose.image.yml pull
-docker compose -f docker-compose.image.yml up -d
+docker compose -f deploy/docker-compose.image.yml pull
+docker compose -f deploy/docker-compose.image.yml up -d
 ```
 
 说明：
@@ -189,8 +189,8 @@ docker compose -f docker-compose.image.yml up -d
 查看状态：
 
 ```bash
-docker compose -f docker-compose.image.yml ps
-docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
+docker compose -f deploy/docker-compose.image.yml ps
+docker compose -f deploy/docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 首次启动后，访问：
@@ -206,8 +206,8 @@ http://<你的域名或 IP>/admin/init
 如果你不打算在外层再套自己的 Caddy / Nginx，而是希望直接使用 VanBlog 内置 Caddy 申请和管理证书，可改用：
 
 ```bash
-docker compose -f docker-compose.image.yml -f docker-compose.https.yml pull
-docker compose -f docker-compose.image.yml -f docker-compose.https.yml up -d
+docker compose -f deploy/docker-compose.image.yml -f deploy/docker-compose.https.yml pull
+docker compose -f deploy/docker-compose.image.yml -f deploy/docker-compose.https.yml up -d
 ```
 
 同时请确认：
@@ -221,15 +221,15 @@ docker compose -f docker-compose.image.yml -f docker-compose.https.yml up -d
 如果你希望线上只维护一个容器，可以使用：
 
 ```bash
-docker compose -f docker-compose.all-in-one.latest.yml pull
-docker compose -f docker-compose.all-in-one.latest.yml up -d
+docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 或锁版：
 
 ```bash
-docker compose -f docker-compose.all-in-one.image.yml pull
-docker compose -f docker-compose.all-in-one.image.yml up -d
+docker compose -f deploy/docker-compose.all-in-one.image.yml pull
+docker compose -f deploy/docker-compose.all-in-one.image.yml up -d
 ```
 
 这个路径仍然会把 PostgreSQL、Redis、Caddy、server、website、admin 都收进一个容器，但数据目录仍走宿主机挂载。
@@ -320,7 +320,7 @@ git log -5 --oneline
 推荐顺序：
 
 1. 整理本次发布范围，排除本机技能、内部台账、临时日志和无关生成物。
-2. 更新 `package.json`、`.env.release.example`、`CHANGELOG.md`、`README.md`、`RELEASE.md`、`DEPLOY.md`、`docs/releases/README.md` 和本次 `docs/releases/vX.Y.Z.md`。
+2. 更新 `package.json`、`deploy/.env.release.example`、`CHANGELOG.md`、`README.md`、`RELEASE.md`、`DEPLOY.md`、`docs/releases/README.md` 和本次 `docs/releases/vX.Y.Z.md`。
 3. 执行最终门禁：
 
    ```bash
@@ -555,6 +555,6 @@ VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>
 
 如果你只是想稳定上线博客主栈：
 
-1. 生产推荐 `docker-compose.image.yml` + `.env.release.example`
-2. 快速试跑用 `docker-compose.latest.yml`
+1. 生产推荐 `deploy/docker-compose.image.yml` + `deploy/.env.release.example`
+2. 快速试跑用 `deploy/docker-compose.latest.yml`
 3. 想少维护一个容器时，用 `docker-compose.all-in-one*.yml`

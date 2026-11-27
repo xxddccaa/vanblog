@@ -8,17 +8,17 @@ order: 3
 
 ### latest 镜像部署
 
-`docker-compose.latest.yml` 只会跟随当前最新发布，不记录历史版本。
+`deploy/docker-compose.latest.yml` 只会跟随当前最新发布，不记录历史版本。
 
-如果你需要精确回滚，请切换到 `docker-compose.image.yml`，再把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成目标版本。
+如果你需要精确回滚，请切换到 `deploy/docker-compose.image.yml`，再把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成目标版本。
 
 ### 锁版镜像部署
 
 把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后执行：
 
 ```bash
-docker compose -f docker-compose.image.yml pull
-docker compose -f docker-compose.image.yml up -d
+docker compose -f deploy/docker-compose.image.yml pull
+docker compose -f deploy/docker-compose.image.yml up -d
 ```
 
 ### 源码部署

@@ -45,7 +45,7 @@ tar czf vanblog-backup-$(date +%F).tar.gz \
   aliyunpan \
   .env \
   docker-compose.yml \
-  docker-compose.image.yml
+  deploy/docker-compose.image.yml
 ```
 
 如果某些目录不存在，可以按你的实际部署情况删掉。
@@ -66,7 +66,7 @@ docker compose up -d --build
 镜像部署：
 
 ```bash
-docker compose -f docker-compose.image.yml up -d
+docker compose -f deploy/docker-compose.image.yml up -d
 ```
 
 ## 额外提醒

@@ -26,10 +26,10 @@
 建议把部署与发布分成四类来理解：
 
 - **源码部署**：本地或调试环境直接使用 `docker-compose.yml`
-- **latest 快速部署**：使用 `docker-compose.latest.yml`
-- **latest 单镜像**：使用 `docker-compose.all-in-one.latest.yml`
-- **锁版镜像部署**：生产环境或分发场景使用 `docker-compose.image.yml`
-- **锁版单镜像**：使用 `docker-compose.all-in-one.image.yml`
+- **latest 快速部署**：使用 `deploy/docker-compose.latest.yml`
+- **latest 单镜像**：使用 `deploy/docker-compose.all-in-one.latest.yml`
+- **锁版镜像部署**：生产环境或分发场景使用 `deploy/docker-compose.image.yml`
+- **锁版单镜像**：使用 `deploy/docker-compose.all-in-one.image.yml`
 
 推荐的正式发布流程：
 
@@ -42,7 +42,7 @@
 7. **必做**：紧接着执行 `pnpm release:all-in-one:publish --version vX.Y.Z --image-id <image-id>`，发布 `vanblog-all-in-one-*` 并把 `kevinchina/deeplearning:vanblog-all-in-one-latest` 同步到同一版本。all-in-one 每次发版都要发，不再是可选步骤。
 8. 确认 Wiki 页面、仓库 release 文档索引、GitHub Release 三处内容一致。
 9. 记录本次版本号、Git tag、镜像 id、4 个核心镜像发布结果，以及 all-in-one（版本标签 + latest）发布结果。
-10. 生产环境使用 `docker-compose.image.yml` 指向本次发布的镜像标签进行部署；单镜像部署使用 `docker-compose.all-in-one.image.yml` 或已经同步的 `docker-compose.all-in-one.latest.yml`。
+10. 生产环境使用 `deploy/docker-compose.image.yml` 指向本次发布的镜像标签进行部署；单镜像部署使用 `deploy/docker-compose.all-in-one.image.yml` 或已经同步的 `deploy/docker-compose.all-in-one.latest.yml`。
 
 ## 3. 镜像命名规范
 

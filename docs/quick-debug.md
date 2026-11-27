@@ -27,7 +27,7 @@ volumes:
 
 因此普通代码修改无需重建 all-in-one 镜像，只需在宿主机编译对应产物，再重启测试容器。
 
-> 不要用仓库原版 `docker-compose.all-in-one.latest.yml` 覆盖测试目录里的文件。仓库原版没有上述四项调试挂载，覆盖后路径 A 会失效。
+> 不要用仓库原版 `deploy/docker-compose.all-in-one.latest.yml` 覆盖测试目录里的文件。仓库原版没有上述四项调试挂载，覆盖后路径 A 会失效。
 
 ## 推荐：多处改动一次编译、一次重启
 

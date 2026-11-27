@@ -11,12 +11,12 @@ const read = (path) => fs.readFileSync(path, 'utf8');
 const exists = (path) => fs.existsSync(path);
 
 const compose = read('docker-compose.yml');
-const composeImage = read('docker-compose.image.yml');
-const composeLatest = read('docker-compose.latest.yml');
-const composeAllInOne = read('docker-compose.all-in-one.yml');
-const composeAllInOneImage = read('docker-compose.all-in-one.image.yml');
-const composeAllInOneLatest = read('docker-compose.all-in-one.latest.yml');
-const composeHttps = read('docker-compose.https.yml');
+const composeImage = read('deploy/docker-compose.image.yml');
+const composeLatest = read('deploy/docker-compose.latest.yml');
+const composeAllInOne = read('deploy/docker-compose.all-in-one.yml');
+const composeAllInOneImage = read('deploy/docker-compose.all-in-one.image.yml');
+const composeAllInOneLatest = read('deploy/docker-compose.all-in-one.latest.yml');
+const composeHttps = read('deploy/docker-compose.https.yml');
 const manualCompose = read('tests/manual-v1.3.0/docker-compose.yaml');
 
 const caddyfile = read('docker/caddy/Caddyfile');
@@ -60,7 +60,7 @@ const faqUpdateDoc = read('docs/faq/update.md');
 const referenceEnvDoc = read('docs/reference/env.md');
 const referenceDirDoc = read('docs/reference/dir.md');
 const referenceLogDoc = read('docs/reference/log.md');
-const releaseEnv = read('.env.release.example');
+const releaseEnv = read('deploy/.env.release.example');
 const packageJson = JSON.parse(read('package.json'));
 const cloudflareDoc = read('docs/cloudflare-cache.md');
 const cloudflareRules = JSON.parse(read('docs/cloudflare-cache-rules.example.json'));
@@ -726,7 +726,7 @@ test('current top-level docs no longer mention removed admin AI workspace', () =
     ['docs/reference/env.md', referenceEnvDoc],
     ['docs/reference/dir.md', referenceDirDoc],
     ['docs/reference/log.md', referenceLogDoc],
-    ['.env.release.example', releaseEnv],
+    ['deploy/.env.release.example', releaseEnv],
   ]) {
     assertNoAiContent(content, label);
   }
@@ -881,12 +881,12 @@ test('release env documents the new log-governance knobs', () => {
 
 const allComposeFiles = [
   ['docker-compose.yml', compose],
-  ['docker-compose.image.yml', composeImage],
-  ['docker-compose.latest.yml', composeLatest],
-  ['docker-compose.all-in-one.yml', composeAllInOne],
-  ['docker-compose.all-in-one.image.yml', composeAllInOneImage],
-  ['docker-compose.all-in-one.latest.yml', composeAllInOneLatest],
-  ['docker-compose.https.yml', composeHttps],
+  ['deploy/docker-compose.image.yml', composeImage],
+  ['deploy/docker-compose.latest.yml', composeLatest],
+  ['deploy/docker-compose.all-in-one.yml', composeAllInOne],
+  ['deploy/docker-compose.all-in-one.image.yml', composeAllInOneImage],
+  ['deploy/docker-compose.all-in-one.latest.yml', composeAllInOneLatest],
+  ['deploy/docker-compose.https.yml', composeHttps],
 ];
 
 const allCaddyConfigs = [
@@ -977,6 +977,13 @@ test('legacy single-image Dockerfiles, Caddy templates, and upstream scripts are
     '.node-version',
     '.versionrc.js',
     'tsconfig.base.json',
+    'docker-compose.image.yml',
+    'docker-compose.latest.yml',
+    'docker-compose.https.yml',
+    'docker-compose.all-in-one.yml',
+    'docker-compose.all-in-one.image.yml',
+    'docker-compose.all-in-one.latest.yml',
+    '.env.release.example',
   ]) {
     assert.equal(exists(path), false, `${path} should be removed`);
   }
@@ -1046,7 +1053,7 @@ test('cwebp stays installed in the server and all-in-one runtime images', () => 
 test('the shared secret is wired as VANBLOG_SHARED_SECRET with the legacy fallback', () => {
   for (const [label, content] of [
     ['docker-compose.yml', compose],
-    ['docker-compose.image.yml', composeImage],
+    ['deploy/docker-compose.image.yml', composeImage],
   ]) {
     assert.equal(
       content.match(

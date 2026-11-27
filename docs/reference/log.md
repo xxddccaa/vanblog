@@ -17,7 +17,7 @@ docker compose logs -f caddy server website admin postgres redis
 镜像部署：
 
 ```bash
-docker compose -f docker-compose.image.yml logs -f caddy server website admin postgres redis
+docker compose -f deploy/docker-compose.image.yml logs -f caddy server website admin postgres redis
 ```
 
 ## 宿主机日志目录

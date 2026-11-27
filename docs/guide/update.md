@@ -18,15 +18,15 @@ order: -3
 | 路径 | 常见文件 | 升级方式 |
 | --- | --- | --- |
 | 源码部署 | `docker-compose.yml` | 重新拉代码并 `up -d --build` |
-| latest 主栈 | `docker-compose.latest.yml` | `pull` 后重新 `up -d` |
-| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | `pull` 后重新 `up -d` |
-| 锁版镜像部署 | `docker-compose.image.yml` + `.env` | 改 `.env` 里的 `VANBLOG_RELEASE_SUFFIX` 再升级 |
+| latest 主栈 | `deploy/docker-compose.latest.yml` | `pull` 后重新 `up -d` |
+| latest 单镜像 | `deploy/docker-compose.all-in-one.latest.yml` | `pull` 后重新 `up -d` |
+| 锁版镜像部署 | `deploy/docker-compose.image.yml` + `.env` | 改 `.env` 里的 `VANBLOG_RELEASE_SUFFIX` 再升级 |
 
 ## 从带 Waline 的旧版本升级
 
 新版本把评论改为 `server` 内置的原生评论系统，并移除了 Waline 服务和 `vanblog-waline-*` 镜像。从旧版本升级时：
 
-- 必须换用仓库里新版本的 compose 文件。旧的 `docker-compose.image.yml` 还引用 `vanblog-waline-*` 镜像，新版本不再发布这个标签，继续用旧文件拉取会失败
+- 必须换用仓库里新版本的 compose 文件。旧的 `deploy/docker-compose.image.yml` 还引用 `vanblog-waline-*` 镜像，新版本不再发布这个标签，继续用旧文件拉取会失败
 - 旧 `.env` 不用改：`WALINE_JWT_TOKEN` 仍会被读取，日志目录里的 `waline.jwt` 会被沿用为站点共享密钥
 - 拆分部署换用新 compose 后，旧的 `waline` 容器会变成孤儿容器，可以在 `up -d` 时加 `--remove-orphans` 删掉它
 - 旧的 Waline 评论不会迁移；数据库里的 `waline` 库原样保留，新版本不会读写或删除它
@@ -43,15 +43,15 @@ docker compose up -d --build
 ## latest 镜像部署升级
 
 ```bash
-docker compose -f docker-compose.latest.yml pull
-docker compose -f docker-compose.latest.yml up -d
+docker compose -f deploy/docker-compose.latest.yml pull
+docker compose -f deploy/docker-compose.latest.yml up -d
 ```
 
 ## latest 单镜像升级
 
 ```bash
-docker compose -f docker-compose.all-in-one.latest.yml pull
-docker compose -f docker-compose.all-in-one.latest.yml up -d
+docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 ## 锁版镜像部署升级
@@ -66,25 +66,25 @@ VANBLOG_RELEASE_SUFFIX=vX.Y.Z-<image-id>
 2. 拉取并启动新版本：
 
 ```bash
-docker compose -f docker-compose.image.yml pull
-docker compose -f docker-compose.image.yml up -d
+docker compose -f deploy/docker-compose.image.yml pull
+docker compose -f deploy/docker-compose.image.yml up -d
 ```
 
 ## 如何回滚
 
 ### latest 镜像部署回滚
 
-`docker-compose.latest.yml` 本身不会记录历史版本，因此它不适合做精确回滚。
+`deploy/docker-compose.latest.yml` 本身不会记录历史版本，因此它不适合做精确回滚。
 
-如果你需要回滚，请改用 `docker-compose.image.yml`，并把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成要回退到的具体版本。
+如果你需要回滚，请改用 `deploy/docker-compose.image.yml`，并把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改成要回退到的具体版本。
 
 ### 锁版镜像部署回滚
 
 把 `.env` 中的 `VANBLOG_RELEASE_SUFFIX` 改回旧版本，然后重新执行：
 
 ```bash
-docker compose -f docker-compose.image.yml pull
-docker compose -f docker-compose.image.yml up -d
+docker compose -f deploy/docker-compose.image.yml pull
+docker compose -f deploy/docker-compose.image.yml up -d
 ```
 
 ### 源码部署回滚

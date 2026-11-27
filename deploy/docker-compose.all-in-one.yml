@@ -8,7 +8,7 @@ x-logging: &default-logging
 services:
   vanblog:
     build:
-      context: .
+      context: ..
       dockerfile: docker/all-in-one.Dockerfile
       args:
         ALPINE_MIRROR_HOST: ${ALPINE_MIRROR_HOST:-}

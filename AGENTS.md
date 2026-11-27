@@ -30,9 +30,9 @@ This is the independently maintained VanBlog repository, forked from `Mereithhh/
 
 Long-term conventions:
 
-- The core blog stack stays as is: `docker-compose.yml` / `docker-compose.image.yml` wire `caddy`, `server`, `website`, `admin`, `postgres`, and `redis`.
+- The core blog stack stays as is: `docker-compose.yml` / `deploy/docker-compose.image.yml` wire `caddy`, `server`, `website`, `admin`, `postgres`, and `redis`.
 - The image repository is fixed to `kevinchina/deeplearning`; all release and rollback docs assume it.
-- "Single image" means the `docker-compose.all-in-one*.yml` files plus the `vanblog-all-in-one-*` tags. Do not fall back to the legacy `vanblog-latest` single-image setup.
+- "Single image" means the `deploy/docker-compose.all-in-one*.yml` files plus the `vanblog-all-in-one-*` tags. Do not fall back to the legacy `vanblog-latest` single-image setup.
 
 ## Project Notes (`.agent-forge/`)
 
@@ -80,15 +80,15 @@ This repository is a `pnpm` monorepo for a customized VanBlog deployment with sp
 - `packages/cli`: small CLI utilities.
 - `docker/`: per-service Dockerfiles, Caddy config, and runtime helper scripts for the split deployment.
 - `docker-compose.yml`: local source-build runtime entrypoint; the current top-level stack wires the 6 core blog services (`caddy`, `server`, `website`, `admin`, `postgres`, `redis`). Mermaid and WaveDrom diagrams render in the browser; there is no diagram rendering service.
-- `docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology; pair it with `.env.release.example` for locked production deployments.
-- `docker-compose.latest.yml`: quick-start of the same top-level stack from `latest` images.
-- `docker-compose.https.yml`: overlay that adds the HTTPS configuration.
-- `docker-compose.all-in-one.yml`: optional source-build single-container entrypoint for the non-AI main stack.
-- `docker-compose.all-in-one.latest.yml`: optional latest-tag single-container quick-start for the non-AI main stack.
-- `docker-compose.all-in-one.image.yml`: optional locked single-container deployment entrypoint for the non-AI main stack.
+- `deploy/docker-compose.image.yml`: deployment entrypoint that pulls already-published images for the same top-level runtime topology; pair it with `deploy/.env.release.example` for locked production deployments.
+- `deploy/docker-compose.latest.yml`: quick-start of the same top-level stack from `latest` images.
+- `deploy/docker-compose.https.yml`: overlay that adds the HTTPS configuration.
+- `deploy/docker-compose.all-in-one.yml`: optional source-build single-container entrypoint for the non-AI main stack.
+- `deploy/docker-compose.all-in-one.latest.yml`: optional latest-tag single-container quick-start for the non-AI main stack.
+- `deploy/docker-compose.all-in-one.image.yml`: optional locked single-container deployment entrypoint for the non-AI main stack.
 - `RELEASE.md`: canonical human + AI release guide for image naming, manual releases, and rollback.
-- `DEPLOY.md`: production deployment guide for pulling published images with `.env.release.example`.
-- `.env.release.example`: server-side environment template for image deployments.
+- `DEPLOY.md`: production deployment guide for pulling published images with `deploy/.env.release.example`.
+- `deploy/.env.release.example`: server-side environment template for image deployments.
 - `tests/`: deployment and blog-flow integration tests for the compose stack.
 - `docs/`: Markdown documentation.
 - `mind-map/`: auxiliary mind-map tooling; treat it as a separate subproject unless your change targets it directly.
@@ -152,7 +152,7 @@ Use `pnpm` at the repo root.
 - `pnpm release:all-in-one:publish`: publish the optional non-AI all-in-one immutable tag, version tag, and `latest`, then verify the remote tags.
 - `pnpm release:all-in-one:latest`: only sync and verify `kevinchina/deeplearning:vanblog-all-in-one-latest` from an existing version tag.
 - `docker compose up -d --build`: start the split runtime locally.
-- `docker compose -f docker-compose.image.yml up -d`: start from already-published images.
+- `docker compose -f deploy/docker-compose.image.yml up -d`: start from already-published images.
 - `docker compose logs -f caddy server website admin postgres redis`: inspect logs for the current top-level compose stack.
 
 ## Coding Style & Naming Conventions
@@ -188,16 +188,16 @@ Add or update tests for each behavior change; there is no visible repo-wide cove
 Treat release and deployment work as documented workflows, not guesswork.
 
 - For image publishing or versioned rollout tasks, read `RELEASE.md` first; it is the canonical guide for image naming, release commands, and rollback expectations.
-- For production deployment tasks, read `DEPLOY.md`; the default locked release path is `docker-compose.image.yml` plus `.env.release.example`, while the optional non-AI all-in-one path uses `docker-compose.all-in-one.image.yml`.
+- For production deployment tasks, read `DEPLOY.md`; the default locked release path is `deploy/docker-compose.image.yml` plus `deploy/.env.release.example`, while the optional non-AI all-in-one path uses `deploy/docker-compose.all-in-one.image.yml`.
 - Use `pnpm release:images` for local release builds and `pnpm release:images:push` for publishing; the release flow derives the version from the root `package.json` and the image id from `git rev-parse --short=8 HEAD` unless explicitly overridden.
 - Treat `kevinchina/deeplearning` as the long-term retained image repo / backup repo in docs and release examples unless the user explicitly changes it.
 - `pnpm release:images` only publishes the 4 core VanBlog images (`caddy`, `server`, `website`, `admin`).
-- The optional non-AI `docker-compose.all-in-one.latest.yml` path depends on `kevinchina/deeplearning:vanblog-all-in-one-latest`, and that tag is published by the dedicated all-in-one release flow rather than by `pnpm release:images`.
+- The optional non-AI `deploy/docker-compose.all-in-one.latest.yml` path depends on `kevinchina/deeplearning:vanblog-all-in-one-latest`, and that tag is published by the dedicated all-in-one release flow rather than by `pnpm release:images`.
 - For the optional non-AI all-in-one image, use `pnpm release:all-in-one:publish` for a full publish, or `pnpm release:all-in-one:latest --version vX.Y.Z --image-id <image-id>` when the version tags already exist and only the `latest` alias is missing.
-- If a pull of `docker-compose.all-in-one.latest.yml` fails with `manifest unknown`, assume `vanblog-all-in-one-latest` was not synced yet; do not try to fix it with `pnpm release:latest`, which only applies to the split 4-image release flow.
-- When documenting deployment choices, keep `docker-compose.latest.yml`, `docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths.
+- If a pull of `deploy/docker-compose.all-in-one.latest.yml` fails with `manifest unknown`, assume `vanblog-all-in-one-latest` was not synced yet; do not try to fix it with `pnpm release:latest`, which only applies to the split 4-image release flow.
+- When documenting deployment choices, keep `deploy/docker-compose.latest.yml`, `deploy/docker-compose.image.yml`, and the optional non-AI all-in-one files as supported paths.
 - Do not use GitHub Actions to publish Docker Hub images; release workflows are intentionally handled on this machine via local/manual commands.
-- If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the root `docker-compose*.yml` files as the source of truth for the currently wired runtime stack.
+- If release artifacts and compose topology appear different, treat `RELEASE.md` plus `scripts/release-images.sh` as the source of truth for publishable images, and treat the `docker-compose.yml` and `deploy/docker-compose.*.yml` files as the source of truth for the currently wired runtime stack.
 - For release or deployment changes, prefer validating with `pnpm test:full`; if you only need a narrower config/routing check, at minimum run `pnpm test:blog-flow`, and also run `pnpm test:deploy` for config- or routing-focused changes.
 - The site-wide shared secret is `VANBLOG_SHARED_SECRET`, persisted to `vanblog-shared.secret` in the log dir when left empty. The legacy `WALINE_JWT_TOKEN` env and an existing `waline.jwt` file are still read as fallbacks so upgrades keep their secret; do not drop those fallbacks.
 - Keep production exposure assumptions intact: public entry is through Caddy on `80/443`, `postgres` and `redis` should not gain host ports, and the Caddy admin API `2019` must stay private.

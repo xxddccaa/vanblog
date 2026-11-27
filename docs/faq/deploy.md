@@ -9,9 +9,9 @@ order: 1
 可以按下面理解：
 
 - `docker-compose.yml`：源码构建，适合开发和联调
-- `docker-compose.latest.yml`：latest 主栈 quick-start
-- `docker-compose.image.yml`：锁定正式版本部署
-- `docker-compose.all-in-one.latest.yml` / `docker-compose.all-in-one.image.yml`：单镜像部署
+- `deploy/docker-compose.latest.yml`：latest 主栈 quick-start
+- `deploy/docker-compose.image.yml`：锁定正式版本部署
+- `deploy/docker-compose.all-in-one.latest.yml` / `deploy/docker-compose.all-in-one.image.yml`：单镜像部署
 
 ## 如何部署到 CDN
 
@@ -72,7 +72,7 @@ docker compose exec postgres psql -U postgres -d vanblog
 
 请整理以下信息后提交 Issue：
 
-- 使用的是 `docker-compose.yml`、`docker-compose.latest.yml` 还是 `docker-compose.image.yml`
+- 使用的是 `docker-compose.yml`、`deploy/docker-compose.latest.yml` 还是 `deploy/docker-compose.image.yml`
 - `docker compose ps` 的结果
 - `docker compose logs -f caddy server website admin postgres redis` 中的关键错误
 - 你是否额外套了 Nginx / Caddy / CDN

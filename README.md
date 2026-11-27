@@ -10,7 +10,7 @@
 
 当前项目有三个明确约定：
 
-- **核心博客栈默认不变**：`docker-compose.yml` / `docker-compose.image.yml` 继续负责 `caddy`、`server`、`website`、`admin`、`postgres`、`redis`；评论由 `server` 内置的原生评论系统提供，不再有独立的评论容器
+- **核心博客栈默认不变**：`docker-compose.yml` / `deploy/docker-compose.image.yml` 继续负责 `caddy`、`server`、`website`、`admin`、`postgres`、`redis`；评论由 `server` 内置的原生评论系统提供，不再有独立的评论容器
 - **可选提供非 AI 单镜像入口**：`docker-compose.all-in-one*.yml` 会把主栈和 `postgres` / `redis` 收进一个容器，适合单机部署和减少运维对象；标准生产锁版、细粒度运维和审计仍优先使用拆分多镜像
 - **镜像仓库固定使用 `kevinchina/deeplearning`**：这是当前长期保留、可回滚、可审计的备份仓库，发布与部署文档统一以它为准
 
@@ -31,10 +31,10 @@
 | 场景 | 组合 | 适用情况 |
 | --- | --- | --- |
 | 源码开发 / 本地调试 | `docker-compose.yml` | 直接从当前仓库构建，适合联调与改代码 |
-| latest 快速部署 | `docker-compose.latest.yml` + `.env` | 使用最新主栈镜像，并显式提供数据库随机密码 |
-| latest 单镜像 | `docker-compose.all-in-one.latest.yml` | 单机快速部署：只维护一个主镜像和一份 compose；本机两套生产实例采用锁定的 all-in-one 标签 |
-| 锁定正式版本 | `docker-compose.image.yml` + `.env.release.example` | 需要精确回滚、审计、记录线上版本 |
-| 锁定正式版本（单镜像） | `docker-compose.all-in-one.image.yml` + `.env.release.example` | 需要单镜像回滚 |
+| latest 快速部署 | `deploy/docker-compose.latest.yml` + `.env` | 使用最新主栈镜像，并显式提供数据库随机密码 |
+| latest 单镜像 | `deploy/docker-compose.all-in-one.latest.yml` | 单机快速部署：只维护一个主镜像和一份 compose；本机两套生产实例采用锁定的 all-in-one 标签 |
+| 锁定正式版本 | `deploy/docker-compose.image.yml` + `deploy/.env.release.example` | 需要精确回滚、审计、记录线上版本 |
+| 锁定正式版本（单镜像） | `deploy/docker-compose.all-in-one.image.yml` + `deploy/.env.release.example` | 需要单镜像回滚 |
 
 ## 核心拓扑
 
@@ -79,8 +79,8 @@ http://<你的 IP 或域名>/admin/init
 ```bash
 printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\n' \
   "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
-docker compose -f docker-compose.latest.yml pull
-docker compose -f docker-compose.latest.yml up -d
+docker compose -f deploy/docker-compose.latest.yml pull
+docker compose -f deploy/docker-compose.latest.yml up -d
 ```
 
 这个方式适合快速体验主栈：
@@ -100,8 +100,8 @@ docker compose -f docker-compose.latest.yml up -d
 mkdir -p /srv/vanblog && cd /srv/vanblog
 
 # 2) 取来 all-in-one compose（用仓库里的版本，不要用别处的旧副本）
-curl -fsSL -o docker-compose.all-in-one.latest.yml \
-  https://raw.githubusercontent.com/xxddccaa/vanblog/master/docker-compose.all-in-one.latest.yml
+curl -fsSL -o deploy/docker-compose.all-in-one.latest.yml \
+  https://raw.githubusercontent.com/xxddccaa/vanblog/master/deploy/docker-compose.all-in-one.latest.yml
 
 # 3) 写 .env：至少钉死对外端口；密码留空即可
 cat > .env <<'ENV'
@@ -109,14 +109,14 @@ VANBLOG_HTTP_PORT=8019
 ENV
 
 # 4) 拉取并启动
-docker compose -f docker-compose.all-in-one.latest.yml pull
-docker compose -f docker-compose.all-in-one.latest.yml up -d
+docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 首次启动约 40–60 秒内变为 `healthy`，随后：
 
 ```bash
-docker compose -f docker-compose.all-in-one.latest.yml ps      # 等到 healthy
+docker compose -f deploy/docker-compose.all-in-one.latest.yml ps      # 等到 healthy
 curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8019/ # 期望 200
 ```
 
@@ -136,15 +136,15 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8019/ # 期望 200
 ```bash
 cd /srv/vanblog
 # 升级前建议先备份（compose + 逻辑导出）
-cp docker-compose.all-in-one.latest.yml docker-compose.all-in-one.latest.yml.bak
+cp deploy/docker-compose.all-in-one.latest.yml deploy/docker-compose.all-in-one.latest.yml.bak
 docker exec "$(docker compose ps -q vanblog)" sh -c 'su-exec postgres pg_dumpall' > pg_dumpall.$(date +%Y%m%d).sql
 
 # 如从旧版本升级，务必把 compose 换成仓库最新版（旧副本可能仍硬编码弱口令，见上）
-curl -fsSL -o docker-compose.all-in-one.latest.yml \
-  https://raw.githubusercontent.com/xxddccaa/vanblog/master/docker-compose.all-in-one.latest.yml
+curl -fsSL -o deploy/docker-compose.all-in-one.latest.yml \
+  https://raw.githubusercontent.com/xxddccaa/vanblog/master/deploy/docker-compose.all-in-one.latest.yml
 
-docker compose -f docker-compose.all-in-one.latest.yml pull
-docker compose -f docker-compose.all-in-one.latest.yml up -d
+docker compose -f deploy/docker-compose.all-in-one.latest.yml pull
+docker compose -f deploy/docker-compose.all-in-one.latest.yml up -d
 ```
 
 数据目录 `./data` 会被复用，博客内容不受影响；从旧版首次升到 v1.8.0 时，PostgreSQL 密码会被轮换为随机强口令，属预期行为，可自愈。
@@ -152,7 +152,7 @@ docker compose -f docker-compose.all-in-one.latest.yml up -d
 ### 3. 锁定到某个正式发布版本
 
 ```bash
-cp .env.release.example .env
+cp deploy/.env.release.example .env
 ```
 
 然后至少改掉：
@@ -167,8 +167,8 @@ cp .env.release.example .env
 启动：
 
 ```bash
-docker compose -f docker-compose.image.yml pull
-docker compose -f docker-compose.image.yml up -d
+docker compose -f deploy/docker-compose.image.yml pull
+docker compose -f deploy/docker-compose.image.yml up -d
 ```
 
 这个方式更适合：

@@ -232,7 +232,7 @@ async function encryptForFrontend(username, password) {
 
 async function waitForHealthyStack(composeEnv) {
   await waitFor(async () => {
-    const result = runCommand(['-f', 'docker-compose.all-in-one.yml', 'ps', '--format', 'json'], {
+    const result = runCommand(['-f', 'deploy/docker-compose.all-in-one.yml', 'ps', '--format', 'json'], {
       env: composeEnv,
       allowFailure: true,
     });
@@ -280,12 +280,12 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
   try {
     // Force a fresh image build so Dockerfile package changes are validated instead of
     // silently reusing a cached all-in-one runtime layer from an earlier test run.
-    runCommand(['-f', 'docker-compose.all-in-one.yml', 'build', '--no-cache', 'vanblog'], {
+    runCommand(['-f', 'deploy/docker-compose.all-in-one.yml', 'build', '--no-cache', 'vanblog'], {
       env: composeEnv,
       timeoutMs: 60 * 60 * 1000,
     });
 
-    runCommand(['-f', 'docker-compose.all-in-one.yml', 'up', '-d'], {
+    runCommand(['-f', 'deploy/docker-compose.all-in-one.yml', 'up', '-d'], {
       env: composeEnv,
       timeoutMs: 20 * 60 * 1000,
     });
@@ -411,7 +411,7 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
     await assertWalineRoutesRemoved(baseUrl);
     await assertNativeCommentFlow(baseUrl, waitFor);
 
-    const psResult = runCommand(['-f', 'docker-compose.all-in-one.yml', 'ps', '--format', 'json'], {
+    const psResult = runCommand(['-f', 'deploy/docker-compose.all-in-one.yml', 'ps', '--format', 'json'], {
       env: composeEnv,
     });
     const services = parseComposePsOutput(psResult.stdout);
@@ -436,7 +436,7 @@ test('all-in-one image supports init, login, draft publish, and frontend browsin
     assert.equal(diagramRender.status, 404, 'the removed diagram render endpoint should be gone');
   } finally {
     clearInterval(keepAlive);
-    runCommand(['-f', 'docker-compose.all-in-one.yml', 'down', '-v', '--remove-orphans'], {
+    runCommand(['-f', 'deploy/docker-compose.all-in-one.yml', 'down', '-v', '--remove-orphans'], {
       env: composeEnv,
       allowFailure: true,
       timeoutMs: 2 * 60 * 1000,
